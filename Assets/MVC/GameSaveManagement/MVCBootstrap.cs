@@ -3,13 +3,14 @@ using GameSaveManagement.Controller;
 using GameSaveManagement.View;
 using GameSaveManagement.Service;
 
-public class GameSaveManager : MonoBehaviour
+public class MVCBootstrap : MonoBehaviour
 {
     private GameSaveController saveController;
     private GameSaveView saveView;
     private IGameSaveService gameSaveService; // Declare the service interface
 
-    public Transform playerTransform; // Reference to the player's Transform
+    [Header("References")]
+    [SerializeField] private Transform playerTransform; // Reference to the player's Transform
 
     private void Awake()
     {
