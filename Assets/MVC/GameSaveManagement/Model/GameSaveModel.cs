@@ -3,41 +3,21 @@ using UnityEngine;
 
 namespace GameSaveManagement.Model
 {
+    [System.Serializable]
     public class GameSaveModel
     {
-        private const string SaveFilePath = "player_save.json";
+        // Pure data container for saved player state.
+        // Keep public fields so Unity's JsonUtility can serialize/deserialize when needed.
+        public Vector3 Position;
 
-        public void SavePosition(Vector3 position)
+        public GameSaveModel()
         {
-            string json = JsonUtility.ToJson(new PlayerData(position));
-            File.WriteAllText(SaveFilePath, json);
+            Position = Vector3.zero;
         }
 
-        public Vector3 LoadPosition()
+        public GameSaveModel(Vector3 position)
         {
-            if (File.Exists(SaveFilePath))
-            {
-                string json = File.ReadAllText(SaveFilePath);
-                PlayerData data = JsonUtility.FromJson<PlayerData>(json);
-                return new Vector3(data.PositionX, data.PositionY, data.PositionZ);
-            }
-
-            return Vector3.zero; // Default position if no save file exists
-        }
-
-        [System.Serializable]
-        private class PlayerData
-        {
-            public float PositionX;
-            public float PositionY;
-            public float PositionZ;
-
-            public PlayerData(Vector3 position)
-            {
-                PositionX = position.x;
-                PositionY = position.y;
-                PositionZ = position.z;
-            }
+            Position = position;
         }
     }
 }

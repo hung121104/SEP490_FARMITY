@@ -1,26 +1,26 @@
 using System;
 using UnityEngine;
-using GameSaveManagement.Model;
+using GameSaveManagement.Service;
 
 namespace GameSaveManagement.Controller
 {
     public class GameSaveController : MonoBehaviour
     {
-        private GameSaveModel _gameSaveModel;
+        private IGameSaveService _gameSaveService;
 
         private void Awake()
         {
-            _gameSaveModel = new GameSaveModel();
+            _gameSaveService = new GameSaveService();
         }
 
         public void SavePlayerPosition(Vector3 position)
         {
-            _gameSaveModel.SavePosition(position);
+            _gameSaveService.SavePlayerPosition(position);
         }
 
         public Vector3 LoadPlayerPosition()
         {
-            return _gameSaveModel.LoadPosition();
+            return _gameSaveService.LoadPlayerPosition();
         }
     }
 }
