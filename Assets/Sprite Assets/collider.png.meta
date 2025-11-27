@@ -119,38 +119,20 @@ TextureImporter:
         y: 271
         width: 32
         height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
-      physicsShape: []
-      tessellationDetail: -1
+      physicsShape:
+      - - {x: 16, y: 0.5}
+        - {x: 0, y: 8.5}
+        - {x: -16, y: 0.5}
+        - {x: 0, y: -8.5}
+      tessellationDetail: 0
       bones: []
       spriteID: 080c54ee32cdce080800000000000000
       internalID: -9156701895471546240
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: collider_1
-      rect:
-        serializedVersion: 2
-        x: 0
-        y: 256
-        width: 32
-        height: 32
-      alignment: 9
-      pivot: {x: 0.5, y: 0.75}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 7e2d2e2c83f5f5740800000000000000
-      internalID: 5142933996872848103
       vertices: []
       indices: 
       edges: []
