@@ -8,7 +8,7 @@ public class PlayerMovementDataView : NetworkBehaviour
     private PlayerMovementPresenter presenter;
     private Rigidbody2D rb;
     private Vector2 moveInput;
-    private Animator animator;
+    private NetworkAnimator animator;
     [SerializeField]
     private Camera playerCa;
     [SerializeField]
@@ -20,7 +20,7 @@ public class PlayerMovementDataView : NetworkBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        animator = GetComponent<Animator>();
+        animator = GetComponent<NetworkAnimator>();
         presenter = new PlayerMovementPresenter();
     }
 
