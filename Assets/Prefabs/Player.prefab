@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 7097809978373027754}
   - component: {fileID: 3688539624916083366}
   - component: {fileID: 5327043103023247866}
+  - component: {fileID: 3096649346722309246}
   m_Layer: 0
   m_Name: PlayerEntity
   m_TagString: Player
@@ -176,8 +177,8 @@ CapsuleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.033124924, y: -0.5278834}
-  m_Size: {x: 0.18305111, y: 0.18305111}
+  m_Offset: {x: 0.015, y: -0.25}
+  m_Size: {x: 0.05, y: 0.07}
   m_Direction: 0
 --- !u!114 &7097809978373027754
 MonoBehaviour:
@@ -352,6 +353,31 @@ MonoBehaviour:
   _characterControllerPatch: 0
   _ownerAuth: 1
   _interpolationTiming: 0
+--- !u!114 &3096649346722309246
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1083092175523969477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7b598b9d8509d64abb9fdaf07fa3f6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _isSetup: 0
+  _prefabId: -2147483648
+  _componentIndex: -2147483648
+  _shouldBePooled: 0
+  _parent: {fileID: 0}
+  _invertedPathToNearestParent: 
+  _directChildren: []
+  _networkRules: {fileID: 0}
+  _visitiblityRules: {fileID: 0}
+  _animator: {fileID: 2484432841730069458}
+  _ownerAuth: 1
+  _autoSyncParameters: 0
+  _dontSyncParameters: []
 --- !u!1 &1202695650498789555
 GameObject:
   m_ObjectHideFlags: 0
@@ -363,6 +389,7 @@ GameObject:
   - component: {fileID: 3412998753931084269}
   - component: {fileID: 5639540635812324173}
   - component: {fileID: 1406380246079161071}
+  - component: {fileID: 6368682720694608351}
   m_Layer: 0
   m_Name: CmCamera
   m_TagString: Untagged
@@ -460,6 +487,26 @@ MonoBehaviour:
     Time: 0
     Smoothing: 0
     IgnoreY: 0
+--- !u!114 &6368682720694608351
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1202695650498789555}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f453f694addf4275988fac205bc91968, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  BoundingShape2D: {fileID: 0}
+  Damping: 0.5
+  SlowingDistance: 5
+  OversizeWindow:
+    Enabled: 0
+    MaxWindowSize: 0
+    Padding: 0
+  m_LegacyMaxWindowSize: -2
 --- !u!1 &1681704056157336401
 GameObject:
   m_ObjectHideFlags: 0
