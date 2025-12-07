@@ -232,7 +232,7 @@ MonoBehaviour:
   mapParent: {fileID: 0}
   mapSceneNames:
   - MapLoaderScene
-  loadOnStart: 0
+  loadOnStart: 1
   startMapIndex: 0
 --- !u!4 &1008402088
 Transform:
