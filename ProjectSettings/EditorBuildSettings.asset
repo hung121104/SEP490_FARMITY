@@ -9,8 +9,11 @@ EditorBuildSettings:
     path: Assets/Scenes/Test Scenes/GameCoreTestScene.unity
     guid: b4103ea5aa8374146b11907653ae49b0
   - enabled: 1
-    path: Assets/Scenes/Test Scenes/testMap.unity
+    path: Assets/Scenes/Test Scenes/MapLoaderTestScene.unity
     guid: 07c63e6f003e10f4eb59b4a20ecd6444
+  - enabled: 1
+    path: Assets/Scenes/Game Scenes/MapLoaderScene.unity
+    guid: 68250415bc2105e44904dfb0943f6938
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0

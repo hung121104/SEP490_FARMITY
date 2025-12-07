@@ -231,8 +231,8 @@ MonoBehaviour:
   mapPrefabs: []
   mapParent: {fileID: 0}
   mapSceneNames:
-  - testMap
-  loadOnStart: 1
+  - MapLoaderScene
+  loadOnStart: 0
   startMapIndex: 0
 --- !u!4 &1008402088
 Transform:
