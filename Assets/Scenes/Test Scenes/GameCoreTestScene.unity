@@ -974,6 +974,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 7378714109842207659, guid: b3c8d1b3ea079b743be70e09ece4cd53, type: 3}
+      propertyPath: _dontDestroyOnLoad
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7629894364346862600, guid: b3c8d1b3ea079b743be70e09ece4cd53, type: 3}
       propertyPath: m_Name
       value: NetWorkManager

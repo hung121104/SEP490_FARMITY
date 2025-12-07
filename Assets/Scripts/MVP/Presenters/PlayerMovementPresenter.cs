@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class PlayerMovementPresenter
 {
-    PlayerMovementService playerMovementService = new PlayerMovementService();
+    IPlayerMovementService playerMovementService = new PlayerMovementService();
 
     internal Vector2 calculatePlayerVelocity(Vector2 moveInput, float movespeed)
     {
