@@ -84,7 +84,7 @@ public class PrefabLoaderService : IPrefabLoaderService
             return;
         }
 
-        Vector3 pos = index * zOffset;
+        Vector3 pos = zOffset;
         var instance = Object.Instantiate(prefabs[index], pos, Quaternion.identity);
         instance.name = prefabs[index].name;
         instances[index] = instance;
