@@ -24,6 +24,7 @@ public class prefabLoaderView : MonoBehaviour
     void Start()
     {
         presenter.ValidatePrefabList(prefabs, instances);
+        presenter.LoadPrefabByNumber(testIndex, prefabs, instances, zOffset);
     }
 
     // Context menu: load all prefabs
