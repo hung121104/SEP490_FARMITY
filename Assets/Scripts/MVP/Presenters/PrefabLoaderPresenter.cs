@@ -1,40 +1,27 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PrefabLoaderPresenter
 {
     private readonly IPrefabLoaderService prefabLoaderService;
 
-    public PrefabLoaderPresenter() : this(new PrefabLoaderService()) { }
+    // Default constructor uses the shared singleton service instance.
+    public PrefabLoaderPresenter() : this(PrefabLoaderService.Instance) { }
 
+    // Still allow injection for tests / alternative implementations.
     public PrefabLoaderPresenter(IPrefabLoaderService service)
     {
         prefabLoaderService = service ?? throw new ArgumentNullException(nameof(service));
     }
 
-    public void ValidatePrefabList(List<GameObject> prefabs, List<GameObject> instances)
+
+    public void LoadPrefab(GameObject prefab, ref GameObject instance, Vector3 position)
     {
-        prefabLoaderService.ValidatePrefabList(prefabs, instances);
+        prefabLoaderService.LoadPrefab(prefab, ref instance, position);
     }
 
-    public void LoadAllPrefabs(List<GameObject> prefabs, List<GameObject> instances, Vector3 zOffset)
+    public void UnloadPrefab(GameObject prefab)
     {
-        prefabLoaderService.LoadAllPrefabs(prefabs, instances, zOffset);
-    }
-
-    public void UnloadAllPrefabs(List<GameObject> instances)
-    {
-        prefabLoaderService.UnloadAllPrefabs(instances);
-    }
-
-    public void LoadPrefabByNumber(int number, List<GameObject> prefabs, List<GameObject> instances, Vector3 zOffset)
-    {
-        prefabLoaderService.LoadPrefabByNumber(number, prefabs, instances, zOffset);
-    }
-
-    public void UnloadPrefabByNumber(int number, List<GameObject> instances)
-    {
-        prefabLoaderService.UnloadPrefabByNumber(number, instances);
+        prefabLoaderService.UnloadPrefab(prefab);
     }
 }
