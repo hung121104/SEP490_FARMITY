@@ -163,12 +163,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6f155bf1b61b4cf429322c976494057f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  prefabs:
-  - {fileID: 372591978817517267, guid: 269f39b8a7733264ab866d76d18f61ff, type: 3}
-  - {fileID: 372591978817517267, guid: 061d76e79536f854f93bfe4c666315c4, type: 3}
-  - {fileID: 372591978817517267, guid: a1df90e11f82a9e47af30c99ca22e226, type: 3}
+  prefab: {fileID: 372591978817517267, guid: 269f39b8a7733264ab866d76d18f61ff, type: 3}
   zOffset: {x: 0, y: 0, z: 0}
-  testIndex: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

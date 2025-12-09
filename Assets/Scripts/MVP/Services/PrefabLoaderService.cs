@@ -1,119 +1,66 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PrefabLoaderService : IPrefabLoaderService
+public sealed class PrefabLoaderService : Singleton<PrefabLoaderService>, IPrefabLoaderService
 {
-    public void ValidatePrefabList(List<GameObject> prefabs, List<GameObject> instances)
+    // registry: prefab asset -> spawned instance in scene
+    private readonly Dictionary<GameObject, GameObject> prefabToInstance = new Dictionary<GameObject, GameObject>();
+
+    // Private ctor prevents accidental additional instances and is compatible with the base Activator creation.
+    private PrefabLoaderService() { }
+
+
+    public void LoadPrefab(GameObject prefab, ref GameObject instance, Vector3 position)
     {
-        if (prefabs == null || instances == null) return;
-
-        // Grow
-        while (instances.Count < prefabs.Count)
-            instances.Add(null);
-
-        // Shrink and cleanup
-        while (instances.Count > prefabs.Count)
+        if (prefab == null)
         {
-            var last = instances[instances.Count - 1];
-            if (last != null)
-            {
-                if (Application.isPlaying)
-                    Object.Destroy(last);
-                else
-                    Object.DestroyImmediate(last);
-            }
-            instances.RemoveAt(instances.Count - 1);
+            Debug.LogWarning("PrefabLoaderService: No prefab assigned to load.");
+            return;
         }
+
+        if (instance != null)
+        {
+            Debug.Log($"PrefabLoaderService: Instance already loaded ({instance.name}).");
+            // ensure registry is set
+            prefabToInstance[prefab] = instance;
+            return;
+        }
+
+        var spawned = Object.Instantiate(prefab, position, Quaternion.identity);
+        spawned.name = prefab.name;
+        instance = spawned;
+
+        // register mapping so other components can find/unload it
+        prefabToInstance[prefab] = instance;
+
+        Debug.Log($"PrefabLoaderService: Loaded prefab - {spawned.name}");
     }
 
-    public void LoadAllPrefabs(List<GameObject> prefabs, List<GameObject> instances, Vector3 zOffset)
+    public bool UnloadPrefab(GameObject prefab )
     {
-        if (prefabs == null || instances == null) return;
-        ValidatePrefabList(prefabs, instances);
-
-        for (int i = 0; i < prefabs.Count; i++)
+        
+        if (prefab == null)
         {
-            if (prefabs[i] == null) continue;
-            if (instances[i] != null) continue;
-
-            Vector3 pos = i * zOffset;
-            var instance = Object.Instantiate(prefabs[i], pos, Quaternion.identity);
-            instance.name = prefabs[i].name;
-            instances[i] = instance;
-            Debug.Log($"PrefabLoaderService: Loaded prefab index {i} - {instance.name}");
+            Debug.LogWarning("PrefabLoaderService: Prefab is null.");
+            return false;
         }
-    }
 
-    public void UnloadAllPrefabs(List<GameObject> instances)
-    {
-        if (instances == null) return;
-        for (int i = 0; i < instances.Count; i++)
+        if (!prefabToInstance.TryGetValue(prefab, out var registeredInstance))
         {
-            if (instances[i] == null) continue;
+            Debug.LogWarning($"PrefabLoaderService: No instance registered for prefab '{prefab.name}'.");
+            return false;
+        }
+
+        if (registeredInstance != null)
+        {
             if (Application.isPlaying)
-                Object.Destroy(instances[i]);
+                Object.Destroy(registeredInstance);
             else
-                Object.DestroyImmediate(instances[i]);
-
-            instances[i] = null;
-            Debug.Log($"PrefabLoaderService: Unloaded prefab index {i}");
-        }
-    }
-
-    public void LoadPrefabByNumber(int number, List<GameObject> prefabs, List<GameObject> instances, Vector3 zOffset)
-    {
-        if (prefabs == null || instances == null) return;
-        int index = number - 1;
-        if (index < 0 || index >= prefabs.Count)
-        {
-            Debug.LogWarning($"PrefabLoaderService: Index {index} out of range.");
-            return;
+                Object.DestroyImmediate(registeredInstance);
         }
 
-        if (prefabs[index] == null)
-        {
-            Debug.LogWarning($"PrefabLoaderService: No prefab assigned at index {index}.");
-            return;
-        }
-
-        ValidatePrefabList(prefabs, instances);
-
-        if (instances[index] != null)
-        {
-            Debug.Log($"PrefabLoaderService: Prefab at index {index} already loaded ({instances[index].name}).");
-            return;
-        }
-
-        Vector3 pos = zOffset;
-        var instance = Object.Instantiate(prefabs[index], pos, Quaternion.identity);
-        instance.name = prefabs[index].name;
-        instances[index] = instance;
-        Debug.Log($"PrefabLoaderService: Loaded prefab - index {index} - {instance.name}");
-    }
-
-    public void UnloadPrefabByNumber(int number, List<GameObject> instances)
-    {
-        if (instances == null) return;
-        int index = number - 1;
-        if (index < 0 || index >= instances.Count)
-        {
-            Debug.LogWarning($"PrefabLoaderService: Index {index} out of range for unload.");
-            return;
-        }
-
-        var instance = instances[index];
-        if (instance == null)
-        {
-            Debug.LogWarning($"PrefabLoaderService: No loaded instance to unload at index {index}.");
-            return;
-        }
-
-        if (Application.isPlaying)
-            Object.Destroy(instance);
-        else
-            Object.DestroyImmediate(instance);
-
-        instances[index] = null;
-        Debug.Log($"PrefabLoaderService: Unloaded prefab - index {index}");
+        prefabToInstance.Remove(prefab);
+        Debug.Log($"PrefabLoaderService: Unloaded prefab instance for prefab '{prefab.name}'.");
+        return true;
     }
 }
