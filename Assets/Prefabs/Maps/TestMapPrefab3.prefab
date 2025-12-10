@@ -144,7 +144,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   loadTriggerCollider: {fileID: 1528544642025226057}
-  unloadTrigger: {fileID: 0}
   zOffset: {x: 0, y: 0, z: 2}
   prefab: {fileID: 372591978817517267, guid: 45b2f29287963264dbf28b93819302c8, type: 3}
 --- !u!1 &4275926030442331917
