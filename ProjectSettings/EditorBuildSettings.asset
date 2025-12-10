@@ -11,9 +11,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Test Scenes/MapLoaderTestScene.unity
     guid: 07c63e6f003e10f4eb59b4a20ecd6444
-  - enabled: 1
-    path: Assets/Scenes/Game Scenes/MapLoaderScene.unity
-    guid: 68250415bc2105e44904dfb0943f6938
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0
