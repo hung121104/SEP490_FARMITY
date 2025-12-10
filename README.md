@@ -93,15 +93,17 @@ git push origin feature/feature-name
 
 ```
 /
-├── Assets/          # Game assets (scripts, scenes, prefabs, etc.)
-│   ├── Scenes/      # Unity scenes
-│   ├── Scripts/     # C# scripts
-│   ├── Prefabs/     # Prefabricated objects
-│   └── ...          # Other asset folders
-├── ProjectSettings/ # Unity project settings
-├── .gitignore       # Git ignore file
-├── README.md        # Project documentation
-└── ...              # Other Unity project files
+├── Assets/           # Game assets (scripts, scenes, prefabs, etc.)
+│   ├── Scenes/       # Unity scenes
+│   │   ├──GameScenes # Scene ready to use
+│   │   └──TestScenes # Scenes for testing new feature
+│   ├── Scripts/      # C# scripts
+│   ├── Prefabs/      # Prefabricated objects
+│   └── ...           # Other asset folders
+├── ProjectSettings/  # Unity project settings
+├── .gitignore        # Git ignore file
+├── README.md         # Project documentation
+└── ...               # Other Unity project files
 ```
 
 ---
@@ -118,6 +120,7 @@ git push origin feature/feature-name
 
 1. **Do not commit large files** (e.g., `.exe`, `.apk`, or `.unitypackage`) to the repository.
 2. Always pull the latest changes from the `dev` branch before starting new work.
+3. When Testing new Feature Remember to create your own test Scenes. 
 3. Keep your commits small and focused on a single task or feature.
 4. Test your changes thoroughly before creating a PR.
 
