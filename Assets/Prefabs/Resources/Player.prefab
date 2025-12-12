@@ -18,7 +18,7 @@ GameObject:
   - component: {fileID: 470869259128668884}
   - component: {fileID: 6439735673752065427}
   - component: {fileID: 6766265118399746853}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: PlayerEntity
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -352,12 +352,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_PositionModel:
     SynchronizeEnabled: 1
-    TeleportEnabled: 1
-    TeleportIfDistanceGreaterThan: 1
-    InterpolateOption: 0
+    TeleportEnabled: 0
+    TeleportIfDistanceGreaterThan: 0
+    InterpolateOption: 2
     InterpolateMoveTowardsSpeed: 1
     InterpolateLerpSpeed: 1
-    ExtrapolateOption: 0
+    ExtrapolateOption: 2
     ExtrapolateSpeed: 1
     ExtrapolateIncludingRoundTripTime: 1
     ExtrapolateNumberOfStoredPositions: 1
