@@ -1,6 +1,7 @@
 using Photon.Pun;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PlayerMovement : MonoBehaviourPun, IPunObservable
 {
@@ -16,6 +17,7 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
     [SerializeField] private Camera playerCa;
     [SerializeField] private CinemachineCamera cinemachineCamera;
     [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private Text _text;
 
     void Awake()
     {
@@ -32,6 +34,12 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
     {
         // Use presenter for remote player optimization
         presenter.OptimizeRemotePlayer(gameObject, playerCa, cinemachineCamera, playerCollider, rb);
+
+        //set text to show player name
+        if (_photonView != null && _photonView.Owner != null && _text != null)
+        {
+            _text.text = _photonView.Controller.NickName;
+        }
 
         if (playerCa == null && photonView.IsMine)
         {
