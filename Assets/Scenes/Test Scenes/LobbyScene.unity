@@ -189,7 +189,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Enter text...
+  m_Text: Player name
 --- !u!222 &17534021
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -835,7 +835,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Enter text...
+  m_Text: Room ID
 --- !u!222 &543281049
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1192,6 +1192,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   createInput: {fileID: 2102738502}
   joinInput: {fileID: 2102738502}
+  playerNameInput: {fileID: 2067039778}
 --- !u!4 &1346558389
 Transform:
   m_ObjectHideFlags: 0
@@ -1353,12 +1354,12 @@ GameObject:
   - component: {fileID: 2067039779}
   - component: {fileID: 2067039778}
   m_Layer: 5
-  m_Name: Join Room Input
+  m_Name: Player name
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &2067039777
 RectTransform:
   m_ObjectHideFlags: 0
