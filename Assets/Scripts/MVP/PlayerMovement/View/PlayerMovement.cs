@@ -151,4 +151,17 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
             spriteRenderer.flipX = (bool)stream.ReceiveNext();
         }
     }
+
+    [PunRPC]
+    private void SetLoadedPosition(Vector3 position)
+    {
+        if (photonView.IsMine == false)
+            return;
+        transform.position = position;
+        // Reset velocity to prevent unwanted movement after loading
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+           }
+   }
 }
