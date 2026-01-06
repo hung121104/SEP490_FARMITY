@@ -29,4 +29,8 @@ public class SaveGamePresenter
             Debug.Log("No saved position found for the player.");
         }
     }
+    public SaveGameDataModel LoadPlayerPositionData(string playerId)
+    {
+        return saveService.LoadPlayerPosition(playerId);
+    }
 }

@@ -44,14 +44,23 @@ public class SaveGame : MonoBehaviour
         foreach (var player in players)
         {
             PhotonView view = player.GetComponent<PhotonView>();
-            if (view != null && view.Controller != null)
+            if (view != null && view.Owner != null)
             {
-                string playerId = view.Controller.NickName;
-                _saveGamePresenter.LoadPlayerPosition(player.transform, playerId);
+                string playerId = view.Owner.NickName;
+                var data = _saveGamePresenter.LoadPlayerPositionData(playerId);
+                if (data != null)
+                {
+                    view.RPC("SetLoadedPosition", RpcTarget.All, new Vector3(data.PositionX, data.PositionY, data.PositionZ));
+                    Debug.Log($"Loaded and synced position for {playerId}: X={data.PositionX}, Y={data.PositionY}, Z={data.PositionZ}");
+                }
+                else
+                {
+                    Debug.Log($"No saved position found for {playerId}.");
+                }
             }
             else
             {
-                Debug.LogError($"No valid PhotonView or controller found on player {player.name}. Cannot load position.");
+                Debug.LogError($"No valid PhotonView or owner found on player {player.name}. Cannot load position.");
             }
         }
     }
