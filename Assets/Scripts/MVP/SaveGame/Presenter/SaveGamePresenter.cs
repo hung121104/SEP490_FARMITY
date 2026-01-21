@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Threading.Tasks;
 
 public class SaveGamePresenter
 {
@@ -16,9 +17,10 @@ public class SaveGamePresenter
             Debug.LogError("Player transform not assigned. Please assign it in the Inspector.");
         }
     }
-    public void LoadPlayerPosition(Transform playerTransform, string playerId)
+
+    public async void LoadPlayerPosition(Transform playerTransform, string playerId)
     {
-        var data = saveService.LoadPlayerPosition(playerId);
+        var data = await saveService.LoadPlayerPosition(playerId);
         if (data != null)
         {
             playerTransform.position = new Vector3(data.PositionX, data.PositionY, data.PositionZ);
@@ -29,8 +31,9 @@ public class SaveGamePresenter
             Debug.Log("No saved position found for the player.");
         }
     }
-    public SaveGameDataModel LoadPlayerPositionData(string playerId)
+
+    public async Task<SaveGameDataModel> LoadPlayerPositionData(string playerId)
     {
-        return saveService.LoadPlayerPosition(playerId);
+        return await saveService.LoadPlayerPosition(playerId);
     }
 }

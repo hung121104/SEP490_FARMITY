@@ -1,5 +1,6 @@
 using UnityEngine;
 using Photon.Pun;
+using System.Threading.Tasks;
 
 public class SaveGame : MonoBehaviour
 {
@@ -38,7 +39,7 @@ public class SaveGame : MonoBehaviour
     }
 
     [ContextMenu("Load Saved pos")]
-    private void TestLoadPlayerPosition()
+    private async void TestLoadPlayerPosition()
     {
         GameObject[] players = GameObject.FindGameObjectsWithTag("PlayerEntity");
         foreach (var player in players)
@@ -47,7 +48,7 @@ public class SaveGame : MonoBehaviour
             if (view != null && view.Owner != null)
             {
                 string playerId = view.Owner.NickName;
-                var data = _saveGamePresenter.LoadPlayerPositionData(playerId);
+                var data = await _saveGamePresenter.LoadPlayerPositionData(playerId);
                 if (data != null)
                 {
                     view.RPC("SetLoadedPosition", RpcTarget.All, new Vector3(data.PositionX, data.PositionY, data.PositionZ));
