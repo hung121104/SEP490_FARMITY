@@ -38,7 +38,7 @@ public class CreateAndJoinRoom : MonoBehaviourPunCallbacks
         }
         else
         {
-            PhotonNetwork.NickName = "Player"; // Default name if input is empty
+            //PhotonNetwork.NickName = "Player"; // Default name if input is empty
         }
     }
 
