@@ -1,0 +1,55 @@
+import { Injectable, BadRequestException, Inject } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { ClientProxy } from '@nestjs/microservices';
+import { Character, CharacterDocument } from './character.schema';
+import { SavePositionDto } from './dto/save-position.dto';
+import { GetPositionDto } from './dto/get-position.dto';
+
+@Injectable()
+export class CharacterService {
+  private savePositionCounter = 0;
+  private getPositionCounter = 0;
+
+  constructor(
+    @InjectModel(Character.name) private characterModel: Model<CharacterDocument>,
+    @Inject('AUTH_SERVICE') private authClient: ClientProxy,
+  ) {}
+
+  async savePosition(savePositionDto: SavePositionDto): Promise<Character> {
+    const account = await this.authClient.send('find-account', savePositionDto.accountId).toPromise();
+    if (!account) {
+      throw new BadRequestException('Invalid account');
+    }
+    const start = Date.now();
+    this.savePositionCounter++;
+    const result = await this.characterModel.findOneAndUpdate(
+      { worldId: savePositionDto.worldId, accountId: savePositionDto.accountId },
+      {
+        positionX: savePositionDto.positionX,
+        positionY: savePositionDto.positionY,
+        chunkIndex: savePositionDto.chunkIndex,
+      },
+      { upsert: true, new: true },
+    );
+    const end = Date.now();
+    console.log(`Endpoint: save-position, Call count: ${this.savePositionCounter}, Time: ${end - start}ms`);
+    return result;
+  }
+
+  async getPosition(getPositionDto: GetPositionDto): Promise<{ positionX: number; positionY: number; chunkIndex: number } | null> {
+    const account = await this.authClient.send('find-account', getPositionDto.accountId).toPromise();
+    if (!account) {
+      throw new BadRequestException('Invalid account');
+    }
+    const start = Date.now();
+    this.getPositionCounter++;
+    const character = await this.characterModel.findOne(
+      { worldId: getPositionDto.worldId, accountId: getPositionDto.accountId },
+      { positionX: 1, positionY: 1, chunkIndex: 1, _id: 0 }
+    );
+    const end = Date.now();
+    console.log(`Endpoint: get-position, Call count: ${this.getPositionCounter}, Time: ${end - start}ms`);
+    return character ? { positionX: character.positionX, positionY: character.positionY, chunkIndex: character.chunkIndex } : null;
+  }
+}
