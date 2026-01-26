@@ -26,13 +26,19 @@ public class LoadPositionResponse
 
 public class SaveGameService : ISaveGameService
 {
-
     public async void SavePlayerPosition(Transform playerTransform, string PlayerName)
     {
+        // Ensure user is authenticated
+        if (string.IsNullOrEmpty(AuthenticateService.JwtToken) || string.IsNullOrEmpty(AuthenticateService.UserId))
+        {
+            Debug.LogError("User not authenticated. Cannot save position.");
+            return;
+        }
+
         var requestData = new SavePositionRequest
         {
             worldId = "world123",
-            playerID = PlayerName,
+            playerID = AuthenticateService.UserId,  // Use authenticated user ID
             positionX = playerTransform.position.x,
             positionY = playerTransform.position.y,
             chunkIndex = 5
@@ -46,6 +52,7 @@ public class SaveGameService : ISaveGameService
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
+            request.SetRequestHeader("Authorization", "Bearer " + AuthenticateService.JwtToken);  // Add JWT token
 
             await request.SendWebRequest();
 
@@ -62,12 +69,19 @@ public class SaveGameService : ISaveGameService
 
     public async Task<SaveGameDataModel> LoadPlayerPosition(string playerId)
     {
-        // Note: The accountId is hardcoded here for demonstration purposes.
-//============================
-        string url = $"https://localhost:3000/character/position?worldId=world123&accountId=696dca345c2e69905095f827";
+        // Ensure user is authenticated
+        if (string.IsNullOrEmpty(AuthenticateService.JwtToken) || string.IsNullOrEmpty(AuthenticateService.UserId))
+        {
+            Debug.LogError("User not authenticated. Cannot load position.");
+            return null;
+        }
+
+        string url = $"https://localhost:3000/character/position?worldId=world123&accountId={AuthenticateService.UserId}";  // Use authenticated user ID
 
         using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
+            request.SetRequestHeader("Authorization", "Bearer " + AuthenticateService.JwtToken);  // Add JWT token
+
             await request.SendWebRequest();
 
             if (request.result == UnityWebRequest.Result.Success)
@@ -80,7 +94,7 @@ public class SaveGameService : ISaveGameService
                     PlayerName = playerId,
                     PositionX = response.positionX,
                     PositionY = response.positionY,
-                    PositionZ = 0f // Assuming Z is not provided, set to 0
+                    PositionZ = 0f
                 };
 
                 Debug.Log($"Loaded position from API for {playerId}: X={data.PositionX}, Y={data.PositionY}");
