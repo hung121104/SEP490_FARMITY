@@ -17,7 +17,7 @@ public class UnloadMapScript : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision == null || !collision.gameObject.CompareTag("Player")) return;
+        if (collision == null || !collision.gameObject.CompareTag("PlayerEntity")) return;
 
         // Optional: ensure this specific collider is the one touched
         if (unloadTriggerCollider != null && !unloadTriggerCollider.IsTouching(collision)) return;
