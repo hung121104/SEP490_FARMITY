@@ -1,0 +1,1209 @@
+fileFormatVersion: 2
+guid: 67dd095584a5fc34999d07b66adcbd59
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 8306042278487130921
+    second: frog kigurumi fishing animation_0
+  - first:
+      213: 6149423728960735525
+    second: frog kigurumi fishing animation_1
+  - first:
+      213: 8976433191383758188
+    second: frog kigurumi fishing animation_2
+  - first:
+      213: -4626605887556345950
+    second: frog kigurumi fishing animation_3
+  - first:
+      213: -171724644015849159
+    second: frog kigurumi fishing animation_4
+  - first:
+      213: -8605238346375618923
+    second: frog kigurumi fishing animation_5
+  - first:
+      213: -662350911636972928
+    second: frog kigurumi fishing animation_6
+  - first:
+      213: -6440163158691810970
+    second: frog kigurumi fishing animation_7
+  - first:
+      213: -1159201700433171265
+    second: frog kigurumi fishing animation_8
+  - first:
+      213: 357981530432775342
+    second: frog kigurumi fishing animation_9
+  - first:
+      213: 8468192512561404592
+    second: frog kigurumi fishing animation_10
+  - first:
+      213: -5545753590920017056
+    second: frog kigurumi fishing animation_11
+  - first:
+      213: -4268960119645657386
+    second: frog kigurumi fishing animation_12
+  - first:
+      213: 428575378107711191
+    second: frog kigurumi fishing animation_13
+  - first:
+      213: -8637866088053407396
+    second: frog kigurumi fishing animation_14
+  - first:
+      213: 4213858527845961916
+    second: frog kigurumi fishing animation_15
+  - first:
+      213: 953901821234390800
+    second: frog kigurumi fishing animation_16
+  - first:
+      213: 1860501753771851445
+    second: frog kigurumi fishing animation_17
+  - first:
+      213: -8095980351889701275
+    second: frog kigurumi fishing animation_18
+  - first:
+      213: 2160956653605882076
+    second: frog kigurumi fishing animation_19
+  - first:
+      213: -1876520493095164757
+    second: frog kigurumi fishing animation_20
+  - first:
+      213: 8827261843273046235
+    second: frog kigurumi fishing animation_21
+  - first:
+      213: -2455856359383750717
+    second: frog kigurumi fishing animation_22
+  - first:
+      213: 3332643087575641909
+    second: frog kigurumi fishing animation_23
+  - first:
+      213: 3660945841770783136
+    second: frog kigurumi fishing animation_24
+  - first:
+      213: 5366590639213784395
+    second: frog kigurumi fishing animation_25
+  - first:
+      213: 5621392108602558875
+    second: frog kigurumi fishing animation_26
+  - first:
+      213: 7862514637025120891
+    second: frog kigurumi fishing animation_27
+  - first:
+      213: -1322763060326229039
+    second: frog kigurumi fishing animation_28
+  - first:
+      213: -7981183757557119070
+    second: frog kigurumi fishing animation_29
+  - first:
+      213: -6782791050743003596
+    second: frog kigurumi fishing animation_30
+  - first:
+      213: -6575813850663297185
+    second: frog kigurumi fishing animation_31
+  - first:
+      213: 1177150138066965396
+    second: frog kigurumi fishing animation_32
+  - first:
+      213: 5760513664271711514
+    second: frog kigurumi fishing animation_33
+  - first:
+      213: 8314398615798254263
+    second: frog kigurumi fishing animation_34
+  - first:
+      213: -583741824903730152
+    second: frog kigurumi fishing animation_35
+  - first:
+      213: 7712657047353423327
+    second: frog kigurumi fishing animation_36
+  - first:
+      213: 3012691349780188608
+    second: frog kigurumi fishing animation_37
+  - first:
+      213: -113415980273421902
+    second: frog kigurumi fishing animation_38
+  - first:
+      213: 8777835299378847376
+    second: frog kigurumi fishing animation_39
+  - first:
+      213: 5757713995696523916
+    second: frog kigurumi fishing animation_40
+  - first:
+      213: 1355444478577698479
+    second: frog kigurumi fishing animation_41
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_0
+      rect:
+        serializedVersion: 2
+        x: 24
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9230a9ae17df44370800000000000000
+      internalID: 8306042278487130921
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_1
+      rect:
+        serializedVersion: 2
+        x: 74
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 529001aec44275550800000000000000
+      internalID: 6149423728960735525
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_2
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 55
+        width: 19
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c65747aad62b29c70800000000000000
+      internalID: 8976433191383758188
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_3
+      rect:
+        serializedVersion: 2
+        x: 173
+        y: 55
+        width: 17
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2af1974457efacfb0800000000000000
+      internalID: -4626605887556345950
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_4
+      rect:
+        serializedVersion: 2
+        x: 224
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 931414a9859ed9df0800000000000000
+      internalID: -171724644015849159
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_5
+      rect:
+        serializedVersion: 2
+        x: 274
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 59e16b4015d049880800000000000000
+      internalID: -8605238346375618923
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_6
+      rect:
+        serializedVersion: 2
+        x: 324
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08ad83bea5bdec6f0800000000000000
+      internalID: -662350911636972928
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_7
+      rect:
+        serializedVersion: 2
+        x: 374
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 661fd968ab1ff96a0800000000000000
+      internalID: -6440163158691810970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_8
+      rect:
+        serializedVersion: 2
+        x: 424
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbce6a6f130b9efe0800000000000000
+      internalID: -1159201700433171265
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_9
+      rect:
+        serializedVersion: 2
+        x: 474
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea4a8952e4ec7f400800000000000000
+      internalID: 357981530432775342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_10
+      rect:
+        serializedVersion: 2
+        x: 524
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ba58d84930158570800000000000000
+      internalID: 8468192512561404592
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_11
+      rect:
+        serializedVersion: 2
+        x: 574
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 06b8d51ed768903b0800000000000000
+      internalID: -5545753590920017056
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_12
+      rect:
+        serializedVersion: 2
+        x: 624
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d6263c936b91c4c0800000000000000
+      internalID: -4268960119645657386
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_13
+      rect:
+        serializedVersion: 2
+        x: 674
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7deb693290b92f500800000000000000
+      internalID: 428575378107711191
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_14
+      rect:
+        serializedVersion: 2
+        x: 724
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c510f2cee82202880800000000000000
+      internalID: -8637866088053407396
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_15
+      rect:
+        serializedVersion: 2
+        x: 774
+        y: 55
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cb0520e4102aa7a30800000000000000
+      internalID: 4213858527845961916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_16
+      rect:
+        serializedVersion: 2
+        x: 824
+        y: 55
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 017264507a0fc3d00800000000000000
+      internalID: 953901821234390800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_17
+      rect:
+        serializedVersion: 2
+        x: 872
+        y: 55
+        width: 19
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5beff89dc74d1d910800000000000000
+      internalID: 1860501753771851445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_18
+      rect:
+        serializedVersion: 2
+        x: 922
+        y: 55
+        width: 19
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5668219a3cc45af80800000000000000
+      internalID: -8095980351889701275
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_19
+      rect:
+        serializedVersion: 2
+        x: 972
+        y: 55
+        width: 19
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cd8023190a24dfd10800000000000000
+      internalID: 2160956653605882076
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_20
+      rect:
+        serializedVersion: 2
+        x: 1022
+        y: 55
+        width: 19
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba46253cd8245f5e0800000000000000
+      internalID: -1876520493095164757
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_21
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd856aba0ebb08a70800000000000000
+      internalID: 8827261843273046235
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_22
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c72c8f17ab0bedd0800000000000000
+      internalID: -2455856359383750717
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_23
+      rect:
+        serializedVersion: 2
+        x: 109
+        y: 11
+        width: 19
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53f6b162b3def3e20800000000000000
+      internalID: 3332643087575641909
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_24
+      rect:
+        serializedVersion: 2
+        x: 160
+        y: 11
+        width: 17
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a1e0b8b8da4ec230800000000000000
+      internalID: 3660945841770783136
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_25
+      rect:
+        serializedVersion: 2
+        x: 210
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b4d2641c0c5f97a40800000000000000
+      internalID: 5366590639213784395
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_26
+      rect:
+        serializedVersion: 2
+        x: 260
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b998070e652330e40800000000000000
+      internalID: 5621392108602558875
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_27
+      rect:
+        serializedVersion: 2
+        x: 310
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b72113da7634d1d60800000000000000
+      internalID: 7862514637025120891
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_28
+      rect:
+        serializedVersion: 2
+        x: 360
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1db1f33410a94ade0800000000000000
+      internalID: -1322763060326229039
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_29
+      rect:
+        serializedVersion: 2
+        x: 410
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a7c0bb98a32d3190800000000000000
+      internalID: -7981183757557119070
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_30
+      rect:
+        serializedVersion: 2
+        x: 460
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 436c3c2e97faed1a0800000000000000
+      internalID: -6782791050743003596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_31
+      rect:
+        serializedVersion: 2
+        x: 510
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5fde1a94240eb4a0800000000000000
+      internalID: -6575813850663297185
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_32
+      rect:
+        serializedVersion: 2
+        x: 560
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 49398c250d3165010800000000000000
+      internalID: 1177150138066965396
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_33
+      rect:
+        serializedVersion: 2
+        x: 610
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1df2ba38a471ff40800000000000000
+      internalID: 5760513664271711514
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_34
+      rect:
+        serializedVersion: 2
+        x: 660
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ba87af4d7da26370800000000000000
+      internalID: 8314398615798254263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_35
+      rect:
+        serializedVersion: 2
+        x: 710
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 81c231e27e126e7f0800000000000000
+      internalID: -583741824903730152
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_36
+      rect:
+        serializedVersion: 2
+        x: 760
+        y: 11
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd5f9ed98bcd80b60800000000000000
+      internalID: 7712657047353423327
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_37
+      rect:
+        serializedVersion: 2
+        x: 810
+        y: 11
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0cd4a8912da3fc920800000000000000
+      internalID: 3012691349780188608
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_38
+      rect:
+        serializedVersion: 2
+        x: 859
+        y: 11
+        width: 19
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b133ff44c01d6ef0800000000000000
+      internalID: -113415980273421902
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_39
+      rect:
+        serializedVersion: 2
+        x: 909
+        y: 11
+        width: 19
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09e5c54a2b221d970800000000000000
+      internalID: 8777835299378847376
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_40
+      rect:
+        serializedVersion: 2
+        x: 959
+        y: 11
+        width: 19
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8a49c79f5287ef40800000000000000
+      internalID: 5757713995696523916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi fishing animation_41
+      rect:
+        serializedVersion: 2
+        x: 1009
+        y: 11
+        width: 19
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa6636262918fc210800000000000000
+      internalID: 1355444478577698479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      frog kigurumi fishing animation_0: 8306042278487130921
+      frog kigurumi fishing animation_1: 6149423728960735525
+      frog kigurumi fishing animation_10: 8468192512561404592
+      frog kigurumi fishing animation_11: -5545753590920017056
+      frog kigurumi fishing animation_12: -4268960119645657386
+      frog kigurumi fishing animation_13: 428575378107711191
+      frog kigurumi fishing animation_14: -8637866088053407396
+      frog kigurumi fishing animation_15: 4213858527845961916
+      frog kigurumi fishing animation_16: 953901821234390800
+      frog kigurumi fishing animation_17: 1860501753771851445
+      frog kigurumi fishing animation_18: -8095980351889701275
+      frog kigurumi fishing animation_19: 2160956653605882076
+      frog kigurumi fishing animation_2: 8976433191383758188
+      frog kigurumi fishing animation_20: -1876520493095164757
+      frog kigurumi fishing animation_21: 8827261843273046235
+      frog kigurumi fishing animation_22: -2455856359383750717
+      frog kigurumi fishing animation_23: 3332643087575641909
+      frog kigurumi fishing animation_24: 3660945841770783136
+      frog kigurumi fishing animation_25: 5366590639213784395
+      frog kigurumi fishing animation_26: 5621392108602558875
+      frog kigurumi fishing animation_27: 7862514637025120891
+      frog kigurumi fishing animation_28: -1322763060326229039
+      frog kigurumi fishing animation_29: -7981183757557119070
+      frog kigurumi fishing animation_3: -4626605887556345950
+      frog kigurumi fishing animation_30: -6782791050743003596
+      frog kigurumi fishing animation_31: -6575813850663297185
+      frog kigurumi fishing animation_32: 1177150138066965396
+      frog kigurumi fishing animation_33: 5760513664271711514
+      frog kigurumi fishing animation_34: 8314398615798254263
+      frog kigurumi fishing animation_35: -583741824903730152
+      frog kigurumi fishing animation_36: 7712657047353423327
+      frog kigurumi fishing animation_37: 3012691349780188608
+      frog kigurumi fishing animation_38: -113415980273421902
+      frog kigurumi fishing animation_39: 8777835299378847376
+      frog kigurumi fishing animation_4: -171724644015849159
+      frog kigurumi fishing animation_40: 5757713995696523916
+      frog kigurumi fishing animation_41: 1355444478577698479
+      frog kigurumi fishing animation_5: -8605238346375618923
+      frog kigurumi fishing animation_6: -662350911636972928
+      frog kigurumi fishing animation_7: -6440163158691810970
+      frog kigurumi fishing animation_8: -1159201700433171265
+      frog kigurumi fishing animation_9: 357981530432775342
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
