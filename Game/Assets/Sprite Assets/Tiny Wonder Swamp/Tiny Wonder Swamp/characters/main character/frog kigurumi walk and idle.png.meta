@@ -1,0 +1,637 @@
+fileFormatVersion: 2
+guid: cd68a6218d35a9841a3f09cfcd04e921
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -7372163954047051326
+    second: frog kigurumi walk and idle_0
+  - first:
+      213: -7915770801523582927
+    second: frog kigurumi walk and idle_1
+  - first:
+      213: 8342164648280857786
+    second: frog kigurumi walk and idle_2
+  - first:
+      213: -5702493515104190890
+    second: frog kigurumi walk and idle_3
+  - first:
+      213: -5349991989161004534
+    second: frog kigurumi walk and idle_4
+  - first:
+      213: 7469984718543442206
+    second: frog kigurumi walk and idle_5
+  - first:
+      213: -8842374678195046269
+    second: frog kigurumi walk and idle_6
+  - first:
+      213: -5779130442176876445
+    second: frog kigurumi walk and idle_7
+  - first:
+      213: -7451559750945656912
+    second: frog kigurumi walk and idle_8
+  - first:
+      213: -3341893164630956611
+    second: frog kigurumi walk and idle_9
+  - first:
+      213: 5526652644752910691
+    second: frog kigurumi walk and idle_10
+  - first:
+      213: 8481843634342055998
+    second: frog kigurumi walk and idle_11
+  - first:
+      213: -948837916107832484
+    second: frog kigurumi walk and idle_12
+  - first:
+      213: 6115370774359136862
+    second: frog kigurumi walk and idle_13
+  - first:
+      213: 761886500647304829
+    second: frog kigurumi walk and idle_14
+  - first:
+      213: -4303411579124828470
+    second: frog kigurumi walk and idle_15
+  - first:
+      213: -7895657616373376332
+    second: frog kigurumi walk and idle_16
+  - first:
+      213: 8022975896359761476
+    second: frog kigurumi walk and idle_17
+  - first:
+      213: 4794710144326003839
+    second: frog kigurumi walk and idle_18
+  - first:
+      213: -1574695868804268501
+    second: frog kigurumi walk and idle_19
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_0
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 48
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c9161571ffc0b990800000000000000
+      internalID: -7372163954047051326
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_1
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 48
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13817c34568852290800000000000000
+      internalID: -7915770801523582927
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_2
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 25
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: abc1a968c8255c370800000000000000
+      internalID: 8342164648280857786
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_3
+      rect:
+        serializedVersion: 2
+        x: 52
+        y: 48
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 65efe327c5cacd0b0800000000000000
+      internalID: -5702493515104190890
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_4
+      rect:
+        serializedVersion: 2
+        x: 76
+        y: 48
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a027fde91a201c5b0800000000000000
+      internalID: -5349991989161004534
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_5
+      rect:
+        serializedVersion: 2
+        x: 126
+        y: 25
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e11d06a1687baa760800000000000000
+      internalID: 7469984718543442206
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_6
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 24
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 388764f3413994580800000000000000
+      internalID: -8842374678195046269
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_7
+      rect:
+        serializedVersion: 2
+        x: 28
+        y: 1
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 360b6636b776ccfa0800000000000000
+      internalID: -5779130442176876445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_8
+      rect:
+        serializedVersion: 2
+        x: 54
+        y: 24
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0bf2946f2edb69890800000000000000
+      internalID: -7451559750945656912
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_9
+      rect:
+        serializedVersion: 2
+        x: 78
+        y: 24
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: db5add47fd53f91d0800000000000000
+      internalID: -3341893164630956611
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_10
+      rect:
+        serializedVersion: 2
+        x: 102
+        y: 24
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36968778c4d92bc40800000000000000
+      internalID: 5526652644752910691
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_11
+      rect:
+        serializedVersion: 2
+        x: 124
+        y: 1
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e30dd51c8df85b570800000000000000
+      internalID: 8481843634342055998
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_12
+      rect:
+        serializedVersion: 2
+        x: 150
+        y: 24
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c5388f441fc05d2f0800000000000000
+      internalID: -948837916107832484
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_13
+      rect:
+        serializedVersion: 2
+        x: 174
+        y: 24
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e5a5b7391592ed450800000000000000
+      internalID: 6115370774359136862
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_14
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 0
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7e7f365cb3c29a00800000000000000
+      internalID: 761886500647304829
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_15
+      rect:
+        serializedVersion: 2
+        x: 52
+        y: 0
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac636ff18f53744c0800000000000000
+      internalID: -4303411579124828470
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_16
+      rect:
+        serializedVersion: 2
+        x: 76
+        y: 0
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ba15fb1b3dfc6290800000000000000
+      internalID: -7895657616373376332
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_17
+      rect:
+        serializedVersion: 2
+        x: 100
+        y: 0
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4467b08f116575f60800000000000000
+      internalID: 8022975896359761476
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_18
+      rect:
+        serializedVersion: 2
+        x: 148
+        y: 0
+        width: 16
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7c6389097b3a8240800000000000000
+      internalID: 4794710144326003839
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: frog kigurumi walk and idle_19
+      rect:
+        serializedVersion: 2
+        x: 172
+        y: 0
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2e75ae437e852ae0800000000000000
+      internalID: -1574695868804268501
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      frog kigurumi walk and idle_0: -7372163954047051326
+      frog kigurumi walk and idle_1: -7915770801523582927
+      frog kigurumi walk and idle_10: 5526652644752910691
+      frog kigurumi walk and idle_11: 8481843634342055998
+      frog kigurumi walk and idle_12: -948837916107832484
+      frog kigurumi walk and idle_13: 6115370774359136862
+      frog kigurumi walk and idle_14: 761886500647304829
+      frog kigurumi walk and idle_15: -4303411579124828470
+      frog kigurumi walk and idle_16: -7895657616373376332
+      frog kigurumi walk and idle_17: 8022975896359761476
+      frog kigurumi walk and idle_18: 4794710144326003839
+      frog kigurumi walk and idle_19: -1574695868804268501
+      frog kigurumi walk and idle_2: 8342164648280857786
+      frog kigurumi walk and idle_3: -5702493515104190890
+      frog kigurumi walk and idle_4: -5349991989161004534
+      frog kigurumi walk and idle_5: 7469984718543442206
+      frog kigurumi walk and idle_6: -8842374678195046269
+      frog kigurumi walk and idle_7: -5779130442176876445
+      frog kigurumi walk and idle_8: -7451559750945656912
+      frog kigurumi walk and idle_9: -3341893164630956611
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

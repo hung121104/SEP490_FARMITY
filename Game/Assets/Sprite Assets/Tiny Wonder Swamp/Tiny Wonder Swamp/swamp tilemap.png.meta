@@ -1,0 +1,1209 @@
+fileFormatVersion: 2
+guid: ed0a9921e98b3ea46976e15dbef58f82
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -2232718026202505957
+    second: swamp tilemap_0
+  - first:
+      213: -5609115513037434142
+    second: swamp tilemap_1
+  - first:
+      213: 2028795236267763896
+    second: swamp tilemap_2
+  - first:
+      213: 2262171538309469758
+    second: swamp tilemap_3
+  - first:
+      213: -8829498258033574500
+    second: swamp tilemap_4
+  - first:
+      213: 8834159389235129526
+    second: swamp tilemap_5
+  - first:
+      213: -5388691824315308885
+    second: swamp tilemap_6
+  - first:
+      213: -2628440634949798577
+    second: swamp tilemap_7
+  - first:
+      213: 6901750858127884461
+    second: swamp tilemap_8
+  - first:
+      213: -5530986049419762282
+    second: swamp tilemap_9
+  - first:
+      213: 1617208979619065433
+    second: swamp tilemap_10
+  - first:
+      213: -2288784231826773529
+    second: swamp tilemap_11
+  - first:
+      213: -2930414406693495953
+    second: swamp tilemap_12
+  - first:
+      213: -5150298222898674075
+    second: swamp tilemap_13
+  - first:
+      213: -2059722714942417925
+    second: swamp tilemap_14
+  - first:
+      213: 3705118378180670023
+    second: swamp tilemap_15
+  - first:
+      213: 6196917927950513295
+    second: swamp tilemap_16
+  - first:
+      213: -4406434899041081508
+    second: swamp tilemap_17
+  - first:
+      213: -1997043918262829098
+    second: swamp tilemap_18
+  - first:
+      213: -7525248972239005068
+    second: swamp tilemap_19
+  - first:
+      213: -1662676907003025707
+    second: swamp tilemap_20
+  - first:
+      213: 4578719610414866127
+    second: swamp tilemap_21
+  - first:
+      213: 8091810081693956941
+    second: swamp tilemap_22
+  - first:
+      213: 8910237509794197043
+    second: swamp tilemap_23
+  - first:
+      213: -4159863953747761761
+    second: swamp tilemap_24
+  - first:
+      213: 8502707306633892004
+    second: swamp tilemap_25
+  - first:
+      213: 3507624673434178279
+    second: swamp tilemap_26
+  - first:
+      213: -8977441189784496642
+    second: swamp tilemap_27
+  - first:
+      213: 3971149778874390978
+    second: swamp tilemap_28
+  - first:
+      213: -7041577622324423485
+    second: swamp tilemap_29
+  - first:
+      213: 8785057720872611628
+    second: swamp tilemap_30
+  - first:
+      213: 3289302658998795139
+    second: swamp tilemap_31
+  - first:
+      213: -1728263954900393029
+    second: swamp tilemap_32
+  - first:
+      213: 5899891557198913725
+    second: swamp tilemap_33
+  - first:
+      213: -8907310788326891422
+    second: swamp tilemap_34
+  - first:
+      213: -8225048691826999871
+    second: swamp tilemap_35
+  - first:
+      213: -4423830229708054392
+    second: swamp tilemap_36
+  - first:
+      213: -8181246757406445916
+    second: swamp tilemap_37
+  - first:
+      213: -7162564240766336859
+    second: swamp tilemap_38
+  - first:
+      213: -2951020969445398737
+    second: swamp tilemap_39
+  - first:
+      213: -460306788466900971
+    second: swamp tilemap_40
+  - first:
+      213: -5605144472997332850
+    second: swamp tilemap_41
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: swamp tilemap_0
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 308
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1d969cd8cac301e0800000000000000
+      internalID: -2232718026202505957
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_1
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 309
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e25545c82b6822b0800000000000000
+      internalID: -5609115513037434142
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_2
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 307
+        width: 15
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b8aeb3b48ab72c10800000000000000
+      internalID: 2028795236267763896
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_3
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 276
+        width: 42
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e365fe15709d46f10800000000000000
+      internalID: 2262171538309469758
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_4
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 289
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c9d7af07d12577580800000000000000
+      internalID: -8829498258033574500
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_5
+      rect:
+        serializedVersion: 2
+        x: 9
+        y: 293
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6bcaa8cb82d399a70800000000000000
+      internalID: 8834159389235129526
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_6
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 296
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba462a716558735b0800000000000000
+      internalID: -5388691824315308885
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_7
+      rect:
+        serializedVersion: 2
+        x: 22
+        y: 293
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f457d982b27e58bd0800000000000000
+      internalID: -2628440634949798577
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_8
+      rect:
+        serializedVersion: 2
+        x: 79
+        y: 256
+        width: 65
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da0c5f2a6d1f7cf50800000000000000
+      internalID: 6901750858127884461
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_9
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 293
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 695a1b21e7dfd33b0800000000000000
+      internalID: -5530986049419762282
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_10
+      rect:
+        serializedVersion: 2
+        x: 133
+        y: 291
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 95e24c5affa717610800000000000000
+      internalID: 1617208979619065433
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_11
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 288
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e9237e1eda9c30e0800000000000000
+      internalID: -2288784231826773529
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_12
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 273
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6bd8548f931557d0800000000000000
+      internalID: -2930414406693495953
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_13
+      rect:
+        serializedVersion: 2
+        x: 9
+        y: 280
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5668cc0cd077688b0800000000000000
+      internalID: -5150298222898674075
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_14
+      rect:
+        serializedVersion: 2
+        x: 15
+        y: 279
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bf3dd088a156a63e0800000000000000
+      internalID: -2059722714942417925
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_15
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 239
+        width: 33
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 742fa3ec8893b6330800000000000000
+      internalID: 3705118378180670023
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_16
+      rect:
+        serializedVersion: 2
+        x: 25
+        y: 272
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f847db5d500eff550800000000000000
+      internalID: 6196917927950513295
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_17
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 240
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c57a5cc3ec239d2c0800000000000000
+      internalID: -4406434899041081508
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_18
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 241
+        width: 32
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6dff61b13231944e0800000000000000
+      internalID: -1997043918262829098
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_19
+      rect:
+        serializedVersion: 2
+        x: 79
+        y: 209
+        width: 56
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47a12532ee1f09790800000000000000
+      internalID: -7525248972239005068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_20
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 63
+        width: 129
+        height: 175
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d6e6dd892cfce8e0800000000000000
+      internalID: -1662676907003025707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_21
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 208
+        width: 34
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fce94e00a31ea8f30800000000000000
+      internalID: 4578719610414866127
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_22
+      rect:
+        serializedVersion: 2
+        x: 134
+        y: 212
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4bfa45a562eb4070800000000000000
+      internalID: 8091810081693956941
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_23
+      rect:
+        serializedVersion: 2
+        x: 136
+        y: 209
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33ee4a38ec587ab70800000000000000
+      internalID: 8910237509794197043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_24
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 50
+        width: 44
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f95a9e226c13546c0800000000000000
+      internalID: -4159863953747761761
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_25
+      rect:
+        serializedVersion: 2
+        x: 51
+        y: 50
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a018010f3faff570800000000000000
+      internalID: 8502707306633892004
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_26
+      rect:
+        serializedVersion: 2
+        x: 66
+        y: 50
+        width: 12
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e290796e069da030800000000000000
+      internalID: 3507624673434178279
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_27
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 49
+        width: 46
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef55fea6dc8b96380800000000000000
+      internalID: -8977441189784496642
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_28
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1
+        width: 33
+        height: 45
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c9ddaf0fab5c1730800000000000000
+      internalID: 3971149778874390978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_29
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 10
+        width: 98
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c4530bd57a474e90800000000000000
+      internalID: -7041577622324423485
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_30
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 4
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2f2aefa37bcae970800000000000000
+      internalID: 8785057720872611628
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_31
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 7
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 38bfe544753f5ad20800000000000000
+      internalID: 3289302658998795139
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_32
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 1
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bb3ec0af619f308e0800000000000000
+      internalID: -1728263954900393029
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_33
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 10
+        width: 16
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: db0ea20cc10a0e150800000000000000
+      internalID: 5899891557198913725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_34
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 1
+        width: 14
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26065cde700e26480800000000000000
+      internalID: -8907310788326891422
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_35
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 1
+        width: 13
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1cd3c5ffac1cadd80800000000000000
+      internalID: -8225048691826999871
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_36
+      rect:
+        serializedVersion: 2
+        x: 80
+        y: 4
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 880ed9338d56b92c0800000000000000
+      internalID: -4423830229708054392
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_37
+      rect:
+        serializedVersion: 2
+        x: 86
+        y: 7
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4aee8f49b6f567e80800000000000000
+      internalID: -8181246757406445916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_38
+      rect:
+        serializedVersion: 2
+        x: 86
+        y: 1
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a0053c95c5799c90800000000000000
+      internalID: -7162564240766336859
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_39
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 10
+        width: 16
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f276a7f301edb07d0800000000000000
+      internalID: -2951020969445398737
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_40
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 1
+        width: 14
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 510cab92a69ac99f0800000000000000
+      internalID: -460306788466900971
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: swamp tilemap_41
+      rect:
+        serializedVersion: 2
+        x: 112
+        y: 1
+        width: 13
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e88ff349cc68632b0800000000000000
+      internalID: -5605144472997332850
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      swamp tilemap_0: -2232718026202505957
+      swamp tilemap_1: -5609115513037434142
+      swamp tilemap_10: 1617208979619065433
+      swamp tilemap_11: -2288784231826773529
+      swamp tilemap_12: -2930414406693495953
+      swamp tilemap_13: -5150298222898674075
+      swamp tilemap_14: -2059722714942417925
+      swamp tilemap_15: 3705118378180670023
+      swamp tilemap_16: 6196917927950513295
+      swamp tilemap_17: -4406434899041081508
+      swamp tilemap_18: -1997043918262829098
+      swamp tilemap_19: -7525248972239005068
+      swamp tilemap_2: 2028795236267763896
+      swamp tilemap_20: -1662676907003025707
+      swamp tilemap_21: 4578719610414866127
+      swamp tilemap_22: 8091810081693956941
+      swamp tilemap_23: 8910237509794197043
+      swamp tilemap_24: -4159863953747761761
+      swamp tilemap_25: 8502707306633892004
+      swamp tilemap_26: 3507624673434178279
+      swamp tilemap_27: -8977441189784496642
+      swamp tilemap_28: 3971149778874390978
+      swamp tilemap_29: -7041577622324423485
+      swamp tilemap_3: 2262171538309469758
+      swamp tilemap_30: 8785057720872611628
+      swamp tilemap_31: 3289302658998795139
+      swamp tilemap_32: -1728263954900393029
+      swamp tilemap_33: 5899891557198913725
+      swamp tilemap_34: -8907310788326891422
+      swamp tilemap_35: -8225048691826999871
+      swamp tilemap_36: -4423830229708054392
+      swamp tilemap_37: -8181246757406445916
+      swamp tilemap_38: -7162564240766336859
+      swamp tilemap_39: -2951020969445398737
+      swamp tilemap_4: -8829498258033574500
+      swamp tilemap_40: -460306788466900971
+      swamp tilemap_41: -5605144472997332850
+      swamp tilemap_5: 8834159389235129526
+      swamp tilemap_6: -5388691824315308885
+      swamp tilemap_7: -2628440634949798577
+      swamp tilemap_8: 6901750858127884461
+      swamp tilemap_9: -5530986049419762282
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
