@@ -1,6 +1,7 @@
 # compiled output
-/dist
+/microservices/*/dist/
 /node_modules
+/microservices/*/node_modules/
 /build
 
 # Logs
@@ -55,8 +56,6 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# build package
-/microservices/*/dist/
 
 # certify
 *.pem
