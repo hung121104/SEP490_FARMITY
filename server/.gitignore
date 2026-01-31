@@ -56,8 +56,7 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # build package
-.microservices/*/dist/
-./microservices/*/dist
+/microservices/*/dist/
 
 # certify
 *.pem
