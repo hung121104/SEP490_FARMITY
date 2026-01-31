@@ -17,7 +17,6 @@ GameObject:
   - component: {fileID: 470869259128668884}
   - component: {fileID: 6439735673752065427}
   - component: {fileID: 6766265118399746853}
-  - component: {fileID: 7918160872040188425}
   m_Layer: 3
   m_Name: PlayerEntity
   m_TagString: PlayerEntity
@@ -292,21 +291,6 @@ MonoBehaviour:
   m_SynchronizeLayers:
   - SynchronizeType: 0
     LayerIndex: 0
---- !u!114 &7918160872040188425
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1083092175523969477}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5fec92034cea066439b3265cd1e1e248, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  unplowedTile: {fileID: 11400000, guid: 07904654a27e33146a9b328c5e87ca30, type: 2}
-  plowedTile: {fileID: 11400000, guid: 4013d5a2621ac1a49b201b29983ef5c9, type: 2}
-  plantData: {fileID: 11400000, guid: b2c8b280e15098a4683897f1b687057a, type: 2}
 --- !u!1 &1202695650498789555
 GameObject:
   m_ObjectHideFlags: 0
@@ -367,7 +351,7 @@ MonoBehaviour:
     CustomLookAtTarget: 0
   Lens:
     FieldOfView: 60
-    OrthographicSize: 4
+    OrthographicSize: 7
     NearClipPlane: 0.3
     FarClipPlane: 1000
     Dutch: 0
@@ -539,7 +523,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 4
+  orthographic size: 7
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
