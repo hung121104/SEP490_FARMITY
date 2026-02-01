@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Account, AccountDocument } from './account.schema';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
+import { CreateAdminDto } from './dto/create-admin.dto';
 
 @Injectable()
 export class AccountService {
@@ -58,5 +59,55 @@ export class AccountService {
       access_token: this.jwtService.sign(payload),
 
     };
+  }
+
+  async loginAdmin(loginDto: LoginDto): Promise<{ userId: string, username: string, access_token: string }> {
+    const { username, password } = loginDto;
+    const account = await this.accountModel.findOne({ username }).exec();
+    if (!account || !account.isAdmin) {
+      throw new UnauthorizedException('Invalid credentials or not an admin');
+    }
+    const isPasswordValid = await bcrypt.compare(password, account.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin };
+    return {
+      userId: account._id.toString(),
+      username: account.username,
+      access_token: this.jwtService.sign(payload),
+    };
+  }
+
+  async createAdmin(createAdminDto: CreateAdminDto): Promise<Account> {
+    if (createAdminDto.adminSecret !== process.env.ADMIN_CREATION_SECRET) {
+      throw new UnauthorizedException('Invalid admin secret');
+    }
+    const { password, adminSecret, ...rest } = createAdminDto;
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const account = new this.accountModel({
+      ...rest,
+      password: hashedPassword,
+      isAdmin: true,
+    });
+
+    try {
+      return await account.save();
+    } catch (error) {
+      if (error.code === 11000) {
+        throw new BadRequestException('Username or email already exists');
+      }
+      throw error;
+    }
+  }
+
+  async verifyToken(token: string) {
+    try {
+      // jwtService.verify() will throw on invalid/expired token
+      return this.jwtService.verify(token);
+    } catch (err) {
+      throw new UnauthorizedException('Invalid token');
+    }
   }
 }
