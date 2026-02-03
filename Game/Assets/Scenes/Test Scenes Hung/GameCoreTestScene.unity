@@ -382,7 +382,7 @@ GameObject:
   - component: {fileID: 525205933}
   - component: {fileID: 525205934}
   m_Layer: 0
-  m_Name: CropPlantingActionManager
+  m_Name: CropRelatedActionManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -441,6 +441,7 @@ MonoBehaviour:
   plantKey: 101
   allowHoldToPlant: 1
   plantRepeatInterval: 0.1
+  playerCameraTag: MainCamera
   cropPrefab: {fileID: 9165000289063299726, guid: bb78198dacabce642a87ec5356ebdb4b, type: 3}
   showDebugLogs: 1
 --- !u!1 &583161135

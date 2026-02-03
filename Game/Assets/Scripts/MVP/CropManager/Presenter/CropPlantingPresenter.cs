@@ -1,79 +1,60 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
 /// Presenter for crop planting following MVP pattern.
-/// Mediates between View and Service, handling user interactions and coordinating actions.
-/// Follows Single Responsibility Principle - only responsible for presentation logic.
+/// Mediates between View and Service, coordinating planting actions.
+/// Follows Single Responsibility Principle - only responsible for coordination.
 /// </summary>
 public class CropPlantingPresenter
 {
     private readonly ICropPlantingService cropPlantingService;
-    private readonly Camera mainCamera;
     private readonly bool showDebugLogs;
 
-    private Vector2Int lastTriedTile = new Vector2Int(int.MinValue, int.MinValue);
-
-    public CropPlantingPresenter(ICropPlantingService cropPlantingService, Camera mainCamera, bool showDebugLogs = true)
+    public CropPlantingPresenter(ICropPlantingService cropPlantingService, bool showDebugLogs = true)
     {
         this.cropPlantingService = cropPlantingService;
-        this.mainCamera = mainCamera;
         this.showDebugLogs = showDebugLogs;
 
         if (cropPlantingService == null)
         {
             Debug.LogError("[CropPlantingPresenter] ICropPlantingService is null!");
         }
-        if (mainCamera == null)
-        {
-            Debug.LogError("[CropPlantingPresenter] Camera is null!");
-        }
     }
 
     /// <summary>
-    /// Handles the plant crop action at the current mouse position.
+    /// Handles planting crops at multiple positions.
+    /// Coordinates between View and Service.
     /// </summary>
-    /// <param name="mouseScreenPosition">The current mouse screen position</param>
-    /// <param name="currentCropTypeID">The crop type ID to plant</param>
-    public void HandlePlantAtMousePosition(Vector3 mouseScreenPosition, int currentCropTypeID)
+    /// <param name="positions">List of world positions to plant crops</param>
+    /// <param name="cropTypeID">The crop type ID to plant</param>
+    public void HandlePlantCrops(List<Vector3> positions, int cropTypeID)
     {
-        if (mainCamera == null)
-        {
-            Debug.LogError("[CropPlantingPresenter] Cannot plant: Camera is null!");
-            return;
-        }
-
-        // Convert mouse position to world position
-        Vector3 mouseWorldPos = ConvertScreenToWorldPosition(mouseScreenPosition);
-        int tileX = Mathf.RoundToInt(mouseWorldPos.x);
-        int tileY = Mathf.RoundToInt(mouseWorldPos.y);
-        Vector3 tilePosition = new Vector3(tileX, tileY, 0);
-        Vector2Int tileCoords = new Vector2Int(tileX, tileY);
-
-        // If we're holding the key, avoid repeating the same tile check/logs
-        if (tileCoords == lastTriedTile)
+        if (positions == null || positions.Count == 0)
         {
             return;
         }
 
-        // Debug to verify correct position
-        if (showDebugLogs)
+        int successCount = 0;
+        int failCount = 0;
+
+        foreach (Vector3 position in positions)
         {
-            Debug.Log($"Mouse Screen: {mouseScreenPosition}, World: ({mouseWorldPos.x:F1}, {mouseWorldPos.y:F1}), Tile: ({tileX}, {tileY})");
+            bool success = cropPlantingService.PlantCrop(position, cropTypeID);
+            if (success)
+            {
+                successCount++;
+            }
+            else
+            {
+                failCount++;
+            }
         }
 
-        // Attempt to plant the crop
-        bool success = cropPlantingService.PlantCrop(tilePosition, currentCropTypeID);
-        
-        // Track last tried tile to prevent repeated logging while holding
-        lastTriedTile = tileCoords;
-    }
-
-    /// <summary>
-    /// Resets the last tried tile coordinates (call on key release).
-    /// </summary>
-    public void ResetLastTriedTile()
-    {
-        lastTriedTile = new Vector2Int(int.MinValue, int.MinValue);
+        if (showDebugLogs && successCount > 0)
+        {
+            Debug.Log($"[CropPlantingPresenter] Planted {successCount} crops (Failed: {failCount})");
+        }
     }
 
     /// <summary>
@@ -94,21 +75,5 @@ public class CropPlantingPresenter
         // Refresh visuals
         Vector2Int chunkPos = cropPlantingService.WorldToChunkCoords(worldPosition);
         cropPlantingService.RefreshChunkVisuals(chunkPos);
-    }
-
-    /// <summary>
-    /// Converts screen position to world position.
-    /// </summary>
-    /// <param name="screenPosition">The screen position</param>
-    /// <returns>The world position</returns>
-    private Vector3 ConvertScreenToWorldPosition(Vector3 screenPosition)
-    {
-        Vector3 mouseScreenPos = screenPosition;
-        mouseScreenPos.z = mainCamera.transform.position.z * -1; // Use camera distance from world
-
-        Vector3 mouseWorldPos = mainCamera.ScreenToWorldPoint(mouseScreenPos);
-        mouseWorldPos.z = 0; // Keep this for safety
-
-        return mouseWorldPos;
     }
 }
