@@ -404,7 +404,7 @@ MonoBehaviour:
   plantKey: 102
   allowHoldToPlant: 1
   plantRepeatInterval: 0.1
-  cropPrefab: {fileID: 3583189438637702726, guid: 2b49be4a17352e3479857ab4a3dbf71a, type: 3}
+  cropPrefab: {fileID: 9165000289063299726, guid: bb78198dacabce642a87ec5356ebdb4b, type: 3}
   showDebugLogs: 1
 --- !u!4 &525205932
 Transform:
