@@ -23,13 +23,11 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Bao/AuthScene.unity
   - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Bao/GameCoreTestScene.unity
+  - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Bao/LoadingScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Bao/LobbyScene.unity
-  - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/GameCoreTestScene.unity
-  - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/MapLoaderTestScene.unity
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []
