@@ -1,16 +1,25 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public sealed class PrefabLoaderService : Singleton<PrefabLoaderService>, IPrefabLoaderService
+public sealed class PrefabLoaderService : IPrefabLoaderService
 {
-    // registry: prefab asset -> spawned instance in scene
-    private readonly Dictionary<GameObject, GameObject> prefabToInstance = new Dictionary<GameObject, GameObject>();
+    private static PrefabLoaderService _instance;
+    //Singleton instace
+    public static PrefabLoaderService Instance
+    {
+        get
+        {
+            if (_instance == null)
+                _instance = new PrefabLoaderService();
+            return _instance;
+        }
+    }
+    //Dictionary to find inActive object
+    private readonly Dictionary<string, GameObject> _instances = new Dictionary<string, GameObject>();
 
-    // Private ctor prevents accidental additional instances and is compatible with the base Activator creation.
     private PrefabLoaderService() { }
 
-
-    public void LoadPrefab(GameObject prefab, ref GameObject instance, Vector3 position)
+    public void LoadPrefab(GameObject prefab, Vector3 position)
     {
         if (prefab == null)
         {
@@ -18,49 +27,34 @@ public sealed class PrefabLoaderService : Singleton<PrefabLoaderService>, IPrefa
             return;
         }
 
-        if (instance != null)
+        string prefabName = prefab.name;
+
+        // Check if instance exists
+        if (_instances.TryGetValue(prefabName, out var instance) && instance != null)
         {
-            Debug.Log($"PrefabLoaderService: Instance already loaded ({instance.name}).");
-            // ensure registry is set
-            prefabToInstance[prefab] = instance;
+            instance.transform.position = position;
+            instance.SetActive(true);
             return;
         }
 
-        var spawned = Object.Instantiate(prefab, position, Quaternion.identity);
-        spawned.name = prefab.name;
-        instance = spawned;
-
-        // register mapping so other components can find/unload it
-        prefabToInstance[prefab] = instance;
-
-        Debug.Log($"PrefabLoaderService: Loaded prefab - {spawned.name}");
+        // Create new instance
+        var newInstance = Object.Instantiate(prefab, position, Quaternion.identity);
+        newInstance.name = prefabName;
+        _instances[prefabName] = newInstance;
     }
 
-    public bool UnloadPrefab(GameObject prefab )
+    public bool UnloadPrefab(GameObject prefab)
     {
+        if (prefab == null) return false;
+
+        string prefabName = prefab.name;
         
-        if (prefab == null)
+        if (_instances.TryGetValue(prefabName, out var instance) && instance != null)
         {
-            Debug.LogWarning("PrefabLoaderService: Prefab is null.");
-            return false;
+            instance.SetActive(false);
+            return true;
         }
 
-        if (!prefabToInstance.TryGetValue(prefab, out var registeredInstance))
-        {
-            Debug.LogWarning($"PrefabLoaderService: No instance registered for prefab '{prefab.name}'.");
-            return false;
-        }
-
-        if (registeredInstance != null)
-        {
-            if (Application.isPlaying)
-                Object.Destroy(registeredInstance);
-            else
-                Object.DestroyImmediate(registeredInstance);
-        }
-
-        prefabToInstance.Remove(prefab);
-        Debug.Log($"PrefabLoaderService: Unloaded prefab instance for prefab '{prefab.name}'.");
-        return true;
+        return false;
     }
 }
