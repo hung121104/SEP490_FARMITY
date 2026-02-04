@@ -27,6 +27,9 @@ export class Account {
 
   @Prop({ type: GameSettingsSchema, default: () => ({}) })
   gameSettings: GameSettings;
+
+  @Prop({ default: false })
+  isAdmin: boolean;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);
