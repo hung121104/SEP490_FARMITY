@@ -7,12 +7,14 @@ import { Account, AccountDocument } from './account.schema';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
+import { SessionService } from './session.service';
 
 @Injectable()
 export class AccountService {
   constructor(
     @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
     private jwtService: JwtService,
+    private sessionService: SessionService,
   ) {}
 
   async create(createAccountDto: CreateAccountDto): Promise<Account> {
@@ -53,14 +55,18 @@ export class AccountService {
       throw new UnauthorizedException('Invalid credentials');
     }
     const payload = { username: account.username, sub: account._id };
+    const token = this.jwtService.sign(payload);
+    await this.sessionService.createSession(token, account._id.toString(), 30);
+
     return {
       userId: account._id.toString(),
       username: account.username,
-      access_token: this.jwtService.sign(payload),
-
+      access_token: token,
     };
   }
 
+  // Admin login for web content management
+  // Validates admin credentials and creates a session with 60-minute inactivity timeout
   async loginAdmin(loginDto: LoginDto): Promise<{ userId: string, username: string, access_token: string }> {
     const { username, password } = loginDto;
     const account = await this.accountModel.findOne({ username }).exec();
@@ -72,13 +78,20 @@ export class AccountService {
       throw new UnauthorizedException('Invalid credentials');
     }
     const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin };
+    const token = this.jwtService.sign(payload);
+    // Create session with 60 minutes inactivity timeout (auto-logout after 60 minutes of inactivity)
+    await this.sessionService.createSession(token, account._id.toString(), 1);
+    console.log(`[auth-service] Admin logged in: ${username}`);  // ← Add this line
+
     return {
       userId: account._id.toString(),
       username: account.username,
-      access_token: this.jwtService.sign(payload),
+      access_token: token,
     };
   }
 
+  // Create a new admin account (web content manager)
+  // Requires ADMIN_CREATION_SECRET environment variable for security
   async createAdmin(createAdminDto: CreateAdminDto): Promise<Account> {
     if (createAdminDto.adminSecret !== process.env.ADMIN_CREATION_SECRET) {
       throw new UnauthorizedException('Invalid admin secret');
@@ -104,10 +117,25 @@ export class AccountService {
 
   async verifyToken(token: string) {
     try {
-      // jwtService.verify() will throw on invalid/expired token
+      const isActive = await this.sessionService.isSessionActive(token);
+      if (!isActive) {
+        throw new UnauthorizedException('Session inactive or revoked');
+      }
+      await this.sessionService.updateActivity(token);
       return this.jwtService.verify(token);
     } catch (err) {
       throw new UnauthorizedException('Invalid token');
     }
+  }
+
+  // Logout endpoint - revokes admin session immediately
+  // Prevents token reuse after explicit logout
+  async logout(token: string) {
+    const revoked = await this.sessionService.revokeSession(token);
+    if (!revoked) {
+      throw new BadRequestException('Session not found');
+    }
+    console.log(`[auth-service] Admin logged out`);
+    return { ok: true };
   }
 }
