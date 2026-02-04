@@ -290,6 +290,13 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     chunk.UpdateCropStage(crop.WorldX, crop.WorldY, crop.CropStage);
                 }
             }
+
+                // Ensure visuals are spawned for this chunk on the client
+                ChunkLoadingManager loadingManager = FindObjectOfType<ChunkLoadingManager>();
+                if (loadingManager != null)
+                {
+                    loadingManager.EnsureChunkLoaded(chunkPos);
+                }
         }
         
         if (showDebugLogs)

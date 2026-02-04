@@ -25,7 +25,7 @@ public class prefabLoaderView : MonoBehaviour
     [ContextMenu("Load Prefab")]
     public void ContextLoadPrefab()
     {
-        presenter.LoadPrefab(prefab, ref instance, zOffset);
+        presenter.LoadPrefab(prefab, zOffset);
     }
 
     [ContextMenu("Unload Prefab")]
