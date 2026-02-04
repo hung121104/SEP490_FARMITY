@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-
 public class LoadMapScript : MonoBehaviour
 {
     private PrefabLoaderPresenter _prefabLoaderPresenter = new PrefabLoaderPresenter();
@@ -18,27 +17,15 @@ public class LoadMapScript : MonoBehaviour
 
     private void Awake()
     {
-        //_prefabLoaderPresenter.ValidatePrefab(prefab, ref instance);
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.gameObject.CompareTag("PlayerEntity"))
         {
-            ContextLoadPrefab();
+            if (prefab == null) return;
+
+            _prefabLoaderPresenter.LoadPrefab(prefab, zOffset);
         }
-    }
-
-    [ContextMenu("Load Prefab")]
-    public void ContextLoadPrefab()
-    {
-        Debug.Log("LOG ZOffset " + zOffset);
-        _prefabLoaderPresenter.LoadPrefab(prefab, ref instance, zOffset);
-    }
-
-    [ContextMenu("Unload Prefab")]
-    public void ContextUnloadPrefab()
-    {
-        _prefabLoaderPresenter.UnloadPrefab(instance);
     }
 }

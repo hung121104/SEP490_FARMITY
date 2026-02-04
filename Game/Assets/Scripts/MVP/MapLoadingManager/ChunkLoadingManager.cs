@@ -346,6 +346,35 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             }
         }
     }
+
+    /// <summary>
+    /// Ensure a chunk is loaded and visuals are spawned. Safe to call from other managers.
+    /// </summary>
+    public void EnsureChunkLoaded(Vector2Int chunkPos)
+    {
+        // If already loaded, refresh visuals to apply any new data
+        if (currentlyLoadedChunks.Contains(chunkPos))
+        {
+            RefreshChunkVisuals(chunkPos);
+            return;
+        }
+
+        // Try to find chunk data and load it
+        foreach (var config in WorldDataManager.Instance.sectionConfigs)
+        {
+            if (!config.IsActive) continue;
+
+            if (config.ContainsChunk(chunkPos))
+            {
+                CropChunkData chunk = WorldDataManager.Instance.GetChunk(config.SectionId, chunkPos);
+                if (chunk != null)
+                {
+                    LoadChunk(chunkPos);
+                }
+                break;
+            }
+        }
+    }
     
     /// <summary>
     /// Get list of currently loaded chunks

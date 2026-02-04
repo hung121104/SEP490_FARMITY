@@ -120,6 +120,19 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
@@ -127,10 +140,10 @@ TextureImporter:
       name: buttons_0
       rect:
         serializedVersion: 2
-        x: 2
-        y: 193
-        width: 44
-        height: 30
+        x: 3
+        y: 194
+        width: 42
+        height: 28
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -149,10 +162,10 @@ TextureImporter:
       name: buttons_1
       rect:
         serializedVersion: 2
-        x: 50
-        y: 193
-        width: 44
-        height: 28
+        x: 51
+        y: 194
+        width: 42
+        height: 26
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -171,10 +184,10 @@ TextureImporter:
       name: buttons_2
       rect:
         serializedVersion: 2
-        x: 2
-        y: 161
-        width: 44
-        height: 30
+        x: 3
+        y: 162
+        width: 42
+        height: 28
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -193,10 +206,10 @@ TextureImporter:
       name: buttons_3
       rect:
         serializedVersion: 2
-        x: 50
-        y: 161
-        width: 44
-        height: 28
+        x: 51
+        y: 162
+        width: 42
+        height: 26
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -215,10 +228,10 @@ TextureImporter:
       name: buttons_4
       rect:
         serializedVersion: 2
-        x: 0
-        y: 47
-        width: 96
-        height: 82
+        x: 3
+        y: 130
+        width: 42
+        height: 28
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -237,10 +250,10 @@ TextureImporter:
       name: buttons_5
       rect:
         serializedVersion: 2
-        x: 2
-        y: 129
-        width: 44
-        height: 30
+        x: 51
+        y: 130
+        width: 42
+        height: 26
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -259,10 +272,10 @@ TextureImporter:
       name: buttons_6
       rect:
         serializedVersion: 2
-        x: 50
-        y: 129
-        width: 44
-        height: 28
+        x: 0
+        y: 48
+        width: 96
+        height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -282,9 +295,9 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 0
-        y: 15
+        y: 16
         width: 96
-        height: 32
+        height: 30
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -305,8 +318,8 @@ TextureImporter:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 96
-        height: 15
+        width: 48
+        height: 14
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -321,11 +334,33 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
+    - serializedVersion: 2
+      name: buttons_9
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 48
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ba03c15f9cccdb646b08b509542d7886
+      internalID: -687479683
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: eb9bd61fca6aa7f4f89da9d576243605
     internalID: 0
     vertices: []
     indices: 
@@ -344,6 +379,7 @@ TextureImporter:
       buttons_6: -3219683103784253410
       buttons_7: 5830344958925785552
       buttons_8: 650656284835190746
+      buttons_9: -687479683
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

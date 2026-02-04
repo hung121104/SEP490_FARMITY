@@ -379,31 +379,15 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 525205932}
-  - component: {fileID: 525205931}
   - component: {fileID: 525205933}
+  - component: {fileID: 525205934}
   m_Layer: 0
-  m_Name: CropPlantingActionManager
+  m_Name: CropRelatedActionManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &525205931
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 525205930}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1b96430efcad3f544b925b5751e67611, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  currentCropTypeID: 1
-  plantKey: 102
-  cropPrefab: {fileID: 3583189438637702726, guid: 2b49be4a17352e3479857ab4a3dbf71a, type: 3}
-  showDebugLogs: 1
 --- !u!4 &525205932
 Transform:
   m_ObjectHideFlags: 0
@@ -441,6 +425,25 @@ MonoBehaviour:
   sceneViewId: 1
   InstantiationId: 0
   isRuntimeInstantiated: 0
+--- !u!114 &525205934
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 525205930}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d7eb191c7ce037469847506aa3466de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentCropTypeID: 1
+  plantKey: 101
+  allowHoldToPlant: 1
+  plantRepeatInterval: 0.1
+  playerCameraTag: MainCamera
+  cropPrefab: {fileID: 9165000289063299726, guid: bb78198dacabce642a87ec5356ebdb4b, type: 3}
+  showDebugLogs: 1
 --- !u!1 &583161135
 GameObject:
   m_ObjectHideFlags: 0
@@ -509,12 +512,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_UiScaleMode: 2
+  m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
   m_ReferenceResolution: {x: 1920, y: 1080}
-  m_ScreenMatchMode: 1
-  m_MatchWidthOrHeight: 0
+  m_ScreenMatchMode: 0
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -529,7 +532,7 @@ Canvas:
   m_GameObject: {fileID: 583161135}
   m_Enabled: 1
   serializedVersion: 3
-  m_RenderMode: 0
+  m_RenderMode: 1
   m_Camera: {fileID: 0}
   m_PlaneDistance: 100
   m_PixelPerfect: 0
@@ -581,7 +584,15 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: 'New Text
+
+    dweqweqw
+
+    qweqweqwe
+
+    qweqweqe
+
+    qweqweqeq'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: b594c8a30457e5f41ad966b03d1d26aa, type: 2}
   m_sharedMaterial: {fileID: -7953292292967863894, guid: b594c8a30457e5f41ad966b03d1d26aa, type: 2}
@@ -646,7 +657,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0.76995844, w: 1.6466064}
+  m_margin: {x: 0, y: 0, z: 0.134302, w: -0.25762954}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -669,15 +680,15 @@ RectTransform:
   m_GameObject: {fileID: 585944887}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.1, y: 0.1, z: 0.1}
+  m_LocalScale: {x: 0.2, y: 0.2, z: 0.2}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 583161136}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -213, y: 149}
-  m_SizeDelta: {x: 681.7511, y: 146.3501}
+  m_AnchoredPosition: {x: -870, y: 456}
+  m_SizeDelta: {x: 831.2377, y: 800.3544}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &679646515
 GameObject:

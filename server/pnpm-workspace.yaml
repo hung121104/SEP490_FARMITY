@@ -1,2 +1,7 @@
 packages:
-  - 'microservices/*'
+  - microservices/*
+
+ignoredBuiltDependencies:
+  - '@nestjs/core'
+  - bcrypt
+  - unrs-resolver
