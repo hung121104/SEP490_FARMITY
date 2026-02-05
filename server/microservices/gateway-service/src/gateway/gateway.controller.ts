@@ -1,16 +1,19 @@
-import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { SavePositionDto } from './dto/save-position.dto';
 import { GetPositionDto } from './dto/get-position.dto';
 import { firstValueFrom } from 'rxjs';
 import { Response } from 'express';
+import { CreateBlogDto } from './dto/create-blog.dto';
+import { UpdateBlogDto } from './dto/update-blog.dto';
 
 @Controller()
 export class GatewayController {
   constructor(
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
+    @Inject('BLOG_SERVICE') private blogClient: ClientProxy,
   ) {}
 
   @Post('auth/register')
@@ -57,19 +60,7 @@ export class GatewayController {
   // Admin session check (web management) without affecting game endpoints
   @Get('auth/admin-check')
   async adminCheck(@Headers('authorization') authHeader: string, @Headers('cookie') cookieHeader: string) {
-    const tokenFromHeader = authHeader?.split(' ')[1];
-    const cookies = (cookieHeader || '').split(';').reduce<Record<string, string>>((acc, c) => {
-      const [k, v] = c.split('=').map(s => s?.trim());
-      if (k && v) acc[k] = decodeURIComponent(v);
-      return acc;
-    }, {});
-    const token = tokenFromHeader ?? cookies['access_token'];
-    if (!token) throw new UnauthorizedException('Missing token');
-
-    const payload = await firstValueFrom(this.authClient.send('verify-token-passive', token));
-    if (!payload?.isAdmin) throw new UnauthorizedException('Not an admin');
-
-    return { ok: true, user: payload };
+    return this.verifyAdminToken(authHeader, cookieHeader);
   }
 
   // Admin logout endpoint for web management
@@ -91,5 +82,62 @@ export class GatewayController {
     }
     res.clearCookie('access_token', { httpOnly: true, secure: true, sameSite: 'lax' });
     return { ok: true };
+  }
+
+  @Post('blog/create')
+  async createBlog(
+    @Body() createBlogDto: CreateBlogDto,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.blogClient.send('create-blog', createBlogDto);
+  }
+
+  @Get('blog/all')
+  async getAllBlogs() {
+    return this.blogClient.send('get-all-blogs', {});
+  }
+
+  @Get('blog/:id')
+  async getBlogById(@Param('id') id: string) {
+    return this.blogClient.send('get-blog-by-id', id);
+  }
+
+  @Post('blog/update/:id')
+  async updateBlog(
+    @Param('id') id: string,
+    @Body() updateBlogDto: UpdateBlogDto,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.blogClient.send('update-blog', { id, updateBlogDto });
+  }
+
+  @Delete('blog/delete/:id')
+  async deleteBlog(
+    @Param('id') id: string,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.blogClient.send('delete-blog', id);
+  }
+
+  private async verifyAdminToken(authHeader: string, cookieHeader: string): Promise<any> {
+    const tokenFromHeader = authHeader?.split(' ')[1];
+    const cookies = (cookieHeader || '').split(';').reduce<Record<string, string>>((acc, c) => {
+      const [k, v] = c.split('=').map(s => s?.trim());
+      if (k && v) acc[k] = decodeURIComponent(v);
+      return acc;
+    }, {});
+    const token = tokenFromHeader ?? cookies['access_token'];
+    if (!token) throw new UnauthorizedException('Missing token');
+
+    const payload = await firstValueFrom(this.authClient.send('verify-token-passive', token));
+    if (!payload?.isAdmin) throw new UnauthorizedException('Not an admin');
+    
+    return payload;
   }
 }
