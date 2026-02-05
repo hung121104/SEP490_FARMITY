@@ -13,7 +13,7 @@ export class SessionService {
 	async createSession(
 		token: string,
 		userId: string,
-		inactivityTimeoutMinutes: number = 30,
+		inactivityTimeoutMinutes: number = 60,
 	): Promise<SessionDocument> {
 		const session = new this.sessionModel({
 			token,
