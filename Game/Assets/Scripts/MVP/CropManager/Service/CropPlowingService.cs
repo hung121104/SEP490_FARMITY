@@ -56,7 +56,7 @@ public class CropPlowingService : ICropPlowingService
             for (int i = 0; i < parent.childCount; i++)
             {
                 Transform child = parent.GetChild(i);
-                if (child.name == "TilledTilemap")
+                if (child.name == "TillableTilemap")
                 {
                     Tilemap tilemap = child.GetComponent<Tilemap>();
                     if (tilemap != null)
@@ -80,8 +80,11 @@ public class CropPlowingService : ICropPlowingService
             return false;
         }
         
+        // Convert world position to tile position using the correct tilemap
+        Vector3Int correctTilePosition = tillableTilemap.WorldToCell(worldPosition);
+        
         // Check if there's a tile in the tillable tilemap at this position
-        TileBase tile = tillableTilemap.GetTile(tilePosition);
+        TileBase tile = tillableTilemap.GetTile(correctTilePosition);
         return tile != null;
     }
     
@@ -102,17 +105,20 @@ public class CropPlowingService : ICropPlowingService
             return false;
         }
         
+        // Convert world position to tile position using the correct tilemap
+        Vector3Int correctTilePosition = tillableTilemap.WorldToCell(worldPosition);
+        
         // Check if there's a tile in the tillable tilemap at this position
-        TileBase tillableTile = tillableTilemap.GetTile(tilePosition);
+        TileBase tillableTile = tillableTilemap.GetTile(correctTilePosition);
         if (tillableTile == null)
         {
-            Debug.Log($"Tile at {tilePosition} is not tillable - no tile in TillableTilemap");
+            Debug.Log($"Tile at {correctTilePosition} is not tillable - no tile in TillableTilemap");
             return false;
         }
         
-        if (HasTileData(tilePosition))
+        if (HasTileData(correctTilePosition))
         {
-            Debug.Log($"Tile at {tilePosition} already has data");
+            Debug.Log($"Tile at {correctTilePosition} already has data");
             return false;
         }
         
@@ -132,13 +138,13 @@ public class CropPlowingService : ICropPlowingService
         }
         
         // Add the tilled tile to the TilledTilemap
-        tilledTilemap.SetTile(tilePosition, tilledTile);
+        tilledTilemap.SetTile(correctTilePosition, tilledTile);
         
         // Record that this tile has been tilled
-        tilledPositions.Add(tilePosition);
+        tilledPositions.Add(correctTilePosition);
         
-        Debug.Log($"Successfully plowed tile at {tilePosition} on tilemap {tilledTilemap.gameObject.name}");
-        Debug.Log($"Tile placed: {tilledTile.name} at world position {tilledTilemap.GetCellCenterWorld(tilePosition)}");
+        Debug.Log($"Successfully plowed tile at {correctTilePosition} on tilemap {tilledTilemap.gameObject.name}");
+        Debug.Log($"Tile placed: {tilledTile.name} at world position {tilledTilemap.GetCellCenterWorld(correctTilePosition)}");
         
         return true;
     }

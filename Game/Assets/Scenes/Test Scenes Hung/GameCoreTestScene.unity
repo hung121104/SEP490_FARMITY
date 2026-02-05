@@ -941,8 +941,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   plowingKey: 102
-  playerTransform: {fileID: 0}
-  plowingRange: 2
+  playerTag: PlayerEntity
+  plowingRange: 1
 --- !u!1 &1934862756
 GameObject:
   m_ObjectHideFlags: 0

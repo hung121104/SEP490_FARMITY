@@ -53,6 +53,7 @@ public class CropPlowingView : MonoBehaviour
         }
     }
     
+    
     private void HandlePlowInput()
     {
         if (playerTransform == null)
@@ -98,6 +99,31 @@ public class CropPlowingView : MonoBehaviour
         Debug.Log($"Failed to plow tile at {tilePosition}");
         // You can add feedback here
         // PlayErrorSound();
+    }
+    
+    [ContextMenu("Test Spawn Tilled Tile")]
+    public void TestSpawnTilledTile()
+    {
+        if (Camera.main == null)
+        {
+            Debug.LogError("Main Camera not found. Cannot determine mouse position.");
+            return;
+        }
+
+        // Get the mouse position in world space
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mouseWorldPos.z = 0;
+
+        // Attempt to plow the tile at the mouse position
+        if (presenter != null)
+        {
+            presenter.HandlePlowAction(mouseWorldPos);
+            Debug.Log($"Attempting to spawn a tilled tile at mouse position {mouseWorldPos}.");
+        }
+        else
+        {
+            Debug.LogError("Test failed: Presenter is not initialized.");
+        }
     }
     
     private void ValidateReferences()
