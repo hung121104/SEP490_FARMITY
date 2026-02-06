@@ -26,6 +26,8 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     public PlantingMode plantingMode = PlantingMode.AroundPlayer;
     [Tooltip("Tag to find the player GameObject")]
     public string playerTag = "PlayerEntity";
+    [Tooltip("Maximum distance from player to plant crops")]
+    [SerializeField] private float plantingRange = 2f;
     
     [Header("Input")]
     public KeyCode plantKey = KeyCode.E;
@@ -365,6 +367,19 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
         int targetY = playerTileY + offsetY;
         Vector2Int targetTile = new Vector2Int(targetX, targetY);
 
+        // Check if target tile is within planting range from player position
+        Vector3 targetTileCenter = new Vector3(targetX, targetY, 0);
+        float distanceToTarget = Vector3.Distance(playerPos, targetTileCenter);
+        
+        if (distanceToTarget > plantingRange)
+        {
+            if (showDebugLogs)
+            {
+                Debug.Log($"[CropPlantingView] Target tile too far: {distanceToTarget:F2} > {plantingRange}");
+            }
+            return Vector3.zero;
+        }
+
         // Prevent replanting same tile
         if (targetTile == lastTriedArea)
         {
@@ -430,6 +445,104 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
         else
         {
             Debug.LogError("[CropPlantingView] Cannot handle network crop planted: Presenter is null!");
+        }
+    }
+    
+    private void OnDrawGizmosSelected()
+    {
+        // Try to get player transform if not cached
+        Transform targetTransform = playerTransform;
+        
+        if (targetTransform == null)
+        {
+            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
+            if (playerEntity != null)
+            {
+                // Try to find CenterPoint child first
+                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
+                targetTransform = centerPoint != null ? centerPoint : playerEntity.transform;
+            }
+        }
+        
+        // Draw the planting range gizmo based on planting mode
+        if (targetTransform != null)
+        {
+            Color gizmoColor = Color.green;
+            
+            switch (plantingMode)
+            {
+                case PlantingMode.AroundPlayer:
+                case PlantingMode.FarAroundPlayer:
+                    gizmoColor = new Color(0f, 1f, 0f, 0.3f); // Green
+                    break;
+                    
+                case PlantingMode.AtMouse:
+                    // No range limit for AtMouse mode, draw a small indicator
+                    Gizmos.color = new Color(1f, 1f, 0f, 0.5f); // Yellow
+                    Gizmos.DrawWireSphere(targetTransform.position, 0.3f);
+                    return;
+            }
+            
+            if (plantingRange > 0)
+            {
+                // Draw wire sphere to show the planting range
+                Gizmos.color = gizmoColor;
+                Gizmos.DrawWireSphere(targetTransform.position, plantingRange);
+                
+                // Draw a solid disc for better visibility
+                Gizmos.color = new Color(gizmoColor.r, gizmoColor.g, gizmoColor.b, 0.1f);
+                DrawDiscGizmo(targetTransform.position, plantingRange);
+                
+                // Draw grid overlay to show tile boundaries
+                DrawTileGrid(targetTransform.position, plantingRange);
+            }
+        }
+    }
+    
+    private void DrawDiscGizmo(Vector3 center, float radius)
+    {
+        // Draw a disc on the XY plane
+        const int segments = 32;
+        float angleStep = 360f / segments;
+        
+        Vector3 prevPoint = center + new Vector3(radius, 0, 0);
+        
+        for (int i = 1; i <= segments; i++)
+        {
+            float angle = angleStep * i * Mathf.Deg2Rad;
+            Vector3 newPoint = center + new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0);
+            Gizmos.DrawLine(prevPoint, newPoint);
+            prevPoint = newPoint;
+        }
+    }
+    
+    private void DrawTileGrid(Vector3 center, float radius)
+    {
+        // Draw a grid showing tile boundaries within range
+        Gizmos.color = new Color(1f, 1f, 1f, 0.2f);
+        
+        int centerX = Mathf.RoundToInt(center.x);
+        int centerY = Mathf.RoundToInt(center.y);
+        int tileRadius = Mathf.CeilToInt(radius);
+        
+        // Draw vertical lines
+        for (int x = centerX - tileRadius; x <= centerX + tileRadius + 1; x++)
+        {
+            float xPos = x - 0.5f;
+            Gizmos.DrawLine(
+                new Vector3(xPos, center.y - radius, 0),
+                new Vector3(xPos, center.y + radius, 0)
+            );
+        }
+        
+        // Draw horizontal lines
+        for (int y = centerY - tileRadius; y <= centerY + tileRadius + 1; y++)
+        {
+            float yPos = y - 0.5f;
+            Gizmos.DrawLine(
+                new Vector3(center.x - radius, yPos, 0),
+                new Vector3(center.x + radius, yPos, 0)
+            );
         }
     }
 }
