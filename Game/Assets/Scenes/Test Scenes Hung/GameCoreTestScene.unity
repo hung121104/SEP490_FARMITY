@@ -166,6 +166,7 @@ MonoBehaviour:
   currentCropTypeID: 1
   plantingMode: 1
   playerTag: PlayerEntity
+  plantingRange: 2
   plantKey: 101
   allowHoldToPlant: 1
   plantRepeatInterval: 0.1
@@ -1180,8 +1181,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   plowingKey: 102
+  allowHoldToPlow: 1
+  plowRepeatInterval: 0.1
   playerTag: PlayerEntity
-  plowingRange: 1
+  plowingRange: 2
+  showDebugLogs: 0
 --- !u!1 &1934862756
 GameObject:
   m_ObjectHideFlags: 0

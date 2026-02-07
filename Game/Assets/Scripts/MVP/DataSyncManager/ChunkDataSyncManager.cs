@@ -451,7 +451,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         public int ChunkX;
         public int ChunkY;
         public int SectionId;
-        public CropChunkData.CompactCrop[] Crops;
+        public CropChunkData.TileData[] Crops;
     }
     
     private byte[] SerializeBatch(ChunkSyncData[] batch)
@@ -465,8 +465,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         
         // Header: chunkCount(4) + totalCrops(4) = 8 bytes
         // Per chunk: ChunkX(4) + ChunkY(4) + SectionId(4) + CropCount(4) = 16 bytes
-        // Per crop: 11 bytes
-        byte[] data = new byte[8 + (batch.Length * 16) + (totalCrops * 11)];
+        // Per tile: 13 bytes (IsTilled(1) + HasCrop(1) + CropTypeID(2) + CropStage(1) + WorldX(4) + WorldY(4))
+        byte[] data = new byte[8 + (batch.Length * 16) + (totalCrops * 13)];
         
         int offset = 0;
         
@@ -488,16 +488,20 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             System.BitConverter.GetBytes(chunk.Crops.Length).CopyTo(data, offset);
             offset += 4;
             
-            // Write crops
-            foreach (var crop in chunk.Crops)
+            // Write tiles
+            foreach (var tile in chunk.Crops)
             {
-                System.BitConverter.GetBytes(crop.CropTypeID).CopyTo(data, offset);
-                offset += 2;
-                data[offset] = crop.CropStage;
+                data[offset] = (byte)(tile.IsTilled ? 1 : 0);
                 offset += 1;
-                System.BitConverter.GetBytes(crop.WorldX).CopyTo(data, offset);
+                data[offset] = (byte)(tile.HasCrop ? 1 : 0);
+                offset += 1;
+                System.BitConverter.GetBytes(tile.CropTypeID).CopyTo(data, offset);
+                offset += 2;
+                data[offset] = tile.CropStage;
+                offset += 1;
+                System.BitConverter.GetBytes(tile.WorldX).CopyTo(data, offset);
                 offset += 4;
-                System.BitConverter.GetBytes(crop.WorldY).CopyTo(data, offset);
+                System.BitConverter.GetBytes(tile.WorldY).CopyTo(data, offset);
                 offset += 4;
             }
         }
@@ -531,23 +535,27 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             int cropCount = System.BitConverter.ToInt32(data, offset);
             offset += 4;
             
-            chunk.Crops = new CropChunkData.CompactCrop[cropCount];
+            chunk.Crops = new CropChunkData.TileData[cropCount];
             
-            // Read crops
+            // Read tiles
             for (int j = 0; j < cropCount; j++)
             {
-                CropChunkData.CompactCrop crop = new CropChunkData.CompactCrop();
+                CropChunkData.TileData tile = new CropChunkData.TileData();
                 
-                crop.CropTypeID = System.BitConverter.ToUInt16(data, offset);
-                offset += 2;
-                crop.CropStage = data[offset];
+                tile.IsTilled = data[offset] == 1;
                 offset += 1;
-                crop.WorldX = System.BitConverter.ToInt32(data, offset);
+                tile.HasCrop = data[offset] == 1;
+                offset += 1;
+                tile.CropTypeID = System.BitConverter.ToUInt16(data, offset);
+                offset += 2;
+                tile.CropStage = data[offset];
+                offset += 1;
+                tile.WorldX = System.BitConverter.ToInt32(data, offset);
                 offset += 4;
-                crop.WorldY = System.BitConverter.ToInt32(data, offset);
+                tile.WorldY = System.BitConverter.ToInt32(data, offset);
                 offset += 4;
                 
-                chunk.Crops[j] = crop;
+                chunk.Crops[j] = tile;
             }
             
             batch[i] = chunk;

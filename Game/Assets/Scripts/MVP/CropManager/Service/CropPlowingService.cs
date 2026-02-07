@@ -1,13 +1,25 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Photon.Pun;
 
+/// <summary>
+/// Concrete implementation of ICropPlowingService.
+/// Handles all crop plowing business logic and data management.
+/// Follows Single Responsibility Principle and saves data like planting does.
+/// </summary>
 public class CropPlowingService : ICropPlowingService
 {
     private TileBase tilledTile;
+    private readonly bool showDebugLogs;
     
-    // Store tile data to track which tiles have been modified
+    // Store tile data to track which tiles have been modified (for quick checks)
     private HashSet<Vector3Int> tilledPositions = new HashSet<Vector3Int>();
+    
+    public CropPlowingService(bool showDebugLogs = false)
+    {
+        this.showDebugLogs = showDebugLogs;
+    }
     
     public void Initialize(TileBase tilledTile)
     {
@@ -15,7 +27,7 @@ public class CropPlowingService : ICropPlowingService
         
         if (tilledTile == null)
         {
-            Debug.LogError("TilledTile is not assigned!");
+            Debug.LogError("[CropPlowingService] TilledTile is not assigned!");
         }
     }
     
@@ -76,7 +88,10 @@ public class CropPlowingService : ICropPlowingService
         
         if (tillableTilemap == null)
         {
-            Debug.LogWarning($"TillableTilemap not found at position {worldPosition}");
+            if (showDebugLogs)
+            {
+                Debug.LogWarning($"[CropPlowingService] TillableTilemap not found at position {worldPosition}");
+            }
             return false;
         }
         
@@ -96,12 +111,35 @@ public class CropPlowingService : ICropPlowingService
     
     public bool PlowTile(Vector3Int tilePosition, Vector3 worldPosition)
     {
+        // Check if position is in active section
+        if (!IsPositionInActiveSection(worldPosition))
+        {
+            if (showDebugLogs)
+            {
+                Debug.LogWarning($"[CropPlowingService] Cannot plow at ({worldPosition.x:F0}, {worldPosition.y:F0}): position not in any section");
+            }
+            return false;
+        }
+        
+        // Check if already tilled in data manager
+        if (WorldDataManager.Instance.IsTilledAtWorldPosition(worldPosition))
+        {
+            if (showDebugLogs)
+            {
+                Debug.LogWarning($"[CropPlowingService] Tile already tilled at ({worldPosition.x:F0}, {worldPosition.y:F0})");
+            }
+            return false;
+        }
+        
         // Find the TillableTilemap first
         Tilemap tillableTilemap = FindTilemapAtPosition(worldPosition, "TillableTilemap");
         
         if (tillableTilemap == null)
         {
-            Debug.Log($"TillableTilemap not found at position {worldPosition}");
+            if (showDebugLogs)
+            {
+                Debug.Log($"[CropPlowingService] TillableTilemap not found at position {worldPosition}");
+            }
             return false;
         }
         
@@ -112,13 +150,19 @@ public class CropPlowingService : ICropPlowingService
         TileBase tillableTile = tillableTilemap.GetTile(correctTilePosition);
         if (tillableTile == null)
         {
-            Debug.Log($"Tile at {correctTilePosition} is not tillable - no tile in TillableTilemap");
+            if (showDebugLogs)
+            {
+                Debug.Log($"[CropPlowingService] Tile at {correctTilePosition} is not tillable - no tile in TillableTilemap");
+            }
             return false;
         }
         
         if (HasTileData(correctTilePosition))
         {
-            Debug.Log($"Tile at {correctTilePosition} already has data");
+            if (showDebugLogs)
+            {
+                Debug.Log($"[CropPlowingService] Tile at {correctTilePosition} already has data");
+            }
             return false;
         }
         
@@ -127,26 +171,47 @@ public class CropPlowingService : ICropPlowingService
         
         if (tilledTilemap == null)
         {
-            Debug.LogError($"TilledTilemap not found as sibling of TillableTilemap");
+            Debug.LogError($"[CropPlowingService] TilledTilemap not found as sibling of TillableTilemap");
             return false;
         }
         
         if (tilledTile == null)
         {
-            Debug.LogError("TilledTile is not initialized!");
+            Debug.LogError("[CropPlowingService] TilledTile is not initialized!");
             return false;
         }
         
-        // Add the tilled tile to the TilledTilemap
-        tilledTilemap.SetTile(correctTilePosition, tilledTile);
+        // Save to WorldDataManager
+        bool savedToData = WorldDataManager.Instance.TillTileAtWorldPosition(worldPosition);
         
-        // Record that this tile has been tilled
-        tilledPositions.Add(correctTilePosition);
+        if (savedToData)
+        {
+            // Add the tilled tile to the TilledTilemap
+            tilledTilemap.SetTile(correctTilePosition, tilledTile);
+            
+            // Record that this tile has been tilled
+            tilledPositions.Add(correctTilePosition);
+            
+            if (showDebugLogs)
+            {
+                Debug.Log($"[CropPlowingService] ✓ Successfully plowed tile at {correctTilePosition} on tilemap {tilledTilemap.gameObject.name}");
+            }
+            
+            return true;
+        }
         
-        Debug.Log($"Successfully plowed tile at {correctTilePosition} on tilemap {tilledTilemap.gameObject.name}");
-        Debug.Log($"Tile placed: {tilledTile.name} at world position {tilledTilemap.GetCellCenterWorld(correctTilePosition)}");
+        return false;
+    }
+    
+    public bool IsPositionInActiveSection(Vector3 worldPosition)
+    {
+        if (WorldDataManager.Instance == null)
+        {
+            Debug.LogError("[CropPlowingService] WorldDataManager.Instance is null!");
+            return false;
+        }
         
-        return true;
+        return WorldDataManager.Instance.IsPositionInActiveSection(worldPosition);
     }
     
     // Additional helper method to clear a tile if needed later

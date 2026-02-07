@@ -28,7 +28,7 @@ public class CropPlowingView : MonoBehaviour
     private void Start()
     {
         // Initialize the MVP pattern
-        ICropPlowingService service = new CropPlowingService();
+        ICropPlowingService service = new CropPlowingService(showDebugLogs);
         presenter = new CropPlowingPresenter(this, service);
         
         // Initialize the presenter with tilled tile reference
