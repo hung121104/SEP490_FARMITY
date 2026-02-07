@@ -61,7 +61,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -75,7 +75,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -99,7 +99,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -120,6 +120,19 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
@@ -127,10 +140,10 @@ TextureImporter:
       name: cow kigurumi farming animations_0
       rect:
         serializedVersion: 2
-        x: 3
+        x: 0
         y: 48
-        width: 22
-        height: 23
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -149,9 +162,9 @@ TextureImporter:
       name: cow kigurumi farming animations_1
       rect:
         serializedVersion: 2
-        x: 3
-        y: 24
-        width: 22
+        x: 24
+        y: 48
+        width: 24
         height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -171,9 +184,9 @@ TextureImporter:
       name: cow kigurumi farming animations_2
       rect:
         serializedVersion: 2
-        x: 26
+        x: 48
         y: 48
-        width: 43
+        width: 24
         height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -193,10 +206,10 @@ TextureImporter:
       name: cow kigurumi farming animations_3
       rect:
         serializedVersion: 2
-        x: 27
-        y: 23
-        width: 42
-        height: 26
+        x: 72
+        y: 48
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -215,9 +228,9 @@ TextureImporter:
       name: cow kigurumi farming animations_4
       rect:
         serializedVersion: 2
-        x: 71
-        y: 48
-        width: 23
+        x: 0
+        y: 24
+        width: 24
         height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -237,10 +250,10 @@ TextureImporter:
       name: cow kigurumi farming animations_5
       rect:
         serializedVersion: 2
-        x: 71
-        y: 23
-        width: 22
-        height: 26
+        x: 24
+        y: 24
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -259,9 +272,9 @@ TextureImporter:
       name: cow kigurumi farming animations_6
       rect:
         serializedVersion: 2
-        x: 3
-        y: 0
-        width: 22
+        x: 48
+        y: 24
+        width: 24
         height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -281,10 +294,10 @@ TextureImporter:
       name: cow kigurumi farming animations_7
       rect:
         serializedVersion: 2
-        x: 27
-        y: 0
-        width: 42
-        height: 25
+        x: 72
+        y: 24
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -303,10 +316,10 @@ TextureImporter:
       name: cow kigurumi farming animations_8
       rect:
         serializedVersion: 2
-        x: 71
+        x: 0
         y: 0
-        width: 22
-        height: 25
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -321,11 +334,77 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
+    - serializedVersion: 2
+      name: cow kigurumi farming animations_9
+      rect:
+        serializedVersion: 2
+        x: 24
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 39755287f8d44474cb74ef625c0ee7a6
+      internalID: -1780904815
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi farming animations_10
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4aa87ccf26c81cb42bce62ad9331c173
+      internalID: -1758123355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi farming animations_11
+      rect:
+        serializedVersion: 2
+        x: 72
+        y: 0
+        width: 24
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 7b5015feb49ca8049bfaf7b1dee90819
+      internalID: -608211320
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 17a51ad0f35cadb4d8ea0ee648a372f4
     internalID: 0
     vertices: []
     indices: 
@@ -337,6 +416,8 @@ TextureImporter:
     nameFileIdTable:
       cow kigurumi farming animations_0: 6677975495678716282
       cow kigurumi farming animations_1: 3171684152090793204
+      cow kigurumi farming animations_10: -1758123355
+      cow kigurumi farming animations_11: -608211320
       cow kigurumi farming animations_2: 6101017075645702387
       cow kigurumi farming animations_3: 3556765495224219394
       cow kigurumi farming animations_4: -639625943123011503
@@ -344,6 +425,7 @@ TextureImporter:
       cow kigurumi farming animations_6: -4211116768415676891
       cow kigurumi farming animations_7: -8648666572102146930
       cow kigurumi farming animations_8: -2655889005978197276
+      cow kigurumi farming animations_9: -1780904815
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
