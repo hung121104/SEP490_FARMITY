@@ -16,7 +16,7 @@ public class HotbarSlotUI : MonoBehaviour
     [SerializeField] private float animSpeed = 8f;
 
     private int slotIndex;
-    private HotbarView hotbarView; // Changed from HotbarUI to HotbarView
+    private HotbarView hotbarView;
     private float targetScale = 1f;
 
     // Updated method signature to accept HotbarView instead of HotbarUI
