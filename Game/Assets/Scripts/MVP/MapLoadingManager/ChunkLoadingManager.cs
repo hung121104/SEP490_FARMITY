@@ -24,12 +24,17 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     [Tooltip("Show loaded chunks with crops")]
     public bool visualizeCrops = true;
     
-    [Tooltip("Crop visual prefab")]
-    public GameObject cropVisualPrefab;
+    [Header("Plant Data")]
+    [Tooltip("Array of all plant data ScriptableObjects indexed by CropTypeID")]
+    public PlantDataSO[] plantDatabase;
     
     [Header("Debug")]
     public bool showDebugLogs = true;
     public bool showLoadedChunksGizmos = true;
+    
+    [Header("Daily Reload")]
+    [Tooltip("Enable automatic chunk reload each day")]
+    public bool enableDailyReload = true;
     
     // Track all players and their loaded chunks
     private Dictionary<int, Vector2Int> playerChunkPositions = new Dictionary<int, Vector2Int>();
@@ -41,6 +46,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     
     private float nextUpdateTime;
     private Transform localPlayerTransform;
+    private TimeManagerView timeManager;
     
     private void Start()
     {
@@ -50,10 +56,35 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             return;
         }
         
+        // Find TimeManagerView and subscribe to day change event
+        if (enableDailyReload)
+        {
+            timeManager = FindAnyObjectByType<TimeManagerView>();
+            if (timeManager != null)
+            {
+                timeManager.OnDayChanged += OnDayChanged;
+                if (showDebugLogs)
+                    Debug.Log("[ChunkLoading] Subscribed to OnDayChanged event");
+            }
+            else
+            {
+                Debug.LogWarning("[ChunkLoading] TimeManagerView not found in scene!");
+            }
+        }
+        
         // Find local player
         StartCoroutine(FindLocalPlayer());
         
         nextUpdateTime = Time.time + updateInterval;
+    }
+    
+    private void OnDestroy()
+    {
+        // Unsubscribe from events
+        if (timeManager != null)
+        {
+            timeManager.OnDayChanged -= OnDayChanged;
+        }
     }
     
     private IEnumerator FindLocalPlayer()
@@ -220,7 +251,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             Debug.Log($"[ChunkLoading] Loaded chunk ({chunkPos.x}, {chunkPos.y}) - {chunk.GetCropCount()} crops");
         
         // Spawn visuals for crops in this chunk
-        if (visualizeCrops && cropVisualPrefab != null)
+        if (visualizeCrops)
         {
             SpawnChunkVisuals(chunkPos, chunk);
         }
@@ -259,18 +290,43 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     /// </summary>
     private void SpawnChunkVisuals(Vector2Int chunkPos, CropChunkData chunk)
     {
-        if (cropVisualPrefab == null) return;
+        if (plantDatabase == null || plantDatabase.Length == 0)
+        {
+            if (showDebugLogs)
+                Debug.LogWarning("[ChunkLoading] PlantDatabase not assigned or empty!");
+            return;
+        }
         
         List<GameObject> visuals = new List<GameObject>();
         
         foreach (var crop in chunk.GetAllCrops())
         {
-            Vector3 worldPos = new Vector3(crop.WorldX, crop.WorldY, 0);
-            GameObject visual = Instantiate(cropVisualPrefab, worldPos, Quaternion.identity);
-            visual.name = $"Crop_{crop.WorldX}_{crop.WorldY}";
+            // Get plant data for this crop type
+            PlantDataSO plantData = GetPlantData(crop.CropTypeID);
+            if (plantData == null)
+            {
+                if (showDebugLogs)
+                    Debug.LogWarning($"[ChunkLoading] No plant data found for crop type {crop.CropTypeID} at ({crop.WorldX}, {crop.WorldY})");
+                continue;
+            }
             
-            // You can customize based on crop type/stage here
-            // Example: visual.GetComponent<SpriteRenderer>().sprite = GetCropSprite(crop.CropTypeID, crop.CropStage);
+            // Validate stage is within bounds
+            if (crop.CropStage >= plantData.GrowthStages.Count)
+            {
+                if (showDebugLogs)
+                    Debug.LogWarning($"[ChunkLoading] Invalid crop stage {crop.CropStage} for {plantData.PlantName} at ({crop.WorldX}, {crop.WorldY})");
+                continue;
+            }
+            
+            // Create crop visual GameObject
+            GameObject visual = new GameObject($"Crop_{plantData.PlantName}_{crop.WorldX}_{crop.WorldY}");
+            visual.transform.position = new Vector3(crop.WorldX, crop.WorldY+0.062f, 0);
+            
+            // Add sprite renderer with correct stage sprite
+            SpriteRenderer sr = visual.AddComponent<SpriteRenderer>();
+            sr.sprite = plantData.GrowthStages[crop.CropStage].stageSprite;
+            sr.sortingLayerName = "WalkInfront";
+            sr.sortingOrder = 1;
             
             visuals.Add(visual);
         }
@@ -279,6 +335,18 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         
         if (showDebugLogs && visuals.Count > 0)
             Debug.Log($"[ChunkLoading] Spawned {visuals.Count} crop visuals for chunk ({chunkPos.x}, {chunkPos.y})");
+    }
+    
+    /// <summary>
+    /// Get plant data for a specific crop type ID
+    /// </summary>
+    private PlantDataSO GetPlantData(ushort cropTypeID)
+    {
+        if (plantDatabase == null || cropTypeID >= plantDatabase.Length)
+        {
+            return null;
+        }
+        return plantDatabase[cropTypeID];
     }
     
     /// <summary>
@@ -390,6 +458,58 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     public bool IsChunkLoaded(Vector2Int chunkPos)
     {
         return currentlyLoadedChunks.Contains(chunkPos);
+    }
+    
+    /// <summary>
+    /// Called when a new day begins in the game
+    /// </summary>
+    private void OnDayChanged()
+    {
+        if (!enableDailyReload) return;
+        
+        if (showDebugLogs)
+            Debug.Log("[ChunkLoading] New day detected! Reloading all chunks");
+        
+        ReloadAllChunks();
+    }
+    
+    /// <summary>
+    /// Reload all currently loaded chunks
+    /// </summary>
+    private void ReloadAllChunks()
+    {
+        if (showDebugLogs)
+            Debug.Log($"[ChunkLoading] Reloading {currentlyLoadedChunks.Count} chunks");
+        
+        // Store current loaded chunks
+        List<Vector2Int> chunksToReload = new List<Vector2Int>(currentlyLoadedChunks);
+        
+        // Unload all chunks
+        foreach (var chunkPos in chunksToReload)
+        {
+            UnloadChunk(chunkPos);
+        }
+        
+        // Clear unload queue
+        chunksToUnload.Clear();
+        
+        // Reload chunks around local player
+        if (localPlayerTransform != null)
+        {
+            Vector2Int currentChunk = WorldDataManager.Instance.WorldToChunkCoords(localPlayerTransform.position);
+            UpdateLoadedChunks(currentChunk);
+        }
+    }
+    
+    /// <summary>
+    /// Manually trigger a chunk reload (useful for testing or forced refresh)
+    /// </summary>
+    public void ForceReloadAllChunks()
+    {
+        if (showDebugLogs)
+            Debug.Log("[ChunkLoading] Force reloading all chunks");
+        
+        ReloadAllChunks();
     }
     
     private void OnDrawGizmos()

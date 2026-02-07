@@ -10,24 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e8d1fe37b738e1d4b8593ba545858269, type: 3}
-  m_Name: PumpkingData
+  m_Name: PumpkingDataSo
   m_EditorClassIdentifier: 
   PlantName: Pumpking
-  plantPrefab: {fileID: 3583189438637702726, guid: 2b49be4a17352e3479857ab4a3dbf71a, type: 3}
   GrowthStages:
   - stageNum: 0
     stageSprite: {fileID: 5214640707927695005, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
-    Days: 1
+    age: 0
   - stageNum: 1
     stageSprite: {fileID: -7493073933449792820, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
-    Days: 1
+    age: 1
   - stageNum: 2
     stageSprite: {fileID: -5967672503603263023, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
-    Days: 1
+    age: 2
   - stageNum: 3
     stageSprite: {fileID: 4753408381409157624, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
-    Days: 1
+    age: 3
   - stageNum: 4
     stageSprite: {fileID: -8963360674610236421, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
-    Days: 1
-  HarvestedItemPrefab: {fileID: 0}
+    age: 4
+  HarvestedItemID: abc
