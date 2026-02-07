@@ -1,24 +1,5 @@
 using UnityEngine;
 
-public enum Season
-{
-    Spring,
-    Summer,
-    Autumn,
-    Winter
-}
-
-public enum DayOfWeek
-{
-    Monday,
-    Tuesday,
-    Wednesday,
-    Thursday,
-    Friday,
-    Saturday,
-    Sunday
-}
-
 public class TimeManagerView : MonoBehaviour
 {
     // Time configuration
@@ -122,5 +103,24 @@ public class TimeManagerView : MonoBehaviour
     public void ResumeTime(float speed = 1f)
     {
         timeSpeed = speed;
+    }
+
+    public enum Season
+    {
+        Spring,
+        Summer,
+        Autumn,
+        Winter
+    }
+
+    public enum DayOfWeek
+    {
+        Monday,
+        Tuesday,
+        Wednesday,
+        Thursday,
+        Friday,
+        Saturday,
+        Sunday
     }
 }
