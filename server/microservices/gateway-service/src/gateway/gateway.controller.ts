@@ -7,6 +7,9 @@ import { firstValueFrom } from 'rxjs';
 import { Response } from 'express';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
+import { CreateNewsDto } from './dto/create-news.dto';
+import { UpdateNewsDto } from './dto/update-news.dto';
+import { UploadSignatureDto } from './dto/upload-signature.dto';
 
 @Controller()
 export class GatewayController {
@@ -14,6 +17,7 @@ export class GatewayController {
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
     @Inject('BLOG_SERVICE') private blogClient: ClientProxy,
+    @Inject('NEWS_SERVICE') private newsClient: ClientProxy,
   ) {}
 
   @Post('auth/register')
@@ -123,6 +127,57 @@ export class GatewayController {
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
     return this.blogClient.send('delete-blog', id);
+  }
+
+  @Post('news/upload-signature')
+  async getNewsUploadSignature(
+    @Body() dto: UploadSignatureDto,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.newsClient.send('news-upload-signature', dto);
+  }
+
+  @Post('news/create')
+  async createNews(
+    @Body() createNewsDto: CreateNewsDto,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.newsClient.send('create-news', createNewsDto);
+  }
+
+  @Get('news/all')
+  async getAllNews() {
+    return this.newsClient.send('get-all-news', {});
+  }
+
+  @Get('news/:id')
+  async getNewsById(@Param('id') id: string) {
+    return this.newsClient.send('get-news-by-id', id);
+  }
+
+  @Post('news/update/:id')
+  async updateNews(
+    @Param('id') id: string,
+    @Body() updateNewsDto: UpdateNewsDto,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.newsClient.send('update-news', { id, updateNewsDto });
+  }
+
+  @Delete('news/delete/:id')
+  async deleteNews(
+    @Param('id') id: string,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.newsClient.send('delete-news', id);
   }
 
   private async verifyAdminToken(authHeader: string, cookieHeader: string): Promise<any> {
