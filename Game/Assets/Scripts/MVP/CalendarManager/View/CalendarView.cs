@@ -6,8 +6,8 @@ public class CalendarView : MonoBehaviour
     public GameObject calendarPanel;
     public TMP_Text dateText;
     public CalendarGridView gridView;
-
-
+    public Transform monthParent;
+    public MonthCellView monthCellPrefab;
     private CalendarPresenter presenter;
 
     public void Initialize(CalendarPresenter presenter)
@@ -22,7 +22,10 @@ public class CalendarView : MonoBehaviour
 
         int currentDay = presenter.GetDay();
         gridView.BuildCalendar(currentDay);
+        int currentMonth = presenter.GetMonth();
+        BuildMonths(currentMonth);
     }
+
 
 
     public void HideCalendar()
@@ -38,4 +41,15 @@ public class CalendarView : MonoBehaviour
             else ShowCalendar();
         }
     }
-}
+    void BuildMonths(int currentMonth)
+    {
+        foreach (Transform c in monthParent)
+            Destroy(c.gameObject);
+
+        for (int i = 1; i <= 12; i++)
+        {
+            var cell = Instantiate(monthCellPrefab, monthParent);
+            cell.SetMonth(i, i == currentMonth);
+        }
+    }
+    }
