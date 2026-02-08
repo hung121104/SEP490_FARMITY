@@ -8,6 +8,9 @@ import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { SessionService } from './session.service';
+import { ConfigService } from '@nestjs/config';
+import * as nodemailer from 'nodemailer';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AccountService {
@@ -15,6 +18,7 @@ export class AccountService {
     @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
     private jwtService: JwtService,
     private sessionService: SessionService,
+    private configService: ConfigService,
   ) {}
 
   async create(createAccountDto: CreateAccountDto): Promise<Account> {
@@ -62,7 +66,8 @@ export class AccountService {
     };
   }
 
-  
+  // Admin-only login for web content management
+  // Creates a short-lived session subject to inactivity auto-logout
   async loginAdmin(loginDto: LoginDto): Promise<{ userId: string, username: string, access_token: string }> {
     const { username, password } = loginDto;
     const account = await this.accountModel.findOne({ username }).exec();
@@ -84,7 +89,7 @@ export class AccountService {
     };
   }
 
-  
+  // Admin account provisioning (restricted by shared secret)
   async createAdmin(createAdminDto: CreateAdminDto): Promise<Account> {
     if (createAdminDto.adminSecret !== process.env.ADMIN_CREATION_SECRET) {
       throw new UnauthorizedException('Invalid admin secret');
@@ -108,7 +113,7 @@ export class AccountService {
     }
   }
 
-  
+  // Active verification: validates token and refreshes inactivity timer
   async verifyToken(token: string) {
     try {
       const isActive = await this.sessionService.isSessionActive(token);
@@ -125,7 +130,7 @@ export class AccountService {
     }
   }
 
-  
+  // Passive verification: validates token WITHOUT refreshing inactivity timer
   async verifyTokenPassive(token: string) {
     try {
       const isActive = await this.sessionService.isSessionActive(token);
@@ -138,7 +143,7 @@ export class AccountService {
     }
   }
 
-  
+  // Admin logout: revokes session to prevent token reuse
   async logout(token: string) {
     const revoked = await this.sessionService.revokeSession(token);
     if (!revoked) {
@@ -146,5 +151,103 @@ export class AccountService {
     }
     console.log('[auth-service] Admin logged out');
     return { ok: true };
+  }
+
+  async requestAdminPasswordReset(email: string) {
+    const account = await this.accountModel.findOne({ email, isAdmin: true }).exec();
+    if (!account) {
+      throw new BadRequestException('Admin account not found');
+    }
+
+    const otp = this.generateOtp();
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    account.resetOtpHash = otpHash;
+    account.resetOtpExpiresAt = new Date(Date.now() + 2 * 60 * 1000);
+    account.resetOtpUsed = false;
+    account.resetOtpRequestedAt = new Date();
+    await account.save();
+
+    await this.sendOtpEmail(account.email, account.username, otp);
+
+    return { ok: true };
+  }
+
+  async confirmAdminPasswordReset(email: string, otp: string, newPassword: string) {
+    const account = await this.accountModel.findOne({ email, isAdmin: true }).exec();
+    if (!account || !account.resetOtpHash || !account.resetOtpExpiresAt) {
+      throw new BadRequestException('Invalid reset request');
+    }
+
+    if (account.resetOtpUsed) {
+      throw new BadRequestException('OTP already used');
+    }
+
+    if (account.resetOtpExpiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('OTP expired');
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      throw new BadRequestException('Invalid OTP format');
+    }
+
+    const isOtpValid = await bcrypt.compare(otp, account.resetOtpHash);
+    if (!isOtpValid) {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    account.password = hashedPassword;
+    account.resetOtpUsed = true;
+    await account.save();
+
+    return { ok: true };
+  }
+
+  private generateOtp(): string {
+    const num = crypto.randomInt(0, 1000000);
+    return String(num).padStart(6, '0');
+  }
+
+  private async sendOtpEmail(email: string, username: string, otp: string) {
+    const host = this.configService.get<string>('MAIL_HOST');
+    const port = Number(this.configService.get<string>('MAIL_PORT') || 587);
+    const user = this.configService.get<string>('MAIL_USER');
+    const pass = this.configService.get<string>('MAIL_PASS');
+    const from = this.configService.get<string>('MAIL_FROM') || user;
+    const secure = this.configService.get<string>('MAIL_SECURE') === 'true';
+
+    if (!host || !user || !pass || !from) {
+      throw new BadRequestException('Email configuration is missing');
+    }
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+    });
+
+    const subject = 'Admin Password Reset OTP';
+    const text = `Hello ${username},
+
+Your OTP for admin password reset is: ${otp}
+
+This OTP will expire in 2 minutes and can only be used once.
+
+If you did not request this, please ignore this email.`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height:1.5;">
+        <h2>Admin Password Reset</h2>
+        <p>Hello <strong>${username}</strong>,</p>
+        <p>Your one-time password (OTP) is:</p>
+        <div style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${otp}</div>
+        <p>This OTP will expire in <strong>2 minutes</strong> and can be used only once.</p>
+        <p>If you did not request this, please ignore this email.</p>
+      </div>
+    `;
+
+    await transporter.sendMail({ from, to: email, subject, text, html });
   }
 }

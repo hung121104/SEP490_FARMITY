@@ -12,6 +12,8 @@ import { UpdateNewsDto } from './dto/update-news.dto';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
 import { UploadSignatureDto } from './dto/upload-signature.dto';
+import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
+import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
 
 @Controller()
 export class GatewayController {
@@ -33,13 +35,13 @@ export class GatewayController {
     return this.authClient.send('login-ingame', loginDto);
   }
 
-  // Admin registration endpoint for web management
+
   @Post('auth/register-admin')
   async registerAdmin(@Body() createAdminDto: any) {
     return this.authClient.send('register-admin', createAdminDto);
   }
 
-  // Admin login endpoint for web management
+
   @Post('auth/login-admin')
   async loginAdmin(@Body() loginDto: any, @Res({ passthrough: true }) res: Response) {
     const result = await firstValueFrom(this.authClient.send('login-admin', loginDto));
@@ -64,13 +66,12 @@ export class GatewayController {
     return this.playerDataClient.send('get-position', getPositionDto);
   }
 
-  // Admin session check (web management) without affecting game endpoints
+
   @Get('auth/admin-check')
   async adminCheck(@Headers('authorization') authHeader: string, @Headers('cookie') cookieHeader: string) {
     return this.verifyAdminToken(authHeader, cookieHeader);
   }
 
-  // Admin logout endpoint for web management
   @Post('auth/logout')
   async logout(
     @Headers('authorization') authHeader: string,
@@ -232,6 +233,16 @@ export class GatewayController {
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
     return this.mediaClient.send('delete-media', id);
+  }
+
+  @Post('auth/admin-reset/request')
+  async adminResetRequest(@Body() dto: RequestAdminResetDto) {
+    return this.authClient.send('admin-reset-request', dto);
+  }
+
+  @Post('auth/admin-reset/confirm')
+  async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
+    return this.authClient.send('admin-reset-confirm', dto);
   }
 
   private async verifyAdminToken(authHeader: string, cookieHeader: string): Promise<any> {
