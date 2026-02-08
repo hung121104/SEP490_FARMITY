@@ -19,6 +19,9 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     
     [Tooltip("Reference to ChunkLoadingManager for visual updates")]
     private ChunkLoadingManager chunkLoadingManager;
+    
+    [Tooltip("Reference to ChunkDataSyncManager for network sync")]
+    private ChunkDataSyncManager syncManager;
 
     [Header("Plant Data")]
     [Tooltip("Array of all plant data ScriptableObjects indexed by CropTypeID")]
@@ -99,6 +102,13 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         {
             Debug.LogWarning("[CropManagerView] ChunkLoadingManager not found!");
         }
+        
+        // Get ChunkDataSyncManager
+        syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
+        if (syncManager == null)
+        {
+            Debug.LogWarning("[CropManagerView] ChunkDataSyncManager not found!");
+        }
 
         if (showDebugLogs)
         {
@@ -126,6 +136,14 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     private void OnDayChanged()
     {
         if (!enableGrowth) return;
+        
+        // Only Master Client performs crop growth calculations
+        if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient)
+        {
+            if (showDebugLogs)
+                Debug.Log("[CropManagerView] Non-master client waiting for crop updates from Master Client");
+            return;
+        }
 
         if (showDebugLogs)
         {
@@ -207,6 +225,12 @@ public class CropManagerView : MonoBehaviourPunCallbacks
                                 new Vector3(tile.WorldX, tile.WorldY, 0), 
                                 (byte)growthData.currentStage
                             );
+                            
+                            // Broadcast crop stage update to other clients
+                            if (PhotonNetwork.IsConnected && syncManager != null)
+                            {
+                                syncManager.BroadcastCropStageUpdated(tile.WorldX, tile.WorldY, (byte)growthData.currentStage);
+                            }
                             
                             chunkModified = true;
                             cropsGrown++;

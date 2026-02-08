@@ -157,7 +157,7 @@ public class CropPlantingController : MonoBehaviourPunCallbacks
             }
 
             // Sync to other players via Photon
-            if (PhotonNetwork.IsConnected && photonView != null && syncManager != null)
+            if (PhotonNetwork.IsConnected && syncManager != null)
             {
                 syncManager.BroadcastCropPlanted(worldX, worldY, currentCropTypeID);
             }

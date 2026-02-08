@@ -1,6 +1,7 @@
 using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
+using System;
 using System.Collections.Generic;
 using ExitGames.Client.Photon;
 
@@ -20,6 +21,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     [Tooltip("Enable debug logging")]
     public bool showDebugLogs = true;
     
+    // Cached references
+    private ChunkLoadingManager chunkLoadingManager;
+    
     // Photon event codes
     private const byte REQUEST_WORLD_SYNC_EVENT = 110;
     private const byte WORLD_SYNC_BATCH_EVENT = 111;
@@ -27,17 +31,21 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private const byte CROP_PLANTED_EVENT = 113;
     private const byte CROP_REMOVED_EVENT = 114;
     private const byte CROP_STAGE_UPDATED_EVENT = 115;
+    private const byte TILE_TILLED_EVENT = 116;
+    private const byte TILE_UNTILLED_EVENT = 117;
     
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
     
-    private void OnEnable()
+    public override void OnEnable()
     {
+        base.OnEnable();
         PhotonNetwork.NetworkingClient.EventReceived += OnPhotonEvent;
     }
     
-    private void OnDisable()
+    public override void OnDisable()
     {
+        base.OnDisable();
         PhotonNetwork.NetworkingClient.EventReceived -= OnPhotonEvent;
     }
     
@@ -48,6 +56,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             Debug.LogWarning("[ChunkSync] Not connected to Photon network");
             return;
         }
+        
+        // Cache ChunkLoadingManager reference
+        chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
         
         // Wait a moment for WorldDataManager to initialize
         Invoke(nameof(RequestWorldSync), 1f);
@@ -139,6 +150,14 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             case CROP_STAGE_UPDATED_EVENT:
                 HandleCropStageUpdated(photonEvent.CustomData);
                 break;
+                
+            case TILE_TILLED_EVENT:
+                HandleTileTilled(photonEvent.CustomData);
+                break;
+
+            case TILE_UNTILLED_EVENT:
+                HandleTileUntilled(photonEvent.CustomData);
+                break;
         }
     }
     
@@ -172,7 +191,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         WorldDataManager manager = WorldDataManager.Instance;
         List<ChunkSyncData> allChunkData = new List<ChunkSyncData>();
         
-        // Collect all chunks with crops
+        // Collect all chunks with crops or tilled tiles
         foreach (var config in manager.sectionConfigs)
         {
             if (!config.IsActive) continue;
@@ -183,14 +202,14 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             foreach (var chunkPair in section)
             {
                 CropChunkData chunk = chunkPair.Value;
-                if (chunk.GetCropCount() == 0) continue; // Skip empty chunks
-                
+                if (chunk.GetCropCount() == 0 && chunk.GetTilledCount() == 0) continue; // Skip empty chunks
+
                 ChunkSyncData syncData = new ChunkSyncData
                 {
                     ChunkX = chunk.ChunkX,
                     ChunkY = chunk.ChunkY,
                     SectionId = chunk.SectionId,
-                    Crops = chunk.GetAllCrops().ToArray()
+                    Crops = chunk.GetAllTiles().ToArray()
                 };
                 
                 allChunkData.Add(syncData);
@@ -279,23 +298,34 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 continue;
             }
             
-            // Clear existing data and load synced crops
+            // Clear existing data and load synced tiles (tilled and crops)
             chunk.Clear();
-            
-            foreach (var crop in chunkData.Crops)
+
+            foreach (var tile in chunkData.Crops)
             {
-                chunk.PlantCrop(crop.CropTypeID, crop.WorldX, crop.WorldY);
-                if (crop.CropStage > 0)
+                // Apply tilled status first
+                if (tile.IsTilled)
                 {
-                    chunk.UpdateCropStage(crop.WorldX, crop.WorldY, crop.CropStage);
+                    chunk.TillTile(tile.WorldX, tile.WorldY);
+                }
+
+                // If there's a crop, plant it (chunk.PlantCrop requires tile to be tilled)
+                if (tile.HasCrop)
+                {
+                    chunk.PlantCrop(tile.CropTypeID, tile.WorldX, tile.WorldY);
+                    if (tile.CropStage > 0)
+                    {
+                        chunk.UpdateCropStage(tile.WorldX, tile.WorldY, tile.CropStage);
+                    }
                 }
             }
 
                 // Ensure visuals are spawned for this chunk on the client
-                ChunkLoadingManager loadingManager = FindObjectOfType<ChunkLoadingManager>();
-                if (loadingManager != null)
+                if (chunkLoadingManager != null)
                 {
-                    loadingManager.EnsureChunkLoaded(chunkPos);
+                    chunkLoadingManager.EnsureChunkLoaded(chunkPos);
+                    // Refresh visuals to apply tilled tiles and crops
+                    chunkLoadingManager.RefreshChunkVisuals(chunkPos);
                 }
         }
         
@@ -349,20 +379,22 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         object[] dataArray = (object[])data;
         int worldX = (int)dataArray[0];
         int worldY = (int)dataArray[1];
-        int cropTypeID = (int)dataArray[2];
+        ushort cropTypeID = Convert.ToUInt16(dataArray[2]);
         
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        WorldDataManager.Instance.PlantCropAtWorldPosition(worldPos, (ushort)cropTypeID);
+        WorldDataManager.Instance.PlantCropAtWorldPosition(worldPos, cropTypeID);
         
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received crop planted: Type {cropTypeID} at ({worldX}, {worldY})");
         
         // Refresh visuals for this chunk
-        ChunkLoadingManager loadingManager = FindObjectOfType<ChunkLoadingManager>();
-        if (loadingManager != null)
+        if (chunkLoadingManager != null)
         {
             Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
-            loadingManager.RefreshChunkVisuals(chunkPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+            {
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+            }
         }
     }
     
@@ -402,6 +434,16 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received crop removed at ({worldX}, {worldY})");
+        
+        // Refresh visuals for this chunk
+        if (chunkLoadingManager != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+            {
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+            }
+        }
     }
     
     /// <summary>
@@ -434,13 +476,133 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         object[] dataArray = (object[])data;
         int worldX = (int)dataArray[0];
         int worldY = (int)dataArray[1];
-        byte newStage = (byte)(int)dataArray[2];
+        byte newStage = Convert.ToByte(dataArray[2]);
         
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.UpdateCropStage(worldPos, newStage);
         
+        // Refresh chunk visuals to show the updated crop stage
+        if (chunkLoadingManager != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+            {
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+            }
+        }
+        
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received crop stage update: Stage {newStage} at ({worldX}, {worldY})");
+    }
+
+    /// <summary>
+    /// Broadcast a tile-tilled event to other players
+    /// </summary>
+    public void BroadcastTileTilled(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            TILE_TILLED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+    }
+
+    /// <summary>
+    /// Broadcast a tile-untill event to other players
+    /// </summary>
+    public void BroadcastTileUntilled(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            TILE_UNTILLED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+    }
+
+    private void HandleTileTilled(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        WorldDataManager.Instance.TillTileAtWorldPosition(worldPos);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received tile tilled at ({worldX}, {worldY})");
+
+        if (chunkLoadingManager != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+            {
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+            }
+        }
+    }
+
+    private void HandleTileUntilled(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        WorldDataManager.Instance.UntillTileAtWorldPosition(worldPos);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received tile untiled at ({worldX}, {worldY})");
+
+        if (chunkLoadingManager != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+            {
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Wait until WorldDataManager is initialized (or timeout) then send world data to the actor.
+    /// This lets the master proactively sync late-join players.
+    /// </summary>
+    private System.Collections.IEnumerator WaitAndSendWorldData(int targetActorNumber)
+    {
+        float elapsed = 0f;
+        float timeout = 5f;
+
+        while (!WorldDataManager.Instance.IsInitialized && elapsed < timeout)
+        {
+            elapsed += 0.25f;
+            yield return new WaitForSeconds(0.25f);
+        }
+
+        // Small buffer to allow the new player to finish local setup
+        yield return new WaitForSeconds(0.5f);
+
+        // Start sending (SendWorldDataToPlayer will respect isSyncing)
+        StartCoroutine(SendWorldDataToPlayer(targetActorNumber));
     }
     
     #region Serialization Helpers
@@ -568,9 +730,12 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
-        if (PhotonNetwork.IsMasterClient && showDebugLogs)
+        if (PhotonNetwork.IsMasterClient)
         {
-            Debug.Log($"[ChunkSync] Player {newPlayer.NickName} joined - they will request sync");
+            if (showDebugLogs)
+                Debug.Log($"[ChunkSync] Player {newPlayer.NickName} joined - proactively sending sync");
+
+            StartCoroutine(WaitAndSendWorldData(newPlayer.ActorNumber));
         }
     }
 }

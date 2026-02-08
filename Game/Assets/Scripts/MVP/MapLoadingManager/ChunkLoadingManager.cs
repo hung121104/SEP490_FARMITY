@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Tilemaps;
 using Photon.Pun;
 using System.Collections.Generic;
 using System.Collections;
@@ -28,6 +29,13 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     [Tooltip("Array of all plant data ScriptableObjects indexed by CropTypeID")]
     public PlantDataSO[] plantDatabase;
     
+    [Header("Tilled Tile Settings")]
+    [Tooltip("TileBase to use for tilled tiles")]
+    public TileBase tilledTile;
+    
+    [Tooltip("Name of the tilemap to place tilled tiles on")]
+    public string tilledTilemapName = "TillableTilemap";
+    
     [Header("Debug")]
     public bool showDebugLogs = true;
     public bool showLoadedChunksGizmos = true;
@@ -43,6 +51,12 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     
     // Visual crop objects: chunkPos -> list of GameObjects
     private Dictionary<Vector2Int, List<GameObject>> chunkVisuals = new Dictionary<Vector2Int, List<GameObject>>();
+    
+    // Track tilled tiles per chunk for cleanup: chunkPos -> list of tile positions
+    private Dictionary<Vector2Int, List<Vector3Int>> chunkTilledTiles = new Dictionary<Vector2Int, List<Vector3Int>>();
+    
+    // Cache tilemap references
+    private Dictionary<string, Tilemap> tilemapCache = new Dictionary<string, Tilemap>();
     
     private float nextUpdateTime;
     private Transform localPlayerTransform;
@@ -283,10 +297,24 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             }
             chunkVisuals.Remove(chunkPos);
         }
+        
+        // Clear tilled tiles from tilemap
+        if (chunkTilledTiles.ContainsKey(chunkPos))
+        {
+            Tilemap tilledTilemap = FindTilemap(tilledTilemapName);
+            if (tilledTilemap != null)
+            {
+                foreach (Vector3Int tilePos in chunkTilledTiles[chunkPos])
+                {
+                    tilledTilemap.SetTile(tilePos, null);
+                }
+            }
+            chunkTilledTiles.Remove(chunkPos);
+        }
     }
     
     /// <summary>
-    /// Spawn visual GameObjects for all crops in a chunk
+    /// Spawn visual GameObjects for all crops and tilled tiles in a chunk
     /// </summary>
     private void SpawnChunkVisuals(Vector2Int chunkPos, CropChunkData chunk)
     {
@@ -298,43 +326,77 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         }
         
         List<GameObject> visuals = new List<GameObject>();
+        List<Vector3Int> tilledTilePositions = new List<Vector3Int>();
         
-        foreach (var crop in chunk.GetAllCrops())
+        // Find the tilemap for tilled tiles
+        Tilemap tilledTilemap = FindTilemap(tilledTilemapName);
+        
+        // Get all tiles (both tilled and with crops)
+        foreach (var tile in chunk.GetAllTiles())
         {
-            // Get plant data for this crop type
-            PlantDataSO plantData = GetPlantData(crop.CropTypeID);
-            if (plantData == null)
+            // If tile is tilled, place it on the tilemap (regardless of whether it has a crop)
+            if (tile.IsTilled)
             {
-                if (showDebugLogs)
-                    Debug.LogWarning($"[ChunkLoading] No plant data found for crop type {crop.CropTypeID} at ({crop.WorldX}, {crop.WorldY})");
-                continue;
+                if (tilledTile == null)
+                {
+                    if (showDebugLogs)
+                        Debug.LogWarning("[ChunkLoading] TilledTile (TileBase) not assigned!");
+                    continue;
+                }
+                
+                if (tilledTilemap == null)
+                {
+                    if (showDebugLogs)
+                        Debug.LogWarning($"[ChunkLoading] Tilemap '{tilledTilemapName}' not found!");
+                    continue;
+                }
+                
+                // Set tilled tile on tilemap
+                Vector3 worldPos = new Vector3(tile.WorldX, tile.WorldY, 0);
+                Vector3Int tilePos = tilledTilemap.WorldToCell(worldPos);
+                tilledTilemap.SetTile(tilePos, tilledTile);
+                tilledTilePositions.Add(tilePos);
             }
             
-            // Validate stage is within bounds
-            if (crop.CropStage >= plantData.GrowthStages.Count)
+            // If tile has a crop, spawn the crop visual on top of the tilled tile
+            if (tile.HasCrop)
             {
-                if (showDebugLogs)
-                    Debug.LogWarning($"[ChunkLoading] Invalid crop stage {crop.CropStage} for {plantData.PlantName} at ({crop.WorldX}, {crop.WorldY})");
-                continue;
+                // Get plant data for this crop type
+                PlantDataSO plantData = GetPlantData(tile.CropTypeID);
+                if (plantData == null)
+                {
+                    if (showDebugLogs)
+                        Debug.LogWarning($"[ChunkLoading] No plant data found for crop type {tile.CropTypeID} at ({tile.WorldX}, {tile.WorldY})");
+                    continue;
+                }
+                
+                // Validate stage is within bounds
+                if (tile.CropStage >= plantData.GrowthStages.Count)
+                {
+                    if (showDebugLogs)
+                        Debug.LogWarning($"[ChunkLoading] Invalid crop stage {tile.CropStage} for {plantData.PlantName} at ({tile.WorldX}, {tile.WorldY})");
+                    continue;
+                }
+                
+                // Create crop visual GameObject
+                GameObject visual = new GameObject($"Crop_{plantData.PlantName}_{tile.WorldX}_{tile.WorldY}");
+                visual.transform.position = new Vector3(tile.WorldX, tile.WorldY+0.062f, 0);
+                
+                // Add sprite renderer with correct stage sprite
+                SpriteRenderer sr = visual.AddComponent<SpriteRenderer>();
+                sr.sprite = plantData.GrowthStages[tile.CropStage].stageSprite;
+                sr.sortingLayerName = "WalkInfront";
+                sr.sortingOrder = 1;
+                
+                visuals.Add(visual);
             }
-            
-            // Create crop visual GameObject
-            GameObject visual = new GameObject($"Crop_{plantData.PlantName}_{crop.WorldX}_{crop.WorldY}");
-            visual.transform.position = new Vector3(crop.WorldX, crop.WorldY+0.062f, 0);
-            
-            // Add sprite renderer with correct stage sprite
-            SpriteRenderer sr = visual.AddComponent<SpriteRenderer>();
-            sr.sprite = plantData.GrowthStages[crop.CropStage].stageSprite;
-            sr.sortingLayerName = "WalkInfront";
-            sr.sortingOrder = 1;
-            
-            visuals.Add(visual);
         }
         
         chunkVisuals[chunkPos] = visuals;
+        chunkTilledTiles[chunkPos] = tilledTilePositions;
         
-        if (showDebugLogs && visuals.Count > 0)
-            Debug.Log($"[ChunkLoading] Spawned {visuals.Count} crop visuals for chunk ({chunkPos.x}, {chunkPos.y})");
+        if (showDebugLogs && (visuals.Count > 0 || tilledTilePositions.Count > 0))
+            Debug.Log($"[ChunkLoading] Spawned {visuals.Count} crop visuals + {tilledTilePositions.Count} tilled tiles for chunk ({chunkPos.x}, {chunkPos.y})");
     }
     
     /// <summary>
@@ -347,6 +409,34 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             return null;
         }
         return plantDatabase[cropTypeID];
+    }
+    
+    /// <summary>
+    /// Find a tilemap by name, with caching
+    /// </summary>
+    private Tilemap FindTilemap(string tilemapName)
+    {
+        // Check cache first
+        if (tilemapCache.TryGetValue(tilemapName, out Tilemap cached) && cached != null)
+        {
+            return cached;
+        }
+        
+        // Find all tilemaps
+        Tilemap[] tilemaps = FindObjectsByType<Tilemap>(FindObjectsSortMode.None);
+        foreach (Tilemap tilemap in tilemaps)
+        {
+            if (tilemap.gameObject.name == tilemapName)
+            {
+                tilemapCache[tilemapName] = tilemap;
+                return tilemap;
+            }
+        }
+        
+        if (showDebugLogs)
+            Debug.LogWarning($"[ChunkLoading] Tilemap '{tilemapName}' not found in scene!");
+        
+        return null;
     }
     
     /// <summary>

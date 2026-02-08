@@ -12,12 +12,14 @@ public class CropPlowingService : ICropPlowingService
 {
     private TileBase tilledTile;
     private readonly bool showDebugLogs;
+    private readonly ChunkDataSyncManager syncManager;
     
     // Store tile data to track which tiles have been modified (for quick checks)
     private HashSet<Vector3Int> tilledPositions = new HashSet<Vector3Int>();
     
-    public CropPlowingService(bool showDebugLogs = false)
+    public CropPlowingService(ChunkDataSyncManager syncManager, bool showDebugLogs = false)
     {
+        this.syncManager = syncManager;
         this.showDebugLogs = showDebugLogs;
     }
     
@@ -195,6 +197,14 @@ public class CropPlowingService : ICropPlowingService
             if (showDebugLogs)
             {
                 Debug.Log($"[CropPlowingService] ✓ Successfully plowed tile at {correctTilePosition} on tilemap {tilledTilemap.gameObject.name}");
+            }
+
+            // Broadcast tilled tile to other players
+            if (PhotonNetwork.IsConnected && syncManager != null)
+            {
+                int worldX = Mathf.FloorToInt(worldPosition.x);
+                int worldY = Mathf.FloorToInt(worldPosition.y);
+                syncManager.BroadcastTileTilled(worldX, worldY);
             }
             
             return true;

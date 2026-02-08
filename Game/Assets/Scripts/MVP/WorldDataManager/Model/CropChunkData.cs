@@ -147,6 +147,19 @@ public class CropChunkData
         }
         return crops;
     }
+
+    /// <summary>
+    /// Get all tiles (tilled and/or with crops) stored in this chunk
+    /// </summary>
+    public List<TileData> GetAllTiles()
+    {
+        List<TileData> list = new List<TileData>();
+        foreach (var tile in tiles.Values)
+        {
+            list.Add(tile);
+        }
+        return list;
+    }
     
     /// <summary>
     /// Mark a tile as tilled at ABSOLUTE world position
