@@ -76,7 +76,7 @@ export class AccountService {
     }
     const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin };
     const token = this.jwtService.sign(payload);
-    await this.sessionService.createSession(token, account._id.toString(), 1);
+    await this.sessionService.createSession(token, account._id.toString(), 60);
     console.log(`[auth-service] Admin logged in: ${account.username}`);
     return {
       userId: account._id.toString(),

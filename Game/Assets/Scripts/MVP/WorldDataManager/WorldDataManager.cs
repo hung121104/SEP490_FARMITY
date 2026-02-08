@@ -412,7 +412,7 @@ public class WorldDataManager : MonoBehaviour
     /// <summary>
     /// Get crop at world position
     /// </summary>
-    public bool TryGetCropAtWorldPosition(Vector3 worldPos, out CropChunkData.CompactCrop crop)
+    public bool TryGetCropAtWorldPosition(Vector3 worldPos, out CropChunkData.TileData crop)
     {
         crop = default;
         
@@ -448,6 +448,84 @@ public class WorldDataManager : MonoBehaviour
     }
     
     /// <summary>
+    /// Mark a tile as tilled at ABSOLUTE WORLD POSITION (X, Y)
+    /// </summary>
+    public bool TillTileAtWorldPosition(Vector3 worldPos)
+    {
+        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
+        
+        // Get section ID
+        int sectionId = GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1)
+        {
+            if (showDebugLogs)
+            {
+                Debug.LogWarning($"Cannot till at world pos ({worldPos.x:F1}, {worldPos.y:F1}): " +
+                           $"Chunk ({chunkPos.x}, {chunkPos.y}) is not in any active section.");
+            }
+            return false;
+        }
+        
+        CropChunkData chunk = GetChunk(sectionId, chunkPos);
+        
+        if (chunk == null)
+        {
+            Debug.LogWarning($"Cannot till: chunk ({chunkPos.x}, {chunkPos.y}) not found in section {sectionId}.");
+            return false;
+        }
+        
+        // Store tilled tile at absolute world position
+        int worldX = Mathf.FloorToInt(worldPos.x);
+        int worldY = Mathf.FloorToInt(worldPos.y);
+        
+        bool success = chunk.TillTile(worldX, worldY);
+        
+        if (success && showDebugLogs)
+        {
+            Debug.Log($"✓ Tilled tile at world pos ({worldX}, {worldY}) " +
+                 $"[Chunk: ({chunkPos.x}, {chunkPos.y}), Section: {sectionConfigs[sectionId].SectionName}]");
+        }
+        
+        return success;
+    }
+    
+    /// <summary>
+    /// Remove tilled status from a tile at world position
+    /// </summary>
+    public bool UntillTileAtWorldPosition(Vector3 worldPos)
+    {
+        int sectionId = GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        
+        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
+        CropChunkData chunk = GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+        
+        int worldX = Mathf.FloorToInt(worldPos.x);
+        int worldY = Mathf.FloorToInt(worldPos.y);
+        
+        return chunk.UntillTile(worldX, worldY);
+    }
+    
+    /// <summary>
+    /// Check if tile is tilled at world position
+    /// </summary>
+    public bool IsTilledAtWorldPosition(Vector3 worldPos)
+    {
+        int sectionId = GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        
+        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
+        CropChunkData chunk = GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+        
+        int worldX = Mathf.FloorToInt(worldPos.x);
+        int worldY = Mathf.FloorToInt(worldPos.y);
+        
+        return chunk.IsTilled(worldX, worldY);
+    }
+    
+    /// <summary>
     /// Get all chunks in a section
     /// </summary>
     public Dictionary<Vector2Int, CropChunkData> GetSection(int sectionId)
@@ -480,7 +558,7 @@ public class WorldDataManager : MonoBehaviour
         {
             foreach (var chunk in section.Values)
             {
-                totalCrops += chunk.plantedCrops.Count;
+                totalCrops += chunk.GetCropCount();
             }
         }
         
@@ -500,6 +578,7 @@ public class WorldDataManager : MonoBehaviour
         stats.TotalChunks = 0;
         stats.LoadedChunks = 0;
         stats.TotalCrops = 0;
+        stats.TotalTilledTiles = 0;
         
         foreach (var section in sections.Values)
         {
@@ -514,6 +593,9 @@ public class WorldDataManager : MonoBehaviour
                 
                 int cropCount = chunk.GetCropCount();
                 stats.TotalCrops += cropCount;
+                
+                int tilledCount = chunk.GetTilledCount();
+                stats.TotalTilledTiles += tilledCount;
                 
                 if (cropCount > 0)
                 {
@@ -537,6 +619,7 @@ public class WorldDataManager : MonoBehaviour
                   $"Loaded Chunks: {stats.LoadedChunks}\n" +
                   $"Chunks with Crops: {stats.ChunksWithCrops}\n" +
                   $"Total Crops: {stats.TotalCrops}\n" +
+                  $"Total Tilled Tiles: {stats.TotalTilledTiles}\n" +
                   $"Memory Usage: {stats.MemoryUsageMB:F2} MB");
     }
     
@@ -633,6 +716,7 @@ public struct WorldDataStats
     public int LoadedChunks;
     public int ChunksWithCrops;
     public int TotalCrops;
+    public int TotalTilledTiles;
     public float MemoryUsageMB;
 }
 
