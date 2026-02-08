@@ -9,6 +9,8 @@ import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 import { CreateNewsDto } from './dto/create-news.dto';
 import { UpdateNewsDto } from './dto/update-news.dto';
+import { CreateMediaDto } from './dto/create-media.dto';
+import { UpdateMediaDto } from './dto/update-media.dto';
 import { UploadSignatureDto } from './dto/upload-signature.dto';
 
 @Controller()
@@ -18,6 +20,7 @@ export class GatewayController {
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
     @Inject('BLOG_SERVICE') private blogClient: ClientProxy,
     @Inject('NEWS_SERVICE') private newsClient: ClientProxy,
+    @Inject('MEDIA_SERVICE') private mediaClient: ClientProxy,
   ) {}
 
   @Post('auth/register')
@@ -178,6 +181,57 @@ export class GatewayController {
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
     return this.newsClient.send('delete-news', id);
+  }
+
+  @Post('media/upload-signature')
+  async getMediaUploadSignature(
+    @Body() dto: UploadSignatureDto,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.mediaClient.send('media-upload-signature', dto);
+  }
+
+  @Post('media/create')
+  async createMedia(
+    @Body() createMediaDto: CreateMediaDto,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.mediaClient.send('create-media', createMediaDto);
+  }
+
+  @Get('media/all')
+  async getAllMedia() {
+    return this.mediaClient.send('get-all-media', {});
+  }
+
+  @Get('media/:id')
+  async getMediaById(@Param('id') id: string) {
+    return this.mediaClient.send('get-media-by-id', id);
+  }
+
+  @Post('media/update/:id')
+  async updateMedia(
+    @Param('id') id: string,
+    @Body() updateMediaDto: UpdateMediaDto,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.mediaClient.send('update-media', { id, updateMediaDto });
+  }
+
+  @Delete('media/delete/:id')
+  async deleteMedia(
+    @Param('id') id: string,
+    @Headers('authorization') authHeader: string,
+    @Headers('cookie') cookieHeader: string,
+  ) {
+    await this.verifyAdminToken(authHeader, cookieHeader);
+    return this.mediaClient.send('delete-media', id);
   }
 
   private async verifyAdminToken(authHeader: string, cookieHeader: string): Promise<any> {

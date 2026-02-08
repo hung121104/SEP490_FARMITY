@@ -9,7 +9,7 @@ export class SessionService {
 		@InjectModel(Session.name) private sessionModel: Model<SessionDocument>,
 	) {}
 
-	// Creates a session record used to enforce admin inactivity auto-logout
+	
 	async createSession(
 		token: string,
 		userId: string,
@@ -26,7 +26,7 @@ export class SessionService {
 		return saved;
 	}
 
-	// Refreshes last activity time for active admin sessions
+	
 	async updateActivity(token: string): Promise<SessionDocument | null> {
 		const updated = await this.sessionModel
 			.findOneAndUpdate(
@@ -41,12 +41,12 @@ export class SessionService {
 		return updated;
 	}
 
-	// Retrieves an active admin session by token
+	
 	async getSession(token: string): Promise<SessionDocument | null> {
 		return this.sessionModel.findOne({ token, isRevoked: false }).exec();
 	}
 
-	// Marks admin session revoked to prevent further use
+	
 	async revokeSession(token: string): Promise<boolean> {
 		const result = await this.sessionModel
 			.findOneAndUpdate({ token }, { isRevoked: true }, { new: true })
@@ -54,7 +54,7 @@ export class SessionService {
 		return !!result;
 	}
 
-	// Enforces inactivity timeout for admin sessions (auto-logout)
+	
 	async isSessionActive(token: string): Promise<boolean> {
 		const session = await this.getSession(token);
 		if (!session) {

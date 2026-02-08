@@ -82,8 +82,24 @@
       "problemMatcher": []
     },
     {
+      "label": "Start Media Service",
+      "type": "shell",
+      "command": "cd microservices/media-service; pnpm start:dev",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
       "label": "Start All Services",
-      "dependsOn": ["Start Auth Service", "Start Player Data Service", "Start Blog Service", "Start News Service", "Start Gateway Service"],
+      "dependsOn": ["Start Auth Service", "Start Player Data Service", "Start Blog Service", "Start News Service", "Start Gateway Service", "Start Media Service"],
       "group": "build",
       "dependsOrder": "parallel"
     }

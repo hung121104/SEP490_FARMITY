@@ -62,8 +62,7 @@ export class AccountService {
     };
   }
 
-  // Admin-only login for web content management
-  // Creates a short-lived session subject to inactivity auto-logout
+  
   async loginAdmin(loginDto: LoginDto): Promise<{ userId: string, username: string, access_token: string }> {
     const { username, password } = loginDto;
     const account = await this.accountModel.findOne({ username }).exec();
@@ -85,7 +84,7 @@ export class AccountService {
     };
   }
 
-  // Admin account provisioning (restricted by shared secret)
+  
   async createAdmin(createAdminDto: CreateAdminDto): Promise<Account> {
     if (createAdminDto.adminSecret !== process.env.ADMIN_CREATION_SECRET) {
       throw new UnauthorizedException('Invalid admin secret');
@@ -109,7 +108,7 @@ export class AccountService {
     }
   }
 
-  // Active verification: validates token and refreshes inactivity timer
+  
   async verifyToken(token: string) {
     try {
       const isActive = await this.sessionService.isSessionActive(token);
@@ -126,7 +125,7 @@ export class AccountService {
     }
   }
 
-  // Passive verification: validates token WITHOUT refreshing inactivity timer
+  
   async verifyTokenPassive(token: string) {
     try {
       const isActive = await this.sessionService.isSessionActive(token);
@@ -139,7 +138,7 @@ export class AccountService {
     }
   }
 
-  // Admin logout: revokes session to prevent token reuse
+  
   async logout(token: string) {
     const revoked = await this.sessionService.revokeSession(token);
     if (!revoked) {
