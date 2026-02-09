@@ -4,7 +4,6 @@ using UnityEngine;
 public class HotbarTestSetup : MonoBehaviour
 {
     [Header("Drag test items here")]
-    [SerializeField] private ItemDataSO testTool;
     [SerializeField] private ItemDataSO[] additionalTestItems; // For more test items
 
     [Header("Test Settings")]
@@ -38,13 +37,6 @@ public class HotbarTestSetup : MonoBehaviour
             return;
         }
 
-        // Add test tool to first slot
-        if (testTool != null)
-        {
-            bool success = presenter.AddItem(0, testTool, 1);
-            Debug.Log($"✅ Added {testTool.itemName} to slot 1: {(success ? "Success" : "Failed")}");
-        }
-
         // Add additional test items if available
         if (additionalTestItems != null)
         {
@@ -52,8 +44,8 @@ public class HotbarTestSetup : MonoBehaviour
             {
                 if (additionalTestItems[i] != null)
                 {
-                    bool success = presenter.AddItem(i + 1, additionalTestItems[i], 1);
-                    Debug.Log($"✅ Added {additionalTestItems[i].itemName} to slot {i + 2}: {(success ? "Success" : "Failed")}");
+                    bool success = presenter.AddItem(i, additionalTestItems[i], 1);
+                    Debug.Log($"✅ Added {additionalTestItems[i].itemName} to slot {i + 1}: {(success ? "Success" : "Failed")}");
                 }
             }
         }
@@ -171,32 +163,6 @@ public class HotbarTestSetup : MonoBehaviour
             Debug.LogError("❌ MVP System not found!");
         }
     }
-
-    // Optional: Auto-populate with random test items for easy testing
-    [ContextMenu("Auto Populate Random Items")]
-    public void AutoPopulateRandomItems()
-    {
-        if (hotbarBootstrap == null)
-            hotbarBootstrap = FindObjectOfType<HotbarBootstrap>();
-
-        if (hotbarBootstrap == null) return;
-
-        var presenter = hotbarBootstrap.GetPresenter();
-        if (presenter == null) return;
-
-        // Create some mock test items for demonstration
-        var mockItems = new ItemDataSO[3];
-
-        // You would assign real ItemDataSO assets here
-        // For now, just use the testTool if available
-        if (testTool != null)
-        {
-            for (int i = 0; i < 3 && i < hotbarBootstrap.GetModel().HotbarSize; i++)
-            {
-                presenter.AddItem(i, testTool, UnityEngine.Random.Range(1, 5));
-            }
-            Debug.Log("🎲 Auto-populated hotbar with random quantities");
-        }
-    }
+  
 }
 

@@ -10,8 +10,8 @@ public class HotbarSlot
     public bool CanAddItem(ItemDataSO newItem)
     {
         if (IsEmpty) return true;
-        if (!newItem.isStackable) return false;
-        return item.itemID == newItem.itemID && quantity < item.maxStack;
+        if (!newItem.IsStackable) return false;
+        return item.itemID == newItem.itemID && quantity < item.MaxStack;
     }
 
 
@@ -21,12 +21,12 @@ public class HotbarSlot
         if (IsEmpty)
         {
             item = newItem;
-            quantity = Mathf.Min(amount, newItem.maxStack);
+            quantity = Mathf.Min(amount, newItem.MaxStack);
             return amount - quantity;   
         }
-        else if (item.itemID == newItem.itemID && newItem.isStackable)
+        else if (item.itemID == newItem.itemID && newItem.IsStackable)
         {
-            int addable = Mathf.Min(amount, item.maxStack - quantity);
+            int addable = Mathf.Min(amount, item.MaxStack - quantity);
             quantity += addable;
             return amount - addable;
         }
