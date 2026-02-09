@@ -55,7 +55,7 @@ public class HotbarSlotUI : MonoBehaviour
             // Display quantity for stackable items
             if (quantityText != null)
             {
-                if (slot.item.isStackable && slot.quantity > 1)
+                if (slot.item.IsStackable && slot.quantity > 1)
                 {
                     quantityText.enabled = true;
                     quantityText.text = slot.quantity.ToString();

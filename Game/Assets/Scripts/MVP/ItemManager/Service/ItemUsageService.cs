@@ -24,13 +24,13 @@ public class ItemUsageService : IItemUsageService
     {
         if (item == null) return false;
 
-        return item.type switch
+        return item.GetItemType() switch
         {
-            ItemDataSO.ItemType.Tool => toolSystem != null,
-            ItemDataSO.ItemType.Seed => farmingSystem != null,
-            ItemDataSO.ItemType.Consumable => consumableSystem != null,
-            ItemDataSO.ItemType.Weapon => weaponSystem != null,
-            ItemDataSO.ItemType.Material => false,
+            ItemType.Tool => toolSystem != null,
+            ItemType.Seed => farmingSystem != null,
+            ItemType.Consumable => consumableSystem != null,
+            ItemType.Weapon => weaponSystem != null,
+            ItemType.Material => false,
             _ => false
         };
     }
@@ -39,13 +39,13 @@ public class ItemUsageService : IItemUsageService
     {
         if (item == null) return "No item";
 
-        return item.type switch
+        return item.GetItemType() switch
         {
-            ItemDataSO.ItemType.Tool => "Use tool at target location",
-            ItemDataSO.ItemType.Seed => "Plant seed at target location",
-            ItemDataSO.ItemType.Consumable => "Consume item for effect",
-            ItemDataSO.ItemType.Weapon => "Attack with weapon",
-            ItemDataSO.ItemType.Material => "Material cannot be used directly",
+            ItemType.Tool => "Use tool at target location",
+            ItemType.Seed => "Plant seed at target location",
+            ItemType.Consumable => "Consume item for effect",
+            ItemType.Weapon => "Attack with weapon",
+            ItemType.Material => "Material cannot be used directly",
             _ => "Unknown usage"
         };
     }
@@ -57,16 +57,16 @@ public class ItemUsageService : IItemUsageService
             return new ItemUsageResult(false, false, "No item to use");
         }
 
-        Debug.Log($"📦 [ItemUsageService] Processing {item.itemName} (Type: {item.type}) at {targetPosition}");
+        Debug.Log($"📦 [ItemUsageService] Processing {item.itemName} (Type: {item.GetItemType()}) at {targetPosition}");
 
-        return item.type switch
+        return item.GetItemType() switch
         {
-            ItemDataSO.ItemType.Tool => HandleToolUsage(item, targetPosition),
-            ItemDataSO.ItemType.Seed => HandleSeedUsage(item, targetPosition),
-            ItemDataSO.ItemType.Consumable => HandleConsumableUsage(item, targetPosition),
-            ItemDataSO.ItemType.Weapon => HandleWeaponUsage(item, targetPosition),
-            ItemDataSO.ItemType.Material => HandleMaterialUsage(item),
-            _ => new ItemUsageResult(false, false, $"Unknown item type: {item.type}")
+            ItemType.Tool => HandleToolUsage(item, targetPosition),
+            ItemType.Seed => HandleSeedUsage(item, targetPosition),
+            ItemType.Consumable => HandleConsumableUsage(item, targetPosition),
+            ItemType.Weapon => HandleWeaponUsage(item, targetPosition),
+            ItemType.Material => HandleMaterialUsage(item),
+            _ => new ItemUsageResult(false, false, $"Unknown item type: {item.GetItemType()}")
         };
     }
 

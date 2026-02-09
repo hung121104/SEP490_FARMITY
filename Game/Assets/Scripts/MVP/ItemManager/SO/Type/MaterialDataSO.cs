@@ -1,0 +1,12 @@
+using UnityEngine;
+
+[CreateAssetMenu(fileName = "New Material", menuName = "Scriptable Objects/Items/Material")]
+public class MaterialDataSO : ItemDataSO
+{
+    [Header("Cooking/Crafting")]
+    public bool canBeCrafted = false;
+    public Recipe craftingRecipe;
+
+    public override ItemType GetItemType() => ItemType.Material;
+    public override ItemCategory GetItemCategory() => ItemCategory.Crafting;
+}

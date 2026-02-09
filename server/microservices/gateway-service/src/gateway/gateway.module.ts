@@ -25,6 +25,11 @@ import { GatewayController } from './gateway.controller';
         transport: Transport.TCP,
         options: { host: 'localhost', port: 3004 },
       },
+      {
+        name: 'MEDIA_SERVICE',
+        transport: Transport.TCP,
+        options: { host: 'localhost', port: 3005 },
+      },
     ]),
   ],
   controllers: [GatewayController],

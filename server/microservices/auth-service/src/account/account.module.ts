@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule } from '@nestjs/config';
 import { Account, AccountSchema } from './account.schema';
 import { Session, SessionSchema } from './session.schema';
 import { AccountService } from './account.service';
@@ -9,6 +10,7 @@ import { SessionService } from './session.service';
 
 @Module({
   imports: [
+    ConfigModule,
     MongooseModule.forFeature([
       { name: Account.name, schema: AccountSchema },
       { name: Session.name, schema: SessionSchema },

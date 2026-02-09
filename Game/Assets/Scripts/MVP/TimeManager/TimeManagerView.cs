@@ -3,25 +3,6 @@ using Photon.Pun;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
 
-public enum Season
-{
-    Spring,
-    Summer,
-    Autumn,
-    Winter
-}
-
-public enum DayOfWeek
-{
-    Monday,
-    Tuesday,
-    Wednesday,
-    Thursday,
-    Friday,
-    Saturday,
-    Sunday
-}
-
 public class TimeManagerView : MonoBehaviourPunCallbacks
 {
     // Photon Custom Properties keys
@@ -309,5 +290,24 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
         }
         
         timeSpeed = speed;
+    }
+
+    public enum Season
+    {
+        Spring,
+        Summer,
+        Autumn,
+        Winter
+    }
+
+    public enum DayOfWeek
+    {
+        Monday,
+        Tuesday,
+        Wednesday,
+        Thursday,
+        Friday,
+        Saturday,
+        Sunday
     }
 }

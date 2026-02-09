@@ -30,6 +30,18 @@ export class Account {
 
   @Prop({ default: false })
   isAdmin: boolean;
+
+  @Prop()
+  resetOtpHash?: string;
+
+  @Prop()
+  resetOtpExpiresAt?: Date;
+
+  @Prop({ default: false })
+  resetOtpUsed?: boolean;
+
+  @Prop()
+  resetOtpRequestedAt?: Date;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);

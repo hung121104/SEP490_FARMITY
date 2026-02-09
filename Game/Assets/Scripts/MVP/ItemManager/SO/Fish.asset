@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a44bc6dcde13cbd4abe294115c5697b2, type: 3}
+  m_Name: Fish
+  m_EditorClassIdentifier: 
+  itemName: Fish
+  itemID: Fish_Fish
+  icon: {fileID: -8071396905301975025, guid: 46ac5ac6565615847967e584d235a9eb, type: 3}
+  description: 
+  maxStack: 99
+  isStackable: 1
+  quality: 0
+  basePrice: 1
+  buyPrice: 0
+  canBeSold: 1
+  canBeBought: 0
+  npcPreferences: []
+  isQuestItem: 0
+  isArtifact: 0
+  isRareItem: 0
+  difficulty: 1
+  fishingSeasons: 
+  isLegendary: 0
+  canBeCooked: 1
+  cookingRecipe:
+    ingredients: []
+    craftTime: 1
+    requiresCratingStation: 0
