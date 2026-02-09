@@ -1328,6 +1328,7 @@ MonoBehaviour:
   gridView: {fileID: 364521893}
   monthParent: {fileID: 844480052}
   monthCellPrefab: {fileID: 79563291071716711, guid: a021c25e12e41044abbe56785883e21f, type: 3}
+  timeManager: {fileID: 76351687}
 --- !u!4 &1148862555
 Transform:
   m_ObjectHideFlags: 0
