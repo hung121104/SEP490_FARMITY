@@ -4,6 +4,8 @@ import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
+import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
+import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
 
 @Controller()
 export class AccountController {
@@ -52,5 +54,17 @@ export class AccountController {
   @MessagePattern('logout')
   async logoutHandler(@Body() token: string) {
     return this.accountService.logout(token);
+  }
+
+  // Admin password reset request
+  @MessagePattern('admin-reset-request')
+  async adminResetRequest(@Body() dto: RequestAdminResetDto) {
+    return this.accountService.requestAdminPasswordReset(dto.email);
+  }
+
+  // Admin password reset confirmation
+  @MessagePattern('admin-reset-confirm')
+  async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
+    return this.accountService.confirmAdminPasswordReset(dto.email, dto.otp, dto.newPassword);
   }
 }
