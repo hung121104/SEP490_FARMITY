@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 [CreateAssetMenu(fileName = "PlantDataSO", menuName = "Scriptable Objects/PlantDataSO")]
 public class PlantDataSO : ScriptableObject
@@ -8,16 +9,12 @@ public class PlantDataSO : ScriptableObject
     [Tooltip("The name of the plant (e.g., 'Wheat', 'Tomato').")]
     public string PlantName;
 
-    [Header("Plant Prefab")]
-    [Tooltip("The prefab to instantiate for the plant.")]
-    public GameObject plantPrefab;
-
     [Header("Growth Stages")]
     public List<GrowthStage> GrowthStages = new List<GrowthStage>();
 
     [Header("Harvest Info")]
     [Tooltip("The item prefab to spawn when the plant is harvested.")]
-    public GameObject HarvestedItemPrefab;
+    public String HarvestedItemID;
 
 }
 
@@ -32,5 +29,5 @@ public struct GrowthStage
     public Sprite stageSprite;
 
     [Tooltip("Day of each stage.")]
-    public int Days;
+    public int age;
 }
