@@ -9,15 +9,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 378e4e5825bd01841bdc4e6dce35d129, type: 3}
-  m_Name: Hoe
+  m_Script: {fileID: 11500000, guid: aa9962d95d3fef44484eac5e549de45e, type: 3}
+  m_Name: Corn
   m_EditorClassIdentifier: 
-  itemName: Hoe
-  itemID: Tool_Hoe
-  icon: {fileID: 9216205297631055959, guid: 7621cbce9a49a844a922c7b2adf4cc34, type: 3}
+  itemName: Corn
+  itemID: Crop_Corn
+  icon: {fileID: 980155311395259703, guid: 7621cbce9a49a844a922c7b2adf4cc34, type: 3}
   description: 
-  maxStack: 1
-  isStackable: 0
+  maxStack: 99
+  isStackable: 1
   quality: 0
   basePrice: 1
   buyPrice: 0
@@ -27,6 +27,13 @@ MonoBehaviour:
   isQuestItem: 0
   isArtifact: 0
   isRareItem: 0
-  toolLevel: 1
-  toolPower: 1
-  toolMaterial: 1
+  canBeCrafted: 0
+  canBeCooked: 0
+  craftingRecipe:
+    ingredients: []
+    craftTime: 1
+    requiresCratingStation: 0
+  cookingRecipe:
+    ingredients: []
+    craftTime: 1
+    requiresCratingStation: 0

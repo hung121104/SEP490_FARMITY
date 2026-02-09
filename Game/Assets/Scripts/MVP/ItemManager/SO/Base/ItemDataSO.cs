@@ -16,7 +16,7 @@ public abstract class ItemDataSO : ScriptableObject
     public virtual int MaxStack => maxStack;
     public virtual bool IsStackable => isStackable;
 
-    [Header("Item Type & Category")]
+    [Header("Quality")]
     public Quality quality = Quality.Normal;
 
     [Header("Economic Value")]
