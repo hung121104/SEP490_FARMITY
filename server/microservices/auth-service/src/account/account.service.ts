@@ -11,6 +11,7 @@ import { SessionService } from './session.service';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
+import { ResetOtpTemplate } from './templates/reset-otp.template';
 
 @Injectable()
 export class AccountService {
@@ -228,25 +229,9 @@ export class AccountService {
       auth: { user, pass },
     });
 
-    const subject = 'Admin Password Reset OTP';
-    const text = `Hello ${username},
-
-Your OTP for admin password reset is: ${otp}
-
-This OTP will expire in 2 minutes and can only be used once.
-
-If you did not request this, please ignore this email.`;
-
-    const html = `
-      <div style="font-family: Arial, sans-serif; line-height:1.5;">
-        <h2>Admin Password Reset</h2>
-        <p>Hello <strong>${username}</strong>,</p>
-        <p>Your one-time password (OTP) is:</p>
-        <div style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${otp}</div>
-        <p>This OTP will expire in <strong>2 minutes</strong> and can be used only once.</p>
-        <p>If you did not request this, please ignore this email.</p>
-      </div>
-    `;
+    const subject = ResetOtpTemplate.getSubject();
+    const text = ResetOtpTemplate.getText(username, otp);
+    const html = ResetOtpTemplate.getHtml(username, otp);
 
     await transporter.sendMail({ from, to: email, subject, text, html });
   }
