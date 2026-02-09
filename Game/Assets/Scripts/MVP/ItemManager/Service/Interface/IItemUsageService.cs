@@ -25,13 +25,3 @@ public class ItemUsageResult
         Message = message;
     }
 }
-
-public enum ItemUsageType
-{
-    Tool,
-    Seed,
-    Consumable,
-    Weapon,
-    Material,
-    Unknown
-}

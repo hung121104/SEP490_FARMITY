@@ -10,31 +10,33 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 15003, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: New Windows Profile
+  m_Name: Hung Windows Profile
   m_EditorClassIdentifier: 
   m_AssetVersion: 1
   m_BuildTarget: 19
   m_Subtarget: 2
   m_PlatformId: 4e3c793746204150860bf175a9a41a05
   m_PlatformBuildProfile:
-    rid: 7872060821547253760
+    rid: 8414043636993359952
   m_OverrideGlobalSceneList: 1
   m_Scenes:
-  - m_enabled: 0
-    m_path: Assets/Scenes/Test Scenes Bao/AuthScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/LoadingScene.unity
+    m_path: Assets/Scenes/Test Scenes Hung/LoadingScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/LobbyScene.unity
+    m_path: Assets/Scenes/Test Scenes Hung/LobbyScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/GameCoreTestScene.unity
+    m_path: Assets/Scenes/Test Scenes Hung/MapLoaderTestScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/AuthScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/GameCoreTestScene.unity
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []
   references:
     version: 2
     RefIds:
-    - rid: 7872060821547253760
+    - rid: 8414043636993359952
       type: {class: WindowsPlatformSettings, ns: UnityEditor.WindowsStandalone, asm: UnityEditor.WindowsStandalone.Extensions}
       data:
         m_Development: 0

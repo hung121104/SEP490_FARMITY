@@ -24,13 +24,13 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
     private const int HoursPerDay = 24;
     private const int DaysPerWeek = 7;
     private const int DaysPerMonth = 28;
-    private const int MonthsPerYear = 4; // 4 seasons, each is a month
-    private const int DaysPerYear = 112; // 4 * 28
+    private const int MonthsPerYear = 2; // 2 seasons: Sunny and Rainy
+    private const int DaysPerYear = 56; // 2 * 28
 
     // Current time
     public int year = 1;
-    public Season season = Season.Spring;
-    public int month = 1; // 1-4
+    public Season season = Season.Sunny;
+    public int month = 1; // 1-2
     public int week = 1; // 1-4 per month
     public int day = 1; // 1-7 per week, or 1-28 per month
     public int hour = 0; // 0-23
@@ -126,14 +126,17 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
             {
                 week = 1;
                 month++;
-                season = (Season)(month - 1);
+                
+                // Toggle between Sunny (month 1) and Rainy (month 2)
+                season = (month == 1) ? Season.Sunny : Season.Rainy;
+                
                 OnMonthChanged?.Invoke();
                 OnSeasonChanged?.Invoke();
 
                 if (month > MonthsPerYear)
                 {
                     month = 1;
-                    season = Season.Spring;
+                    season = Season.Sunny;
                     year++;
                     OnYearChanged?.Invoke();
                 }
@@ -290,24 +293,5 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
         }
         
         timeSpeed = speed;
-    }
-
-    public enum Season
-    {
-        Spring,
-        Summer,
-        Autumn,
-        Winter
-    }
-
-    public enum DayOfWeek
-    {
-        Monday,
-        Tuesday,
-        Wednesday,
-        Thursday,
-        Friday,
-        Saturday,
-        Sunday
     }
 }
