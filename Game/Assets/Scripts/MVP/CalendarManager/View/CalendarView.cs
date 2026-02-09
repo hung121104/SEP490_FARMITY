@@ -18,7 +18,7 @@ public class CalendarView : MonoBehaviour
     public void ShowCalendar()
     {
         calendarPanel.SetActive(true);
-        dateText.text = presenter.GetCalendarText();
+        //dateText.text = presenter.GetCalendarText();
 
         int currentDay = presenter.GetDay();
         gridView.BuildCalendar(currentDay);

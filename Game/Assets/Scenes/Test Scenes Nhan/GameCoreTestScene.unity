@@ -194,6 +194,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5785e1f8640170a4aada6cdf4f5dd634, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  syncInterval: 5
+  showDebugLogs: 0
   year: 1
   season: 0
   month: 1
@@ -1533,8 +1535,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 19.7, y: 172.2}
-  m_SizeDelta: {x: 204.0143, y: 72.898}
+  m_AnchoredPosition: {x: -6.0438, y: 142}
+  m_SizeDelta: {x: 477.5867, y: 72.898}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1694913723
 MonoBehaviour:
@@ -1621,7 +1623,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: -135.4449, y: 5.352539, z: -81.125626, w: 0}
+  m_margin: {x: 0.72010803, y: 2.4137268, z: -2.7572784, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -1699,9 +1701,12 @@ MonoBehaviour:
   updateInterval: 1
   unloadDelay: 5
   visualizeCrops: 1
-  cropVisualPrefab: {fileID: 3583189438637702726, guid: 2b49be4a17352e3479857ab4a3dbf71a, type: 3}
+  plantDatabase: []
+  tilledTile: {fileID: 0}
+  tilledTilemapName: TillableTilemap
   showDebugLogs: 1
   showLoadedChunksGizmos: 1
+  enableDailyReload: 1
 --- !u!4 &2021699365
 Transform:
   m_ObjectHideFlags: 0
