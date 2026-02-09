@@ -3,7 +3,7 @@ using Photon.Pun;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
 
-public class TimeManagerView : MonoBehaviour
+public class TimeManagerView : MonoBehaviourPunCallbacks
 {
     // Photon Custom Properties keys
     private const string PROP_YEAR = "WorldYear";
