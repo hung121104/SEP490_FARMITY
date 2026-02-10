@@ -10,18 +10,17 @@ public class HotbarModel
     public int CurrentSlotIndex { get; private set; }
     public int HotbarSize => hotbarSize;
 
-    // Events
     public event Action<int> OnSlotIndexChanged;
     public event Action OnHotbarRefreshed;
 
     public HotbarModel(InventoryModel inventory, int startIndex = 27, int size = 9)
     {
         inventoryModel = inventory;
-        hotbarStartIndex = startIndex; // Slot 27-35 (9 last slots)
+        hotbarStartIndex = startIndex;
         hotbarSize = size;
         CurrentSlotIndex = 0;
 
-        Debug.Log($"✅ Hotbar model initialized - mapping slots {startIndex} to {startIndex + size - 1}");
+        Debug.Log("HotbarModel: Mapping inventory slots " + startIndex + " to " + (startIndex + size - 1));
     }
 
     public bool SelectSlot(int localIndex)
@@ -34,7 +33,7 @@ public class HotbarModel
 
         var item = GetCurrentItem();
         string itemName = item != null ? item.ItemName : "Empty";
-        Debug.Log($"🎯 Selected Hotbar Slot {localIndex + 1}: {itemName}");
+        Debug.Log("Selected Hotbar Slot " + (localIndex + 1) + ": " + itemName);
         return true;
     }
 

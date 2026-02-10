@@ -510,7 +510,7 @@ MonoBehaviour:
   selectedColor: {r: 1, g: 1, b: 1, a: 1}
   enableScrollWheel: 1
   enableLeftClick: 1
-  inventoryGameView: {fileID: 0}
+  inventoryGameView: {fileID: 1542940687}
 --- !u!222 &290682716
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2284,6 +2284,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   menuCanvas: {fileID: 1985884830}
+  hotbarPanel: {fileID: 290682713}
 --- !u!4 &1558072444
 Transform:
   m_ObjectHideFlags: 0
@@ -2641,10 +2642,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hotbarView: {fileID: 290682715}
   inventoryGameView: {fileID: 1542940687}
-  testItems:
-  - {fileID: 11400000, guid: e76735cfb2b6923468969d97f1f43586, type: 2}
-  - {fileID: 11400000, guid: b6639f42087a1e84e8fba283635f961d, type: 2}
-  - {fileID: 11400000, guid: 9c3bdb08c68dc644bb7f1f6500c4c6d1, type: 2}
+  testItems: []
   addItemsOnStart: 1
   hotbarStartSlot: 27
   testItemQuality: 0

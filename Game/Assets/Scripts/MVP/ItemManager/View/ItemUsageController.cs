@@ -5,168 +5,126 @@ public class ItemUsageController : MonoBehaviour
     [Header("References")]
     [SerializeField] private HotbarView hotbarView;
 
-    [Header("System References - Assign your systems here")]
-    [SerializeField] private MonoBehaviour toolSystem;
-    [SerializeField] private MonoBehaviour farmingSystem;
-    [SerializeField] private MonoBehaviour consumableSystem;
-    [SerializeField] private MonoBehaviour weaponSystem;
-
     [Header("Settings")]
     [SerializeField] private LayerMask farmableGroundLayer;
     [SerializeField] private LayerMask targetLayer;
 
     private HotbarPresenter presenter;
+    private bool isSubscribed = false;
 
     private void Start()
     {
+        TrySubscribe();
+    }
+
+    private void TrySubscribe()
+    {
+        if (isSubscribed) return;
+
         if (hotbarView == null)
         {
-            hotbarView = FindObjectOfType<HotbarView>();
+            hotbarView = FindFirstObjectByType<HotbarView>();
+        }
+
+        if (hotbarView == null || !hotbarView.IsInitialized())
+        {
+            Invoke(nameof(TrySubscribe), 0.2f);
+            return;
         }
 
         presenter = hotbarView.GetPresenter();
+        if (presenter == null)
+        {
+            Invoke(nameof(TrySubscribe), 0.2f);
+            return;
+        }
 
-        if (presenter != null)
-        {
-            presenter.OnItemUsed += HandleItemUsed;
-            Debug.Log("✅ ItemUsageController subscribed to Hotbar");
-        }
-        else
-        {
-            Debug.LogError("❌ HotbarPresenter not found!");
-        }
+        presenter.OnItemUsed += HandleItemUsed;
+        isSubscribed = true;
+        Debug.Log("ItemUsageController: Subscribed to Hotbar");
     }
 
+    // Handler for item usage events
     private void HandleItemUsed(ItemDataSO item, Vector3 targetPosition, int inventorySlotIndex)
     {
-        Debug.Log($"🎮 ItemUsageController received: {item.itemName} at {targetPosition}");
+        Debug.Log("ItemUsageController: Using " + item.itemName + " at " + targetPosition);
 
-        bool wasConsumed = false;
-        int consumedAmount = 0;
+        bool consumed = false;
+        int amount = 0;
 
         switch (item.GetItemType())
         {
             case ItemType.Tool:
-                wasConsumed = HandleToolUsage(item, targetPosition);
+                consumed = UseTool(item, targetPosition);
                 break;
 
             case ItemType.Seed:
-                (wasConsumed, consumedAmount) = HandleSeedUsage(item, targetPosition);
+                (consumed, amount) = UseSeed(item, targetPosition);
                 break;
 
             case ItemType.Consumable:
-                (wasConsumed, consumedAmount) = HandleConsumableUsage(item, targetPosition);
+                (consumed, amount) = UseConsumable(item, targetPosition);
                 break;
 
             case ItemType.Weapon:
-                wasConsumed = HandleWeaponUsage(item, targetPosition);
+                consumed = UseWeapon(item, targetPosition);
                 break;
 
             default:
-                Debug.LogWarning($"⚠️ Item type {item.GetItemType()} has no handler");
+                Debug.LogWarning("No handler for item type: " + item.GetItemType());
                 break;
         }
 
-        // Consume item if needed
-        if (wasConsumed && consumedAmount > 0)
+        if (consumed && amount > 0)
         {
-            presenter.ConsumeCurrentItem(consumedAmount);
+            presenter.ConsumeCurrentItem(amount);
         }
     }
 
-    #region Item Type Handlers
-
-    private bool HandleToolUsage(ItemDataSO item, Vector3 targetPosition)
+    //Add specific item usage implementations below
+    private bool UseTool(ItemDataSO item, Vector3 pos)
     {
-        Debug.Log($"🔨 Using tool: {item.itemName}");
+        Debug.Log("Using tool: " + item.itemName);
 
-        // TODO: Call ToolSystem here
-        // Example:
-        // if (toolSystem != null)
-        // {
-        //     var myToolSystem = toolSystem as IToolSystem;
-        //     myToolSystem?.UseTool(item, targetPosition);
-        // }
-
-        // Raycast for checking target
-        RaycastHit2D hit = Physics2D.Raycast(targetPosition, Vector2.zero, 0.1f, targetLayer);
+        RaycastHit2D hit = Physics2D.Raycast(pos, Vector2.zero, 0.1f, targetLayer);
         if (hit.collider != null)
         {
-            Debug.Log($"Hit object: {hit.collider.name}");
-            // TODO: Apply tool effect
+            Debug.Log("Hit: " + hit.collider.name);
         }
 
-        return false; // Tools are not consumed
+        return false;
     }
 
-    private (bool wasConsumed, int amount) HandleSeedUsage(ItemDataSO item, Vector3 targetPosition)
+    private (bool, int) UseSeed(ItemDataSO item, Vector3 pos)
     {
-        Debug.Log($"🌱 Planting seed: {item.itemName}");
+        Debug.Log("Planting seed: " + item.itemName);
 
-        // Check if ground is farmable
-        RaycastHit2D hit = Physics2D.Raycast(targetPosition, Vector2.zero, 0.1f, farmableGroundLayer);
-
+        RaycastHit2D hit = Physics2D.Raycast(pos, Vector2.zero, 0.1f, farmableGroundLayer);
         if (hit.collider != null)
         {
-            Debug.Log($"✅ Planted on: {hit.collider.name}");
-
-            // TODO: Call FarmingSystem here
-            // Example:
-            // if (farmingSystem != null)
-            // {
-            //     var myFarmingSystem = farmingSystem as IFarmingSystem;
-            //     myFarmingSystem?.PlantSeed(item, targetPosition);
-            // }
-
-            return (true, 1); // Seed was planted
+            Debug.Log("Planted on: " + hit.collider.name);
+            return (true, 1);
         }
-        else
-        {
-            Debug.LogWarning("❌ Cannot plant here - not farmable ground");
-            return (false, 0);
-        }
+
+        Debug.LogWarning("Cannot plant here");
+        return (false, 0);
     }
 
-    private (bool wasConsumed, int amount) HandleConsumableUsage(ItemDataSO item, Vector3 targetPosition)
+    private (bool, int) UseConsumable(ItemDataSO item, Vector3 pos)
     {
-        Debug.Log($"🍎 Consuming: {item.itemName}");
-
-        // TODO: Gọi ConsumableSystem của bạn
-        // Example:
-        // if (consumableSystem != null)
-        // {
-        //     var myConsumableSystem = consumableSystem as IConsumableSystem;
-        //     bool success = myConsumableSystem?.Consume(item);
-        //     if (success)
-        //     {
-        //         // Apply effects: heal, buff, etc.
-        //         return (true, 1);
-        //     }
-        // }
-
-        return (true, 1); // Consumable bị consume
+        Debug.Log("Consuming: " + item.itemName);
+        return (true, 1);
     }
 
-    private bool HandleWeaponUsage(ItemDataSO item, Vector3 targetPosition)
+    private bool UseWeapon(ItemDataSO item, Vector3 pos)
     {
-        Debug.Log($"⚔️ Using weapon: {item.itemName}");
-
-        // TODO: Gọi WeaponSystem của bạn
-        // Example:
-        // if (weaponSystem != null)
-        // {
-        //     var myWeaponSystem = weaponSystem as IWeaponSystem;
-        //     myWeaponSystem?.Attack(item, targetPosition);
-        // }
-
-        return false; // Weapon không bị consume
+        Debug.Log("Using weapon: " + item.itemName);
+        return false;
     }
-
-    #endregion
 
     private void OnDestroy()
     {
-        if (presenter != null)
+        if (presenter != null && isSubscribed)
         {
             presenter.OnItemUsed -= HandleItemUsed;
         }

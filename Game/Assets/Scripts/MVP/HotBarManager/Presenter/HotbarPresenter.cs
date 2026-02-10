@@ -7,7 +7,6 @@ public class HotbarPresenter
     private readonly HotbarView view;
     private readonly IInventoryService inventoryService;
 
-    // Event for orther system to subscribe.
     public event Action<ItemDataSO, Vector3, int> OnItemUsed;
 
     public HotbarPresenter(HotbarModel model, HotbarView view, IInventoryService inventoryService)
@@ -21,16 +20,13 @@ public class HotbarPresenter
 
     private void SubscribeToEvents()
     {
-        // View input events
         view.OnSlotKeyPressed += HandleSlotSelection;
         view.OnScrollInput += HandleScrollInput;
         view.OnUseItemInput += HandleUseItem;
 
-        // Model events
         model.OnSlotIndexChanged += view.UpdateSelection;
         model.OnHotbarRefreshed += RefreshAllSlots;
 
-        // Inventory events
         inventoryService.OnItemAdded += HandleInventoryChanged;
         inventoryService.OnItemRemoved += HandleInventoryChanged;
         inventoryService.OnQuantityChanged += HandleInventoryChanged;
@@ -52,8 +48,6 @@ public class HotbarPresenter
         inventoryService.OnInventoryChanged -= RefreshAllSlots;
     }
 
-    #region Input Handlers
-
     private void HandleSlotSelection(int slotIndex)
     {
         model.SelectSlot(slotIndex);
@@ -72,41 +66,30 @@ public class HotbarPresenter
         var item = model.GetCurrentItem();
         if (item == null)
         {
-            Debug.Log("❌ No item to use!");
+            Debug.Log("No item to use");
             return;
         }
 
         Vector3 targetPosition = view.GetMouseWorldPosition();
         int inventorySlotIndex = model.GetInventoryIndex(model.CurrentSlotIndex);
 
-        Debug.Log($"✨ Using: {item.ItemName} at position: {targetPosition}");
-
-        // Raise event - for other systems to handle item usage
+        Debug.Log("Using: " + item.ItemName + " at position: " + targetPosition);
         OnItemUsed?.Invoke(item.itemData, targetPosition, inventorySlotIndex);
     }
 
-    #endregion
-
-    #region Item Consumption
-
-    // Public method for consuming items
     public void ConsumeCurrentItem(int amount = 1)
     {
         int inventorySlotIndex = model.GetInventoryIndex(model.CurrentSlotIndex);
         inventoryService.RemoveItemFromSlot(inventorySlotIndex, amount);
-        Debug.Log($"➖ Consumed {amount}x item from hotbar slot {model.CurrentSlotIndex + 1}");
+        Debug.Log("Consumed " + amount + "x item from hotbar slot " + (model.CurrentSlotIndex + 1));
     }
 
     public void ConsumeItemAtSlot(int localSlotIndex, int amount = 1)
     {
         int inventorySlotIndex = model.GetInventoryIndex(localSlotIndex);
         inventoryService.RemoveItemFromSlot(inventorySlotIndex, amount);
-        Debug.Log($"➖ Consumed {amount}x item from hotbar slot {localSlotIndex + 1}");
+        Debug.Log("Consumed " + amount + "x item from hotbar slot " + (localSlotIndex + 1));
     }
-
-    #endregion
-
-    #region Refresh Logic
 
     private void HandleInventoryChanged(InventoryItem item, int slotIndex)
     {
@@ -127,15 +110,12 @@ public class HotbarPresenter
         }
     }
 
-    #endregion
-
     public void Initialize()
     {
         RefreshAllSlots();
         view.UpdateSelection(model.CurrentSlotIndex);
     }
 
-    // Public API
     public InventoryItem GetCurrentItem() => model.GetCurrentItem();
     public InventoryItem GetItemAt(int localIndex) => model.GetItemAt(localIndex);
 }

@@ -4,7 +4,7 @@ public class HotbarView : MonoBehaviour
 {
     [Header("Configuration")]
     [SerializeField] private int hotbarSize = 9;
-    [SerializeField] private int inventoryHotbarStartIndex = 27; // 9 last slot  (27-35)
+    [SerializeField] private int inventoryHotbarStartIndex = 27;
 
     [Header("UI References")]
     [SerializeField] private GameObject slotPrefab;
@@ -24,7 +24,6 @@ public class HotbarView : MonoBehaviour
     private HotbarSlotUI[] slotUIs;
     private HotbarModel model;
     private HotbarPresenter presenter;
-    private IInventoryService inventoryService;
     private bool isInitialized = false;
 
     // Events
@@ -32,16 +31,20 @@ public class HotbarView : MonoBehaviour
     public System.Action<float> OnScrollInput;
     public System.Action OnUseItemInput;
 
-    #region Initialization
-
     private void Awake()
+    {
+        CreateSlotUIs(hotbarSize);
+    }
+
+    private void Start()
     {
         InitializeHotbarSystem();
     }
 
     private void InitializeHotbarSystem()
     {
-        // Get Inventory Service
+        if (isInitialized) return;
+
         if (inventoryGameView == null)
         {
             inventoryGameView = FindFirstObjectByType<InventoryGameView>();
@@ -49,24 +52,26 @@ public class HotbarView : MonoBehaviour
 
         if (inventoryGameView == null)
         {
-            Debug.LogError("❌ InventoryGameView not found! Hotbar requires Inventory system.");
+            Debug.LogError("HotbarView: InventoryGameView not found");
             return;
         }
 
-        inventoryService = inventoryGameView.GetInventoryService();
-        InventoryModel inventoryModel = inventoryGameView.GetInventoryModel();
+        var inventoryService = inventoryGameView.GetInventoryService();
+        var inventoryModel = inventoryGameView.GetInventoryModel();
 
-        // Create Model
+        if (inventoryService == null || inventoryModel == null)
+        {
+            Debug.LogWarning("HotbarView: Inventory not ready, retrying...");
+            Invoke(nameof(InitializeHotbarSystem), 0.1f);
+            return;
+        }
+
         model = new HotbarModel(inventoryModel, inventoryHotbarStartIndex, hotbarSize);
-
-        // Create Presenter
         presenter = new HotbarPresenter(model, this, inventoryService);
-
-        // Initialize UI
-        CreateSlotUIs(hotbarSize);
         presenter.Initialize();
 
-        Debug.Log($"✅ Hotbar system initialized - Connected to Inventory slots {inventoryHotbarStartIndex}-{inventoryHotbarStartIndex + hotbarSize - 1}");
+        isInitialized = true;
+        Debug.Log("HotbarView: Initialized successfully");
     }
 
     private void CreateSlotUIs(int size)
@@ -80,7 +85,7 @@ public class HotbarView : MonoBehaviour
         for (int i = 0; i < size; i++)
         {
             GameObject slotObj = Instantiate(slotPrefab, slotsContainer);
-            slotObj.name = $"HotbarSlot_{i}";
+            slotObj.name = "HotbarSlot_" + i;
 
             HotbarSlotUI slotUI = slotObj.GetComponent<HotbarSlotUI>();
             if (slotUI != null)
@@ -89,21 +94,12 @@ public class HotbarView : MonoBehaviour
                 slotUIs[i] = slotUI;
             }
         }
-
-        Debug.Log($"✅ Created {slotUIs.Length} hotbar slots");
     }
-
-    #endregion
-
-    #region Input Handling
 
     private void Update()
     {
-        HandleInput();
-    }
+        if (!isInitialized) return;
 
-    private void HandleInput()
-    {
         HandleSlotSelection();
         HandleItemUsage();
     }
@@ -146,10 +142,6 @@ public class HotbarView : MonoBehaviour
         return worldPos;
     }
 
-    #endregion
-
-    #region UI Updates
-
     public void UpdateSlotDisplay(int index, InventoryItem item)
     {
         if (index >= 0 && index < slotUIs.Length)
@@ -168,15 +160,9 @@ public class HotbarView : MonoBehaviour
 
     public Color GetNormalColor() => normalColor;
     public Color GetSelectedColor() => selectedColor;
-
-    #endregion
-
-    #region Public API
-
     public HotbarPresenter GetPresenter() => presenter;
     public InventoryItem GetCurrentItem() => presenter?.GetCurrentItem();
-
-    #endregion
+    public bool IsInitialized() => isInitialized;
 
     private void OnDestroy()
     {
