@@ -255,51 +255,9 @@ public class WorldDataManager : MonoBehaviour
     
     #endregion
     
-    #region Backward Compatibility - Crop Methods
-    
-    // These methods provide backward compatibility with existing code
-    // They delegate to the CropDataModule
-    
-    public bool PlantCropAtWorldPosition(Vector3 worldPos, ushort cropTypeID)
-        => cropModule.PlantCropAtWorldPosition(worldPos, cropTypeID);
-    
-    public bool RemoveCropAtWorldPosition(Vector3 worldPos)
-        => cropModule.RemoveCropAtWorldPosition(worldPos);
-    
-    public bool HasCropAtWorldPosition(Vector3 worldPos)
-        => cropModule.HasCropAtWorldPosition(worldPos);
-    
-    public bool TryGetCropAtWorldPosition(Vector3 worldPos, out CropChunkData.TileData crop)
-        => cropModule.TryGetCropAtWorldPosition(worldPos, out crop);
-    
-    public bool UpdateCropStage(Vector3 worldPos, byte newStage)
-        => cropModule.UpdateCropStage(worldPos, newStage);
-    
-    public bool TillTileAtWorldPosition(Vector3 worldPos)
-        => cropModule.TillTileAtWorldPosition(worldPos);
-    
-    public bool UntillTileAtWorldPosition(Vector3 worldPos)
-        => cropModule.UntillTileAtWorldPosition(worldPos);
-    
-    public bool IsTilledAtWorldPosition(Vector3 worldPos)
-        => cropModule.IsTilledAtWorldPosition(worldPos);
-    
-    public CropChunkData GetChunk(int sectionId, Vector2Int chunkPos)
-        => cropModule.GetChunk(sectionId, chunkPos);
-    
-    public Dictionary<Vector2Int, CropChunkData> GetSection(int sectionId)
-        => cropModule.GetSection(sectionId);
-    
-    public CropChunkData GetChunkAtWorldPosition(Vector3 worldPos)
-    {
-        int sectionId = GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1) return null;
-        
-        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        return cropModule.GetChunk(sectionId, chunkPos);
-    }
-    
-    #endregion
+    // NOTE: Crop-related methods moved to WorldDataManagerCropExtensions.cs
+    // This keeps WorldDataManager focused on core coordination (SOLID principle)
+    // Usage remains identical: WorldDataManager.Instance.PlantCropAtWorldPosition(...)
     
     #region Statistics and Management
     
