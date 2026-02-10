@@ -194,6 +194,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5785e1f8640170a4aada6cdf4f5dd634, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  syncInterval: 5
+  showDebugLogs: 0
   year: 1
   season: 0
   month: 1
@@ -500,13 +502,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8ae37d7a5d95194495dd30dd12afd05, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  hotbarSize: 9
+  inventoryHotbarStartIndex: 27
   slotPrefab: {fileID: 1514373577006216391, guid: 5eeec1b9253dfb44e982f61761dae296, type: 3}
   slotsContainer: {fileID: 1622853229}
   normalColor: {r: 1, g: 1, b: 1, a: 0.7}
   selectedColor: {r: 1, g: 1, b: 1, a: 1}
   enableScrollWheel: 1
   enableLeftClick: 1
-  enableRightClick: 0
+  inventoryGameView: {fileID: 0}
 --- !u!222 &290682716
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -976,8 +980,8 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 585944890}
-  - {fileID: 290682714}
   - {fileID: 1985884831}
+  - {fileID: 290682714}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -2600,8 +2604,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1709577422}
-  - component: {fileID: 1709577425}
-  - component: {fileID: 1709577424}
   - component: {fileID: 1709577423}
   m_Layer: 0
   m_Name: HotBarManager
@@ -2637,42 +2639,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 493a6d7ff523882499fcf940c4544165, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  additionalTestItems:
-  - {fileID: 11400000, guid: 9c3bdb08c68dc644bb7f1f6500c4c6d1, type: 2}
+  hotbarView: {fileID: 290682715}
+  inventoryGameView: {fileID: 1542940687}
+  testItems:
   - {fileID: 11400000, guid: e76735cfb2b6923468969d97f1f43586, type: 2}
   - {fileID: 11400000, guid: b6639f42087a1e84e8fba283635f961d, type: 2}
+  - {fileID: 11400000, guid: 9c3bdb08c68dc644bb7f1f6500c4c6d1, type: 2}
   addItemsOnStart: 1
---- !u!114 &1709577424
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1709577419}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5c16c8e6069e1f74098e0b94a5b661be, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  toolSystem: {fileID: 0}
-  farmingSystem: {fileID: 0}
-  consumableSystem: {fileID: 0}
-  weaponSystem: {fileID: 0}
---- !u!114 &1709577425
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1709577419}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bb6201f9d1729194e95cf614e4c9f4af, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  hotbarSize: 9
-  hotbarView: {fileID: 290682715}
-  serviceFactory: {fileID: 1709577424}
+  hotbarStartSlot: 27
+  testItemQuality: 0
 --- !u!1 &1775741140
 GameObject:
   m_ObjectHideFlags: 0
@@ -2965,9 +2940,12 @@ MonoBehaviour:
   updateInterval: 1
   unloadDelay: 5
   visualizeCrops: 1
-  cropVisualPrefab: {fileID: 3583189438637702726, guid: 2b49be4a17352e3479857ab4a3dbf71a, type: 3}
+  plantDatabase: []
+  tilledTile: {fileID: 0}
+  tilledTilemapName: TillableTilemap
   showDebugLogs: 1
   showLoadedChunksGizmos: 1
+  enableDailyReload: 1
 --- !u!4 &2021699365
 Transform:
   m_ObjectHideFlags: 0

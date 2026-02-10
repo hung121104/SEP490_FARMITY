@@ -3,7 +3,7 @@ using UnityEngine;
 public class InventoryGameView : MonoBehaviour
 {
     [Header("Settings")]
-    [SerializeField] private int inventorySlots = 20;
+    [SerializeField] private int inventorySlots = 36;
 
     [Header("References")]
     [SerializeField] private InventoryView inventoryView;
@@ -62,6 +62,8 @@ public class InventoryGameView : MonoBehaviour
         return presenter.GetItemCount(itemId);
     }
 
+    public IInventoryService GetInventoryService() => service;
+    public InventoryModel GetInventoryModel() => model;
     #endregion
 
     #region Event Handlers

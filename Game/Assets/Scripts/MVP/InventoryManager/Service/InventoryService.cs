@@ -307,7 +307,6 @@ public class InventoryService : IInventoryService
         {
             model.SetItemAtSlot(i, allItems[i]);
         }
-
         OnInventoryChanged?.Invoke();
     }
 
