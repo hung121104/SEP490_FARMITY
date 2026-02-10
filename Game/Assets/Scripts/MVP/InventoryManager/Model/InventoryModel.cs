@@ -6,7 +6,7 @@ public class InventoryModel
     private InventoryItem[] items;
     public int maxSlots { get; private set; }
 
-    public InventoryModel(int slots = 20)
+    public InventoryModel(int slots = 36)
     {
         maxSlots = slots;
         items = new InventoryItem[maxSlots];

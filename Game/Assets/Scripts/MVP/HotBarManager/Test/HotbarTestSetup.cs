@@ -3,166 +3,134 @@ using UnityEngine;
 
 public class HotbarTestSetup : MonoBehaviour
 {
-    [Header("Drag test items here")]
-    [SerializeField] private ItemDataSO[] additionalTestItems; // For more test items
+    [Header("References")]
+    [SerializeField] private HotbarView hotbarView;
+    [SerializeField] private InventoryGameView inventoryGameView;
 
-    [Header("Test Settings")]
+    [Header("Test Items")]
+    [SerializeField] private ItemDataSO[] testItems;
+
+    [Header("Settings")]
     [SerializeField] private bool addItemsOnStart = true;
+    [SerializeField] private int hotbarStartSlot = 27;
+    [SerializeField] private Quality testItemQuality = Quality.Normal;
 
-    private HotbarBootstrap hotbarBootstrap;
+    private HotbarPresenter hotbarPresenter;
+    private IInventoryService inventoryService;
 
     void Start()
     {
         if (addItemsOnStart)
         {
-            Invoke(nameof(AddTestItems), 0.5f); // Wait for MVP system to initialize
+            Invoke(nameof(AddTestItems), 1f);
         }
     }
 
     void AddTestItems()
     {
-        // Find the new MVP system instead of HotbarManager
-        hotbarBootstrap = FindObjectOfType<HotbarBootstrap>();
+        if (hotbarView == null)
+            hotbarView = FindFirstObjectByType<HotbarView>();
 
-        if (hotbarBootstrap == null)
+        if (inventoryGameView == null)
+            inventoryGameView = FindFirstObjectByType<InventoryGameView>();
+
+        if (hotbarView == null || inventoryGameView == null)
         {
-            Debug.LogError("❌ HotbarBootstrap not found! Make sure MVP system is set up.");
+            Debug.LogError("Cannot find HotbarView or InventoryGameView");
             return;
         }
 
-        var presenter = hotbarBootstrap.GetPresenter();
-        if (presenter == null)
+        if (!hotbarView.IsInitialized())
         {
-            Debug.LogError("❌ HotbarPresenter not ready!");
+            Invoke(nameof(AddTestItems), 0.5f);
             return;
         }
 
-        // Add additional test items if available
-        if (additionalTestItems != null)
+        hotbarPresenter = hotbarView.GetPresenter();
+        inventoryService = inventoryGameView.GetInventoryService();
+
+        if (hotbarPresenter == null || inventoryService == null)
         {
-            for (int i = 0; i < additionalTestItems.Length && i < 8; i++) // Max 8 more items (slots 2-9)
+            Debug.LogError("Systems not ready");
+            return;
+        }
+
+        if (testItems != null && testItems.Length > 0)
+        {
+            for (int i = 0; i < testItems.Length && i < 9; i++)
             {
-                if (additionalTestItems[i] != null)
+                if (testItems[i] != null)
                 {
-                    bool success = presenter.AddItem(i, additionalTestItems[i], 1);
-                    Debug.Log($"✅ Added {additionalTestItems[i].itemName} to slot {i + 1}: {(success ? "Success" : "Failed")}");
+                    bool success = inventoryService.AddItem(testItems[i], 1, testItemQuality);
+                    if (success)
+                    {
+                        Debug.Log("Added " + testItems[i].itemName + " to hotbar slot " + (i + 1));
+                    }
                 }
             }
+            Debug.Log("Test items added");
         }
-
-        Debug.Log("✅ Test items added to hotbar!");
     }
 
     void Update()
     {
-        // Debug hotbar status with spacebar
         if (Input.GetKeyDown(KeyCode.Space))
-        {
-            ShowHotbarStatus();
-        }
+            ShowStatus();
 
-        // Additional debug keys
         if (Input.GetKeyDown(KeyCode.R))
-        {
-            RefreshTestItems();
-        }
+            AddTestItems();
 
         if (Input.GetKeyDown(KeyCode.C))
-        {
             ClearHotbar();
-        }
     }
 
-    void ShowHotbarStatus()
+    void ShowStatus()
     {
-        if (hotbarBootstrap == null)
-            hotbarBootstrap = FindObjectOfType<HotbarBootstrap>();
+        if (hotbarPresenter == null)
+            hotbarPresenter = hotbarView?.GetPresenter();
 
-        if (hotbarBootstrap == null)
+        if (hotbarPresenter == null)
         {
-            Debug.LogError("❌ HotbarBootstrap not found for status check!");
+            Debug.LogError("HotbarPresenter not available");
             return;
         }
 
-        var model = hotbarBootstrap.GetModel();
-        if (model == null)
+        Debug.Log("=== HOTBAR STATUS ===");
+        for (int i = 0; i < 9; i++)
         {
-            Debug.LogError("❌ HotbarModel not available!");
-            return;
-        }
+            var item = hotbarPresenter.GetItemAt(i);
+            string selected = (item == hotbarPresenter.GetCurrentItem()) ? " [SELECTED]" : "";
 
-        Debug.Log("=== HOTBAR STATUS (MVP System) ===");
-        Debug.Log($"Current Selected Slot: {model.CurrentSlotIndex + 1}");
-
-        for (int i = 0; i < model.HotbarSize; i++)
-        {
-            HotbarSlot slot = model.GetSlot(i);
-            if (slot != null && !slot.IsEmpty)
+            if (item != null)
             {
-                string selectedIndicator = (i == model.CurrentSlotIndex) ? " [SELECTED]" : "";
-                Debug.Log($"Slot {i + 1}: {slot.item.itemName} x{slot.quantity}{selectedIndicator}");
+                Debug.Log("Slot " + (i + 1) + ": " + item.ItemName + " x" + item.quantity + selected);
             }
             else
             {
-                string selectedIndicator = (i == model.CurrentSlotIndex) ? " [SELECTED]" : "";
-                Debug.Log($"Slot {i + 1}: Empty{selectedIndicator}");
+                Debug.Log("Slot " + (i + 1) + ": Empty" + selected);
             }
         }
-    }
-
-    [ContextMenu("Add Test Items")]
-    public void RefreshTestItems()
-    {
-        AddTestItems();
     }
 
     [ContextMenu("Clear Hotbar")]
     public void ClearHotbar()
     {
-        if (hotbarBootstrap == null)
-            hotbarBootstrap = FindObjectOfType<HotbarBootstrap>();
+        if (inventoryService == null)
+            inventoryService = inventoryGameView?.GetInventoryService();
 
-        if (hotbarBootstrap != null)
+        if (inventoryService != null)
         {
-            var presenter = hotbarBootstrap.GetPresenter();
-            presenter?.ClearHotbar();
-            Debug.Log("🗑️ Hotbar cleared via test setup");
+            for (int i = hotbarStartSlot; i < hotbarStartSlot + 9; i++)
+            {
+                var item = inventoryService.GetItemAtSlot(i);
+                if (item != null)
+                {
+                    inventoryService.RemoveItemFromSlot(i, item.quantity);
+                }
+            }
+            Debug.Log("Hotbar cleared");
         }
     }
-
-    [ContextMenu("Test Current Item Usage")]
-    public void TestCurrentItemUsage()
-    {
-        if (hotbarBootstrap == null)
-            hotbarBootstrap = FindObjectOfType<HotbarBootstrap>();
-
-        if (hotbarBootstrap != null)
-        {
-            var model = hotbarBootstrap.GetModel();
-            model?.UseCurrentItem();
-            Debug.Log("🎮 Tested current item usage");
-        }
-    }
-
-    [ContextMenu("Show System Info")]
-    public void ShowSystemInfo()
-    {
-        if (hotbarBootstrap == null)
-            hotbarBootstrap = FindObjectOfType<HotbarBootstrap>();
-
-        if (hotbarBootstrap != null)
-        {
-            Debug.Log("=== MVP SYSTEM INFO ===");
-            Debug.Log($"✅ HotbarBootstrap: Found");
-            Debug.Log($"✅ HotbarModel: {(hotbarBootstrap.GetModel() != null ? "Ready" : "Not Ready")}");
-            Debug.Log($"✅ HotbarPresenter: {(hotbarBootstrap.GetPresenter() != null ? "Ready" : "Not Ready")}");
-            Debug.Log($"✅ HotbarView: {(hotbarBootstrap.GetView() != null ? "Ready" : "Not Ready")}");
-        }
-        else
-        {
-            Debug.LogError("❌ MVP System not found!");
-        }
-    }
-  
 }
+  
 

@@ -3,6 +3,7 @@ using UnityEngine;
 public class MenuController : MonoBehaviour
 {
     public GameObject menuCanvas;
+    public GameObject hotbarPanel;
 
     void Start()
     {
@@ -12,7 +13,8 @@ public class MenuController : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.E))
         {
-            menuCanvas.SetActive(!menuCanvas.activeSelf);
+            hotbarPanel.SetActive(menuCanvas.activeSelf);
+            menuCanvas.SetActive(!menuCanvas.activeSelf);            
         }
     }
 }
