@@ -20,9 +20,7 @@ export class GatewayController {
   constructor(
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
-    @Inject('BLOG_SERVICE') private blogClient: ClientProxy,
-    @Inject('NEWS_SERVICE') private newsClient: ClientProxy,
-    @Inject('MEDIA_SERVICE') private mediaClient: ClientProxy,
+    @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
   ) {}
 
   @Post('auth/register')
@@ -35,12 +33,10 @@ export class GatewayController {
     return this.authClient.send('login-ingame', loginDto);
   }
 
-
   @Post('auth/register-admin')
   async registerAdmin(@Body() createAdminDto: any) {
     return this.authClient.send('register-admin', createAdminDto);
   }
-
 
   @Post('auth/login-admin')
   async loginAdmin(@Body() loginDto: any, @Res({ passthrough: true }) res: Response) {
@@ -65,7 +61,6 @@ export class GatewayController {
   async getPosition(@Query() getPositionDto: GetPositionDto) {
     return this.playerDataClient.send('get-position', getPositionDto);
   }
-
 
   @Get('auth/admin-check')
   async adminCheck(@Headers('authorization') authHeader: string, @Headers('cookie') cookieHeader: string) {
@@ -99,17 +94,17 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.blogClient.send('create-blog', createBlogDto);
+    return this.adminClient.send('create-blog', createBlogDto);
   }
 
   @Get('blog/all')
   async getAllBlogs() {
-    return this.blogClient.send('get-all-blogs', {});
+    return this.adminClient.send('get-all-blogs', {});
   }
 
   @Get('blog/:id')
   async getBlogById(@Param('id') id: string) {
-    return this.blogClient.send('get-blog-by-id', id);
+    return this.adminClient.send('get-blog-by-id', id);
   }
 
   @Post('blog/update/:id')
@@ -120,7 +115,7 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.blogClient.send('update-blog', { id, updateBlogDto });
+    return this.adminClient.send('update-blog', { id, updateBlogDto });
   }
 
   @Delete('blog/delete/:id')
@@ -130,7 +125,7 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.blogClient.send('delete-blog', id);
+    return this.adminClient.send('delete-blog', id);
   }
 
   @Post('news/upload-signature')
@@ -140,7 +135,7 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.newsClient.send('news-upload-signature', dto);
+    return this.adminClient.send('news-upload-signature', dto);
   }
 
   @Post('news/create')
@@ -150,17 +145,17 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.newsClient.send('create-news', createNewsDto);
+    return this.adminClient.send('create-news', createNewsDto);
   }
 
   @Get('news/all')
   async getAllNews() {
-    return this.newsClient.send('get-all-news', {});
+    return this.adminClient.send('get-all-news', {});
   }
 
   @Get('news/:id')
   async getNewsById(@Param('id') id: string) {
-    return this.newsClient.send('get-news-by-id', id);
+    return this.adminClient.send('get-news-by-id', id);
   }
 
   @Post('news/update/:id')
@@ -171,7 +166,7 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.newsClient.send('update-news', { id, updateNewsDto });
+    return this.adminClient.send('update-news', { id, updateNewsDto });
   }
 
   @Delete('news/delete/:id')
@@ -181,7 +176,7 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.newsClient.send('delete-news', id);
+    return this.adminClient.send('delete-news', id);
   }
 
   @Post('media/upload-signature')
@@ -191,7 +186,7 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.mediaClient.send('media-upload-signature', dto);
+    return this.adminClient.send('media-upload-signature', dto);
   }
 
   @Post('media/create')
@@ -201,17 +196,17 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.mediaClient.send('create-media', createMediaDto);
+    return this.adminClient.send('create-media', createMediaDto);
   }
 
   @Get('media/all')
   async getAllMedia() {
-    return this.mediaClient.send('get-all-media', {});
+    return this.adminClient.send('get-all-media', {});
   }
 
   @Get('media/:id')
   async getMediaById(@Param('id') id: string) {
-    return this.mediaClient.send('get-media-by-id', id);
+    return this.adminClient.send('get-media-by-id', id);
   }
 
   @Post('media/update/:id')
@@ -222,7 +217,7 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.mediaClient.send('update-media', { id, updateMediaDto });
+    return this.adminClient.send('update-media', { id, updateMediaDto });
   }
 
   @Delete('media/delete/:id')
@@ -232,7 +227,7 @@ export class GatewayController {
     @Headers('cookie') cookieHeader: string,
   ) {
     await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.mediaClient.send('delete-media', id);
+    return this.adminClient.send('delete-media', id);
   }
 
   @Post('auth/admin-reset/request')

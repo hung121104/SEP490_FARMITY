@@ -16,19 +16,9 @@ import { GatewayController } from './gateway.controller';
         options: { host: 'localhost', port: 8878 },
       },
       {
-        name: 'BLOG_SERVICE',
+        name: 'ADMIN_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 3003 },
-      },
-      {
-        name: 'NEWS_SERVICE',
-        transport: Transport.TCP,
-        options: { host: 'localhost', port: 3004 },
-      },
-      {
-        name: 'MEDIA_SERVICE',
-        transport: Transport.TCP,
-        options: { host: 'localhost', port: 3005 },
+        options: { host: 'localhost', port: 3006 },
       },
     ]),
   ],
