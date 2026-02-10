@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Persistent world data manager - uses absolute world positions
-/// Much simpler: stores crops at their exact world X,Y coordinates
-/// No complex chunk-relative calculations needed
+/// Core world data manager - coordinates all data modules
+/// Provides shared utilities for world/chunk coordinate conversion
+/// Modules handle specific data types (crops, inventory, structures, etc.)
 /// </summary>
 public class WorldDataManager : MonoBehaviour
 {
@@ -23,64 +23,6 @@ public class WorldDataManager : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Section configuration with custom chunk ranges
-    /// </summary>
-    [System.Serializable]
-    public class SectionConfig
-    {
-        [Tooltip("Section ID (0-3)")]
-        public int SectionId;
-        
-        [Tooltip("Section name")]
-        public string SectionName = "Section";
-        
-        [Tooltip("Starting chunk X coordinate (0-9)")]
-        public int ChunkStartX;
-        
-        [Tooltip("Starting chunk Y coordinate (0-9)")]
-        public int ChunkStartY;
-        
-        [Tooltip("Number of chunks wide")]
-        public int ChunksWidth;
-        
-        [Tooltip("Number of chunks tall")]
-        public int ChunksHeight;
-        
-        [Tooltip("Is this section active?")]
-        public bool IsActive = true;
-        
-        [Tooltip("Background color for visualization")]
-        public Color DebugColor = Color.green;
-        
-        /// <summary>
-        /// Check if a chunk position belongs to this section
-        /// </summary>
-        public bool ContainsChunk(Vector2Int chunkPos)
-        {
-            return chunkPos.x >= ChunkStartX && 
-                   chunkPos.x < ChunkStartX + ChunksWidth &&
-                   chunkPos.y >= ChunkStartY && 
-                   chunkPos.y < ChunkStartY + ChunksHeight;
-        }
-        
-        /// <summary>
-        /// Check if a world position belongs to this section
-        /// </summary>
-        public bool ContainsWorldPosition(Vector3 worldPos, int chunkSize)
-        {
-            int worldMinX = ChunkStartX * chunkSize;
-            int worldMinY = ChunkStartY * chunkSize;
-            int worldMaxX = (ChunkStartX + ChunksWidth) * chunkSize;
-            int worldMaxY = (ChunkStartY + ChunksHeight) * chunkSize;
-            
-            return worldPos.x >= worldMinX && worldPos.x < worldMaxX &&
-                   worldPos.y >= worldMinY && worldPos.y < worldMaxY;
-        }
-        
-        public int GetTotalChunks() => ChunksWidth * ChunksHeight;
-    }
-    
     [Header("World Configuration")]
     [Tooltip("Total world size in chunks (10×10 grid)")]
     public int worldWidthChunks = 10;
@@ -90,11 +32,11 @@ public class WorldDataManager : MonoBehaviour
     public int chunkSizeTiles = 30;
     
     [Header("Section Definitions")]
-    [Tooltip("Define your 4 sections")]
-    public List<SectionConfig> sectionConfigs = new List<SectionConfig>()
+    [Tooltip("Define your sections")]
+    public List<WorldSectionConfig> sectionConfigs = new List<WorldSectionConfig>()
     {
         // Section 1: 5×4 chunks at (0,6) = World pos (0,180) to (150,300)
-        new SectionConfig 
+        new WorldSectionConfig 
         { 
             SectionId = 0, 
             SectionName = "Section 1",
@@ -106,7 +48,7 @@ public class WorldDataManager : MonoBehaviour
         },
         
         // Section 2: 5×5 chunks at (0,0) = World pos (0,0) to (150,150)
-        new SectionConfig 
+        new WorldSectionConfig 
         { 
             SectionId = 1, 
             SectionName = "Section 2",
@@ -118,7 +60,7 @@ public class WorldDataManager : MonoBehaviour
         },
         
         // Section 3: 4×5 chunks at (5,0) = World pos (150,0) to (270,150)
-        new SectionConfig 
+        new WorldSectionConfig 
         { 
             SectionId = 2, 
             SectionName = "Section 3",
@@ -130,7 +72,7 @@ public class WorldDataManager : MonoBehaviour
         },
         
         // Section 4: 4×3 chunks at (5,7) = World pos (150,210) to (270,300)
-        new SectionConfig 
+        new WorldSectionConfig 
         { 
             SectionId = 3, 
             SectionName = "Section 4",
@@ -147,16 +89,18 @@ public class WorldDataManager : MonoBehaviour
     public bool showSectionBounds = true;
     public bool showChunkGrid = false;
     
-    // All world data: sections[sectionId][chunkPosition] = CropChunkData
-    private Dictionary<int, Dictionary<Vector2Int, CropChunkData>> sections = 
-        new Dictionary<int, Dictionary<Vector2Int, CropChunkData>>();
+    // Data modules
+    private Dictionary<string, IWorldDataModule> modules = new Dictionary<string, IWorldDataModule>();
+    private CropDataModule cropModule;
     
     // Quick lookup: chunkPosition -> sectionId
     private Dictionary<Vector2Int, int> chunkToSectionMap = new Dictionary<Vector2Int, int>();
     
-    // Track initialization
     private bool isInitialized = false;
     public bool IsInitialized => isInitialized;
+    
+    // Public access to modules
+    public CropDataModule CropData => cropModule;
     
     private void Awake()
     {
@@ -176,13 +120,11 @@ public class WorldDataManager : MonoBehaviour
     {
         if (isInitialized) return;
         
+        // Build chunk-to-section lookup map
         int totalUsedChunks = 0;
-        
         foreach (var config in sectionConfigs)
         {
             if (!config.IsActive) continue;
-            
-            sections[config.SectionId] = new Dictionary<Vector2Int, CropChunkData>();
             
             for (int x = 0; x < config.ChunksWidth; x++)
             {
@@ -192,27 +134,14 @@ public class WorldDataManager : MonoBehaviour
                     int worldChunkY = config.ChunkStartY + y;
                     Vector2Int chunkPos = new Vector2Int(worldChunkX, worldChunkY);
                     
-                    // REMOVE OR COMMENT OUT THIS CHECK to allow negative chunks:
-                    // if (worldChunkX < 0 || worldChunkX >= worldWidthChunks ||
-                    //     worldChunkY < 0 || worldChunkY >= worldHeightChunks)
-                    // {
-                    //     Debug.LogWarning($"Chunk ({worldChunkX}, {worldChunkY}) is out of world bounds!");
-                    //     continue;
-                    // }
-                    
-                    sections[config.SectionId][chunkPos] = new CropChunkData
-                    {
-                        ChunkX = worldChunkX,
-                        ChunkY = worldChunkY,
-                        SectionId = config.SectionId,
-                        IsLoaded = true
-                    };
-                    
                     chunkToSectionMap[chunkPos] = config.SectionId;
                     totalUsedChunks++;
                 }
             }
         }
+        
+        // Initialize modules
+        InitializeModules();
         
         isInitialized = true;
         
@@ -221,7 +150,9 @@ public class WorldDataManager : MonoBehaviour
             int totalPossibleChunks = worldWidthChunks * worldHeightChunks;
             int unusedChunks = totalPossibleChunks - totalUsedChunks;
             
-            Debug.Log($"[WorldData] Initialized {sections.Count} sections\n" +
+            Debug.Log($"[WorldDataManager] Initialized\n" +
+                      $"Modules: {modules.Count}\n" +
+                      $"Sections: {sectionConfigs.Count}\n" +
                       $"Total chunks: {totalUsedChunks}/{totalPossibleChunks} ({unusedChunks} unused)\n" +
                       $"Chunk size: {chunkSizeTiles}×{chunkSizeTiles} tiles\n" +
                       $"World size: {worldWidthChunks * chunkSizeTiles}×{worldHeightChunks * chunkSizeTiles} tiles");
@@ -230,17 +161,32 @@ public class WorldDataManager : MonoBehaviour
             {
                 if (config.IsActive)
                 {
-                    int worldMinX = config.ChunkStartX * chunkSizeTiles;
-                    int worldMinY = config.ChunkStartY * chunkSizeTiles;
-                    int worldMaxX = (config.ChunkStartX + config.ChunksWidth) * chunkSizeTiles;
-                    int worldMaxY = (config.ChunkStartY + config.ChunksHeight) * chunkSizeTiles;
-                    
+                    var (min, max) = config.GetWorldBounds(chunkSizeTiles);
                     Debug.Log($"  {config.SectionName}: {config.GetTotalChunks()} chunks | " +
-                              $"World pos ({worldMinX},{worldMinY}) to ({worldMaxX},{worldMaxY})");
+                              $"World pos ({min.x},{min.y}) to ({max.x},{max.y})");
                 }
             }
         }
     }
+    
+    private void InitializeModules()
+    {
+        // Initialize Crop Module
+        cropModule = new CropDataModule();
+        cropModule.Initialize(this);
+        modules[cropModule.ModuleName] = cropModule;
+        
+        // Future modules can be added here:
+        // inventoryModule = new InventoryDataModule();
+        // inventoryModule.Initialize(this);
+        // modules[inventoryModule.ModuleName] = inventoryModule;
+        
+        // structureModule = new StructureDataModule();
+        // structureModule.Initialize(this);
+        // modules[structureModule.ModuleName] = structureModule;
+    }
+    
+    #region Core Coordinate Utilities
     
     /// <summary>
     /// Get section ID from world position
@@ -269,7 +215,6 @@ public class WorldDataManager : MonoBehaviour
         int chunkX = Mathf.FloorToInt(worldPos.x / chunkSizeTiles);
         int chunkY = Mathf.FloorToInt(worldPos.y / chunkSizeTiles);
         
-        // Don't clamp - let it return actual chunk position for better debugging
         return new Vector2Int(chunkX, chunkY);
     }
     
@@ -294,249 +239,9 @@ public class WorldDataManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Get chunk at world position
-    /// </summary>
-    public CropChunkData GetChunkAtWorldPosition(Vector3 worldPos)
-    {
-        int sectionId = GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1) return null;
-        
-        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        return GetChunk(sectionId, chunkPos);
-    }
-    
-    /// <summary    >
-    /// Get a specific chunk
-    /// </summary>
-    public CropChunkData GetChunk(int sectionId, Vector2Int chunkPos)
-    {
-        if (!sections.ContainsKey(sectionId))
-        {
-            return null;
-        }
-        
-        if (!sections[sectionId].ContainsKey(chunkPos))
-        {
-            return null;
-        }
-        
-        return sections[sectionId][chunkPos];
-    }
-    
-    /// <summary>
-    /// Plant crop at ABSOLUTE WORLD POSITION (X, Y)
-    /// </summary>
-    public bool PlantCropAtWorldPosition(Vector3 worldPos, ushort cropTypeID)
-    {
-        // Declare chunkPos ONCE at the top
-        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        
-        // Get section ID
-        int sectionId = GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1)
-        {
-            if (showDebugLogs)
-            {
-                // Now just use it, don't redeclare
-                Debug.LogWarning($"Cannot plant at world pos ({worldPos.x:F1}, {worldPos.y:F1}): " +
-                           $"Chunk ({chunkPos.x}, {chunkPos.y}) is not in any active section.\n" +
-                           $"Valid sections:\n" +
-                           GetValidSectionsInfo());
-            }
-            return false;
-        }
-        
-        // Remove this line since we already declared it above
-        // Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        
-        CropChunkData chunk = GetChunk(sectionId, chunkPos);
-        
-        if (chunk == null)
-        {
-            Debug.LogWarning($"Cannot plant: chunk ({chunkPos.x}, {chunkPos.y}) not found in section {sectionId}. " +
-                    $"This shouldn't happen - please report this bug.");
-            return false;
-        }
-        
-        // Store crop at absolute world position
-        int worldX = Mathf.FloorToInt(worldPos.x);
-        int worldY = Mathf.FloorToInt(worldPos.y);
-        
-        bool success = chunk.PlantCrop(cropTypeID, worldX, worldY);
-        
-        if (success && showDebugLogs)
-        {
-            Debug.Log($"✓ Planted crop type {cropTypeID} at world pos ({worldX}, {worldY}) " +
-                 $"[Chunk: ({chunkPos.x}, {chunkPos.y}), Section: {sectionConfigs[sectionId].SectionName}]");
-        }
-        
-        return success;
-    }
-    
-    /// <summary>
-    /// Remove crop at world position
-    /// </summary>
-    public bool RemoveCropAtWorldPosition(Vector3 worldPos)
-    {
-        int sectionId = GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1) return false;
-        
-        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        CropChunkData chunk = GetChunk(sectionId, chunkPos);
-        if (chunk == null) return false;
-        
-        int worldX = Mathf.FloorToInt(worldPos.x);
-        int worldY = Mathf.FloorToInt(worldPos.y);
-        
-        return chunk.RemoveCrop(worldX, worldY);
-    }
-    
-    /// <summary>
-    /// Check if crop exists at world position
-    /// </summary>
-    public bool HasCropAtWorldPosition(Vector3 worldPos)
-    {
-        int sectionId = GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1) return false;
-        
-        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        CropChunkData chunk = GetChunk(sectionId, chunkPos);
-        if (chunk == null) return false;
-        
-        int worldX = Mathf.FloorToInt(worldPos.x);
-        int worldY = Mathf.FloorToInt(worldPos.y);
-        
-        return chunk.HasCrop(worldX, worldY);
-    }
-    
-    /// <summary>
-    /// Get crop at world position
-    /// </summary>
-    public bool TryGetCropAtWorldPosition(Vector3 worldPos, out CropChunkData.TileData crop)
-    {
-        crop = default;
-        
-        int sectionId = GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1) return false;
-        
-        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        CropChunkData chunk = GetChunk(sectionId, chunkPos);
-        if (chunk == null) return false;
-        
-        int worldX = Mathf.FloorToInt(worldPos.x);
-        int worldY = Mathf.FloorToInt(worldPos.y);
-        
-        return chunk.TryGetCrop(worldX, worldY, out crop);
-    }
-    
-    /// <summary>
-    /// Update crop stage at world position
-    /// </summary>
-    public bool UpdateCropStage(Vector3 worldPos, byte newStage)
-    {
-        int sectionId = GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1) return false;
-        
-        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        CropChunkData chunk = GetChunk(sectionId, chunkPos);
-        if (chunk == null) return false;
-        
-        int worldX = Mathf.FloorToInt(worldPos.x);
-        int worldY = Mathf.FloorToInt(worldPos.y);
-        
-        return chunk.UpdateCropStage(worldX, worldY, newStage);
-    }
-    
-    /// <summary>
-    /// Mark a tile as tilled at ABSOLUTE WORLD POSITION (X, Y)
-    /// </summary>
-    public bool TillTileAtWorldPosition(Vector3 worldPos)
-    {
-        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        
-        // Get section ID
-        int sectionId = GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1)
-        {
-            if (showDebugLogs)
-            {
-                Debug.LogWarning($"Cannot till at world pos ({worldPos.x:F1}, {worldPos.y:F1}): " +
-                           $"Chunk ({chunkPos.x}, {chunkPos.y}) is not in any active section.");
-            }
-            return false;
-        }
-        
-        CropChunkData chunk = GetChunk(sectionId, chunkPos);
-        
-        if (chunk == null)
-        {
-            Debug.LogWarning($"Cannot till: chunk ({chunkPos.x}, {chunkPos.y}) not found in section {sectionId}.");
-            return false;
-        }
-        
-        // Store tilled tile at absolute world position
-        int worldX = Mathf.FloorToInt(worldPos.x);
-        int worldY = Mathf.FloorToInt(worldPos.y);
-        
-        bool success = chunk.TillTile(worldX, worldY);
-        
-        if (success && showDebugLogs)
-        {
-            Debug.Log($"✓ Tilled tile at world pos ({worldX}, {worldY}) " +
-                 $"[Chunk: ({chunkPos.x}, {chunkPos.y}), Section: {sectionConfigs[sectionId].SectionName}]");
-        }
-        
-        return success;
-    }
-    
-    /// <summary>
-    /// Remove tilled status from a tile at world position
-    /// </summary>
-    public bool UntillTileAtWorldPosition(Vector3 worldPos)
-    {
-        int sectionId = GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1) return false;
-        
-        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        CropChunkData chunk = GetChunk(sectionId, chunkPos);
-        if (chunk == null) return false;
-        
-        int worldX = Mathf.FloorToInt(worldPos.x);
-        int worldY = Mathf.FloorToInt(worldPos.y);
-        
-        return chunk.UntillTile(worldX, worldY);
-    }
-    
-    /// <summary>
-    /// Check if tile is tilled at world position
-    /// </summary>
-    public bool IsTilledAtWorldPosition(Vector3 worldPos)
-    {
-        int sectionId = GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1) return false;
-        
-        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
-        CropChunkData chunk = GetChunk(sectionId, chunkPos);
-        if (chunk == null) return false;
-        
-        int worldX = Mathf.FloorToInt(worldPos.x);
-        int worldY = Mathf.FloorToInt(worldPos.y);
-        
-        return chunk.IsTilled(worldX, worldY);
-    }
-    
-    /// <summary>
-    /// Get all chunks in a section
-    /// </summary>
-    public Dictionary<Vector2Int, CropChunkData> GetSection(int sectionId)
-    {
-        return sections.ContainsKey(sectionId) ? sections[sectionId] : null;
-    }
-    
-    /// <summary>
     /// Get section configuration
     /// </summary>
-    public SectionConfig GetSectionConfig(int sectionId)
+    public WorldSectionConfig GetSectionConfig(int sectionId)
     {
         foreach (var config in sectionConfigs)
         {
@@ -548,24 +253,67 @@ public class WorldDataManager : MonoBehaviour
         return null;
     }
     
+    #endregion
+    
+    #region Backward Compatibility - Crop Methods
+    
+    // These methods provide backward compatibility with existing code
+    // They delegate to the CropDataModule
+    
+    public bool PlantCropAtWorldPosition(Vector3 worldPos, ushort cropTypeID)
+        => cropModule.PlantCropAtWorldPosition(worldPos, cropTypeID);
+    
+    public bool RemoveCropAtWorldPosition(Vector3 worldPos)
+        => cropModule.RemoveCropAtWorldPosition(worldPos);
+    
+    public bool HasCropAtWorldPosition(Vector3 worldPos)
+        => cropModule.HasCropAtWorldPosition(worldPos);
+    
+    public bool TryGetCropAtWorldPosition(Vector3 worldPos, out CropChunkData.TileData crop)
+        => cropModule.TryGetCropAtWorldPosition(worldPos, out crop);
+    
+    public bool UpdateCropStage(Vector3 worldPos, byte newStage)
+        => cropModule.UpdateCropStage(worldPos, newStage);
+    
+    public bool TillTileAtWorldPosition(Vector3 worldPos)
+        => cropModule.TillTileAtWorldPosition(worldPos);
+    
+    public bool UntillTileAtWorldPosition(Vector3 worldPos)
+        => cropModule.UntillTileAtWorldPosition(worldPos);
+    
+    public bool IsTilledAtWorldPosition(Vector3 worldPos)
+        => cropModule.IsTilledAtWorldPosition(worldPos);
+    
+    public CropChunkData GetChunk(int sectionId, Vector2Int chunkPos)
+        => cropModule.GetChunk(sectionId, chunkPos);
+    
+    public Dictionary<Vector2Int, CropChunkData> GetSection(int sectionId)
+        => cropModule.GetSection(sectionId);
+    
+    public CropChunkData GetChunkAtWorldPosition(Vector3 worldPos)
+    {
+        int sectionId = GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return null;
+        
+        Vector2Int chunkPos = WorldToChunkCoords(worldPos);
+        return cropModule.GetChunk(sectionId, chunkPos);
+    }
+    
+    #endregion
+    
+    #region Statistics and Management
+    
     /// <summary>
     /// Get memory usage estimate in MB
     /// </summary>
     public float GetMemoryUsageMB()
     {
-        int totalCrops = 0;
-        foreach (var section in sections.Values)
+        float total = 0f;
+        foreach (var module in modules.Values)
         {
-            foreach (var chunk in section.Values)
-            {
-                totalCrops += chunk.GetCropCount();
-            }
+            total += module.GetMemoryUsageMB();
         }
-        
-        float bytes = totalCrops * 25f;
-        bytes += sections.Count * 1000;
-        
-        return bytes / (1024f * 1024f);
+        return total;
     }
     
     /// <summary>
@@ -574,37 +322,16 @@ public class WorldDataManager : MonoBehaviour
     public WorldDataStats GetStats()
     {
         WorldDataStats stats = new WorldDataStats();
-        stats.TotalSections = sections.Count;
-        stats.TotalChunks = 0;
-        stats.LoadedChunks = 0;
-        stats.TotalCrops = 0;
-        stats.TotalTilledTiles = 0;
-        
-        foreach (var section in sections.Values)
-        {
-            stats.TotalChunks += section.Count;
-            
-            foreach (var chunk in section.Values)
-            {
-                if (chunk.IsLoaded)
-                {
-                    stats.LoadedChunks++;
-                }
-                
-                int cropCount = chunk.GetCropCount();
-                stats.TotalCrops += cropCount;
-                
-                int tilledCount = chunk.GetTilledCount();
-                stats.TotalTilledTiles += tilledCount;
-                
-                if (cropCount > 0)
-                {
-                    stats.ChunksWithCrops++;
-                }
-            }
-        }
-        
+        stats.TotalSections = sectionConfigs.Count;
+        stats.TotalChunks = chunkToSectionMap.Count;
         stats.MemoryUsageMB = GetMemoryUsageMB();
+        
+        // Get crop-specific stats
+        var cropStats = cropModule.GetStats();
+        stats.LoadedChunks = (int)cropStats["LoadedChunks"];
+        stats.TotalCrops = (int)cropStats["TotalCrops"];
+        stats.TotalTilledTiles = (int)cropStats["TotalTilledTiles"];
+        stats.ChunksWithCrops = (int)cropStats["ChunksWithCrops"];
         
         return stats;
     }
@@ -613,31 +340,42 @@ public class WorldDataManager : MonoBehaviour
     {
         WorldDataStats stats = GetStats();
         
-        Debug.Log($"=== World Data Statistics ===\n" +
-                  $"Sections: {stats.TotalSections}\n" +
-                  $"Total Chunks: {stats.TotalChunks}\n" +
-                  $"Loaded Chunks: {stats.LoadedChunks}\n" +
-                  $"Chunks with Crops: {stats.ChunksWithCrops}\n" +
-                  $"Total Crops: {stats.TotalCrops}\n" +
-                  $"Total Tilled Tiles: {stats.TotalTilledTiles}\n" +
-                  $"Memory Usage: {stats.MemoryUsageMB:F2} MB");
+        string log = $"=== World Data Statistics ===\n" +
+                     $"Sections: {stats.TotalSections}\n" +
+                     $"Total Chunks: {stats.TotalChunks}\n" +
+                     $"Loaded Chunks: {stats.LoadedChunks}\n" +
+                     $"Memory Usage: {stats.MemoryUsageMB:F2} MB\n\n";
+        
+        foreach (var kvp in modules)
+        {
+            log += $"--- {kvp.Key} ---\n";
+            var moduleStats = kvp.Value.GetStats();
+            foreach (var statKvp in moduleStats)
+            {
+                log += $"  {statKvp.Key}: {statKvp.Value}\n";
+            }
+            log += "\n";
+        }
+        
+        Debug.Log(log);
     }
     
     public void ClearAllData()
     {
-        foreach (var section in sections.Values)
+        foreach (var module in modules.Values)
         {
-            foreach (var chunk in section.Values)
-            {
-                chunk.Clear();
-            }
+            module.ClearAll();
         }
         
         if (showDebugLogs)
         {
-            Debug.Log("[WorldData] All data cleared");
+            Debug.Log("[WorldDataManager] All data cleared");
         }
     }
+    
+    #endregion
+    
+    #region Debug Visualization
     
     private void OnDrawGizmos()
     {
@@ -649,23 +387,16 @@ public class WorldDataManager : MonoBehaviour
             {
                 if (!config.IsActive) continue;
                 
-                Vector3 min = new Vector3(
-                    config.ChunkStartX * chunkSizeTiles, 
-                    config.ChunkStartY * chunkSizeTiles, 
-                    0
-                );
-                Vector3 size = new Vector3(
-                    config.ChunksWidth * chunkSizeTiles, 
-                    config.ChunksHeight * chunkSizeTiles, 
-                    1
-                );
+                var (min, max) = config.GetWorldBounds(chunkSizeTiles);
+                Vector3 minV3 = new Vector3(min.x, min.y, 0);
+                Vector3 size = new Vector3(max.x - min.x, max.y - min.y, 1);
                 
                 Gizmos.color = config.DebugColor;
-                Gizmos.DrawWireCube(min + size / 2, size);
+                Gizmos.DrawWireCube(minV3 + size / 2, size);
                 
                 #if UNITY_EDITOR
-                UnityEditor.Handles.Label(min + size / 2, 
-                    $"{config.SectionName}\n({min.x:F0},{min.y:F0}) to ({min.x + size.x:F0},{min.y + size.y:F0})");
+                UnityEditor.Handles.Label(minV3 + size / 2, 
+                    $"{config.SectionName}\n({min.x},{min.y}) to ({max.x},{max.y})");
                 #endif
             }
         }
@@ -684,29 +415,9 @@ public class WorldDataManager : MonoBehaviour
             }
         }
     }
-    /// <summary>
-/// Get info about valid sections for debugging
-/// </summary>
-private string GetValidSectionsInfo()
-{
-    string info = "";
-    foreach (var config in sectionConfigs)
-    {
-        if (!config.IsActive) continue;
-        
-        int worldMinX = config.ChunkStartX * chunkSizeTiles;
-        int worldMinY = config.ChunkStartY * chunkSizeTiles;
-        int worldMaxX = (config.ChunkStartX + config.ChunksWidth) * chunkSizeTiles;
-        int worldMaxY = (config.ChunkStartY + config.ChunksHeight) * chunkSizeTiles;
-        
-        info += $"  • {config.SectionName}: World ({worldMinX},{worldMinY}) to ({worldMaxX},{worldMaxY}) " +
-                $"[Chunks {config.ChunkStartX}-{config.ChunkStartX + config.ChunksWidth - 1}, " +
-                $"{config.ChunkStartY}-{config.ChunkStartY + config.ChunksHeight - 1}]\n";
-    }
-    return info;
+    
+    #endregion
 }
-}
-
 
 [System.Serializable]
 public struct WorldDataStats
@@ -719,5 +430,3 @@ public struct WorldDataStats
     public int TotalTilledTiles;
     public float MemoryUsageMB;
 }
-
-
