@@ -9,15 +9,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bca3c01286f20884cba7a91db68bf8fa, type: 3}
+  m_Script: {fileID: 11500000, guid: 378e4e5825bd01841bdc4e6dce35d129, type: 3}
   m_Name: Hoe
   m_EditorClassIdentifier: 
   itemName: Hoe
-  itemID: Hoe_Tool
+  itemID: Tool_Hoe
   icon: {fileID: 9216205297631055959, guid: 7621cbce9a49a844a922c7b2adf4cc34, type: 3}
+  description: 
   maxStack: 1
   isStackable: 0
-  type: 0
-  energyRestore: 0
-  healthRestore: 0
-  damage: 0
+  quality: 0
+  basePrice: 1
+  buyPrice: 0
+  canBeSold: 1
+  canBeBought: 0
+  npcPreferences: []
+  isQuestItem: 0
+  isArtifact: 0
+  isRareItem: 0
+  toolLevel: 1
+  toolPower: 1
+  toolMaterial: 1

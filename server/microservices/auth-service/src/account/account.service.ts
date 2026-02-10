@@ -8,6 +8,10 @@ import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { SessionService } from './session.service';
+import { ConfigService } from '@nestjs/config';
+import * as nodemailer from 'nodemailer';
+import * as crypto from 'crypto';
+import { ResetOtpTemplate } from './templates/reset-otp.template';
 
 @Injectable()
 export class AccountService {
@@ -15,6 +19,7 @@ export class AccountService {
     @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
     private jwtService: JwtService,
     private sessionService: SessionService,
+    private configService: ConfigService,
   ) {}
 
   async create(createAccountDto: CreateAccountDto): Promise<Account> {
@@ -76,7 +81,7 @@ export class AccountService {
     }
     const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin };
     const token = this.jwtService.sign(payload);
-    await this.sessionService.createSession(token, account._id.toString(), 1);
+    await this.sessionService.createSession(token, account._id.toString(), 60);
     console.log(`[auth-service] Admin logged in: ${account.username}`);
     return {
       userId: account._id.toString(),
@@ -147,5 +152,87 @@ export class AccountService {
     }
     console.log('[auth-service] Admin logged out');
     return { ok: true };
+  }
+
+  async requestAdminPasswordReset(email: string) {
+    const account = await this.accountModel.findOne({ email, isAdmin: true }).exec();
+    if (!account) {
+      throw new BadRequestException('Admin account not found');
+    }
+
+    const otp = this.generateOtp();
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    account.resetOtpHash = otpHash;
+    account.resetOtpExpiresAt = new Date(Date.now() + 2 * 60 * 1000);
+    account.resetOtpUsed = false;
+    account.resetOtpRequestedAt = new Date();
+    await account.save();
+
+    await this.sendOtpEmail(account.email, account.username, otp);
+
+    return { ok: true };
+  }
+
+  async confirmAdminPasswordReset(email: string, otp: string, newPassword: string) {
+    const account = await this.accountModel.findOne({ email, isAdmin: true }).exec();
+    if (!account || !account.resetOtpHash || !account.resetOtpExpiresAt) {
+      throw new BadRequestException('Invalid reset request');
+    }
+
+    if (account.resetOtpUsed) {
+      throw new BadRequestException('OTP already used');
+    }
+
+    if (account.resetOtpExpiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('OTP expired');
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      throw new BadRequestException('Invalid OTP format');
+    }
+
+    const isOtpValid = await bcrypt.compare(otp, account.resetOtpHash);
+    if (!isOtpValid) {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    account.password = hashedPassword;
+    account.resetOtpUsed = true;
+    await account.save();
+
+    return { ok: true };
+  }
+
+  private generateOtp(): string {
+    const num = crypto.randomInt(0, 1000000);
+    return String(num).padStart(6, '0');
+  }
+
+  private async sendOtpEmail(email: string, username: string, otp: string) {
+    const host = this.configService.get<string>('MAIL_HOST');
+    const port = Number(this.configService.get<string>('MAIL_PORT') || 587);
+    const user = this.configService.get<string>('MAIL_USER');
+    const pass = this.configService.get<string>('MAIL_PASS');
+    const from = this.configService.get<string>('MAIL_FROM') || user;
+    const secure = this.configService.get<string>('MAIL_SECURE') === 'true';
+
+    if (!host || !user || !pass || !from) {
+      throw new BadRequestException('Email configuration is missing');
+    }
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+    });
+
+    const subject = ResetOtpTemplate.getSubject();
+    const text = ResetOtpTemplate.getText(username, otp);
+    const html = ResetOtpTemplate.getHtml(username, otp);
+
+    await transporter.sendMail({ from, to: email, subject, text, html });
   }
 }

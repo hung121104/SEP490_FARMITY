@@ -2,13 +2,6 @@ using UnityEngine;
 using Photon.Pun;
 using System.Collections.Generic;
 
-public enum PlantingMode
-{
-    AtMouse,           // Plant at exact mouse position
-    AroundPlayer,      // Plant in direction of mouse within radius around player (3x3 = 1 tile away)
-    FarAroundPlayer    // Plant in direction of mouse within larger radius (5x5 = 2 tiles away)
-}
-
 /// <summary>
 /// View component for crop planting following MVP pattern.
 /// Designed to be placed on a standalone GameObject (CropPlantingManager) in the scene.
