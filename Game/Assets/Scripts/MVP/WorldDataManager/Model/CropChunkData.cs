@@ -3,11 +3,8 @@ using System;
 using System.Collections.Generic;
 
 [Serializable]
-public class CropChunkData
+public class CropChunkData : BaseChunkData
 {
-    public int ChunkX;
-    public int ChunkY;
-    public int SectionId;
     
     [Serializable]
     public struct TileData
@@ -27,19 +24,10 @@ public class CropChunkData
     [NonSerialized]
     public Dictionary<long, TileData> tiles = new Dictionary<long, TileData>();
     
-    [NonSerialized]
-    public bool IsLoaded = false;
-    
-    [NonSerialized]
-    public bool IsDirty = false;
-    
-    [NonSerialized]
-    public float LastSyncTime = 0f;
-    
     private long GetKey(int worldX, int worldY)
     {
-        // Combine X and Y into single key: supports -10000 to +10000 range
-        return ((long)worldX * 100000L) + worldY;
+        // Use base class method for consistency
+        return GetWorldKey(worldX, worldY);
     }
     
     /// <summary>
@@ -260,7 +248,7 @@ public class CropChunkData
     /// Serialize with absolute world positions - easy to debug!
     /// Format: [ChunkX(4)] [ChunkY(4)] [SectionId(4)] [Count(2)] [Tile1(13)] [Tile2(13)] ...
     /// </summary>
-    public byte[] ToBytes()
+    public override byte[] ToBytes()
     {
         int count = tiles.Count;
         byte[] data = new byte[14 + (count * 13)]; // 14 header + 13 bytes per tile
@@ -285,7 +273,7 @@ public class CropChunkData
         return data;
     }
     
-    public void FromBytes(byte[] data)
+    public override void FromBytes(byte[] data)
     {
         if (data == null || data.Length < 14)
         {
@@ -322,7 +310,7 @@ public class CropChunkData
         IsDirty = false;
     }
     
-    public int GetDataSizeBytes() => 14 + (tiles.Count * 13);
+    public override int GetDataSizeBytes() => 14 + (tiles.Count * 13);
     
     public int GetCropCount()
     {
@@ -334,7 +322,7 @@ public class CropChunkData
         return count;
     }
     
-    public void Clear()
+    public override void Clear()
     {
         tiles.Clear();
         IsLoaded = false;

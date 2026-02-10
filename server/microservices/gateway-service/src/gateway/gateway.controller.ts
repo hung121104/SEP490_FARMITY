@@ -1,10 +1,10 @@
-import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { SavePositionDto } from './dto/save-position.dto';
 import { GetPositionDto } from './dto/get-position.dto';
 import { firstValueFrom } from 'rxjs';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 import { CreateNewsDto } from './dto/create-news.dto';
@@ -24,6 +24,29 @@ export class GatewayController {
     @Inject('NEWS_SERVICE') private newsClient: ClientProxy,
     @Inject('MEDIA_SERVICE') private mediaClient: ClientProxy,
   ) {}
+
+  @Post('player-data/world')
+  async createWorld(@Body() body: any, @Req() req: Request) {
+    const ownerId = req['user']?.sub;
+    if (!ownerId) throw new UnauthorizedException('Missing owner');
+    // forward optional _id for update, otherwise create
+    return firstValueFrom(
+      this.playerDataClient.send('create-world', { _id: body._id, worldName: body.worldName, ownerId }),
+    );
+  }
+
+  @Get('player-data/world')
+  async getWorld(@Query('_id') _id: string) {
+    return firstValueFrom(this.playerDataClient.send('get-world', { _id }));
+  }
+
+  @Get('player-data/worlds')
+  async getWorldsByOwner(@Req() req: Request, @Query('ownerId') ownerIdQuery?: string) {
+    const user = req['user'];
+    let ownerId = user?.sub;
+    if (ownerIdQuery && user?.isAdmin) ownerId = ownerIdQuery;
+    return firstValueFrom(this.playerDataClient.send('get-worlds-by-owner', { ownerId }));
+  }
 
   @Post('auth/register')
   async register(@Body() createAccountDto: CreateAccountDto) {
