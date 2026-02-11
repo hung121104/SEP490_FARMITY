@@ -1,12 +1,12 @@
 public class NPCDialoguePresenter
 {
-    private NPCDialogueService service;
+    private INPCDialogueService service;
     private NPCDialogueView view;
 
     private string currentDialogue;
 
     public NPCDialoguePresenter(
-        NPCDialogueService service,
+        INPCDialogueService service,
         NPCDialogueView view)
     {
         this.service = service;

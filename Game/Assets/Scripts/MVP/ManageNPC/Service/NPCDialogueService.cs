@@ -1,4 +1,5 @@
-public class NPCDialogueService
+public class NPCDialogueService : INPCDialogueService
+
 {
     private NPCDialogueModel model;
     private int currentIndex;
