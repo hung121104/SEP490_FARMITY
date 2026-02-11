@@ -81,7 +81,6 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     folder: (from step 1 response)
     ```
   - Response: `{ "secure_url": "https://res.cloudinary.com/.../news/image.jpg", ... }`
-  - Note: This endpoint is provided by Cloudinary. Frontend uploads directly to Cloudinary, not to backend. For testing, use Postman with form-data body.
 
 ### CRUD Operations
 
@@ -122,7 +121,6 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     folder: (from step 1 response)
     ```
   - Response: `{ "secure_url": "https://res.cloudinary.com/.../media/image.jpg", ... }`
-  - Note: This endpoint is provided by Cloudinary. Frontend uploads directly to Cloudinary, not to your backend. For testing, use Postman with form-data body.
 
 ### CRUD Operations
 
