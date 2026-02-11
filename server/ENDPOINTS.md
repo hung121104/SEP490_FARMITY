@@ -35,24 +35,24 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 
 - **POST** `/player-data/world`: Create or update a world.
   - Headers: `Authorization: Bearer <token>` (gateway middleware verifies JWT)
-  - Body (create): `{ "worldName": "string" }`
-  - Body (update): `{ "_id": "string", "worldName": "string" }`
-  - Response: created/updated world document `{ "_id": "string", "worldName": "string", "ownerId": "string" }`.
-  - Notes: `ownerId` is taken from the verified token (`sub`) by the gateway and forwarded to the microservice.
+    - Body (create): `{ "worldName": "string", "day"?: number, "month"?: number, "year"?: number, "hour"?: number, "minute"?: number, "gold"?: number }`.
+      - All numeric time fields and `gold` are optional; they default to `0` when omitted.
+    - Response: created/updated world document `{ "_id": "string", "worldName": "string", "ownerId": "string", "day": number, "month": number, "year": number, "hour": number, "minute": number, "gold": number }`.
+    - Notes: `ownerId` is taken from the verified token (`sub`) by the gateway and forwarded to the microservice.
 
 - **GET** `/player-data/world?_id=string`: Get a world by id.
   - Headers: `Authorization: Bearer <token>`
-  - Response: world document `{ "_id": "string", "worldName": "string", "ownerId": "string" }` or `null`.
+    - Response: world document `{ "_id": "string", "worldName": "string", "ownerId": "string", "day": number, "month": number, "year": number, "hour": number, "minute": number, "gold": number }` or `null`.
 
 - **DELETE** `/player-data/world?_id=string`: Delete a world by id.
   - Headers: `Authorization: Bearer <token>` (gateway middleware verifies JWT)
   - Query: `_id=string`
-  - Response: deleted world document `{ "_id": "string", "worldName": "string", "ownerId": "string" }` or `null`.
+    - Response: deleted world document `{ "_id": "string", "worldName": "string", "ownerId": "string", "day": number, "month": number, "year": number, "hour": number, "minute": number, "gold": number }` or `null`.
 
 - **GET** `/player-data/worlds`: Get all worlds owned by the authenticated account.
   - Headers: `Authorization: Bearer <token>`
   - Optional query: `ownerId=string` (only allowed for admin accounts)
-  - Response: array of world documents.
+    - Response: array of world documents (each includes `day`, `month`, `year`, `hour`, `minute`, `gold`, all numeric, default `0`).
 
 ## Blog
 
@@ -139,10 +139,13 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 - **Message** `create-world`: Create or update a world.
   - Body: `{ "_id"?: "string", "worldName": "string", "ownerId": "string" }`
   - Notes: `ownerId` is an `accountId` (references `Account`). The gateway provides a verified `ownerId` (extracted from the JWT) when forwarding this message.
+    - Body: `{ "_id"?: "string", "worldName": "string", "ownerId": "string", "day"?: number, "month"?: number, "year"?: number, "hour"?: number, "minute"?: number, "gold"?: number }`
+    - Notes: `ownerId` is an `accountId` (references `Account`). The gateway provides a verified `ownerId` (extracted from the JWT) when forwarding this message. Numeric time fields and `gold` default to `0` if omitted.
 
 - **Message** `get-world`: Get a world by id.
   - Body: `{ "_id": "string" }`
   - Response: world document `{ "_id": "string", "worldName": "string", "ownerId": "string" }` or `null`.
+    - Response: world document `{ "_id": "string", "worldName": "string", "ownerId": "string", "day": number, "month": number, "year": number, "hour": number, "minute": number, "gold": number }` or `null`.
 
 - **Message** `get-worlds-by-owner`: Get all worlds owned by an account.
   - Body: `{ "ownerId": "string" }`
@@ -152,3 +155,5 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Body: `{ "_id": "string", "ownerId": "string" }`
   - Notes: The gateway provides a verified `ownerId` (extracted from the JWT) and the microservice enforces that the sender's `ownerId` matches the world's `ownerId` before deleting.
   - Response: deleted world document `{ "_id": "string", "worldName": "string", "ownerId": "string" }` or `null`.
+    - Notes: The gateway provides a verified `ownerId` (extracted from the JWT) and the microservice enforces that the sender's `ownerId` matches the world's `ownerId` before deleting.
+    - Response: deleted world document `{ "_id": "string", "worldName": "string", "ownerId": "string", "day": number, "month": number, "year": number, "hour": number, "minute": number, "gold": number }` or `null`.
