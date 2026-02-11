@@ -20,16 +20,13 @@ export class GatewayController {
   constructor(
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
-    @Inject('BLOG_SERVICE') private blogClient: ClientProxy,
-    @Inject('NEWS_SERVICE') private newsClient: ClientProxy,
-    @Inject('MEDIA_SERVICE') private mediaClient: ClientProxy,
+    @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
   ) {}
 
   @Post('player-data/world')
   async createWorld(@Body() body: any, @Req() req: Request) {
     const ownerId = req['user']?.sub;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
-    // forward optional _id for update, otherwise create
     return firstValueFrom(
       this.playerDataClient.send('create-world', { _id: body._id, worldName: body.worldName, ownerId }),
     );
@@ -58,12 +55,10 @@ export class GatewayController {
     return this.authClient.send('login-ingame', loginDto);
   }
 
-
   @Post('auth/register-admin')
   async registerAdmin(@Body() createAdminDto: any) {
     return this.authClient.send('register-admin', createAdminDto);
   }
-
 
   @Post('auth/login-admin')
   async loginAdmin(@Body() loginDto: any, @Res({ passthrough: true }) res: Response) {
@@ -89,10 +84,9 @@ export class GatewayController {
     return this.playerDataClient.send('get-position', getPositionDto);
   }
 
-
   @Get('auth/admin-check')
-  async adminCheck(@Headers('authorization') authHeader: string, @Headers('cookie') cookieHeader: string) {
-    return this.verifyAdminToken(authHeader, cookieHeader);
+  async adminCheck(@Req() req: Request) {
+    return req['user'];
   }
 
   @Post('auth/logout')
@@ -116,146 +110,88 @@ export class GatewayController {
   }
 
   @Post('blog/create')
-  async createBlog(
-    @Body() createBlogDto: CreateBlogDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.blogClient.send('create-blog', createBlogDto);
+  async createBlog(@Body() createBlogDto: CreateBlogDto) {
+    return this.adminClient.send('create-blog', createBlogDto);
   }
 
   @Get('blog/all')
   async getAllBlogs() {
-    return this.blogClient.send('get-all-blogs', {});
+    return this.adminClient.send('get-all-blogs', {});
   }
 
   @Get('blog/:id')
   async getBlogById(@Param('id') id: string) {
-    return this.blogClient.send('get-blog-by-id', id);
+    return this.adminClient.send('get-blog-by-id', id);
   }
 
   @Post('blog/update/:id')
-  async updateBlog(
-    @Param('id') id: string,
-    @Body() updateBlogDto: UpdateBlogDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.blogClient.send('update-blog', { id, updateBlogDto });
+  async updateBlog(@Param('id') id: string, @Body() updateBlogDto: UpdateBlogDto) {
+    return this.adminClient.send('update-blog', { id, updateBlogDto });
   }
 
   @Delete('blog/delete/:id')
-  async deleteBlog(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.blogClient.send('delete-blog', id);
+  async deleteBlog(@Param('id') id: string) {
+    return this.adminClient.send('delete-blog', id);
   }
 
   @Post('news/upload-signature')
-  async getNewsUploadSignature(
-    @Body() dto: UploadSignatureDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.newsClient.send('news-upload-signature', dto);
+  async getNewsUploadSignature(@Body() dto: UploadSignatureDto) {
+    return this.adminClient.send('news-upload-signature', dto);
   }
 
   @Post('news/create')
-  async createNews(
-    @Body() createNewsDto: CreateNewsDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.newsClient.send('create-news', createNewsDto);
+  async createNews(@Body() createNewsDto: CreateNewsDto) {
+    return this.adminClient.send('create-news', createNewsDto);
   }
 
   @Get('news/all')
   async getAllNews() {
-    return this.newsClient.send('get-all-news', {});
+    return this.adminClient.send('get-all-news', {});
   }
 
   @Get('news/:id')
   async getNewsById(@Param('id') id: string) {
-    return this.newsClient.send('get-news-by-id', id);
+    return this.adminClient.send('get-news-by-id', id);
   }
 
   @Post('news/update/:id')
-  async updateNews(
-    @Param('id') id: string,
-    @Body() updateNewsDto: UpdateNewsDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.newsClient.send('update-news', { id, updateNewsDto });
+  async updateNews(@Param('id') id: string, @Body() updateNewsDto: UpdateNewsDto) {
+    return this.adminClient.send('update-news', { id, updateNewsDto });
   }
 
   @Delete('news/delete/:id')
-  async deleteNews(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.newsClient.send('delete-news', id);
+  async deleteNews(@Param('id') id: string) {
+    return this.adminClient.send('delete-news', id);
   }
 
   @Post('media/upload-signature')
-  async getMediaUploadSignature(
-    @Body() dto: UploadSignatureDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.mediaClient.send('media-upload-signature', dto);
+  async getMediaUploadSignature(@Body() dto: UploadSignatureDto) {
+    return this.adminClient.send('media-upload-signature', dto);
   }
 
   @Post('media/create')
-  async createMedia(
-    @Body() createMediaDto: CreateMediaDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.mediaClient.send('create-media', createMediaDto);
+  async createMedia(@Body() createMediaDto: CreateMediaDto) {
+    return this.adminClient.send('create-media', createMediaDto);
   }
 
   @Get('media/all')
   async getAllMedia() {
-    return this.mediaClient.send('get-all-media', {});
+    return this.adminClient.send('get-all-media', {});
   }
 
   @Get('media/:id')
   async getMediaById(@Param('id') id: string) {
-    return this.mediaClient.send('get-media-by-id', id);
+    return this.adminClient.send('get-media-by-id', id);
   }
 
   @Post('media/update/:id')
-  async updateMedia(
-    @Param('id') id: string,
-    @Body() updateMediaDto: UpdateMediaDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.mediaClient.send('update-media', { id, updateMediaDto });
+  async updateMedia(@Param('id') id: string, @Body() updateMediaDto: UpdateMediaDto) {
+    return this.adminClient.send('update-media', { id, updateMediaDto });
   }
 
   @Delete('media/delete/:id')
-  async deleteMedia(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
-    return this.mediaClient.send('delete-media', id);
+  async deleteMedia(@Param('id') id: string) {
+    return this.adminClient.send('delete-media', id);
   }
 
   @Post('auth/admin-reset/request')
@@ -266,21 +202,5 @@ export class GatewayController {
   @Post('auth/admin-reset/confirm')
   async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
     return this.authClient.send('admin-reset-confirm', dto);
-  }
-
-  private async verifyAdminToken(authHeader: string, cookieHeader: string): Promise<any> {
-    const tokenFromHeader = authHeader?.split(' ')[1];
-    const cookies = (cookieHeader || '').split(';').reduce<Record<string, string>>((acc, c) => {
-      const [k, v] = c.split('=').map(s => s?.trim());
-      if (k && v) acc[k] = decodeURIComponent(v);
-      return acc;
-    }, {});
-    const token = tokenFromHeader ?? cookies['access_token'];
-    if (!token) throw new UnauthorizedException('Missing token');
-
-    const payload = await firstValueFrom(this.authClient.send('verify-token-passive', token));
-    if (!payload?.isAdmin) throw new UnauthorizedException('Not an admin');
-    
-    return payload;
   }
 }
