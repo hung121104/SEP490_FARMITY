@@ -27,7 +27,6 @@ export class GatewayController {
   async createWorld(@Body() body: any, @Req() req: Request) {
     const ownerId = req['user']?.sub;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
-    // forward optional _id for update, otherwise create
     return firstValueFrom(
       this.playerDataClient.send('create-world', { _id: body._id, worldName: body.worldName, ownerId }),
     );
@@ -86,8 +85,8 @@ export class GatewayController {
   }
 
   @Get('auth/admin-check')
-  async adminCheck(@Headers('authorization') authHeader: string, @Headers('cookie') cookieHeader: string) {
-    return this.verifyAdminToken(authHeader, cookieHeader);
+  async adminCheck(@Req() req: Request) {
+    return req['user'];
   }
 
   @Post('auth/logout')
@@ -111,12 +110,7 @@ export class GatewayController {
   }
 
   @Post('blog/create')
-  async createBlog(
-    @Body() createBlogDto: CreateBlogDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async createBlog(@Body() createBlogDto: CreateBlogDto) {
     return this.adminClient.send('create-blog', createBlogDto);
   }
 
@@ -131,43 +125,22 @@ export class GatewayController {
   }
 
   @Post('blog/update/:id')
-  async updateBlog(
-    @Param('id') id: string,
-    @Body() updateBlogDto: UpdateBlogDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async updateBlog(@Param('id') id: string, @Body() updateBlogDto: UpdateBlogDto) {
     return this.adminClient.send('update-blog', { id, updateBlogDto });
   }
 
   @Delete('blog/delete/:id')
-  async deleteBlog(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async deleteBlog(@Param('id') id: string) {
     return this.adminClient.send('delete-blog', id);
   }
 
   @Post('news/upload-signature')
-  async getNewsUploadSignature(
-    @Body() dto: UploadSignatureDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async getNewsUploadSignature(@Body() dto: UploadSignatureDto) {
     return this.adminClient.send('news-upload-signature', dto);
   }
 
   @Post('news/create')
-  async createNews(
-    @Body() createNewsDto: CreateNewsDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async createNews(@Body() createNewsDto: CreateNewsDto) {
     return this.adminClient.send('create-news', createNewsDto);
   }
 
@@ -182,43 +155,22 @@ export class GatewayController {
   }
 
   @Post('news/update/:id')
-  async updateNews(
-    @Param('id') id: string,
-    @Body() updateNewsDto: UpdateNewsDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async updateNews(@Param('id') id: string, @Body() updateNewsDto: UpdateNewsDto) {
     return this.adminClient.send('update-news', { id, updateNewsDto });
   }
 
   @Delete('news/delete/:id')
-  async deleteNews(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async deleteNews(@Param('id') id: string) {
     return this.adminClient.send('delete-news', id);
   }
 
   @Post('media/upload-signature')
-  async getMediaUploadSignature(
-    @Body() dto: UploadSignatureDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async getMediaUploadSignature(@Body() dto: UploadSignatureDto) {
     return this.adminClient.send('media-upload-signature', dto);
   }
 
   @Post('media/create')
-  async createMedia(
-    @Body() createMediaDto: CreateMediaDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async createMedia(@Body() createMediaDto: CreateMediaDto) {
     return this.adminClient.send('create-media', createMediaDto);
   }
 
@@ -233,23 +185,12 @@ export class GatewayController {
   }
 
   @Post('media/update/:id')
-  async updateMedia(
-    @Param('id') id: string,
-    @Body() updateMediaDto: UpdateMediaDto,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async updateMedia(@Param('id') id: string, @Body() updateMediaDto: UpdateMediaDto) {
     return this.adminClient.send('update-media', { id, updateMediaDto });
   }
 
   @Delete('media/delete/:id')
-  async deleteMedia(
-    @Param('id') id: string,
-    @Headers('authorization') authHeader: string,
-    @Headers('cookie') cookieHeader: string,
-  ) {
-    await this.verifyAdminToken(authHeader, cookieHeader);
+  async deleteMedia(@Param('id') id: string) {
     return this.adminClient.send('delete-media', id);
   }
 
@@ -261,21 +202,5 @@ export class GatewayController {
   @Post('auth/admin-reset/confirm')
   async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
     return this.authClient.send('admin-reset-confirm', dto);
-  }
-
-  private async verifyAdminToken(authHeader: string, cookieHeader: string): Promise<any> {
-    const tokenFromHeader = authHeader?.split(' ')[1];
-    const cookies = (cookieHeader || '').split(';').reduce<Record<string, string>>((acc, c) => {
-      const [k, v] = c.split('=').map(s => s?.trim());
-      if (k && v) acc[k] = decodeURIComponent(v);
-      return acc;
-    }, {});
-    const token = tokenFromHeader ?? cookies['access_token'];
-    if (!token) throw new UnauthorizedException('Missing token');
-
-    const payload = await firstValueFrom(this.authClient.send('verify-token-passive', token));
-    if (!payload?.isAdmin) throw new UnauthorizedException('Not an admin');
-    
-    return payload;
   }
 }
