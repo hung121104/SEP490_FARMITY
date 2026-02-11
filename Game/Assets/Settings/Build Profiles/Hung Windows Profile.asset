@@ -30,6 +30,10 @@ MonoBehaviour:
     m_path: Assets/Scenes/Test Scenes Hung/AuthScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Hung/GameCoreTestScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/MainMenuScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/PlayerWorldListScene.unity
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []
