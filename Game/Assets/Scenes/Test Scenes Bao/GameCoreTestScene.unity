@@ -1904,16 +1904,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inventoryPanel: {fileID: 1290839915}
-  itemDetailsPanel: {fileID: 0}
   dragPreviewObject: {fileID: 984020491}
   slotContainer: {fileID: 1123528225}
   slotPrefab: {fileID: 2736571544642351649, guid: 52e3370fdc781354a895a9ddb92c5fe6, type: 3}
-  itemNameText: {fileID: 0}
-  itemDescriptionText: {fileID: 0}
-  itemDetailIcon: {fileID: 0}
-  itemStatsText: {fileID: 0}
-  useButton: {fileID: 0}
-  dropButton: {fileID: 0}
   sortButton: {fileID: 1438621627}
   notificationText: {fileID: 0}
   notificationDuration: 2
@@ -2146,6 +2139,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   inventorySlots: 36
   inventoryView: {fileID: 1290839917}
+  itemDetailView: {fileID: 0}
 --- !u!4 &1542940688
 Transform:
   m_ObjectHideFlags: 0
@@ -2453,7 +2447,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1709577422}
-  - component: {fileID: 1709577423}
   m_Layer: 0
   m_Name: HotBarManager
   m_TagString: Untagged
@@ -2476,24 +2469,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1709577423
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1709577419}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 493a6d7ff523882499fcf940c4544165, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  hotbarView: {fileID: 290682715}
-  inventoryGameView: {fileID: 1542940687}
-  testItems: []
-  addItemsOnStart: 1
-  hotbarStartSlot: 27
-  testItemQuality: 0
 --- !u!1 &1775741140
 GameObject:
   m_ObjectHideFlags: 0

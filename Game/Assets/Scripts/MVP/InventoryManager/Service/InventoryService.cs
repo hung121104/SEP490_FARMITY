@@ -8,8 +8,8 @@ public class InventoryService : IInventoryService
     private readonly InventoryModel model;
 
     // Events
-    public event Action<InventoryItem, int> OnItemAdded;
-    public event Action<InventoryItem, int> OnItemRemoved;
+    public event Action<ItemModel, int> OnItemAdded;
+    public event Action<ItemModel, int> OnItemRemoved;
     public event Action<int, int> OnItemsMoved;
     public event Action<int, int> OnQuantityChanged;
     public event Action OnInventoryChanged;
@@ -36,14 +36,14 @@ public class InventoryService : IInventoryService
             foreach (int slotIndex in existingSlots)
             {
                 var existingItem = model.GetItemAtSlot(slotIndex);
-                int canAdd = Mathf.Min(remainingQuantity, itemData.MaxStack - existingItem.quantity);
+                int canAdd = Mathf.Min(remainingQuantity, itemData.MaxStack - existingItem.Quantity);
 
                 if (canAdd > 0)
                 {
-                    existingItem.quantity += canAdd;
+                    existingItem.AddQuantity(canAdd);
                     remainingQuantity -= canAdd;
 
-                    OnQuantityChanged?.Invoke(slotIndex, existingItem.quantity);
+                    OnQuantityChanged?.Invoke(slotIndex, existingItem.Quantity);
                     OnInventoryChanged?.Invoke();
 
                     if (remainingQuantity <= 0)
@@ -63,7 +63,7 @@ public class InventoryService : IInventoryService
                 ? Mathf.Min(remainingQuantity, itemData.MaxStack)
                 : 1;
 
-            var newItem = new InventoryItem(itemData, stackSize, emptySlot, quality);
+            var newItem = new ItemModel(itemData, quality, stackSize, emptySlot);
             model.SetItemAtSlot(emptySlot, newItem);
 
             OnItemAdded?.Invoke(newItem, emptySlot);
@@ -91,7 +91,7 @@ public class InventoryService : IInventoryService
             return false;
 
         // Calculate total available
-        int totalAvailable = slots.Sum(slot => model.GetItemAtSlot(slot).quantity);
+        int totalAvailable = slots.Sum(slot => model.GetItemAtSlot(slot).Quantity);
         if (totalAvailable < quantity)
             return false;
 
@@ -102,19 +102,19 @@ public class InventoryService : IInventoryService
                 break;
 
             var item = model.GetItemAtSlot(slotIndex);
-            int toRemove = Mathf.Min(remainingToRemove, item.quantity);
+            int toRemove = Mathf.Min(remainingToRemove, item.Quantity);
 
-            item.quantity -= toRemove;
+            item.AddQuantity(-toRemove);
             remainingToRemove -= toRemove;
 
-            if (item.quantity <= 0)
+            if (item.Quantity <= 0)
             {
                 OnItemRemoved?.Invoke(item, slotIndex);
                 model.ClearSlot(slotIndex);
             }
             else
             {
-                OnQuantityChanged?.Invoke(slotIndex, item.quantity);
+                OnQuantityChanged?.Invoke(slotIndex, item.Quantity);
             }
 
             OnInventoryChanged?.Invoke();
@@ -126,19 +126,19 @@ public class InventoryService : IInventoryService
     public bool RemoveItemFromSlot(int slotIndex, int quantity)
     {
         var item = model.GetItemAtSlot(slotIndex);
-        if (item == null || quantity <= 0 || quantity > item.quantity)
+        if (item == null || quantity <= 0 || quantity > item.Quantity)
             return false;
 
-        item.quantity -= quantity;
+        item.AddQuantity(-quantity);
 
-        if (item.quantity <= 0)
+        if (item.Quantity <= 0)
         {
             OnItemRemoved?.Invoke(item, slotIndex);
             model.ClearSlot(slotIndex);
         }
         else
         {
-            OnQuantityChanged?.Invoke(slotIndex, item.quantity);
+            OnQuantityChanged?.Invoke(slotIndex, item.Quantity);
         }
 
         OnInventoryChanged?.Invoke();
@@ -176,24 +176,24 @@ public class InventoryService : IInventoryService
             fromItem.Quality == toItem.Quality &&
             fromItem.IsStackable)
         {
-            int spaceInTarget = toItem.MaxStack - toItem.quantity;
-            int amountToMove = Mathf.Min(spaceInTarget, fromItem.quantity);
+            int spaceInTarget = toItem.MaxStack - toItem.Quantity;
+            int amountToMove = Mathf.Min(spaceInTarget, fromItem.Quantity);
 
             if (amountToMove > 0)
             {
-                toItem.quantity += amountToMove;
-                fromItem.quantity -= amountToMove;
+                toItem.AddQuantity(amountToMove);
+                fromItem.AddQuantity(-amountToMove);
 
-                OnQuantityChanged?.Invoke(toSlot, toItem.quantity);
+                OnQuantityChanged?.Invoke(toSlot, toItem.Quantity);
 
-                if (fromItem.quantity <= 0)
+                if (fromItem.Quantity <= 0)
                 {
                     model.ClearSlot(fromSlot);
                     OnItemRemoved?.Invoke(fromItem, fromSlot);
                 }
                 else
                 {
-                    OnQuantityChanged?.Invoke(fromSlot, fromItem.quantity);
+                    OnQuantityChanged?.Invoke(fromSlot, fromItem.Quantity);
                 }
 
                 OnInventoryChanged?.Invoke();
@@ -221,7 +221,7 @@ public class InventoryService : IInventoryService
 
     #region Query Operations
 
-    public InventoryItem GetItemAtSlot(int slotIndex)
+    public ItemModel GetItemAtSlot(int slotIndex)
     {
         return model.GetItemAtSlot(slotIndex);
     }
@@ -229,7 +229,7 @@ public class InventoryService : IInventoryService
     public int GetItemCount(string itemId, Quality? quality = null)
     {
         var slots = model.GetSlotsWithItem(itemId, quality);
-        return slots.Sum(slot => model.GetItemAtSlot(slot).quantity);
+        return slots.Sum(slot => model.GetItemAtSlot(slot).Quantity);
     }
 
     public bool HasItem(string itemId, int quantity = 1, Quality? quality = null)
@@ -253,19 +253,19 @@ public class InventoryService : IInventoryService
         return count;
     }
 
-    public List<InventoryItem> GetAllItems()
+    public List<ItemModel> GetAllItems()
     {
         return model.GetNonEmptyItems();
     }
 
-    public List<InventoryItem> GetItemsByType(ItemType type)
+    public List<ItemModel> GetItemsByType(ItemType type)
     {
         return model.GetNonEmptyItems()
             .Where(item => item.ItemType == type)
             .ToList();
     }
 
-    public List<InventoryItem> GetItemsByCategory(ItemCategory category)
+    public List<ItemModel> GetItemsByCategory(ItemCategory category)
     {
         return model.GetNonEmptyItems()
             .Where(item => item.ItemCategory == category)

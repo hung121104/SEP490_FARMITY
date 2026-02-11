@@ -4,7 +4,14 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class InventorySlotView : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
+public class InventorySlotView : MonoBehaviour, 
+    IPointerClickHandler, 
+    IBeginDragHandler, 
+    IDragHandler, 
+    IEndDragHandler, 
+    IDropHandler,
+    IPointerEnterHandler,
+    IPointerExitHandler
 {
     [Header("UI References")]
     [SerializeField] private Image iconImage;
@@ -12,7 +19,10 @@ public class InventorySlotView : MonoBehaviour, IPointerClickHandler, IBeginDrag
     [SerializeField] private GameObject selectionHighlight;
 
     private int slotIndex;
-    private InventoryItem currentItem;
+    private ItemModel currentItem;
+
+    // State tracking
+    private bool isHovering = false;
 
     // Events
     public event Action<int> OnClickedRequested;
@@ -20,6 +30,8 @@ public class InventorySlotView : MonoBehaviour, IPointerClickHandler, IBeginDrag
     public event Action<Vector2> OnDragRequested;
     public event Action OnEndDragRequested;
     public event Action<int> OnDropRequested;
+    public event Action<int, Vector2> OnPointerEnterRequested;
+    public event Action<int> OnPointerExitRequested;
 
     public void Initialize(int index)
     {
@@ -27,7 +39,9 @@ public class InventorySlotView : MonoBehaviour, IPointerClickHandler, IBeginDrag
         ClearSlot();
     }
 
-    public void UpdateSlot(InventoryItem item)
+    #region Public Methods
+
+    public void UpdateSlot(ItemModel item)
     {
         currentItem = item;
 
@@ -38,34 +52,52 @@ public class InventorySlotView : MonoBehaviour, IPointerClickHandler, IBeginDrag
         }
 
         // Show icon
-        iconImage.sprite = item.Icon;
-        iconImage.enabled = true;
+        if (iconImage != null)
+        {
+            iconImage.sprite = item.Icon;
+            iconImage.enabled = true;
+        }
 
         // Show quantity
-        if (item.IsStackable && item.quantity > 1)
+        if (quantityText != null)
         {
-            quantityText.text = item.quantity.ToString();
-            quantityText.enabled = true;
-        }
-        else
-        {
-            quantityText.enabled = false;
+            if (item.IsStackable && item.Quantity > 1)
+            {
+                quantityText.text = item.Quantity.ToString();
+                quantityText.enabled = true;
+            }
+            else
+            {
+                quantityText.enabled = false;
+            }
         }
     }
 
     public void ClearSlot()
     {
         currentItem = null;
-        iconImage.enabled = false;
-        quantityText.enabled = false;
-        SetSelected(false);
+
+        if (iconImage != null)
+            iconImage.enabled = false;
+
+        if (quantityText != null)
+            quantityText.enabled = false;
+
+        isHovering = false;
+        UpdateHighlight();
     }
 
-    public void SetSelected(bool selected)
+    private void UpdateHighlight()
     {
         if (selectionHighlight != null)
-            selectionHighlight.SetActive(selected);
+        {
+            selectionHighlight.SetActive(isHovering);
+        }
     }
+
+    #endregion
+
+    public ItemModel GetCurrentItem() => currentItem;
 
     #region Event Handlers
 
@@ -78,6 +110,9 @@ public class InventorySlotView : MonoBehaviour, IPointerClickHandler, IBeginDrag
     {
         if (currentItem != null)
         {
+            // Hide highlight during drag
+            isHovering = false;
+            UpdateHighlight();
             OnBeginDragRequested?.Invoke(slotIndex);
         }
     }
@@ -103,5 +138,24 @@ public class InventorySlotView : MonoBehaviour, IPointerClickHandler, IBeginDrag
         OnDropRequested?.Invoke(slotIndex);
     }
 
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        isHovering = true;
+        UpdateHighlight();
+        if (currentItem != null)
+        {
+            OnPointerEnterRequested?.Invoke(slotIndex, eventData.position);
+        }
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        isHovering = false;
+        UpdateHighlight();
+        if (currentItem != null)
+        {
+            OnPointerExitRequested?.Invoke(slotIndex);
+        }
+    }
     #endregion
 }

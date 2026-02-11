@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 public class InventoryPresenter
@@ -7,9 +7,15 @@ public class InventoryPresenter
     private readonly IInventoryService service;
     private IInventoryView view;
 
+    // Item detail system integration
+    private ItemDetailView itemDetailView;
+    private ItemPresenter currentItemPresenter;
+
     // Events for GameView or other systems
-    public event Action<InventoryItem> OnItemUsed;
-    public event Action<InventoryItem> OnItemDropped;
+    public event Action<ItemModel> OnItemUsed;
+    public event Action<ItemModel> OnItemDropped;
+
+    #region Initialization
 
     public InventoryPresenter(InventoryModel inventoryModel, IInventoryService inventoryService)
     {
@@ -30,6 +36,11 @@ public class InventoryPresenter
         }
     }
 
+    public void SetItemDetailView(ItemDetailView detailView)
+    {
+        itemDetailView = detailView;
+    }
+
     public void RemoveView()
     {
         if (view != null)
@@ -38,6 +49,7 @@ public class InventoryPresenter
             view = null;
         }
     }
+    #endregion
 
     #region View Event Subscriptions
 
@@ -51,6 +63,8 @@ public class InventoryPresenter
         view.OnUseItemRequested += HandleUseItem;
         view.OnDropItemRequested += HandleDropItem;
         view.OnSortRequested += HandleSort;
+        view.OnSlotHoverEnter += HandleSlotHoverEnter;
+        view.OnSlotHoverExit += HandleSlotHoverExit;
     }
 
     private void UnsubscribeFromViewEvents()
@@ -63,6 +77,8 @@ public class InventoryPresenter
         view.OnUseItemRequested -= HandleUseItem;
         view.OnDropItemRequested -= HandleDropItem;
         view.OnSortRequested -= HandleSort;
+        view.OnSlotHoverEnter -= HandleSlotHoverEnter;
+        view.OnSlotHoverExit -= HandleSlotHoverExit;
     }
 
     #endregion
@@ -78,13 +94,13 @@ public class InventoryPresenter
         service.OnInventoryChanged += HandleInventoryChanged;
     }
 
-    private void HandleItemAdded(InventoryItem item, int slotIndex)
+    private void HandleItemAdded(ItemModel item, int slotIndex)
     {
         view?.UpdateSlot(slotIndex, item);
-        view?.ShowNotification($"Added {item.ItemName} x{item.quantity}");
+        view?.ShowNotification($"Added {item.ItemName} x{item.Quantity}");
     }
 
-    private void HandleItemRemoved(InventoryItem item, int slotIndex)
+    private void HandleItemRemoved(ItemModel item, int slotIndex)
     {
         view?.ClearSlot(slotIndex);
     }
@@ -116,18 +132,18 @@ public class InventoryPresenter
     private int selectedSlot = -1;
     private int draggedSlot = -1;
 
+    //Need for checking
     private void HandleSlotClicked(int slotIndex)
     {
         var item = service.GetItemAtSlot(slotIndex);
 
         if (item != null)
         {
-            view?.ShowItemDetails(item);
             selectedSlot = slotIndex;
+            Debug.Log($"[InventoryPresenter] Selected slot {slotIndex}: {item.ItemName}");
         }
         else
         {
-            view?.HideItemDetails();
             selectedSlot = -1;
         }
     }
@@ -139,6 +155,9 @@ public class InventoryPresenter
         {
             draggedSlot = slotIndex;
             view?.ShowDragPreview(item);
+
+            // Hide item detail tooltip when dragging
+            HideCurrentItemDetail();
         }
     }
 
@@ -199,6 +218,48 @@ public class InventoryPresenter
 
     #endregion
 
+    #region Item Detail Hover Handlers
+
+    private void HandleSlotHoverEnter(int slotIndex, Vector2 screenPosition)
+    {
+        var itemModel = service.GetItemAtSlot(slotIndex);
+        if (itemModel == null || itemDetailView == null) return;
+
+        IItemService itemService = new ItemService(itemModel);
+        currentItemPresenter = new ItemPresenter(itemModel, itemService);
+        currentItemPresenter.SetView(itemDetailView);
+
+        // Subscribe to item interactions if needed
+        currentItemPresenter.OnItemInteracted += HandleItemDetailInteraction;
+
+        // Show details at cursor position
+        currentItemPresenter.ShowItemDetailsAtPosition(screenPosition);
+    }
+
+    private void HandleSlotHoverExit(int slotIndex)
+    {
+        HideCurrentItemDetail();
+    }
+
+    private void HideCurrentItemDetail()
+    {
+        if (currentItemPresenter != null)
+        {
+            currentItemPresenter.OnItemInteracted -= HandleItemDetailInteraction;
+            currentItemPresenter.HideItemDetails();
+            currentItemPresenter.RemoveView();
+            currentItemPresenter = null;
+        }
+    }
+
+    //Need for checking
+    private void HandleItemDetailInteraction(ItemModel itemModel)
+    {
+        Debug.Log($"[InventoryPresenter] Item detail interaction: {itemModel.ItemName}");
+    }
+
+    #endregion
+
     #region Public API for external systems
 
     public bool TryAddItem(ItemDataSO itemData, int quantity = 1, Quality quality = Quality.Normal)
@@ -239,7 +300,7 @@ public class InventoryPresenter
     public void Cleanup()
     {
         RemoveView();
-        // Unsubscribe from service events if needed
+        HideCurrentItemDetail();
     }
 
     #endregion
