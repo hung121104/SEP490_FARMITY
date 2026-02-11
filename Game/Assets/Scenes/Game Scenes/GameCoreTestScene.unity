@@ -731,8 +731,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 493a6d7ff523882499fcf940c4544165, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  additionalTestItems: []
+  hotbarView: {fileID: 0}
+  inventoryGameView: {fileID: 0}
+  testItems: []
   addItemsOnStart: 1
+  hotbarStartSlot: 27
+  testItemQuality: 0
 --- !u!114 &214434273
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1032,6 +1036,7 @@ MonoBehaviour:
   gridView: {fileID: 1470787479}
   monthParent: {fileID: 352424906}
   monthCellPrefab: {fileID: 79563291071716711, guid: a021c25e12e41044abbe56785883e21f, type: 3}
+  timeManager: {fileID: 0}
 --- !u!4 &301226408
 Transform:
   m_ObjectHideFlags: 0
@@ -1476,11 +1481,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 493a6d7ff523882499fcf940c4544165, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  additionalTestItems:
-  - {fileID: 11400000, guid: 9c3bdb08c68dc644bb7f1f6500c4c6d1, type: 2}
-  - {fileID: 11400000, guid: e76735cfb2b6923468969d97f1f43586, type: 2}
-  - {fileID: 11400000, guid: b6639f42087a1e84e8fba283635f961d, type: 2}
+  hotbarView: {fileID: 0}
+  inventoryGameView: {fileID: 0}
+  testItems: []
   addItemsOnStart: 1
+  hotbarStartSlot: 27
+  testItemQuality: 0
 --- !u!114 &513972964
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2914,13 +2920,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8ae37d7a5d95194495dd30dd12afd05, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  hotbarSize: 9
+  inventoryHotbarStartIndex: 27
   slotPrefab: {fileID: 1514373577006216391, guid: 5eeec1b9253dfb44e982f61761dae296, type: 3}
   slotsContainer: {fileID: 645309305}
   normalColor: {r: 1, g: 1, b: 1, a: 0.7}
   selectedColor: {r: 1, g: 1, b: 1, a: 1}
   enableScrollWheel: 1
   enableLeftClick: 1
-  enableRightClick: 0
+  inventoryGameView: {fileID: 0}
 --- !u!222 &1064006836
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3783,6 +3791,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   menuCanvas: {fileID: 202775763}
+  hotbarPanel: {fileID: 1064006833}
 --- !u!1 &1866735579
 GameObject:
   m_ObjectHideFlags: 0

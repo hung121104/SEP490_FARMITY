@@ -60,10 +60,13 @@ export class AccountService {
       throw new UnauthorizedException('Invalid credentials');
     }
     const payload = { username: account.username, sub: account._id };
+    const token = this.jwtService.sign(payload);
+    // create a session so token verification works via verify-token
+    await this.sessionService.createSession(token, account._id.toString(), 60);
     return {
       userId: account._id.toString(),
       username: account.username,
-      access_token: this.jwtService.sign(payload),
+      access_token: token,
     };
   }
 
