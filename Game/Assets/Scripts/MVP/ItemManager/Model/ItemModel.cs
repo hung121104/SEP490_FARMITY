@@ -22,7 +22,7 @@ public class ItemModel
     public string Description => itemData.description;
     public Sprite Icon => itemData.icon;
     public ItemType ItemType => itemData.GetItemType();
-    public ItemCategory ItemCategory => itemData.GetItemCategory();
+    public ItemCategory ItemCategory => itemData.itemCategory;
     public int MaxStack => itemData.MaxStack;
     public bool IsStackable => itemData.IsStackable;
 

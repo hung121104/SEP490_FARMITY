@@ -18,10 +18,8 @@ public interface IItemDetailView
     // Button states
     void SetUseButtonState(bool interactable);
     void SetDropButtonState(bool interactable);
-    void SetCompareButtonState(bool visible);
 
     // Events to Presenter
     event Action OnUseRequested;
     event Action OnDropRequested;
-    event Action OnCompareRequested;
 }

@@ -8,5 +8,5 @@ public class GiftItemDataSO : ItemDataSO
     public bool isUniversalLove = false;
 
     public override ItemType GetItemType() => ItemType.Gift;
-    public override ItemCategory GetItemCategory() => ItemCategory.Special;
+    public ItemCategory GetItemCategory() => ItemCategory.Special;
 }

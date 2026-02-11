@@ -37,7 +37,7 @@ public abstract class ItemDataSO : ScriptableObject
 
     // Abstract properties that must be implemented
     public abstract ItemType GetItemType();
-    public abstract ItemCategory GetItemCategory();
+    public ItemCategory itemCategory;
 
     // Utility methods
     public int GetSellPrice(Quality itemQuality = Quality.Normal)

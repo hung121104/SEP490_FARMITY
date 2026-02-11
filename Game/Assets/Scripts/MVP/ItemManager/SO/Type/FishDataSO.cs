@@ -13,7 +13,7 @@ public class FishDataSO : ItemDataSO
     public Recipe cookingRecipe;
 
     public override ItemType GetItemType() => ItemType.Fish;
-    public override ItemCategory GetItemCategory() => ItemCategory.Fishing;
+    public ItemCategory GetItemCategory() => ItemCategory.Fishing;
 
     public bool CanCatchInSeason(Season season)
     {

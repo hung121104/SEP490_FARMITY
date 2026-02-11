@@ -21,7 +21,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     [Header("Buttons")]
     [SerializeField] private Button useButton;
     [SerializeField] private Button dropButton;
-    [SerializeField] private Button compareButton;
 
     [Header("Animation")]
     [SerializeField] private float fadeInDuration = 0.2f;
@@ -38,7 +37,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     // Events
     public event Action OnUseRequested;
     public event Action OnDropRequested;
-    public event Action OnCompareRequested;
 
     #region Unity Lifecycle
 
@@ -75,9 +73,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
 
         if (dropButton != null)
             dropButton.onClick.AddListener(() => OnDropRequested?.Invoke());
-
-        if (compareButton != null)
-            compareButton.onClick.AddListener(() => OnCompareRequested?.Invoke());
     }
 
     #endregion
@@ -201,14 +196,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
         {
             dropButton.gameObject.SetActive(interactable);
             dropButton.interactable = interactable;
-        }
-    }
-
-    public void SetCompareButtonState(bool visible)
-    {
-        if (compareButton != null)
-        {
-            compareButton.gameObject.SetActive(visible);
         }
     }
 

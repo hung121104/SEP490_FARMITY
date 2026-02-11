@@ -11,7 +11,7 @@ public class SeedDataSO : ItemDataSO
     public Season[] growthSeasons;
 
     public override ItemType GetItemType() => ItemType.Seed;
-    public override ItemCategory GetItemCategory() => ItemCategory.Farming;
+    public ItemCategory GetItemCategory() => ItemCategory.Farming;
 
     public bool CanGrowInSeason(Season season)
     {

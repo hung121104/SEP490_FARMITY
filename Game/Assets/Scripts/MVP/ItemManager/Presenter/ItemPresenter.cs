@@ -46,14 +46,12 @@ public class ItemPresenter
     {
         view.OnUseRequested += HandleUseRequested;
         view.OnDropRequested += HandleDropRequested;
-        view.OnCompareRequested += HandleCompareRequested;
     }
 
     private void UnsubscribeFromViewEvents()
     {
         view.OnUseRequested -= HandleUseRequested;
         view.OnDropRequested -= HandleDropRequested;
-        view.OnCompareRequested -= HandleCompareRequested;
     }
 
     #endregion
@@ -75,7 +73,6 @@ public class ItemPresenter
         // Configure buttons based on item capabilities
         view.SetUseButtonState(service.CanBeUsed());
         view.SetDropButtonState(!model.IsQuestItem && !model.IsArtifact);
-        view.SetCompareButtonState(service.CanBeEquipped());
 
         view.Show();
     }

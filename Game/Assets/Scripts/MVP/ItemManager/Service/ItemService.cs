@@ -68,7 +68,7 @@ public class ItemService : IItemService
 
             if (model.Quantity > 1)
             {
-                stats.AppendLine($"<size=10><i>({model.SellPrice}g each)</i></size>");
+                stats.AppendLine($"<size=15><i>({model.SellPrice}g each)</i></size>");
             }
         }
 
@@ -150,6 +150,7 @@ public class ItemService : IItemService
                model.ItemType == ItemType.Seed;
     }
 
+    //Can be removed
     public bool CanBeEquipped()
     {
         return model.ItemType == ItemType.Tool ||

@@ -10,7 +10,7 @@ public class WeaponDataSO : ItemDataSO
     public ToolMaterial weaponMaterial = ToolMaterial.Basic;
 
     public override ItemType GetItemType() => ItemType.Weapon;
-    public override ItemCategory GetItemCategory() => ItemCategory.Combat;
+    public ItemCategory GetItemCategory() => ItemCategory.Combat;
 
     // Weapons typically don't stack
     public override bool IsStackable => false;

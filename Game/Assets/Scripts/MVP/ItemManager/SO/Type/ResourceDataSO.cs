@@ -13,5 +13,5 @@ public class ResourceDataSO : ItemDataSO
     public Recipe craftingRecipe;
 
     public override ItemType GetItemType() => ItemType.Resource;
-    public override ItemCategory GetItemCategory() => ItemCategory.Mining;
+    public ItemCategory GetItemCategory() => ItemCategory.Mining;
 }
