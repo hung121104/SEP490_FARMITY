@@ -13,9 +13,10 @@ public class NPCInteractor : MonoBehaviour
 
     private void Awake()
     {
-        var service = new NPCDialogueService(dialogueModel);
+        INPCDialogueService service = new NPCDialogueService(dialogueModel);
         presenter = new NPCDialoguePresenter(service, dialogueView);
     }
+
 
     private void Update()
     {
@@ -23,6 +24,7 @@ public class NPCInteractor : MonoBehaviour
 
         if (Input.GetKeyDown(interactKey))
         {
+            
             if (dialogueView.IsTyping())
             {
                 presenter.ShowFullCurrentText();
@@ -34,11 +36,15 @@ public class NPCInteractor : MonoBehaviour
         }
     }
 
+
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (!other.CompareTag("PlayerEntity")) return;
 
         playerInRange = true;
+
+        
+      
     }
 
     private void OnTriggerExit2D(Collider2D other)
@@ -46,5 +52,6 @@ public class NPCInteractor : MonoBehaviour
         if (!other.CompareTag("PlayerEntity")) return;
 
         playerInRange = false;
+       
     }
 }
