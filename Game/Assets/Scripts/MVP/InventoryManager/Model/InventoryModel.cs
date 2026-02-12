@@ -3,26 +3,27 @@ using System.Linq;
 
 public class InventoryModel
 {
-    private InventoryItem[] items;
+    private ItemModel[] items;
     public int maxSlots { get; private set; }
 
     public InventoryModel(int slots = 36)
     {
         maxSlots = slots;
-        items = new InventoryItem[maxSlots];
+        items = new ItemModel[maxSlots];
     }
 
-    // READ-ONLY operations - for Presenter to use
-    public IReadOnlyList<InventoryItem> Slots => items;
+    #region READ-ONLY operations - for Presenter to use
 
-    public InventoryItem GetItemAtSlot(int slotIndex)
+    public IReadOnlyList<ItemModel> Slots => items;
+
+    public ItemModel GetItemAtSlot(int slotIndex)
     {
         if (slotIndex < 0 || slotIndex >= maxSlots)
             return null;
         return items[slotIndex];
     }
 
-    public List<InventoryItem> GetNonEmptyItems()
+    public List<ItemModel> GetNonEmptyItems()
     {
         return items.Where(item => item != null).ToList();
     }
@@ -37,14 +38,17 @@ public class InventoryModel
         return slotIndex >= 0 && slotIndex < maxSlots;
     }
 
-    // INTERNAL operations - for Service to use
-    internal void SetItemAtSlot(int slotIndex, InventoryItem item)
+    #endregion
+
+    #region INTERNAL operations - for Service to use
+
+    internal void SetItemAtSlot(int slotIndex, ItemModel item)
     {
         if (IsSlotValid(slotIndex))
         {
             items[slotIndex] = item;
             if (item != null)
-                item.slotIndex = slotIndex;
+                item.SetSlotIndex(slotIndex);
         }
     }
 
@@ -63,13 +67,16 @@ public class InventoryModel
             items[slotB] = temp;
 
             if (items[slotA] != null)
-                items[slotA].slotIndex = slotA;
+                items[slotA].SetSlotIndex(slotA);
             if (items[slotB] != null)
-                items[slotB].slotIndex = slotB;
+                items[slotB].SetSlotIndex(slotB);
         }
     }
 
-    // Query operations - for Service to use
+    #endregion
+
+    #region Query operations - for Service to use
+
     internal int FindEmptySlot()
     {
         for (int i = 0; i < maxSlots; i++)
@@ -103,4 +110,6 @@ public class InventoryModel
         }
         return slots;
     }
+
+    #endregion
 }

@@ -15,13 +15,13 @@ public interface IInventoryView
     event Action<int> OnUseItemRequested;
     event Action<int> OnDropItemRequested;
     event Action OnSortRequested;
+    event Action<int, Vector2> OnSlotHoverEnter;
+    event Action<int> OnSlotHoverExit;
 
     // Display Methods
-    void UpdateSlot(int slotIndex, InventoryItem item);
+    void UpdateSlot(int slotIndex, ItemModel item);
     void ClearSlot(int slotIndex);
-    void ShowItemDetails(InventoryItem item);
-    void HideItemDetails();
-    void ShowDragPreview(InventoryItem item);
+    void ShowDragPreview(ItemModel item);
     void UpdateDragPreview(Vector2 position);
     void HideDragPreview();
     void ShowNotification(string message);

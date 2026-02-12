@@ -27,8 +27,9 @@ MonoBehaviour:
   isQuestItem: 0
   isArtifact: 0
   isRareItem: 0
-  canBeCrafted: 0
-  canBeCooked: 0
+  itemCategory: 0
+  canBeCrafted: 1
+  canBeCooked: 1
   craftingRecipe:
     ingredients: []
     craftTime: 1

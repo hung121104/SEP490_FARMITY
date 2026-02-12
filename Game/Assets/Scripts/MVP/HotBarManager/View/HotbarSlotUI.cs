@@ -37,7 +37,7 @@ public class HotbarSlotUI : MonoBehaviour
         }
     }
 
-    public void UpdateDisplay(InventoryItem item)
+    public void UpdateDisplay(ItemModel item)
     {
         if (item == null)
         {
@@ -52,10 +52,10 @@ public class HotbarSlotUI : MonoBehaviour
 
             if (quantityText != null)
             {
-                if (item.IsStackable && item.quantity > 1)
+                if (item.IsStackable && item.Quantity > 1)
                 {
                     quantityText.enabled = true;
-                    quantityText.text = item.quantity.ToString();
+                    quantityText.text = item.Quantity.ToString();
                 }
                 else
                 {

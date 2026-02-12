@@ -10,5 +10,5 @@ public class CropDataSO : ItemDataSO
     public Recipe cookingRecipe;
 
     public override ItemType GetItemType() => ItemType.Crop;
-    public override ItemCategory GetItemCategory() => ItemCategory.Farming;
+    public ItemCategory GetItemCategory() => ItemCategory.Farming;
 }

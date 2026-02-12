@@ -103,7 +103,7 @@ public class HotbarTestSetup : MonoBehaviour
 
             if (item != null)
             {
-                Debug.Log("Slot " + (i + 1) + ": " + item.ItemName + " x" + item.quantity + selected);
+                Debug.Log("Slot " + (i + 1) + ": " + item.ItemName + " x" + item.Quantity + selected);
             }
             else
             {
@@ -125,7 +125,7 @@ public class HotbarTestSetup : MonoBehaviour
                 var item = inventoryService.GetItemAtSlot(i);
                 if (item != null)
                 {
-                    inventoryService.RemoveItemFromSlot(i, item.quantity);
+                    inventoryService.RemoveItemFromSlot(i, item.Quantity);
                 }
             }
             Debug.Log("Hotbar cleared");
