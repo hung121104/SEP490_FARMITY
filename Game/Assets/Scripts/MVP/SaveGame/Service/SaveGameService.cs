@@ -29,7 +29,7 @@ public class SaveGameService : ISaveGameService
     public async void SavePlayerPosition(Transform playerTransform, string PlayerName)
     {
         // Ensure user is authenticated
-        if (string.IsNullOrEmpty(AuthenticateService.JwtToken) || string.IsNullOrEmpty(AuthenticateService.UserId))
+        if (!SessionManager.Instance.IsAuthenticated())
         {
             Debug.LogError("User not authenticated. Cannot save position.");
             return;
@@ -38,7 +38,7 @@ public class SaveGameService : ISaveGameService
         var requestData = new SavePositionRequest
         {
             worldId = "world123",
-            playerID = AuthenticateService.UserId,  // Use authenticated user ID
+            playerID = SessionManager.Instance.UserId,  // Use authenticated user ID
             positionX = playerTransform.position.x,
             positionY = playerTransform.position.y,
             chunkIndex = 5
@@ -52,7 +52,7 @@ public class SaveGameService : ISaveGameService
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
-            request.SetRequestHeader("Authorization", "Bearer " + AuthenticateService.JwtToken);  // Add JWT token
+            request.SetRequestHeader("Authorization", "Bearer " + SessionManager.Instance.JwtToken);  // Add JWT token
 
             await request.SendWebRequest();
 
@@ -70,17 +70,17 @@ public class SaveGameService : ISaveGameService
     public async Task<SaveGameDataModel> LoadPlayerPosition(string playerId)
     {
         // Ensure user is authenticated
-        if (string.IsNullOrEmpty(AuthenticateService.JwtToken) || string.IsNullOrEmpty(AuthenticateService.UserId))
+        if (!SessionManager.Instance.IsAuthenticated())
         {
             Debug.LogError("User not authenticated. Cannot load position.");
             return null;
         }
 
-        string url = $"https://localhost:3000/character/position?worldId=world123&accountId={AuthenticateService.UserId}";  // Use authenticated user ID
+        string url = $"https://localhost:3000/character/position?worldId=world123&accountId={SessionManager.Instance.UserId}";  // Use authenticated user ID
 
         using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
-            request.SetRequestHeader("Authorization", "Bearer " + AuthenticateService.JwtToken);  // Add JWT token
+            request.SetRequestHeader("Authorization", "Bearer " + SessionManager.Instance.JwtToken);  // Add JWT token
 
             await request.SendWebRequest();
 

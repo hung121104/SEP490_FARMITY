@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req, HttpException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { SavePositionDto } from './dto/save-position.dto';
@@ -25,24 +25,136 @@ export class GatewayController {
 
   @Post('player-data/world')
   async createWorld(@Body() body: any, @Req() req: Request) {
-    const ownerId = req['user']?.sub;
+    const ownerIdRaw = req['user']?.sub;
+    const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
-    return firstValueFrom(
-      this.playerDataClient.send('create-world', { _id: body._id, worldName: body.worldName, ownerId }),
-    );
+    // forward optional _id for update, otherwise create
+    try {
+      return await firstValueFrom(this.playerDataClient.send('create-world', { _id: body._id, worldName: body.worldName, ownerId }));
+    } catch (err) {
+      const payload = err?.message ?? err;
+      let status = 500;
+      let message = 'Internal server error';
+      if (typeof payload === 'string') {
+        try {
+          const parsed = JSON.parse(payload);
+          status = parsed.status || status;
+          message = parsed.message || parsed.error || payload;
+        } catch {
+          message = payload;
+        }
+      } else if (payload && typeof payload === 'object') {
+        status = payload.status || payload.code || status;
+        message = payload.message || payload.error || JSON.stringify(payload);
+      }
+      throw new HttpException(message, status);
+    }
   }
 
   @Get('player-data/world')
-  async getWorld(@Query('_id') _id: string) {
-    return firstValueFrom(this.playerDataClient.send('get-world', { _id }));
+  async getWorld(@Query('_id') _id: string, @Req() req: Request) {
+    // If no _id supplied, return worlds for the authenticated user
+    // If no _id supplied, return worlds for the authenticated user
+    if (!_id) {
+      const ownerIdRaw = req['user']?.sub;
+      const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
+      if (!ownerId) throw new UnauthorizedException('Missing owner');
+      try {
+        return await firstValueFrom(this.playerDataClient.send('get-worlds-by-owner', { ownerId }));
+      } catch (err) {
+        const payload = err?.message ?? err;
+        let status = 500;
+        let message = 'Internal server error';
+        if (typeof payload === 'string') {
+          try {
+            const parsed = JSON.parse(payload);
+            status = parsed.status || status;
+            message = parsed.message || parsed.error || payload;
+          } catch {
+            message = payload;
+          }
+        } else if (payload && typeof payload === 'object') {
+          status = payload.status || payload.code || status;
+          message = payload.message || payload.error || JSON.stringify(payload);
+        }
+        throw new HttpException(message, status);
+      }
+    }
+    try {
+      return await firstValueFrom(this.playerDataClient.send('get-world', { _id }));
+    } catch (err) {
+      const payload = err?.message ?? err;
+      let status = 500;
+      let message = 'Internal server error';
+      if (typeof payload === 'string') {
+        try {
+          const parsed = JSON.parse(payload);
+          status = parsed.status || status;
+          message = parsed.message || parsed.error || payload;
+        } catch {
+          message = payload;
+        }
+      } else if (payload && typeof payload === 'object') {
+        status = payload.status || payload.code || status;
+        message = payload.message || payload.error || JSON.stringify(payload);
+      }
+      throw new HttpException(message, status);
+    }
+  }
+
+  @Delete('player-data/world')
+  async deleteWorld(@Query('_id') _id: string, @Req() req: Request) {
+    const ownerIdRaw = req['user']?.sub;
+    const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
+    if (!ownerId) throw new UnauthorizedException('Missing owner');
+    try {
+      return await firstValueFrom(this.playerDataClient.send('delete-world', { _id, ownerId }));
+    } catch (err) {
+      const payload = err?.message ?? err;
+      let status = 500;
+      let message = 'Internal server error';
+      if (typeof payload === 'string') {
+        try {
+          const parsed = JSON.parse(payload);
+          status = parsed.status || status;
+          message = parsed.message || parsed.error || payload;
+        } catch {
+          message = payload;
+        }
+      } else if (payload && typeof payload === 'object') {
+        status = payload.status || payload.code || status;
+        message = payload.message || payload.error || JSON.stringify(payload);
+      }
+      throw new HttpException(message, status);
+    }
   }
 
   @Get('player-data/worlds')
   async getWorldsByOwner(@Req() req: Request, @Query('ownerId') ownerIdQuery?: string) {
     const user = req['user'];
-    let ownerId = user?.sub;
-    if (ownerIdQuery && user?.isAdmin) ownerId = ownerIdQuery;
-    return firstValueFrom(this.playerDataClient.send('get-worlds-by-owner', { ownerId }));
+    let ownerId = user?.sub ? String(user.sub) : undefined;
+    if (ownerIdQuery && user?.isAdmin) ownerId = String(ownerIdQuery);
+    if (!ownerId) throw new UnauthorizedException('Missing owner');
+    try {
+      return await firstValueFrom(this.playerDataClient.send('get-worlds-by-owner', { ownerId }));
+    } catch (err) {
+      const payload = err?.message ?? err;
+      let status = 500;
+      let message = 'Internal server error';
+      if (typeof payload === 'string') {
+        try {
+          const parsed = JSON.parse(payload);
+          status = parsed.status || status;
+          message = parsed.message || parsed.error || payload;
+        } catch {
+          message = payload;
+        }
+      } else if (payload && typeof payload === 'object') {
+        status = payload.status || payload.code || status;
+        message = payload.message || payload.error || JSON.stringify(payload);
+      }
+      throw new HttpException(message, status);
+    }
   }
 
   @Post('auth/register')
