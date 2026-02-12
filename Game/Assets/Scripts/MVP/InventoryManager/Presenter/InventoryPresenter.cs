@@ -68,6 +68,7 @@ public class InventoryPresenter
         view.OnSortRequested += HandleSort;
         view.OnSlotHoverEnter += HandleSlotHoverEnter;
         view.OnSlotHoverExit += HandleSlotHoverExit;
+        view.OnItemDeleteRequested += HandleItemDelete;
     }
 
     private void UnsubscribeFromViewEvents()
@@ -82,6 +83,7 @@ public class InventoryPresenter
         view.OnSortRequested -= HandleSort;
         view.OnSlotHoverEnter -= HandleSlotHoverEnter;
         view.OnSlotHoverExit -= HandleSlotHoverExit;
+        view.OnItemDeleteRequested -= HandleItemDelete;
     }
 
     #endregion
@@ -232,6 +234,61 @@ public class InventoryPresenter
     {
         service.SortInventory();
         HideCurrentItemDetail();
+    }
+
+    #endregion
+
+    #region Delete Event Handler
+
+    private void HandleItemDelete(int slotIndex)
+    {
+        var item = service.GetItemAtSlot(slotIndex);
+
+        if (item == null)
+        {
+            Debug.LogWarning($"[InventoryPresenter] No item at slot {slotIndex} to delete");
+            return;
+        }
+
+        // Prevent deletion of quest items and artifacts
+        if (item.IsQuestItem)
+        {
+            view?.ShowNotification("Cannot delete quest items!");
+            Debug.LogWarning($"[InventoryPresenter] Cannot delete quest item: {item.ItemName}");
+            return;
+        }
+
+        if (item.IsArtifact)
+        {
+            view?.ShowNotification("Cannot delete artifact items!");
+            Debug.LogWarning($"[InventoryPresenter] Cannot delete artifact: {item.ItemName}");
+            return;
+        }
+
+        // Delete the entire stack
+        int quantity = item.Quantity;
+        string itemName = item.ItemName;
+
+        bool success = service.RemoveItemFromSlot(slotIndex, quantity);
+
+        if (success)
+        {
+            view?.ShowNotification($"Deleted {itemName} x{quantity}");
+            Debug.Log($"[InventoryPresenter] Deleted {itemName} x{quantity} from slot {slotIndex}");
+
+            view?.HideDragPreview();
+
+            // Hide tooltip if it was showing
+            if (currentTooltipSlot == slotIndex)
+            {
+                HideCurrentItemDetail();               
+            }
+        }
+        else
+        {
+            view?.ShowNotification("Failed to delete item!");
+            Debug.LogError($"[InventoryPresenter] Failed to delete item from slot {slotIndex}");
+        }
     }
 
     #endregion

@@ -127,15 +127,6 @@ public class ItemPresenter
         }
     }
 
-    private void HandleCompareRequested()
-    {
-        if (service.CanBeEquipped())
-        {
-            OnItemCompared?.Invoke(model);
-            Debug.Log($"[ItemPresenter] Compare requested: {model.ItemName}");
-        }
-    }
-
     #endregion
 
     #region Accessors

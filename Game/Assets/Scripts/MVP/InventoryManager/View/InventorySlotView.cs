@@ -95,6 +95,7 @@ public class InventorySlotView : MonoBehaviour,
         }
     }
 
+    public int GetSlotIndex() => slotIndex;
     #endregion
 
     public ItemModel GetCurrentItem() => currentItem;

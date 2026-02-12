@@ -17,12 +17,17 @@ public interface IInventoryView
     event Action OnSortRequested;
     event Action<int, Vector2> OnSlotHoverEnter;
     event Action<int> OnSlotHoverExit;
+    event Action<int> OnItemDeleteRequested;
 
-    // Display Methods
+    // Slot operations
     void UpdateSlot(int slotIndex, ItemModel item);
     void ClearSlot(int slotIndex);
+
+    // Drag operations
     void ShowDragPreview(ItemModel item);
     void UpdateDragPreview(Vector2 position);
     void HideDragPreview();
+
+    // Notifications
     void ShowNotification(string message);
 }
