@@ -54,7 +54,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 ## Player Data
 
 - **POST** `/player-data/save-position`: Save player position.
-  - Body: `{ "worldId": "string", "accountId": "string", "positionX": number, "positionY": number, "chunkIndex": number }`
+  - Body: `{ "worldId": "string", "accountId": "string", "positionX": number, "positionY": number, "sectionIndex": number }`
 - **GET** `/player-data/position?worldId=string&accountId=string`: Get player position.
 
 ## Blog (Development Diary)

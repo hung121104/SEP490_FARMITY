@@ -4,10 +4,12 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { World, WorldSchema } from './world.schema';
 import { WorldService } from './world.service';
 import { WorldController } from './world.controller';
+import { CharacterModule } from '../character/character.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: World.name, schema: WorldSchema }]),
+    CharacterModule,
     ClientsModule.register([
       {
         name: 'AUTH_SERVICE',
