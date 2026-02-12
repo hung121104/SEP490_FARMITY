@@ -74,7 +74,7 @@ public class HotbarPresenter
         int inventorySlotIndex = model.GetInventoryIndex(model.CurrentSlotIndex);
 
         Debug.Log("Using: " + item.ItemName + " at position: " + targetPosition);
-        OnItemUsed?.Invoke(item.itemData, targetPosition, inventorySlotIndex);
+        OnItemUsed?.Invoke(item.ItemData, targetPosition, inventorySlotIndex);
     }
 
     public void ConsumeCurrentItem(int amount = 1)
@@ -91,7 +91,7 @@ public class HotbarPresenter
         Debug.Log("Consumed " + amount + "x item from hotbar slot " + (localSlotIndex + 1));
     }
 
-    private void HandleInventoryChanged(InventoryItem item, int slotIndex)
+    private void HandleInventoryChanged(ItemModel item, int slotIndex)
     {
         RefreshAllSlots();
     }
@@ -116,6 +116,6 @@ public class HotbarPresenter
         view.UpdateSelection(model.CurrentSlotIndex);
     }
 
-    public InventoryItem GetCurrentItem() => model.GetCurrentItem();
-    public InventoryItem GetItemAt(int localIndex) => model.GetItemAt(localIndex);
+    public ItemModel GetCurrentItem() => model.GetCurrentItem();
+    public ItemModel GetItemAt(int localIndex) => model.GetItemAt(localIndex);
 }

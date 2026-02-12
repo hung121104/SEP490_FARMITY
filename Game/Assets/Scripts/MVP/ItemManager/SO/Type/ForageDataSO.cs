@@ -8,7 +8,7 @@ public class ForageDataSO : ItemDataSO
     public int energyRestore = 5; // Small energy restore for wild items
 
     public override ItemType GetItemType() => ItemType.Forage;
-    public override ItemCategory GetItemCategory() => ItemCategory.Foraging;
+    public ItemCategory GetItemCategory() => ItemCategory.Foraging;
 
     public bool CanForageInSeason(Season season)
     {

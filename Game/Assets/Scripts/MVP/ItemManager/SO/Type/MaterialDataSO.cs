@@ -8,5 +8,5 @@ public class MaterialDataSO : ItemDataSO
     public Recipe craftingRecipe;
 
     public override ItemType GetItemType() => ItemType.Material;
-    public override ItemCategory GetItemCategory() => ItemCategory.Crafting;
+    public ItemCategory GetItemCategory() => ItemCategory.Crafting;
 }

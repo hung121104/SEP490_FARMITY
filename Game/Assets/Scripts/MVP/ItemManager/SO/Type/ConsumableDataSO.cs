@@ -16,5 +16,5 @@ public class ConsumableDataSO : ItemDataSO
     public Recipe cookingRecipe;
 
     public override ItemType GetItemType() => ItemType.Consumable;
-    public override ItemCategory GetItemCategory() => ItemCategory.Cooking;
+    public ItemCategory GetItemCategory() => ItemCategory.Cooking;
 }

@@ -142,7 +142,7 @@ public class HotbarView : MonoBehaviour
         return worldPos;
     }
 
-    public void UpdateSlotDisplay(int index, InventoryItem item)
+    public void UpdateSlotDisplay(int index, ItemModel item)
     {
         if (index >= 0 && index < slotUIs.Length)
         {
@@ -161,7 +161,7 @@ public class HotbarView : MonoBehaviour
     public Color GetNormalColor() => normalColor;
     public Color GetSelectedColor() => selectedColor;
     public HotbarPresenter GetPresenter() => presenter;
-    public InventoryItem GetCurrentItem() => presenter?.GetCurrentItem();
+    public ItemModel GetCurrentItem() => presenter?.GetCurrentItem();
     public bool IsInitialized() => isInitialized;
 
     private void OnDestroy()

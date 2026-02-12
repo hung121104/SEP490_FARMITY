@@ -5,8 +5,8 @@ using UnityEngine;
 public interface IInventoryService
 {
     // Events
-    event Action<InventoryItem, int> OnItemAdded;
-    event Action<InventoryItem, int> OnItemRemoved;
+    event Action<ItemModel, int> OnItemAdded;
+    event Action<ItemModel, int> OnItemRemoved;
     event Action<int, int> OnItemsMoved;
     event Action<int, int> OnQuantityChanged;
     event Action OnInventoryChanged;
@@ -18,17 +18,17 @@ public interface IInventoryService
     bool MoveItem(int fromSlot, int toSlot);
     bool SwapItems(int slotA, int slotB);
 
-    // Query Operations
-    InventoryItem GetItemAtSlot(int slotIndex);
+    // Query Operations - Return ItemModel
+    ItemModel GetItemAtSlot(int slotIndex);
     int GetItemCount(string itemId, Quality? quality = null);
     bool HasItem(string itemId, int quantity = 1, Quality? quality = null);
     bool HasSpace();
     int GetEmptySlotCount();
 
     // Advanced Operations
-    List<InventoryItem> GetAllItems();
-    List<InventoryItem> GetItemsByType(ItemType type);
-    List<InventoryItem> GetItemsByCategory(ItemCategory category);
+    List<ItemModel> GetAllItems();
+    List<ItemModel> GetItemsByType(ItemType type);
+    List<ItemModel> GetItemsByCategory(ItemCategory category);
     void ClearInventory();
     void SortInventory();
 }

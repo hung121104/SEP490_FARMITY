@@ -13,5 +13,5 @@ public class CookingDataSO : ItemDataSO
     public Recipe cookingRecipe;    
 
     public override ItemType GetItemType() => ItemType.Cooking;
-    public override ItemCategory GetItemCategory() => ItemCategory.Cooking;
+    public ItemCategory GetItemCategory() => ItemCategory.Cooking;
 }   
