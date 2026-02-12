@@ -6,7 +6,8 @@ export type CharacterDocument = Character & Document;
 @Schema()
 export class Character {
   @Prop({ required: true })
-  worldId: string;
+  @Prop({ type: Types.ObjectId, ref: 'World', required: true })
+  worldId: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Account', required: true })
   accountId: Types.ObjectId;
@@ -18,7 +19,7 @@ export class Character {
   positionY: number;
 
   @Prop({ required: true })
-  chunkIndex: number;
+  sectionIndex: number;
 }
 
 export const CharacterSchema = SchemaFactory.createForClass(Character);

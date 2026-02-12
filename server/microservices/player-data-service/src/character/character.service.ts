@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types, ClientSession } from 'mongoose';
 import { ClientProxy } from '@nestjs/microservices';
 import { Character, CharacterDocument } from './character.schema';
 import { SavePositionDto } from './dto/save-position.dto';
@@ -16,6 +16,29 @@ export class CharacterService {
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
   ) {}
 
+  async createCharacter(
+    worldId: Types.ObjectId,
+    accountId: Types.ObjectId,
+    options?: { session?: ClientSession },
+  ): Promise<Character> {
+    const account = await this.authClient.send('find-account', accountId).toPromise();
+    if (!account) {
+      throw new BadRequestException('Invalid account');
+    }
+
+    const doc = {
+      worldId,
+      accountId,
+      positionX: 0,
+      positionY: 0,
+      sectionIndex: 0,
+    } as Partial<Character>;
+
+    // Use array form to support passing session option
+    const created = await this.characterModel.create([doc], { session: options?.session });
+    return Array.isArray(created) ? created[0] : (created as unknown as Character);
+  }
+
   async savePosition(savePositionDto: SavePositionDto): Promise<Character> {
     const account = await this.authClient.send('find-account', savePositionDto.accountId).toPromise();
     if (!account) {
@@ -28,7 +51,7 @@ export class CharacterService {
       {
         positionX: savePositionDto.positionX,
         positionY: savePositionDto.positionY,
-        chunkIndex: savePositionDto.chunkIndex,
+        sectionIndex: savePositionDto.sectionIndex,
       },
       { upsert: true, new: true },
     );
@@ -37,7 +60,7 @@ export class CharacterService {
     return result;
   }
 
-  async getPosition(getPositionDto: GetPositionDto): Promise<{ positionX: number; positionY: number; chunkIndex: number } | null> {
+  async getPosition(getPositionDto: GetPositionDto): Promise<{ positionX: number; positionY: number; sectionIndex: number } | null> {
     const account = await this.authClient.send('find-account', getPositionDto.accountId).toPromise();
     if (!account) {
       throw new BadRequestException('Invalid account');
@@ -46,10 +69,17 @@ export class CharacterService {
     this.getPositionCounter++;
     const character = await this.characterModel.findOne(
       { worldId: getPositionDto.worldId, accountId: getPositionDto.accountId },
-      { positionX: 1, positionY: 1, chunkIndex: 1, _id: 0 }
+      { positionX: 1, positionY: 1, sectionIndex: 1, _id: 0 }
     );
     const end = Date.now();
     console.log(`Endpoint: get-position, Call count: ${this.getPositionCounter}, Time: ${end - start}ms`);
-    return character ? { positionX: character.positionX, positionY: character.positionY, chunkIndex: character.chunkIndex } : null;
+    return character ? { positionX: character.positionX, positionY: character.positionY, sectionIndex: character.sectionIndex } : null;
+  }
+
+  // Delete all characters belonging to a world. Returns number of deleted documents.
+  async deleteByWorldId(worldId: string | Types.ObjectId): Promise<number> {
+    const oid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
+    const result = await this.characterModel.deleteMany({ worldId: oid });
+    return result.deletedCount ?? 0;
   }
 }

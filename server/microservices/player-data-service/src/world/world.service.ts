@@ -5,11 +5,13 @@ import { Model, Types } from 'mongoose';
 import { World, WorldDocument } from './world.schema';
 import { CreateWorldDto } from './dto/create-world.dto';
 import { GetWorldDto } from './dto/get-world.dto';
+import { CharacterService } from '../character/character.service';
 
 @Injectable()
 export class WorldService {
   constructor(
     @InjectModel(World.name) private worldModel: Model<WorldDocument>,
+    private readonly characterService: CharacterService,
   ) {}
 
   async onModuleInit() {
@@ -56,8 +58,24 @@ export class WorldService {
           )
           .exec();
       }
-      const created = new this.worldModel({ worldName: createWorldDto.worldName, ownerId: ownerObjId });
-      return await created.save();
+      // Create world first, then create initial character.
+      // This avoids requiring a replica set in dev: if character creation fails,
+      // remove the world as a compensating action.
+      const created = await this.worldModel.create({ worldName: createWorldDto.worldName, ownerId: ownerObjId });
+      try {
+        if (ownerObjId) {
+          await this.characterService.createCharacter(created._id as Types.ObjectId, ownerObjId as Types.ObjectId);
+        }
+        return created;
+      } catch (innerErr) {
+        // Attempt compensating delete; log if cleanup fails but surface the original error
+        try {
+          await this.worldModel.findByIdAndDelete(created._id).exec();
+        } catch (cleanupErr) {
+          console.error('[WorldService] Failed to cleanup world after character creation failure', cleanupErr);
+        }
+        throw innerErr;
+      }
     } catch (err) {
       // handle duplicate key for ownerId+worldName compound unique index
       if ((err as any)?.code === 11000) {
