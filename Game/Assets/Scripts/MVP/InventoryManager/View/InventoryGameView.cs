@@ -7,16 +7,25 @@ public class InventoryGameView : MonoBehaviour
 
     [Header("References")]
     [SerializeField] private InventoryView inventoryView;
+    [SerializeField] private ItemDetailView itemDetailView;
 
     private InventoryModel model;
     private IInventoryService service;
     private InventoryPresenter presenter;
 
+    #region Unity Lifecycle
     private void Awake()
     {
         InitializeInventorySystem();
     }
 
+    private void OnDestroy()
+    {
+        Cleanup();
+    }
+    #endregion
+
+    #region Initialization
     private void InitializeInventorySystem()
     {
         // Create Model
@@ -35,10 +44,17 @@ public class InventoryGameView : MonoBehaviour
             presenter.SetView(inventoryView);
         }
 
+        // Set Item Detail View
+        if (itemDetailView != null)
+        {
+            presenter.SetItemDetailView(itemDetailView);
+        }
+
         // Subscribe to presenter events
         presenter.OnItemUsed += HandleItemUsed;
         presenter.OnItemDropped += HandleItemDropped;
     }
+    #endregion
 
     #region Public API for Player/Other Systems
 
@@ -68,7 +84,7 @@ public class InventoryGameView : MonoBehaviour
 
     #region Event Handlers
 
-    private void HandleItemUsed(InventoryItem item)
+    private void HandleItemUsed(ItemModel item)
     {
         Debug.Log($"Using item: {item.ItemName}");
 
@@ -76,7 +92,7 @@ public class InventoryGameView : MonoBehaviour
         // Example: Apply consumable effects, equip tool, etc.
     }
 
-    private void HandleItemDropped(InventoryItem item)
+    private void HandleItemDropped(ItemModel item)
     {
         Debug.Log($"Dropping item: {item.ItemName}");
 
@@ -86,7 +102,19 @@ public class InventoryGameView : MonoBehaviour
 
     #endregion
 
-    private void OnDestroy()
+    #region Item Usage Implementations
+
+    private void UseConsumableItem(ItemModel item)
+    {
+        Debug.Log($"Consuming: {item.ItemName}");
+        presenter.TryRemoveItem(item.ItemId, 1);
+    }
+
+    #endregion
+
+    #region Cleanup
+
+    private void Cleanup()
     {
         if (presenter != null)
         {
@@ -95,4 +123,6 @@ public class InventoryGameView : MonoBehaviour
             presenter.Cleanup();
         }
     }
+
+    #endregion
 }

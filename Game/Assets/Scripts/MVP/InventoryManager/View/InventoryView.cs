@@ -8,20 +8,11 @@ public class InventoryView : MonoBehaviour, IInventoryView
 {
     [Header("UI Panels")]
     [SerializeField] private GameObject inventoryPanel;
-    [SerializeField] private GameObject itemDetailsPanel;
     [SerializeField] private GameObject dragPreviewObject;
 
     [Header("Slot Container")]
     [SerializeField] private Transform slotContainer;
     [SerializeField] private GameObject slotPrefab;
-
-    [Header("Item Details UI")]
-    [SerializeField] private TextMeshProUGUI itemNameText;
-    [SerializeField] private TextMeshProUGUI itemDescriptionText;
-    [SerializeField] private Image itemDetailIcon;
-    [SerializeField] private TextMeshProUGUI itemStatsText;
-    [SerializeField] private Button useButton;
-    [SerializeField] private Button dropButton;
 
     [Header("Other UI")]
     [SerializeField] private Button sortButton;
@@ -33,10 +24,9 @@ public class InventoryView : MonoBehaviour, IInventoryView
     [SerializeField] private CanvasGroup dragPreviewCanvasGroup;
 
     private List<InventorySlotView> slotViews = new List<InventorySlotView>();
-    private int currentSelectedSlot = -1;
     private Coroutine notificationCoroutine;
 
-    public bool IsVisible => inventoryPanel.activeSelf;
+    public bool IsVisible => inventoryPanel != null && inventoryPanel.activeSelf;
 
     #region Events
 
@@ -48,13 +38,14 @@ public class InventoryView : MonoBehaviour, IInventoryView
     public event Action<int> OnUseItemRequested;
     public event Action<int> OnDropItemRequested;
     public event Action OnSortRequested;
+    public event Action<int, Vector2> OnSlotHoverEnter;
+    public event Action<int> OnSlotHoverExit;
 
     #endregion
 
     private void Awake()
     {
         InitializeButtons();
-        HideItemDetails();
         HideDragPreview();
 
         if (notificationText != null)
@@ -77,15 +68,22 @@ public class InventoryView : MonoBehaviour, IInventoryView
             GameObject slotObj = Instantiate(slotPrefab, slotContainer);
             InventorySlotView slotView = slotObj.GetComponent<InventorySlotView>();
 
+            if (slotView == null)
+            {
+                Debug.LogError($"Slot prefab missing InventorySlotView component!");
+                continue;
+            }
+
             slotView.Initialize(i);
 
             // Subscribe to slot events
-            int index = i; // Capture for closure
             slotView.OnClickedRequested += (slot) => HandleSlotClicked(slot);
             slotView.OnBeginDragRequested += (slot) => OnSlotBeginDrag?.Invoke(slot);
             slotView.OnDragRequested += (pos) => OnSlotDrag?.Invoke(pos);
             slotView.OnEndDragRequested += () => OnSlotEndDrag?.Invoke();
             slotView.OnDropRequested += (slot) => OnSlotDrop?.Invoke(slot);
+            slotView.OnPointerEnterRequested += (slot, pos) => OnSlotHoverEnter?.Invoke(slot, pos);
+            slotView.OnPointerExitRequested += (slot) => OnSlotHoverExit?.Invoke(slot);
 
             slotViews.Add(slotView);
         }
@@ -93,19 +91,13 @@ public class InventoryView : MonoBehaviour, IInventoryView
 
     private void InitializeButtons()
     {
-        if (useButton != null)
-            useButton.onClick.AddListener(() => OnUseItemRequested?.Invoke(currentSelectedSlot));
-
-        if (dropButton != null)
-            dropButton.onClick.AddListener(() => OnDropItemRequested?.Invoke(currentSelectedSlot));
-
         if (sortButton != null)
             sortButton.onClick.AddListener(() => OnSortRequested?.Invoke());
     }
 
     #region IInventoryView Implementation
 
-    public void UpdateSlot(int slotIndex, InventoryItem item)
+    public void UpdateSlot(int slotIndex, ItemModel item)
     {
         if (slotIndex >= 0 && slotIndex < slotViews.Count)
         {
@@ -121,52 +113,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
         }
     }
 
-    public void ShowItemDetails(InventoryItem item)
-    {
-        if (itemDetailsPanel == null) return;
-
-        itemDetailsPanel.SetActive(true);
-
-        if (itemNameText != null)
-            itemNameText.text = item.ItemName;
-
-        if (itemDescriptionText != null)
-            itemDescriptionText.text = item.Description;
-
-        if (itemDetailIcon != null)
-            itemDetailIcon.sprite = item.Icon;
-
-        if (itemStatsText != null)
-        {
-            itemStatsText.text = $"Type: {item.ItemType}\n" +
-                                 $"Category: {item.ItemCategory}\n" +
-                                 $"Quality: {item.Quality}\n" +
-                                 $"Sell Price: {item.SellPrice}";
-        }
-
-        // Enable/disable buttons based on item properties
-        if (useButton != null)
-            useButton.interactable = item.ItemType == ItemType.Consumable;
-
-        if (dropButton != null)
-            dropButton.interactable = !item.IsQuestItem && !item.IsArtifact;
-    }
-
-    public void HideItemDetails()
-    {
-        if (itemDetailsPanel != null)
-            itemDetailsPanel.SetActive(false);
-
-        currentSelectedSlot = -1;
-
-        // Deselect all slots
-        foreach (var slot in slotViews)
-        {
-            slot.SetSelected(false);
-        }
-    }
-
-    public void ShowDragPreview(InventoryItem item)
+    public void ShowDragPreview(ItemModel item)
     {
         if (dragPreviewObject == null) return;
 
@@ -207,19 +154,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
 
     private void HandleSlotClicked(int slotIndex)
     {
-        // Deselect previous slot
-        if (currentSelectedSlot >= 0 && currentSelectedSlot < slotViews.Count)
-        {
-            slotViews[currentSelectedSlot].SetSelected(false);
-        }
-
-        // Select new slot
-        currentSelectedSlot = slotIndex;
-        if (slotIndex >= 0 && slotIndex < slotViews.Count)
-        {
-            slotViews[slotIndex].SetSelected(true);
-        }
-
         OnSlotClicked?.Invoke(slotIndex);
     }
 

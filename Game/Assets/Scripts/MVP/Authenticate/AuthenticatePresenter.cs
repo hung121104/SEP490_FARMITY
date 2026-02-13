@@ -27,13 +27,13 @@ public class AuthenticatePresenter
             // Set Photon UserId for identification (secure, no token)
             PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues
             {
-                UserId = AuthenticateService.UserId ?? username  // Use backend userId or username
+                UserId = response.userId ?? username  // Use backend userId or username
             };
-            PhotonNetwork.NickName = response.displayName ?? username;  // Optional display name
+            PhotonNetwork.NickName = response.username ?? username;  // Use username from backend
 
             Debug.Log("Login successful, loading next scene");
             // Load the scene containing ConnectToServer (replace "ConnectScene" with your actual scene name)
-            SceneManager.LoadScene("LoadingScene");
+            SceneManager.LoadScene("MainMenuScene");
         }
         else
         {

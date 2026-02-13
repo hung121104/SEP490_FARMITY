@@ -15,10 +15,10 @@ MonoBehaviour:
   itemName: Fish
   itemID: Fish_Fish
   icon: {fileID: -8071396905301975025, guid: 46ac5ac6565615847967e584d235a9eb, type: 3}
-  description: 
+  description: Fish is the best thing ever.
   maxStack: 99
   isStackable: 1
-  quality: 0
+  quality: 3
   basePrice: 1
   buyPrice: 0
   canBeSold: 1
@@ -27,6 +27,7 @@ MonoBehaviour:
   isQuestItem: 0
   isArtifact: 0
   isRareItem: 0
+  itemCategory: 2
   difficulty: 1
   fishingSeasons: 
   isLegendary: 0

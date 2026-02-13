@@ -11,6 +11,24 @@ export class World {
 
   @Prop({ type: Types.ObjectId, ref: 'Account', required: true })
   ownerId: Types.ObjectId;
+
+  @Prop({ default: 0 })
+  day: number;
+
+  @Prop({ default: 0 })
+  month: number;
+
+  @Prop({ default: 0 })
+  year: number;
+
+  @Prop({ default: 0 })
+  hour: number;
+
+  @Prop({ default: 0 })
+  minute: number;
+
+  @Prop({ type: Number, default: 0 })
+  gold: number;
 }
 
 export const WorldSchema = SchemaFactory.createForClass(World);

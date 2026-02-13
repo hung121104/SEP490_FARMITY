@@ -9,7 +9,7 @@ public class ToolDataSO : ItemDataSO
     public ToolMaterial toolMaterial = ToolMaterial.Copper;
 
     public override ItemType GetItemType() => ItemType.Tool;
-    public override ItemCategory GetItemCategory() => ItemCategory.Farming;
+    public ItemCategory GetItemCategory() => ItemCategory.Farming;
 
     // Tools typically don't stack
     public override int MaxStack => 1;

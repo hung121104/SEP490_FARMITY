@@ -8,7 +8,7 @@ public class QuestItemDataSO : ItemDataSO
     public bool autoConsume = false; // Auto consume when quest completes
 
     public override ItemType GetItemType() => ItemType.Quest;
-    public override ItemCategory GetItemCategory() => ItemCategory.Special;
+    public ItemCategory GetItemCategory() => ItemCategory.Special;
 
     // Quest items typically don't stack and can't be sold
     public override bool CanBeSold => false;

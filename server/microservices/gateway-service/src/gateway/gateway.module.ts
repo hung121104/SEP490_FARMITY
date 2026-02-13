@@ -1,7 +1,8 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { GatewayController } from './gateway.controller';
-import { AuthMiddleware } from './auth.middleware';
+import { AuthorizationMiddleware } from './authorization.middleware';
+import { AuthenticationMiddleware } from './authentication.middleware';
 
 @Module({
   imports: [
@@ -17,19 +18,9 @@ import { AuthMiddleware } from './auth.middleware';
         options: { host: 'localhost', port: 8878 },
       },
       {
-        name: 'BLOG_SERVICE',
+        name: 'ADMIN_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 3003 },
-      },
-      {
-        name: 'NEWS_SERVICE',
-        transport: Transport.TCP,
-        options: { host: 'localhost', port: 3004 },
-      },
-      {
-        name: 'MEDIA_SERVICE',
-        transport: Transport.TCP,
-        options: { host: 'localhost', port: 3005 },
+        options: { host: 'localhost', port: 3006 },
       },
     ]),
   ],
@@ -37,17 +28,43 @@ import { AuthMiddleware } from './auth.middleware';
 })
 export class GatewayModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // Exclude public auth routes (register/login) from the auth middleware
+    // attach user for all protected routes
     consumer
-      .apply(AuthMiddleware)
-      .exclude(
-        { path: 'auth/register', method: RequestMethod.ALL },
-        { path: 'auth/login-ingame', method: RequestMethod.ALL },
-        { path: 'auth/register-admin', method: RequestMethod.ALL },
-        { path: 'auth/login-admin', method: RequestMethod.ALL },
-        { path: 'auth/admin-reset/request', method: RequestMethod.ALL },
-        { path: 'auth/admin-reset/confirm', method: RequestMethod.ALL },
-      )
-      .forRoutes('*');
+      .apply(AuthorizationMiddleware)
+      .forRoutes(
+        { path: 'auth/admin-check', method: RequestMethod.GET },
+        { path: 'auth/logout', method: RequestMethod.POST },
+        { path: 'player-data/world', method: RequestMethod.ALL },
+        { path: 'player-data/worlds', method: RequestMethod.ALL },
+        { path: 'blog/create', method: RequestMethod.POST },
+        { path: 'blog/update/:id', method: RequestMethod.POST },
+        { path: 'blog/delete/:id', method: RequestMethod.DELETE },
+        { path: 'news/upload-signature', method: RequestMethod.POST },
+        { path: 'news/create', method: RequestMethod.POST },
+        { path: 'news/update/:id', method: RequestMethod.POST },
+        { path: 'news/delete/:id', method: RequestMethod.DELETE },
+        { path: 'media/upload-signature', method: RequestMethod.POST },
+        { path: 'media/create', method: RequestMethod.POST },
+        { path: 'media/update/:id', method: RequestMethod.POST },
+        { path: 'media/delete/:id', method: RequestMethod.DELETE },
+      );
+
+    // enforce admin only on admin routes
+    consumer
+      .apply(AuthenticationMiddleware)
+      .forRoutes(
+        { path: 'auth/admin-check', method: RequestMethod.GET },
+        { path: 'blog/create', method: RequestMethod.POST },
+        { path: 'blog/update/:id', method: RequestMethod.POST },
+        { path: 'blog/delete/:id', method: RequestMethod.DELETE },
+        { path: 'news/upload-signature', method: RequestMethod.POST },
+        { path: 'news/create', method: RequestMethod.POST },
+        { path: 'news/update/:id', method: RequestMethod.POST },
+        { path: 'news/delete/:id', method: RequestMethod.DELETE },
+        { path: 'media/upload-signature', method: RequestMethod.POST },
+        { path: 'media/create', method: RequestMethod.POST },
+        { path: 'media/update/:id', method: RequestMethod.POST },
+        { path: 'media/delete/:id', method: RequestMethod.DELETE },
+      );
   }
 }

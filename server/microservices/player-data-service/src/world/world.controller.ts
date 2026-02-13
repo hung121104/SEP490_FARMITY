@@ -23,4 +23,9 @@ export class WorldController {
   async getWorldsByOwner(@Body() dto: GetWorldsByOwnerDto) {
     return this.worldService.getWorldsByOwner(dto);
   }
+
+  @MessagePattern('delete-world')
+  async deleteWorld(@Body() getWorldDto: GetWorldDto) {
+    return this.worldService.deleteWorld(getWorldDto);
+  }
 }

@@ -47,7 +47,7 @@ public class HotbarModel
         SelectSlot((CurrentSlotIndex - 1 + hotbarSize) % hotbarSize);
     }
 
-    public InventoryItem GetItemAt(int localIndex)
+    public ItemModel GetItemAt(int localIndex)
     {
         if (localIndex < 0 || localIndex >= hotbarSize)
             return null;
@@ -56,7 +56,7 @@ public class HotbarModel
         return inventoryModel.GetItemAtSlot(inventoryIndex);
     }
 
-    public InventoryItem GetCurrentItem()
+    public ItemModel GetCurrentItem()
     {
         return GetItemAt(CurrentSlotIndex);
     }

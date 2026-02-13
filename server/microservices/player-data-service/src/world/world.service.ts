@@ -1,14 +1,17 @@
-import { Injectable, BadRequestException, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { World, WorldDocument } from './world.schema';
 import { CreateWorldDto } from './dto/create-world.dto';
 import { GetWorldDto } from './dto/get-world.dto';
+import { CharacterService } from '../character/character.service';
 
 @Injectable()
 export class WorldService {
   constructor(
     @InjectModel(World.name) private worldModel: Model<WorldDocument>,
+    private readonly characterService: CharacterService,
   ) {}
 
   async onModuleInit() {
@@ -37,10 +40,11 @@ export class WorldService {
   async createWorld(createWorldDto: CreateWorldDto): Promise<World> {
     // ownerId is provided by gateway after middleware verification
     // Application-level uniqueness check to prevent duplicates when index is missing
-    const existing = await this.worldModel.findOne({ ownerId: createWorldDto.ownerId, worldName: createWorldDto.worldName }).exec();
+    const ownerObjId = createWorldDto.ownerId ? new Types.ObjectId(createWorldDto.ownerId) : undefined;
+    const existing = await this.worldModel.findOne({ ownerId: ownerObjId, worldName: createWorldDto.worldName }).exec();
     if (existing) {
       if (!createWorldDto._id || existing._id.toString() !== createWorldDto._id) {
-        throw new BadRequestException('World name already exists for this owner');
+        throw new RpcException({ status: 409, message: 'World name already exists for this owner' });
       }
     }
 
@@ -49,27 +53,57 @@ export class WorldService {
         return await this.worldModel
           .findByIdAndUpdate(
             createWorldDto._id,
-            { worldName: createWorldDto.worldName, ownerId: createWorldDto.ownerId },
+            { worldName: createWorldDto.worldName, ownerId: ownerObjId },
             { upsert: true, new: true },
           )
           .exec();
       }
-      const created = new this.worldModel({ worldName: createWorldDto.worldName, ownerId: createWorldDto.ownerId });
-      return await created.save();
+      // Create world first, then create initial character.
+      // This avoids requiring a replica set in dev: if character creation fails,
+      // remove the world as a compensating action.
+      const created = await this.worldModel.create({ worldName: createWorldDto.worldName, ownerId: ownerObjId });
+      try {
+        if (ownerObjId) {
+          await this.characterService.createCharacter(created._id as Types.ObjectId, ownerObjId as Types.ObjectId);
+        }
+        return created;
+      } catch (innerErr) {
+        // Attempt compensating delete; log if cleanup fails but surface the original error
+        try {
+          await this.worldModel.findByIdAndDelete(created._id).exec();
+        } catch (cleanupErr) {
+          console.error('[WorldService] Failed to cleanup world after character creation failure', cleanupErr);
+        }
+        throw innerErr;
+      }
     } catch (err) {
       // handle duplicate key for ownerId+worldName compound unique index
       if ((err as any)?.code === 11000) {
-        throw new BadRequestException('World name already exists for this owner');
+        throw new RpcException({ status: 409, message: 'World name already exists for this owner' });
       }
       throw err;
     }
   }
 
-  async getWorld(getWorldDto: GetWorldDto): Promise<World | null> {
-    const world = await this.worldModel.findById(getWorldDto._id);
+  async getWorld(getWorldDto: GetWorldDto): Promise<World> {
+    if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
+    const world = await this.worldModel.findById(getWorldDto._id).exec();
+    if (!world) throw new RpcException({ status: 404, message: 'World not found' });
     return world;
   }
+  async deleteWorld(getWorldDto: GetWorldDto): Promise<World | null> {
+    if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
+    const world = await this.worldModel.findById(getWorldDto._id).exec();
+    if (!world) throw new RpcException({ status: 404, message: 'World not found' });
+    const ownerObjId = getWorldDto.ownerId ? new Types.ObjectId(getWorldDto.ownerId) : undefined;
+    if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {
+      throw new RpcException({ status: 401, message: 'Not authorized to delete this world' });
+    }
+    const deleted = await this.worldModel.findByIdAndDelete(getWorldDto._id).exec();
+    return deleted;
+  }
   async getWorldsByOwner(dto: { ownerId: string }): Promise<World[]> {
-    return this.worldModel.find({ ownerId: dto.ownerId }).exec();
+    const ownerObjId = dto.ownerId ? new Types.ObjectId(dto.ownerId) : undefined;
+    return this.worldModel.find({ ownerId: ownerObjId }).exec();
   }
 }
