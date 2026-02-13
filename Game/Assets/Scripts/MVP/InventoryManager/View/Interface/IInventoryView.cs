@@ -30,4 +30,7 @@ public interface IInventoryView
 
     // Notifications
     void ShowNotification(string message);
+
+    //Close operations
+    void CancelAllActions();
 }

@@ -167,6 +167,43 @@ public class InventoryView : MonoBehaviour, IInventoryView
         notificationCoroutine = StartCoroutine(ShowNotificationCoroutine(message));
     }
 
+    public void CancelAllActions()
+    {
+        // 1. Hide drag preview
+        HideDragPreview();
+
+        // 2. Stop notification coroutine
+        if (notificationCoroutine != null)
+        {
+            StopCoroutine(notificationCoroutine);
+            notificationCoroutine = null;
+        }
+
+        // 3. Hide notification text
+        if (notificationText != null)
+        {
+            notificationText.gameObject.SetActive(false);
+        }
+
+        // 4. Reset all slots hover state
+        foreach (var slotView in slotViews)
+        {
+            if (slotView != null)
+            {
+                slotView.ForceResetState();
+            }
+        }
+
+        // 5. Reset delete zone visual state
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.ForceResetState();
+        }
+
+        Debug.Log("[InventoryView] All actions cancelled");
+    }
+
+
     #endregion
 
     private void HandleSlotClicked(int slotIndex)

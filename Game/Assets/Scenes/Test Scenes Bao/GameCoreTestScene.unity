@@ -2134,12 +2134,12 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 166570040}
   - {fileID: 503847724}
   - {fileID: 1123528225}
   - {fileID: 935433228}
   - {fileID: 984020492}
   - {fileID: 1430756768}
-  - {fileID: 166570040}
   m_Father: {fileID: 1561692972}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
@@ -2522,7 +2522,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   menuCanvas: {fileID: 1985884830}
   hotbarPanel: {fileID: 290682713}
-  addItem: 101
+  inventoryGameView: {fileID: 1542940687}
+  useMenu: 101
 --- !u!4 &1558072444
 Transform:
   m_ObjectHideFlags: 0

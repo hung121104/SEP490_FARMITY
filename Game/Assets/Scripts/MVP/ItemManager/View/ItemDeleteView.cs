@@ -132,6 +132,27 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
         StartCoroutine(AnimateScale(hovering ? originalScale * scaleMultiplier : originalScale));
     }
 
+    // Reset to normal state 
+    public void ForceResetState()
+    {
+        StopAllCoroutines();
+
+        isHovering = false;
+
+        if (trashIconImage != null)
+            trashIconImage.color = normalColor;
+
+        if (canvasGroup != null)
+            canvasGroup.alpha = normalAlpha;
+
+        if (highlightEffect != null)
+            highlightEffect.SetActive(false);
+
+        transform.localScale = originalScale;
+
+        Debug.Log("[ItemDeleteView] State force reset");
+    }
+
     private System.Collections.IEnumerator AnimateColor(Color targetColor)
     {
         Color startColor = trashIconImage.color;
@@ -182,6 +203,8 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
     #endregion
 
+
+    // Toggle visibility for trash icon 
     public void OnAction() 
     { 
         gameObject.SetActive(!gameObject.activeSelf);

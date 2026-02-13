@@ -186,6 +186,7 @@ public class InventoryPresenter
     private void HandleSlotEndDrag()
     {
         view?.HideDragPreview();
+        draggedSlot = -1;
     }
 
     private void HandleSlotDrop(int targetSlotIndex)
@@ -289,6 +290,7 @@ public class InventoryPresenter
             view?.ShowNotification("Failed to delete item!");
             Debug.LogError($"[InventoryPresenter] Failed to delete item from slot {slotIndex}");
         }
+        draggedSlot = -1;
     }
 
     #endregion
@@ -319,6 +321,17 @@ public class InventoryPresenter
         if (currentItemPresenter != null)
         {
             currentItemPresenter.HideItemDetails();
+            currentItemPresenter.RemoveView();
+            currentItemPresenter = null;
+        }
+        currentTooltipSlot = -1;
+    }
+
+    private void HideCurrentItemDetailImmediate()
+    {
+        if (currentItemPresenter != null)
+        {
+            currentItemPresenter.HideItemDetailsImmediate();
             currentItemPresenter.RemoveView();
             currentItemPresenter = null;
         }
@@ -427,6 +440,23 @@ public class InventoryPresenter
         return service.GetItemCount(itemId);
     }
 
+    public void CancelAllActions()
+    {
+        // 1. Reset dragged slot state
+        draggedSlot = -1;
+
+        // 2. Reset selected slot state
+        selectedSlot = -1;
+
+        // 3. Hide item detail tooltip immediately
+        HideCurrentItemDetailImmediate();
+
+        // 4. Call view to cancel all visual actions
+        view?.CancelAllActions();
+
+        Debug.Log("[InventoryPresenter] All inventory actions cancelled");
+    }
+
     #endregion
 
     #region Helper Methods
@@ -444,6 +474,7 @@ public class InventoryPresenter
 
     public void Cleanup()
     {
+        CancelAllActions();
         RemoveView();
         HideCurrentItemDetail();
     }

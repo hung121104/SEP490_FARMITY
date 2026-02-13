@@ -87,6 +87,13 @@ public class InventorySlotView : MonoBehaviour,
         UpdateHighlight();
     }
 
+    //Force reset hover state 
+    public void ForceResetState()
+    {
+        isHovering = false;
+        UpdateHighlight();
+    }
+
     private void UpdateHighlight()
     {
         if (selectionHighlight != null)

@@ -1,10 +1,12 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class MenuController : MonoBehaviour
 {
     public GameObject menuCanvas;
     public GameObject hotbarPanel;
-    public KeyCode addItem = KeyCode.E;
+    public InventoryGameView inventoryGameView;
+    public KeyCode useMenu = KeyCode.E;
 
     void Start()
     {
@@ -12,10 +14,16 @@ public class MenuController : MonoBehaviour
     }
     void Update()
     {
-        if (Input.GetKeyDown(addItem))
+        if (Input.GetKeyDown(useMenu) && menuCanvas != null && hotbarPanel != null && inventoryGameView != null)
         {
             hotbarPanel.SetActive(menuCanvas.activeSelf);
-            menuCanvas.SetActive(!menuCanvas.activeSelf);            
+
+            //Force cancel all ongoing actions in inventory when menu is toggled
+            menuCanvas.SetActive(!menuCanvas.activeSelf);
+            if (menuCanvas.activeSelf == false)
+            {
+                inventoryGameView.CloseInventory();
+            }         
         }
     }
 }

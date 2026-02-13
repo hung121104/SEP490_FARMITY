@@ -95,14 +95,11 @@ public class ItemPresenter
     }
 
     /// <summary>
-    /// Show NPC gift reaction for specific NPC
+    /// Hide immediately without animation (for cleanup when parent is disabled)
     /// </summary>
-    public void ShowNPCGiftReaction(string npcName)
+    public void HideItemDetailsImmediate()
     {
-        if (view == null || string.IsNullOrEmpty(npcName)) return;
-
-        GiftReaction reaction = service.GetNPCReaction(npcName);
-        view.ShowGiftReaction(npcName, reaction);
+        view?.HideImmediate();
     }
 
     #endregion
