@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class InventoryGameView : MonoBehaviour
 {
@@ -55,6 +55,15 @@ public class InventoryGameView : MonoBehaviour
         presenter.OnItemDropped += HandleItemDropped;
     }
     #endregion
+
+    public void CloseInventory()
+    {
+        if (inventoryView != null)
+        {
+            presenter?.CancelAllActions();
+            Debug.Log("[InventoryGameView] Inventory closed");
+        }
+    }
 
     #region Public API for Player/Other Systems
 

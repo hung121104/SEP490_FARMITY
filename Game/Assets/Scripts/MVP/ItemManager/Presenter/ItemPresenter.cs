@@ -95,14 +95,11 @@ public class ItemPresenter
     }
 
     /// <summary>
-    /// Show NPC gift reaction for specific NPC
+    /// Hide immediately without animation (for cleanup when parent is disabled)
     /// </summary>
-    public void ShowNPCGiftReaction(string npcName)
+    public void HideItemDetailsImmediate()
     {
-        if (view == null || string.IsNullOrEmpty(npcName)) return;
-
-        GiftReaction reaction = service.GetNPCReaction(npcName);
-        view.ShowGiftReaction(npcName, reaction);
+        view?.HideImmediate();
     }
 
     #endregion
@@ -124,15 +121,6 @@ public class ItemPresenter
         {
             OnItemInteracted?.Invoke(model);
             Debug.Log($"[ItemPresenter] Drop requested: {model.ItemName}");
-        }
-    }
-
-    private void HandleCompareRequested()
-    {
-        if (service.CanBeEquipped())
-        {
-            OnItemCompared?.Invoke(model);
-            Debug.Log($"[ItemPresenter] Compare requested: {model.ItemName}");
         }
     }
 

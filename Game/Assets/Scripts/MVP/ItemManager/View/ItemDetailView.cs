@@ -95,12 +95,41 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     {
         if (detailPanel == null) return;
 
+        if (!gameObject.activeInHierarchy || !enabled)
+        {
+            // Can not run coroutine, hide immediately
+            HideImmediate();
+            return;
+        }
+
         if (fadeCoroutine != null)
             StopCoroutine(fadeCoroutine);
 
         fadeCoroutine = StartCoroutine(FadeOut());
 
         // Hide gift reaction when hiding
+        if (giftReactionPanel != null)
+            giftReactionPanel.SetActive(false);
+    }
+
+    public void HideImmediate()
+    {
+        if (detailPanel == null) return;
+
+        // Stop coroutine if running
+        if (fadeCoroutine != null)
+        {
+            StopCoroutine(fadeCoroutine);
+            fadeCoroutine = null;
+        }
+
+        // Set alpha to 0 immediately
+        if (canvasGroup != null)
+            canvasGroup.alpha = 0f;
+
+        detailPanel.SetActive(false);
+
+        // Hide gift reaction
         if (giftReactionPanel != null)
             giftReactionPanel.SetActive(false);
     }
@@ -160,25 +189,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
         {
             itemStatsText.text = stats;
         }
-    }
-
-    public void ShowGiftReaction(string npcName, GiftReaction reaction)
-    {
-        if (giftReactionPanel == null || giftReactionText == null) return;
-
-        giftReactionPanel.SetActive(true);
-
-        string reactionText = reaction switch
-        {
-            GiftReaction.Love => $"<color=#FF69B4>❤</color> {npcName} loves this!",
-            GiftReaction.Like => $"<color=#90EE90>😊</color> {npcName} likes this",
-            GiftReaction.Neutral => $"<color=#D3D3D3>😐</color> {npcName} is neutral",
-            GiftReaction.Dislike => $"<color=#FFA500>😕</color> {npcName} dislikes this",
-            GiftReaction.Hate => $"<color=#FF4500>😡</color> {npcName} hates this!",
-            _ => ""
-        };
-
-        giftReactionText.text = reactionText;
     }
 
     public void SetUseButtonState(bool interactable)

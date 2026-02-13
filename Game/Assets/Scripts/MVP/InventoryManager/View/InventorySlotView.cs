@@ -87,6 +87,13 @@ public class InventorySlotView : MonoBehaviour,
         UpdateHighlight();
     }
 
+    //Force reset hover state 
+    public void ForceResetState()
+    {
+        isHovering = false;
+        UpdateHighlight();
+    }
+
     private void UpdateHighlight()
     {
         if (selectionHighlight != null)
@@ -95,6 +102,7 @@ public class InventorySlotView : MonoBehaviour,
         }
     }
 
+    public int GetSlotIndex() => slotIndex;
     #endregion
 
     public ItemModel GetCurrentItem() => currentItem;
