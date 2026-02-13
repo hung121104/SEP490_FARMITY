@@ -4,6 +4,13 @@ public interface INPCDialogueService
 {
     string GetNPCName();
     Sprite GetAvatar();
+
     bool IsDialogueActive();
-    string GetNextDialogue();
+
+    DialogueNode GetCurrentNode();
+    bool MoveNext();
+
+    void ChooseOption(int index);
+
+    void Reset();
 }
