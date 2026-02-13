@@ -1,10 +1,16 @@
 fileFormatVersion: 2
-guid: 619bdb8a242f9de4f8b1c3a9b3604c82
+guid: b20c5cfbe39d99e4fa96ac18549557a0
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 6264863018027093636
-    second: walls and floors_0
+      213: 373501240456581031
+    second: animated_leaves_2_0
+  - first:
+      213: -1383589482149166719
+    second: animated_leaves_2_1
+  - first:
+      213: -1649661591424538194
+    second: animated_leaves_2_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +43,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -51,7 +57,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 16
+  spritePixelsToUnits: 100
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -75,7 +81,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 0
+    textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -100,13 +106,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: walls and floors_0
+      name: animated_leaves_2_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 160
-        height: 384
+        x: 1
+        y: 9
+        width: 9
+        height: 7
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +121,52 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 48e8cf3e8b341f650800000000000000
-      internalID: 6264863018027093636
+      spriteID: 7af05983661fe2500800000000000000
+      internalID: 373501240456581031
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animated_leaves_2_1
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 4
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 181488152b08ccce0800000000000000
+      internalID: -1383589482149166719
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animated_leaves_2_2
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 0
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea9e88bd5893b19e0800000000000000
+      internalID: -1649661591424538194
       vertices: []
       indices: 
       edges: []
@@ -135,7 +185,9 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      walls and floors_0: 6264863018027093636
+      animated_leaves_2_0: 373501240456581031
+      animated_leaves_2_1: -1383589482149166719
+      animated_leaves_2_2: -1649661591424538194
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
