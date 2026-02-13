@@ -76,6 +76,18 @@ export class CharacterService {
     return character ? { positionX: character.positionX, positionY: character.positionY, sectionIndex: character.sectionIndex } : null;
   }
 
+  async getCharacter(
+    worldId: Types.ObjectId | string,
+    accountId: Types.ObjectId | string,
+  ): Promise<Character | null> {
+    const account = await this.authClient.send('find-account', accountId).toPromise();
+    if (!account) {
+      throw new BadRequestException('Invalid account');
+    }
+    const character = await this.characterModel.findOne({ worldId, accountId });
+    return character;
+  }
+
   // Delete all characters belonging to a world. Returns number of deleted documents.
   async deleteByWorldId(worldId: string | Types.ObjectId): Promise<number> {
     const oid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;

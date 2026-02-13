@@ -249,6 +249,42 @@ public class CropDataModule : IWorldDataModule
     }
     
     /// <summary>
+    /// Update crop age at world position
+    /// </summary>
+    public bool UpdateCropAge(Vector3 worldPos, int newAge)
+    {
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        
+        Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+        CropChunkData chunk = GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+        
+        int worldX = Mathf.FloorToInt(worldPos.x);
+        int worldY = Mathf.FloorToInt(worldPos.y);
+        
+        return chunk.UpdateCropAge(worldX, worldY, newAge);
+    }
+    
+    /// <summary>
+    /// Increment crop age at world position by 1 day
+    /// </summary>
+    public bool IncrementCropAge(Vector3 worldPos)
+    {
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        
+        Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+        CropChunkData chunk = GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+        
+        int worldX = Mathf.FloorToInt(worldPos.x);
+        int worldY = Mathf.FloorToInt(worldPos.y);
+        
+        return chunk.IncrementCropAge(worldX, worldY);
+    }
+    
+    /// <summary>
     /// Get a specific chunk
     /// </summary>
     public CropChunkData GetChunk(int sectionId, Vector2Int chunkPos)

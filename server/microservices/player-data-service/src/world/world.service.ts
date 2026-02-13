@@ -85,11 +85,25 @@ export class WorldService {
     }
   }
 
-  async getWorld(getWorldDto: GetWorldDto): Promise<World> {
+  async getWorld(getWorldDto: GetWorldDto): Promise<any> {
     if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
     const world = await this.worldModel.findById(getWorldDto._id).exec();
     if (!world) throw new RpcException({ status: 404, message: 'World not found' });
-    return world;
+    // Verify the requester is the owner of this world
+    const ownerObjId = getWorldDto.ownerId ? new Types.ObjectId(getWorldDto.ownerId) : undefined;
+    if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {
+      throw new RpcException({ status: 401, message: 'Not authorized to access this world' });
+    }
+    // Convert to plain object so we can attach extra properties
+    const result: any = world.toObject();
+    // Fetch the character for the owner in this world and attach to response
+    try {
+      const character = await this.characterService.getCharacter(world._id, ownerObjId);
+      if (character) result.character = character;
+    } catch (err) {
+      console.error('[WorldService] Failed to fetch character for owner', err);
+    }
+    return result;
   }
   async deleteWorld(getWorldDto: GetWorldDto): Promise<World | null> {
     if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });

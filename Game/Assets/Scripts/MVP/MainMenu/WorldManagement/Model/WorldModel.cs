@@ -4,7 +4,7 @@ using System;
 public class WorldModel
 {
     public string _id;
-    public string worldName;  // Changed from 'name' to match API response
+    public string worldName; 
     public int day;
     public int month;
     public int year;

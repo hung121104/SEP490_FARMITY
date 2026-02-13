@@ -51,6 +51,22 @@ public static class WorldDataManagerCropExtensions
     }
     
     /// <summary>
+    /// Update crop age (days since planting)
+    /// </summary>
+    public static bool UpdateCropAge(this WorldDataManager manager, Vector3 worldPos, int newAge)
+    {
+        return manager.CropData?.UpdateCropAge(worldPos, newAge) ?? false;
+    }
+    
+    /// <summary>
+    /// Increment crop age by 1 day
+    /// </summary>
+    public static bool IncrementCropAge(this WorldDataManager manager, Vector3 worldPos)
+    {
+        return manager.CropData?.IncrementCropAge(worldPos) ?? false;
+    }
+    
+    /// <summary>
     /// Till a tile at world position
     /// </summary>
     public static bool TillTileAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)

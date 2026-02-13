@@ -309,7 +309,7 @@ MonoBehaviour:
   plantingMode: 1
   playerTag: PlayerEntity
   plantingRange: 2
-  plantKey: 101
+  plantKey: 32
   allowHoldToPlant: 1
   plantRepeatInterval: 0.1
   playerCameraTag: MainCamera
@@ -399,7 +399,7 @@ MonoBehaviour:
   day: 1
   hour: 0
   minute: 0
-  timeSpeed: 1
+  timeSpeed: 1080
 --- !u!4 &76351688
 Transform:
   m_ObjectHideFlags: 0
@@ -978,6 +978,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e76735cfb2b6923468969d97f1f43586, type: 2}
   - {fileID: 11400000, guid: b6639f42087a1e84e8fba283635f961d, type: 2}
   - {fileID: 11400000, guid: 9c3bdb08c68dc644bb7f1f6500c4c6d1, type: 2}
+  addItemKey: 116
 --- !u!114 &383136936
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -992,6 +993,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   inventorySlots: 36
   inventoryView: {fileID: 679996277}
+  itemDetailView: {fileID: 0}
 --- !u!1 &432420675
 GameObject:
   m_ObjectHideFlags: 0
@@ -1719,6 +1721,7 @@ MonoBehaviour:
   checkInterval: 0.12
   uiCanvas: {fileID: 583161139}
   promptText: {fileID: 2135758490}
+  validationCooldown: 0.5
 --- !u!1 &648271371
 GameObject:
   m_ObjectHideFlags: 0
@@ -1958,16 +1961,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inventoryPanel: {fileID: 679996275}
-  itemDetailsPanel: {fileID: 0}
   dragPreviewObject: {fileID: 1636974562}
   slotContainer: {fileID: 718746003}
   slotPrefab: {fileID: 2736571544642351649, guid: 52e3370fdc781354a895a9ddb92c5fe6, type: 3}
-  itemNameText: {fileID: 0}
-  itemDescriptionText: {fileID: 0}
-  itemDetailIcon: {fileID: 0}
-  itemStatsText: {fileID: 0}
-  useButton: {fileID: 0}
-  dropButton: {fileID: 0}
   sortButton: {fileID: 432420677}
   notificationText: {fileID: 0}
   notificationDuration: 2
@@ -2745,6 +2741,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   menuCanvas: {fileID: 992778062}
   hotbarPanel: {fileID: 8630199}
+  addItem: 101
 --- !u!1 &1098265340
 GameObject:
   m_ObjectHideFlags: 0
