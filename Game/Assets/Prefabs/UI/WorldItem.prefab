@@ -292,8 +292,8 @@ RectTransform:
   - {fileID: 4603445744486845283}
   - {fileID: 5048882412060552891}
   - {fileID: 1024569733159150690}
-  - {fileID: 3965367854807469186}
   - {fileID: 7030165047853186226}
+  - {fileID: 3965367854807469186}
   - {fileID: 8148371566131018845}
   - {fileID: 3075755927155353928}
   m_Father: {fileID: 0}
@@ -356,6 +356,8 @@ MonoBehaviour:
   worldNameText: {fileID: 3875556701642199457}
   timeText: {fileID: 7229246404740678047}
   goldText: {fileID: 4253298349689731753}
+  id: 
+  sceneToLoad: LoadGameScene
 --- !u!1 &2289927636150087480
 GameObject:
   m_ObjectHideFlags: 0
@@ -1124,7 +1126,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 7875390697434437885}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1520324987715178837}
+        m_TargetAssemblyTypeName: WorldItemView, Assembly-CSharp
+        m_MethodName: LoadWorld
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!1 &7166144344367948302
 GameObject:
   m_ObjectHideFlags: 0

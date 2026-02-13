@@ -53,35 +53,10 @@ export class GatewayController {
 
   @Get('player-data/world')
   async getWorld(@Query('_id') _id: string, @Req() req: Request) {
-    // If no _id supplied, return worlds for the authenticated user
-    // If no _id supplied, return worlds for the authenticated user
-    if (!_id) {
+    try {
       const ownerIdRaw = req['user']?.sub;
       const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
-      if (!ownerId) throw new UnauthorizedException('Missing owner');
-      try {
-        return await firstValueFrom(this.playerDataClient.send('get-worlds-by-owner', { ownerId }));
-      } catch (err) {
-        const payload = err?.message ?? err;
-        let status = 500;
-        let message = 'Internal server error';
-        if (typeof payload === 'string') {
-          try {
-            const parsed = JSON.parse(payload);
-            status = parsed.status || status;
-            message = parsed.message || parsed.error || payload;
-          } catch {
-            message = payload;
-          }
-        } else if (payload && typeof payload === 'object') {
-          status = payload.status || payload.code || status;
-          message = payload.message || payload.error || JSON.stringify(payload);
-        }
-        throw new HttpException(message, status);
-      }
-    }
-    try {
-      return await firstValueFrom(this.playerDataClient.send('get-world', { _id }));
+      return await firstValueFrom(this.playerDataClient.send('get-world', { _id, ownerId }));
     } catch (err) {
       const payload = err?.message ?? err;
       let status = 500;
