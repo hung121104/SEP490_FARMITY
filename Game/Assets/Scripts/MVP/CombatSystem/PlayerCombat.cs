@@ -4,6 +4,7 @@ public class PlayerCombat : MonoBehaviour
 {
     public Transform attackPoint;
     public float attackRange = 1;
+    public float knockbackForce = 50;
     public LayerMask enemyLayers;
     public int attackDamage = 1;
 
@@ -13,14 +14,14 @@ public class PlayerCombat : MonoBehaviour
     private float timer;
 
     private SpriteRenderer spriteRenderer;
-    private float originalAttackPointX; // Store the original local X position
+    private float originalAttackPointX; 
 
 
     private void Start()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
         
-        // Store the original local X position of the attack point
+        
         if (attackPoint != null)
         {
             originalAttackPointX = attackPoint.localPosition.x;
@@ -34,17 +35,17 @@ public class PlayerCombat : MonoBehaviour
             timer -= Time.deltaTime;
         }
 
-        // Flip attack point based on sprite direction
+        
         if (attackPoint != null && spriteRenderer != null)
         {
             Vector3 attackPos = attackPoint.localPosition;
             
-            // If sprite is flipped (facing left), mirror the X position
+            
             if (spriteRenderer.flipX)
             {
                 attackPos.x = -Mathf.Abs(originalAttackPointX);
             }
-            else // Facing right
+            else 
             {
                 attackPos.x = Mathf.Abs(originalAttackPointX);
             }
@@ -73,6 +74,13 @@ public class PlayerCombat : MonoBehaviour
             if (enemyHealth != null)
             {
                 enemyHealth.ChangeHealth(-attackDamage);
+                
+                // Apply knockback
+                EnemyKnockback enemyKnockback = enemy.GetComponent<EnemyKnockback>();
+                if (enemyKnockback != null)
+                {
+                    enemyKnockback.Knockback(transform, knockbackForce);
+                }
             }
         }
     }
