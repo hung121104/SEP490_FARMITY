@@ -1666,8 +1666,6 @@ MonoBehaviour:
   itemNameText: {fileID: 7018210632112882016}
   itemDescriptionText: {fileID: 7018210632112882015}
   itemStatsText: {fileID: 7018210632112882013}
-  giftReactionPanel: {fileID: 0}
-  giftReactionText: {fileID: 0}
   useButton: {fileID: 0}
   dropButton: {fileID: 0}
   fadeInDuration: 0.2
@@ -2458,6 +2456,7 @@ MonoBehaviour:
   inventorySlots: 36
   inventoryView: {fileID: 1290839917}
   itemDetailView: {fileID: 935433229}
+  itemDeleteView: {fileID: 166570037}
 --- !u!4 &1542940688
 Transform:
   m_ObjectHideFlags: 0

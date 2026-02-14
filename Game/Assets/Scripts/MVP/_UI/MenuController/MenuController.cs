@@ -20,9 +20,14 @@ public class MenuController : MonoBehaviour
 
             //Force cancel all ongoing actions in inventory when menu is toggled
             menuCanvas.SetActive(!menuCanvas.activeSelf);
+
             if (menuCanvas.activeSelf == false)
             {
                 inventoryGameView.CloseInventory();
+            }
+            else 
+            { 
+                inventoryGameView.OpenInventory();
             }         
         }
     }
