@@ -55,6 +55,9 @@ TagManager:
   - name: Player
     uniqueID: 4047512161
     locked: 0
+  - name: Effect
+    uniqueID: 1467607503
+    locked: 0
   - name: WalkBehind
     uniqueID: 560638393
     locked: 0
