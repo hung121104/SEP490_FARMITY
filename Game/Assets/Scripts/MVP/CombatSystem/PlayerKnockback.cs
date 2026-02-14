@@ -10,12 +10,12 @@ public class PlayerKnockback : MonoBehaviour
 
     [Header("Knockback Settings")]
     public float knockbackDuration = 0.15f;
-    public float squashAmount = 0.1f;
-    public float stretchAmount = 0.1f;
-    public float waveDuration = 0.4f;   
+    public float squashPixels = 0.05f; // Absolute scale change
+    public float stretchPixels = 0.05f; // Absolute scale change
+    public float waveDuration = 0.3f;
     
     [Header("Flash Settings")]
-    public float flashDuration = 0.3f;
+    public float flashDuration = 0.2f;
     public int flashCount = 2;
     
     private Color originalColor;
@@ -73,14 +73,17 @@ public class PlayerKnockback : MonoBehaviour
     private IEnumerator WaveEffect()
     {
         float elapsed = 0f;
+        float targetStretch = originalScale.y + stretchPixels;
+        float targetSquash = originalScale.y - squashPixels;
         
+        // Stretch
         while (elapsed < waveDuration / 2)
         {
             elapsed += Time.deltaTime;
             float progress = elapsed / (waveDuration / 2);
             transform.localScale = new Vector3(
                 originalScale.x,
-                Mathf.Lerp(originalScale.y, originalScale.y * stretchAmount, progress),
+                Mathf.Lerp(originalScale.y, targetStretch, progress),
                 originalScale.z
             );
             yield return null;
@@ -88,13 +91,14 @@ public class PlayerKnockback : MonoBehaviour
         
         elapsed = 0f;
         
+        // Squash
         while (elapsed < waveDuration / 2)
         {
             elapsed += Time.deltaTime;
             float progress = elapsed / (waveDuration / 2);
             transform.localScale = new Vector3(
                 originalScale.x,
-                Mathf.Lerp(originalScale.y * stretchAmount, originalScale.y * squashAmount, progress),
+                Mathf.Lerp(targetStretch, targetSquash, progress),
                 originalScale.z
             );
             yield return null;
@@ -102,13 +106,14 @@ public class PlayerKnockback : MonoBehaviour
         
         elapsed = 0f;
         
+        // Return
         while (elapsed < waveDuration / 4)
         {
             elapsed += Time.deltaTime;
             float progress = elapsed / (waveDuration / 4);
             transform.localScale = new Vector3(
                 originalScale.x,
-                Mathf.Lerp(originalScale.y * squashAmount, originalScale.y, progress),
+                Mathf.Lerp(targetSquash, originalScale.y, progress),
                 originalScale.z
             );
             yield return null;

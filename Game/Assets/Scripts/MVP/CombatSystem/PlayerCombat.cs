@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro;
 
 public class PlayerCombat : MonoBehaviour
 {
@@ -7,7 +8,8 @@ public class PlayerCombat : MonoBehaviour
     public float knockbackForce = 50;
     public LayerMask enemyLayers;
     public int attackDamage = 1;
-
+    public GameObject damagePopupPrefab;
+    
     public Animator anim;
 
     public float cooldownTime;
@@ -74,12 +76,20 @@ public class PlayerCombat : MonoBehaviour
             if (enemyHealth != null)
             {
                 enemyHealth.ChangeHealth(-attackDamage);
-                
-                // Apply knockback
+
+                // Knockback
                 EnemyKnockback enemyKnockback = enemy.GetComponent<EnemyKnockback>();
                 if (enemyKnockback != null)
                 {
                     enemyKnockback.Knockback(transform, knockbackForce);
+                }
+
+                // Damage popup above enemy
+                if (damagePopupPrefab != null)
+                {
+                    Vector3 spawnPos = enemy.transform.position + Vector3.up * 0.8f;
+                    GameObject damagePopup = Instantiate(damagePopupPrefab, spawnPos, Quaternion.identity);
+                    damagePopup.GetComponentInChildren<TMP_Text>().text = attackDamage.ToString();
                 }
             }
         }
