@@ -203,7 +203,6 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
     #endregion
 
-
     // Toggle visibility for trash icon 
     public void OnAction() 
     { 
