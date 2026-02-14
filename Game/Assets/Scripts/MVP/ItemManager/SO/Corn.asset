@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa9962d95d3fef44484eac5e549de45e, type: 3}
+  m_Name: Corn
+  m_EditorClassIdentifier: 
+  itemName: Corn
+  itemID: Crop_Corn
+  icon: {fileID: 980155311395259703, guid: 7621cbce9a49a844a922c7b2adf4cc34, type: 3}
+  description: 
+  maxStack: 99
+  isStackable: 1
+  quality: 0
+  basePrice: 1
+  buyPrice: 0
+  canBeSold: 1
+  canBeBought: 0
+  npcPreferences: []
+  isQuestItem: 0
+  isArtifact: 0
+  isRareItem: 0
+  itemCategory: 0
+  canBeCrafted: 1
+  canBeCooked: 1
+  craftingRecipe:
+    ingredients: []
+    craftTime: 1
+    requiresCratingStation: 0
+  cookingRecipe:
+    ingredients: []
+    craftTime: 1
+    requiresCratingStation: 0

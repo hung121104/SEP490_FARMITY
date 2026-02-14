@@ -1,0 +1,77 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Auth Service",
+      "type": "shell",
+      "command": "cd microservices/auth-service; pnpm start:dev",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Player Data Service",
+      "type": "shell",
+      "command": "cd microservices/player-data-service; pnpm start:dev",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+   
+    {
+      "label": "Start Gateway Service",
+      "type": "shell",
+      "command": "cd microservices/gateway-service; pnpm start:dev",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    
+    {
+      "label": "Start All Services",
+      "dependsOn": ["Start Auth Service", "Start Player Data Service", "Start Admin Service", "Start Gateway Service"],
+      "group": "build",
+      "dependsOrder": "parallel"
+    },
+    {
+      "label": "Start Admin Service",
+      "type": "shell",
+      "command": "cd microservices/admin-service; pnpm start:dev",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

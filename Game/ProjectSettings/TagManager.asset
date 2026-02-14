@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 3
+  tags:
+  - Bullet
+  - PlayerEntity
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - Player
+  - Water
+  - UI
+  - Ground
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0
+  - name: Collition
+    uniqueID: 3289383119
+    locked: 0
+  - name: Ground
+    uniqueID: 226990185
+    locked: 0
+  - name: WalkInfront
+    uniqueID: 1697184185
+    locked: 0
+  - name: Player
+    uniqueID: 4047512161
+    locked: 0
+  - name: WalkBehind
+    uniqueID: 560638393
+    locked: 0
+  m_RenderingLayers:
+  - Default

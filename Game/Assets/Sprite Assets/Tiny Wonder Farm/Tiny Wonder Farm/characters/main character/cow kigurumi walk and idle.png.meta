@@ -1,0 +1,650 @@
+fileFormatVersion: 2
+guid: 24ac3ee511ad18b40b20ea4094ef5d77
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -1189394131637750875
+    second: cow kigurumi walk and idle_0
+  - first:
+      213: 3128592773697887945
+    second: cow kigurumi walk and idle_1
+  - first:
+      213: 3250051572761255932
+    second: cow kigurumi walk and idle_2
+  - first:
+      213: 789845688858650258
+    second: cow kigurumi walk and idle_3
+  - first:
+      213: -3889505103273572501
+    second: cow kigurumi walk and idle_4
+  - first:
+      213: -3786905790330970209
+    second: cow kigurumi walk and idle_5
+  - first:
+      213: -7464321310497615667
+    second: cow kigurumi walk and idle_6
+  - first:
+      213: 1291588681379055971
+    second: cow kigurumi walk and idle_7
+  - first:
+      213: 8380716819084698336
+    second: cow kigurumi walk and idle_8
+  - first:
+      213: -4486475442765359800
+    second: cow kigurumi walk and idle_9
+  - first:
+      213: -8441012168176059308
+    second: cow kigurumi walk and idle_10
+  - first:
+      213: 8185321574863887176
+    second: cow kigurumi walk and idle_11
+  - first:
+      213: -3992349018592178561
+    second: cow kigurumi walk and idle_12
+  - first:
+      213: -2378802050019180675
+    second: cow kigurumi walk and idle_13
+  - first:
+      213: -4491472290215730833
+    second: cow kigurumi walk and idle_14
+  - first:
+      213: -2253549765168817532
+    second: cow kigurumi walk and idle_15
+  - first:
+      213: 811549615320768587
+    second: cow kigurumi walk and idle_16
+  - first:
+      213: -6534960303770631736
+    second: cow kigurumi walk and idle_17
+  - first:
+      213: 4623971196747757820
+    second: cow kigurumi walk and idle_18
+  - first:
+      213: -6183055881892818993
+    second: cow kigurumi walk and idle_19
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 16
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_0
+      rect:
+        serializedVersion: 2
+        x: 3
+        y: 48
+        width: 22
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a33cc5c65c6e7fe0800000000000000
+      internalID: -1189394131637750875
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_1
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 48
+        width: 22
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9cedd1b3d8efa6b20800000000000000
+      internalID: 3128592773697887945
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_2
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 24
+        width: 22
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cff52289fa08a1d20800000000000000
+      internalID: 3250051572761255932
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_3
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 48
+        width: 22
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2962bcf187816fa00800000000000000
+      internalID: 789845688858650258
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_4
+      rect:
+        serializedVersion: 2
+        x: 73
+        y: 48
+        width: 22
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b674f4f47b3b50ac0800000000000000
+      internalID: -3889505103273572501
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_5
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 24
+        width: 22
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9fd3716f35327bc0800000000000000
+      internalID: -3786905790330970209
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_6
+      rect:
+        serializedVersion: 2
+        x: 3
+        y: 24
+        width: 22
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc05966d057696890800000000000000
+      internalID: -7464321310497615667
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_7
+      rect:
+        serializedVersion: 2
+        x: 25
+        y: 0
+        width: 22
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36983850015ace110800000000000000
+      internalID: 1291588681379055971
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_8
+      rect:
+        serializedVersion: 2
+        x: 51
+        y: 24
+        width: 22
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0e26fa44b894e4470800000000000000
+      internalID: 8380716819084698336
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_9
+      rect:
+        serializedVersion: 2
+        x: 75
+        y: 24
+        width: 22
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 845157cea56dcb1c0800000000000000
+      internalID: -4486475442765359800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_10
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 24
+        width: 22
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45cbd1bc7208bda80800000000000000
+      internalID: -8441012168176059308
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_11
+      rect:
+        serializedVersion: 2
+        x: 121
+        y: 0
+        width: 22
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84b5a1aca9a189170800000000000000
+      internalID: 8185321574863887176
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_12
+      rect:
+        serializedVersion: 2
+        x: 147
+        y: 24
+        width: 22
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7e0f6f48b35898c0800000000000000
+      internalID: -3992349018592178561
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_13
+      rect:
+        serializedVersion: 2
+        x: 171
+        y: 24
+        width: 21
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7fb2a1932cccfed0800000000000000
+      internalID: -2378802050019180675
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_14
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 0
+        width: 22
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f616e27bfb51ba1c0800000000000000
+      internalID: -4491472290215730833
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_15
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 0
+        width: 22
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48a927bad68c9b0e0800000000000000
+      internalID: -2253549765168817532
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_16
+      rect:
+        serializedVersion: 2
+        x: 73
+        y: 0
+        width: 22
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b40acca4314334b00800000000000000
+      internalID: 811549615320768587
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_17
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 0
+        width: 22
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8c109783a382f45a0800000000000000
+      internalID: -6534960303770631736
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_18
+      rect:
+        serializedVersion: 2
+        x: 145
+        y: 0
+        width: 22
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cf8b9c9fd45ab2040800000000000000
+      internalID: 4623971196747757820
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: cow kigurumi walk and idle_19
+      rect:
+        serializedVersion: 2
+        x: 169
+        y: 0
+        width: 22
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcf83654f6f513aa0800000000000000
+      internalID: -6183055881892818993
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      cow kigurumi walk and idle_0: -1189394131637750875
+      cow kigurumi walk and idle_1: 3128592773697887945
+      cow kigurumi walk and idle_10: -8441012168176059308
+      cow kigurumi walk and idle_11: 8185321574863887176
+      cow kigurumi walk and idle_12: -3992349018592178561
+      cow kigurumi walk and idle_13: -2378802050019180675
+      cow kigurumi walk and idle_14: -4491472290215730833
+      cow kigurumi walk and idle_15: -2253549765168817532
+      cow kigurumi walk and idle_16: 811549615320768587
+      cow kigurumi walk and idle_17: -6534960303770631736
+      cow kigurumi walk and idle_18: 4623971196747757820
+      cow kigurumi walk and idle_19: -6183055881892818993
+      cow kigurumi walk and idle_2: 3250051572761255932
+      cow kigurumi walk and idle_3: 789845688858650258
+      cow kigurumi walk and idle_4: -3889505103273572501
+      cow kigurumi walk and idle_5: -3786905790330970209
+      cow kigurumi walk and idle_6: -7464321310497615667
+      cow kigurumi walk and idle_7: 1291588681379055971
+      cow kigurumi walk and idle_8: 8380716819084698336
+      cow kigurumi walk and idle_9: -4486475442765359800
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

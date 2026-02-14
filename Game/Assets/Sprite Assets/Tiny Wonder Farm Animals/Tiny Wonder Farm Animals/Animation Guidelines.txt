@@ -1,0 +1,8 @@
+Heyo! 
+Thank you for purchasing Tiny Wonder Farm Animals! :D
+
+Here's a few guidelines for animating the characters included in the pack:
+- All animals are 26x26px by default, except for chickens and baby chickens (they are both 16x16)
+- It's better to either duplicate every frame or set it to 200 miliseconds for better walking animations (as shown in the showcase).
+
+Hope you enjoy the pack and look forward for more updates!
