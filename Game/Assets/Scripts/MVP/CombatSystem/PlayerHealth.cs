@@ -1,15 +1,23 @@
 using UnityEngine;
-
+using UnityEngine.UI;
 
 public class PlayerHealth : MonoBehaviour
 {
     public int currentHealth;
     public int maxHealth;
+    public Slider healthBar;
 
-    public void ChangeHealth(int amount)
+    void Start()
     {
-        currentHealth += amount;
+        currentHealth = maxHealth;
+        healthBar.maxValue = maxHealth;
+        healthBar.value = currentHealth;
+    }
 
+    public void TakeDamage(int amount)
+    {
+        currentHealth -= amount;
+        healthBar.value = currentHealth;
         if (currentHealth <= 0)
         {
             gameObject.SetActive(false);
