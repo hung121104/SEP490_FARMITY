@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -23,6 +23,9 @@ public class InventoryView : MonoBehaviour, IInventoryView
     [SerializeField] private Image dragPreviewIcon;
     [SerializeField] private CanvasGroup dragPreviewCanvasGroup;
 
+    [Header("Delete Zone")]
+    [SerializeField] private ItemDeleteView itemDeleteView;
+
     private List<InventorySlotView> slotViews = new List<InventorySlotView>();
     private Coroutine notificationCoroutine;
 
@@ -40,6 +43,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
     public event Action OnSortRequested;
     public event Action<int, Vector2> OnSlotHoverEnter;
     public event Action<int> OnSlotHoverExit;
+    public event Action<int> OnItemDeleteRequested;
 
     #endregion
 
@@ -47,10 +51,13 @@ public class InventoryView : MonoBehaviour, IInventoryView
     {
         InitializeButtons();
         HideDragPreview();
+        InitializeDeleteZone();
 
         if (notificationText != null)
             notificationText.gameObject.SetActive(false);
     }
+
+    #region Initialize
 
     public void InitializeSlots(int slotCount)
     {
@@ -94,6 +101,16 @@ public class InventoryView : MonoBehaviour, IInventoryView
         if (sortButton != null)
             sortButton.onClick.AddListener(() => OnSortRequested?.Invoke());
     }
+
+    private void InitializeDeleteZone()
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.OnItemDeleteRequested += (slot) => OnItemDeleteRequested?.Invoke(slot);
+        }
+    }
+
+    #endregion 
 
     #region IInventoryView Implementation
 
@@ -149,6 +166,43 @@ public class InventoryView : MonoBehaviour, IInventoryView
 
         notificationCoroutine = StartCoroutine(ShowNotificationCoroutine(message));
     }
+
+    public void CancelAllActions()
+    {
+        // 1. Hide drag preview
+        HideDragPreview();
+
+        // 2. Stop notification coroutine
+        if (notificationCoroutine != null)
+        {
+            StopCoroutine(notificationCoroutine);
+            notificationCoroutine = null;
+        }
+
+        // 3. Hide notification text
+        if (notificationText != null)
+        {
+            notificationText.gameObject.SetActive(false);
+        }
+
+        // 4. Reset all slots hover state
+        foreach (var slotView in slotViews)
+        {
+            if (slotView != null)
+            {
+                slotView.ForceResetState();
+            }
+        }
+
+        // 5. Reset delete zone visual state
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.ForceResetState();
+        }
+
+        Debug.Log("[InventoryView] All actions cancelled");
+    }
+
 
     #endregion
 

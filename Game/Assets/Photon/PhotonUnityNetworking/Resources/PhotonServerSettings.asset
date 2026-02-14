@@ -42,6 +42,9 @@ MonoBehaviour:
   - SetLoadedPosition
   - PlowTileRPC
   - RPC_PlantCrop
+  - RPC_RequestHarvest
+  - RPC_RequestHarvestValidation
+  - RPC_RespondHarvestValidation
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

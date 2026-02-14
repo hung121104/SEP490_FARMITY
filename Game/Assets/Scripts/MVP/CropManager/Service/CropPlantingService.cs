@@ -75,12 +75,6 @@ public class CropPlantingService : ICropPlantingService
                 Debug.Log($"✓ Planted crop type {cropTypeID} at ({worldX}, {worldY})");
             }
 
-            // Register crop with CropManagerView for growth tracking
-            if (CropManagerView.Instance != null)
-            {
-                CropManagerView.Instance.RegisterPlantedCrop(worldX, worldY, (ushort)cropTypeID);
-            }
-
             // Refresh chunk visuals
             if (loadingManager != null)
             {

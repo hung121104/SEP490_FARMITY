@@ -14,7 +14,7 @@ public class PlayerHealth : MonoBehaviour
         healthBar.value = currentHealth;
     }
 
-    public void TakeDamage(int amount)
+    public void ChangeHealth(int amount)
     {
         currentHealth -= amount;
         healthBar.value = currentHealth;

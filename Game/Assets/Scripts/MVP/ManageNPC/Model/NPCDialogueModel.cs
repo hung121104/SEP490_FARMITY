@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(
@@ -9,6 +10,5 @@ public class NPCDialogueModel : ScriptableObject
     public string npcName;
     public Sprite avatar;
 
-    [TextArea]
-    public string[] dialogues;
+    public List<DialogueNode> nodes;
 }

@@ -6,6 +6,7 @@ public interface IItemDetailView
     // Display control
     void Show();
     void Hide();
+    void HideImmediate();
     void SetPosition(Vector2 screenPosition);
 
     // Content display
@@ -13,7 +14,6 @@ public interface IItemDetailView
     void SetItemName(string itemName, Color qualityColor);
     void SetItemDescription(string description);
     void SetItemStats(string stats);
-    void ShowGiftReaction(string npcName, GiftReaction reaction);
 
     // Button states
     void SetUseButtonState(bool interactable);

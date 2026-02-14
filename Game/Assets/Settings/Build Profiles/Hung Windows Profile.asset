@@ -23,6 +23,8 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Hung/LoadingScene.unity
   - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/LoadGameScene.unity
+  - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Hung/LobbyScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Hung/MapLoaderTestScene.unity
