@@ -3,7 +3,7 @@ using UnityEngine;
 using Photon.Pun;
 using UnityEngine.SceneManagement;
 using Photon.Realtime;
-public class LoadWorldView : MonoBehaviourPunCallbacks
+public class LoadWorld : MonoBehaviourPunCallbacks
 {
     private void Start()
     {
@@ -27,6 +27,12 @@ public class LoadWorldView : MonoBehaviourPunCallbacks
         if (string.IsNullOrEmpty(selectedId))
         {
             Debug.LogWarning("LoadWorldView: no SelectedWorldId found; loading LobbyScene instead.");
+            // Leave lobby before loading scene to avoid Photon errors
+            if (PhotonNetwork.InLobby)
+            {
+                PhotonNetwork.LeaveLobby();
+            }
+            PhotonNetwork.IsMessageQueueRunning = false;
             SceneManager.LoadScene("LobbyScene");
             return;
         }

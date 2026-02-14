@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using Photon.Pun;
 
 /// <summary>
 /// Component attached to WorldItem prefab to display individual world data
@@ -70,6 +71,11 @@ public class WorldItemView : MonoBehaviour
             return;
         }
 
+        // Properly handle Photon message queue when loading scenes
+        if (PhotonNetwork.IsConnected)
+        {
+            PhotonNetwork.IsMessageQueueRunning = false;
+        }
         SceneManager.LoadScene(sceneName);
     }
 

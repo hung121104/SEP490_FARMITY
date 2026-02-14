@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Photon.Pun;
 
 public class MainMenuNav : MonoBehaviour
 {
@@ -21,6 +22,26 @@ public class MainMenuNav : MonoBehaviour
     /// </summary>
     public void LoadPlayerWorldListScene()
     {
-        SceneManager.LoadScene("PlayerWorldListScene");
+        // Properly handle Photon message queue when loading scenes
+        SafeLoadScene("PlayerWorldListScene");
+    }
+    
+    public void LoadOnlineWorldListScene()
+    {
+        // Properly handle Photon message queue when loading scenes
+        SafeLoadScene("OnlineWorldListScene");
+    }
+    
+    /// <summary>
+    /// Safely load a scene while handling Photon message queue
+    /// </summary>
+    private void SafeLoadScene(string sceneName)
+    {
+        // If connected to Photon, pause the message queue to prevent errors
+        if (PhotonNetwork.IsConnected)
+        {
+            PhotonNetwork.IsMessageQueueRunning = false;
+        }
+        SceneManager.LoadScene(sceneName);
     }
 }
