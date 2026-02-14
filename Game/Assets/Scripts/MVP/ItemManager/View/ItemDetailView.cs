@@ -15,8 +15,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     [SerializeField] private TextMeshProUGUI itemNameText;
     [SerializeField] private TextMeshProUGUI itemDescriptionText;
     [SerializeField] private TextMeshProUGUI itemStatsText;
-    [SerializeField] private GameObject giftReactionPanel;
-    [SerializeField] private TextMeshProUGUI giftReactionText;
 
     [Header("Buttons")]
     [SerializeField] private Button useButton;
@@ -106,10 +104,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
             StopCoroutine(fadeCoroutine);
 
         fadeCoroutine = StartCoroutine(FadeOut());
-
-        // Hide gift reaction when hiding
-        if (giftReactionPanel != null)
-            giftReactionPanel.SetActive(false);
     }
 
     public void HideImmediate()
@@ -128,10 +122,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
             canvasGroup.alpha = 0f;
 
         detailPanel.SetActive(false);
-
-        // Hide gift reaction
-        if (giftReactionPanel != null)
-            giftReactionPanel.SetActive(false);
     }
 
     public void SetPosition(Vector2 screenPosition)
