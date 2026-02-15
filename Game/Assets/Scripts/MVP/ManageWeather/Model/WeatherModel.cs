@@ -2,26 +2,39 @@
 
 public class WeatherModel
 {
-    private WeatherType currentWeather = WeatherType.Sunny;
 
-    private float rainChance = 0.5f; // 50% 
+    private WeatherType todayWeather = WeatherType.Sunny;     
+    private WeatherType tomorrowWeather = WeatherType.Sunny;  
 
-    public WeatherType CurrentWeather => currentWeather;
+    private float rainChance = 0.5f;
+
+
+    public WeatherType TodayWeather => todayWeather;         
+    public WeatherType TomorrowWeather => tomorrowWeather;   
 
     public void SetRainChance(float value)
     {
         rainChance = Mathf.Clamp01(value);
     }
 
-    public void GenerateWeather()
+    public void GenerateTomorrow()                        
     {
-        currentWeather =
+        tomorrowWeather =
             (Random.value < rainChance)
             ? WeatherType.Rain
             : WeatherType.Sunny;
     }
-    public void SetWeather(WeatherType weather)
+    public void ShiftDay()                                 
     {
-        currentWeather = weather;
+        todayWeather = tomorrowWeather;
+    }
+    public void SetToday(WeatherType weather)                  
+    {
+        todayWeather = weather;
+    }
+
+    public void SetTomorrow(WeatherType weather)              
+    {
+        tomorrowWeather = weather;
     }
 }
