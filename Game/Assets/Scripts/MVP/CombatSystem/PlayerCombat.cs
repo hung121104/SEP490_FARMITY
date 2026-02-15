@@ -82,7 +82,8 @@ public class PlayerCombat : MonoBehaviour
             EnemiesHealth enemyHealth = enemy.GetComponent<EnemiesHealth>();
             if (enemyHealth != null)
             {
-                enemyHealth.ChangeHealth(-statsManager.attackDamage);
+                int damageDealt = statsManager.GetAttackDamage();
+                enemyHealth.ChangeHealth(-damageDealt);
 
                 EnemyKnockback enemyKnockback = enemy.GetComponent<EnemyKnockback>();
                 if (enemyKnockback != null)
@@ -94,7 +95,7 @@ public class PlayerCombat : MonoBehaviour
                 {
                     Vector3 spawnPos = enemy.transform.position + Vector3.up * 0.8f;
                     GameObject damagePopup = Instantiate(damagePopupPrefab, spawnPos, Quaternion.identity);
-                    damagePopup.GetComponentInChildren<TMP_Text>().text = statsManager.attackDamage.ToString();
+                    damagePopup.GetComponentInChildren<TMP_Text>().text = damageDealt.ToString();
                 }
             }
         }

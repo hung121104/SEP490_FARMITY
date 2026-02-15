@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class PlayerHealth : MonoBehaviour
 {
     public Slider healthBar;
-    public Slider healthBarEase; // The smooth following health bar
+    public Slider healthBarEase;
+    public TextMeshProUGUI healthText;
 
     private float targetHealthValue;
     private StatsManager statsManager;
@@ -22,21 +24,22 @@ public class PlayerHealth : MonoBehaviour
             }
         }
 
-        statsManager.currentHealth = statsManager.maxHealth;
+        int maxHealth = statsManager.GetMaxHealth();
+        statsManager.CurrentHealth = maxHealth;
 
         if (healthBar != null)
         {
-            healthBar.maxValue = statsManager.maxHealth;
-            healthBar.value = statsManager.currentHealth;
+            healthBar.maxValue = maxHealth;
+            healthBar.value = statsManager.CurrentHealth;
         }
 
         if (healthBarEase != null)
         {
-            healthBarEase.maxValue = statsManager.maxHealth;
-            healthBarEase.value = statsManager.currentHealth;
+            healthBarEase.maxValue = maxHealth;
+            healthBarEase.value = statsManager.CurrentHealth;
         }
 
-        targetHealthValue = statsManager.currentHealth;
+        targetHealthValue = statsManager.CurrentHealth;
     }
 
     private void Update()
@@ -49,6 +52,8 @@ public class PlayerHealth : MonoBehaviour
                 statsManager.easeSpeed * Time.deltaTime
             );
         }
+
+        UpdateHealthText();
     }
 
     public void ChangeHealth(int amount)
@@ -56,23 +61,43 @@ public class PlayerHealth : MonoBehaviour
         if (statsManager == null)
             return;
 
-        statsManager.currentHealth += amount;
-        statsManager.currentHealth = Mathf.Clamp(
-            statsManager.currentHealth,
-            0,
-            statsManager.maxHealth
-        );
+        statsManager.CurrentHealth += amount;
 
         if (healthBar != null)
         {
-            healthBar.value = statsManager.currentHealth;
+            healthBar.value = statsManager.CurrentHealth;
         }
 
-        targetHealthValue = statsManager.currentHealth;
+        targetHealthValue = statsManager.CurrentHealth;
 
-        if (statsManager.currentHealth <= 0)
+        if (statsManager.CurrentHealth <= 0)
         {
             gameObject.SetActive(false);
+        }
+    }
+
+    public void RefreshHealthBar()
+    {
+        int maxHealth = statsManager.GetMaxHealth();
+        
+        if (healthBar != null)
+        {
+            healthBar.maxValue = maxHealth;
+        }
+        
+        if (healthBarEase != null)
+        {
+            healthBarEase.maxValue = maxHealth;
+        }
+        
+        UpdateHealthText();
+    }
+
+    private void UpdateHealthText()
+    {
+        if (healthText != null)
+        {
+            healthText.text = statsManager.CurrentHealth.ToString();
         }
     }
 }

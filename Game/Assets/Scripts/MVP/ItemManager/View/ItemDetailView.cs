@@ -9,7 +9,8 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     [SerializeField] private GameObject detailPanel;
     [SerializeField] private RectTransform panelRectTransform;
     [SerializeField] private CanvasGroup canvasGroup;
-
+    [SerializeField] private GameObject giftReactionPanel;
+    
     [Header("Content")]
     [SerializeField] private Image itemIcon;
     [SerializeField] private TextMeshProUGUI itemNameText;
@@ -104,24 +105,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
             StopCoroutine(fadeCoroutine);
 
         fadeCoroutine = StartCoroutine(FadeOut());
-    }
-
-    public void HideImmediate()
-    {
-        if (detailPanel == null) return;
-
-        // Stop coroutine if running
-        if (fadeCoroutine != null)
-        {
-            StopCoroutine(fadeCoroutine);
-            fadeCoroutine = null;
-        }
-
-        // Set alpha to 0 immediately
-        if (canvasGroup != null)
-            canvasGroup.alpha = 0f;
-
-        detailPanel.SetActive(false);
     }
 
     public void HideImmediate()
