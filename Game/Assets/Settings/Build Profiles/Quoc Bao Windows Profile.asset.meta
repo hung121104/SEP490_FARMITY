@@ -1,8 +1,13 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:Game/Assets/Settings/Build Profiles/Quoc Bao Windows Profile.asset.meta
 guid: 882eb48ae4311cb42af655bfea14fd7d
 NativeFormatImporter:
+========
+guid: 8cece468ca5e83f4da088495b9fe1ad8
+folderAsset: yes
+DefaultImporter:
+>>>>>>>> origin/dev:Game/Assets/Prefabs/NPC.meta
   externalObjects: {}
-  mainObjectFileID: 11400000
   userData: 
   assetBundleName: 
   assetBundleVariant: 
