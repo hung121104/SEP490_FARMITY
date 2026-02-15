@@ -10,5 +10,7 @@ public interface IWeatherService
 
     void OnRoomPropertiesUpdate(Hashtable changedProps);
 
-    WeatherType GetCurrentWeather();
+    WeatherType GetTodayWeather();
+
+    WeatherType GetTomorrowWeather();
 }
