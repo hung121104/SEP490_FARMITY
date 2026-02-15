@@ -3,54 +3,74 @@ using UnityEngine.UI;
 
 public class PlayerHealth : MonoBehaviour
 {
-    public int currentHealth;
-    public int maxHealth;
     public Slider healthBar;
     public Slider healthBarEase; // The smooth following health bar
-    
-    [Header("Health Bar Ease Settings")]
-    public float easeSpeed = 1f; // How fast the ease bar catches up
 
     private float targetHealthValue;
+    private StatsManager statsManager;
 
-    void Start()
+    private void Start()
     {
-        currentHealth = maxHealth;
-        healthBar.maxValue = maxHealth;
-        healthBar.value = currentHealth;
-        
+        statsManager = StatsManager.Instance;
+        if (statsManager == null)
+        {
+            statsManager = FindObjectOfType<StatsManager>();
+            if (statsManager == null)
+            {
+                enabled = false;
+                return;
+            }
+        }
+
+        statsManager.currentHealth = statsManager.maxHealth;
+
+        if (healthBar != null)
+        {
+            healthBar.maxValue = statsManager.maxHealth;
+            healthBar.value = statsManager.currentHealth;
+        }
+
         if (healthBarEase != null)
         {
-            healthBarEase.maxValue = maxHealth;
-            healthBarEase.value = currentHealth;
+            healthBarEase.maxValue = statsManager.maxHealth;
+            healthBarEase.value = statsManager.currentHealth;
         }
-        
-        targetHealthValue = currentHealth;
+
+        targetHealthValue = statsManager.currentHealth;
     }
 
-    void Update()
+    private void Update()
     {
-        // Smoothly lerp the ease health bar towards the target
         if (healthBarEase != null)
         {
-            healthBarEase.value = Mathf.Lerp(healthBarEase.value, targetHealthValue, easeSpeed * Time.deltaTime);
+            healthBarEase.value = Mathf.Lerp(
+                healthBarEase.value,
+                targetHealthValue,
+                statsManager.easeSpeed * Time.deltaTime
+            );
         }
     }
 
     public void ChangeHealth(int amount)
     {
-        currentHealth += amount;
-        
-        // Clamp health between 0 and max
-        currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
-        
-        // Update main health bar instantly
-        healthBar.value = currentHealth;
-        
-        // Set target for ease bar to smoothly follow
-        targetHealthValue = currentHealth;
-        
-        if (currentHealth <= 0)
+        if (statsManager == null)
+            return;
+
+        statsManager.currentHealth += amount;
+        statsManager.currentHealth = Mathf.Clamp(
+            statsManager.currentHealth,
+            0,
+            statsManager.maxHealth
+        );
+
+        if (healthBar != null)
+        {
+            healthBar.value = statsManager.currentHealth;
+        }
+
+        targetHealthValue = statsManager.currentHealth;
+
+        if (statsManager.currentHealth <= 0)
         {
             gameObject.SetActive(false);
         }

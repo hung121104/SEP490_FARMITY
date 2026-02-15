@@ -2,7 +2,11 @@ using UnityEngine;
 
 public class PlayerCombatMovement : MonoBehaviour
 {
-   public PlayerCombat playerCombat;
+    public PlayerCombat playerCombat;
+
+    [Header("Input")]
+    [SerializeField] private KeyCode attackKey = KeyCode.Space;
+    [SerializeField] private int attackMouseButton = 0;
 
     private void Start()
     {
@@ -14,7 +18,7 @@ public class PlayerCombatMovement : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButton(0))
+        if (Input.GetKeyDown(attackKey) || Input.GetMouseButton(attackMouseButton))
         {
             if (playerCombat != null)
             {
