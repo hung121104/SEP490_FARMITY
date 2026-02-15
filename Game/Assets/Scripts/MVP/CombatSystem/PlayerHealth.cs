@@ -79,17 +79,20 @@ public class PlayerHealth : MonoBehaviour
     public void RefreshHealthBar()
     {
         int maxHealth = statsManager.GetMaxHealth();
-        
+
         if (healthBar != null)
         {
             healthBar.maxValue = maxHealth;
+            healthBar.value = statsManager.CurrentHealth;
         }
-        
+
         if (healthBarEase != null)
         {
             healthBarEase.maxValue = maxHealth;
+            healthBarEase.value = statsManager.CurrentHealth;
         }
-        
+
+        targetHealthValue = statsManager.CurrentHealth;
         UpdateHealthText();
     }
 

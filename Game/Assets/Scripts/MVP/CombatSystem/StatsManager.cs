@@ -26,9 +26,12 @@ public class StatsManager : MonoBehaviour
     [SerializeField] private KeyCode toggleStatsKey = KeyCode.C;
 
     [Header("Upgrade Buttons")]
-    [SerializeField] private Button strengthButton;
-    [SerializeField] private Button vitalityButton;
+    [SerializeField] private Button increaseStrengthButton;
+    [SerializeField] private Button increaseVitalityButton;
     [SerializeField] private Button applyButton;
+    [SerializeField] private Button cancelButton;
+    [SerializeField] private Button decreaseStrengthButton;
+    [SerializeField] private Button decreaseVitalityButton;
 
     [Header("Point System")]
     [SerializeField] private int currentPoints = 0;
@@ -78,14 +81,23 @@ public class StatsManager : MonoBehaviour
 
     private void InitializeButtons()
     {
-        if (strengthButton != null)
-            strengthButton.onClick.AddListener(AddStrengthTemp);
-            
-        if (vitalityButton != null)
-            vitalityButton.onClick.AddListener(AddVitalityTemp);
-            
+        if (increaseStrengthButton != null)
+            increaseStrengthButton.onClick.AddListener(AddStrengthTemp);
+
+        if (increaseVitalityButton != null)
+            increaseVitalityButton.onClick.AddListener(AddVitalityTemp);
+
         if (applyButton != null)
             applyButton.onClick.AddListener(ApplyStats);
+
+        if (cancelButton != null)
+            cancelButton.onClick.AddListener(CancelStats);
+
+        if (decreaseStrengthButton != null)
+            decreaseStrengthButton.onClick.AddListener(DecreaseStrengthTemp);
+
+        if (decreaseVitalityButton != null)
+            decreaseVitalityButton.onClick.AddListener(DecreaseVitalityTemp);
     }
 
     #endregion
@@ -111,10 +123,10 @@ public class StatsManager : MonoBehaviour
     private void UpdateStatTexts()
     {
         if (strengthText != null)
-            strengthText.text = $"Strength: {tempStrength}";
+            strengthText.text = $"STR: {tempStrength}";
 
         if (vitalityText != null)
-            vitalityText.text = $"Vitality: {tempVitality}";
+            vitalityText.text = $"VIT: {tempVitality}";
     }
 
     private void UpdatePointsText()
@@ -183,15 +195,56 @@ public class StatsManager : MonoBehaviour
 
     public void ApplyStats()
     {
+        int oldMax = GetMaxHealth();
+
         strength = tempStrength;
         vitality = tempVitality;
-        _maxHealth = GetMaxHealth();
+
+        int newMax = GetMaxHealth();
+        int delta = newMax - oldMax;
+        if (delta != 0)
+        {
+            CurrentHealth += delta;
+        }
+
+        _maxHealth = newMax;
         pointsSpentThisSession = 0;
-        
+
         if (playerHealth != null)
             playerHealth.RefreshHealthBar();
-        
+
         UpdateStatTexts();
+    }
+
+    public void CancelStats()
+    {
+        if (statsPanel == null)
+            return;
+
+        ResetTempStats();
+        
+    }
+
+    public void DecreaseStrengthTemp()
+    {
+        if (tempStrength > strength && pointsSpentThisSession > 0)
+        {
+            tempStrength -= 1;
+            currentPoints += 1;
+            pointsSpentThisSession -= 1;
+            UpdateDisplay();
+        }
+    }
+
+    public void DecreaseVitalityTemp()
+    {
+        if (tempVitality > vitality && pointsSpentThisSession > 0)
+        {
+            tempVitality -= 1;
+            currentPoints += 1;
+            pointsSpentThisSession -= 1;
+            UpdateDisplay();
+        }
     }
 
     #endregion
