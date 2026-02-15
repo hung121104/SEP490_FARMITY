@@ -24,6 +24,7 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
     private Vector3 originalScale;
     private bool isHovering = false;
+    private bool acceptingDrops = true;
 
     // Event
     public event Action<int> OnItemDeleteRequested;
@@ -65,6 +66,21 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
     public void OnDrop(PointerEventData eventData)
     {
+        //Check if accepting drops
+        if (!acceptingDrops)
+        {
+            Debug.Log("[ItemDeleteView] Not accepting drops - delete zone disabled");
+            SetHoverState(false);
+            return;
+        }
+
+        //Double check that inventory is still active
+        if (!gameObject.activeInHierarchy)
+        {
+            Debug.Log("[ItemDeleteView] Delete zone is inactive - ignoring drop");
+            return;
+        }
+
         // Get dragged slot index from event data
         var draggedSlot = eventData.pointerDrag?.GetComponent<InventorySlotView>();
 
@@ -92,6 +108,9 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
     public void OnPointerEnter(PointerEventData eventData)
     {
+        //Check if accepting drops
+        if (!acceptingDrops)
+            return;
         // Check if something is being dragged
         if (eventData.pointerDrag != null)
         {
@@ -138,6 +157,7 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
         StopAllCoroutines();
 
         isHovering = false;
+        acceptingDrops = false;
 
         if (trashIconImage != null)
             trashIconImage.color = normalColor;
@@ -152,6 +172,13 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
         Debug.Log("[ItemDeleteView] State force reset");
     }
+
+    // Re-enable accepting drops (call when opening inventory)
+    public void EnableDrops()
+    {
+        acceptingDrops = true;
+    }
+
 
     private System.Collections.IEnumerator AnimateColor(Color targetColor)
     {
@@ -203,7 +230,6 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
     #endregion
 
-
     // Toggle visibility for trash icon 
     public void OnAction() 
     { 
@@ -215,11 +241,13 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
     public void Show()
     {
         gameObject.SetActive(true);
+        acceptingDrops = true;
     }
 
     public void Hide()
     {
         gameObject.SetActive(false);
+        acceptingDrops = false;
     }
 
     #endregion
