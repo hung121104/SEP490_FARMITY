@@ -31,6 +31,11 @@ public class MainMenuNav : MonoBehaviour
         // Properly handle Photon message queue when loading scenes
         SafeLoadScene("OnlineWorldListScene");
     }
+    public void LoadCreateWorldScene()
+    {
+        // Properly handle Photon message queue when loading scenes
+        SafeLoadScene("CreateWorldScene");
+    }
     
     /// <summary>
     /// Safely load a scene while handling Photon message queue

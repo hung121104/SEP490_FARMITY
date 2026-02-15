@@ -139,6 +139,19 @@ public class MyWorldListView : MonoBehaviour
         ClearWorldList();
     }
 
+    // Expose presenter for other views (e.g., CreateWorld) to call presenter actions
+    public MyWorldListPresenter GetPresenter() => presenter;
+
+    /// <summary>
+    /// Add a single world to the displayed list (called by presenter)
+    /// </summary>
+    public void AddWorld(WorldModel world)
+    {
+        if (world == null) return;
+        CreateWorldItem(world);
+        UpdateStatus($"World '{world.worldName}' created.");
+    }
+
     #region Public API for Testing
 
     [ContextMenu("Reload Worlds")]

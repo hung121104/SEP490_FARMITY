@@ -8,4 +8,9 @@ public interface IMyWorldListService
     /// <param name="ownerId">Optional owner ID (only allowed for admin accounts)</param>
     /// <returns>Array of world models</returns>
     Task<WorldModel[]> GetWorlds(string ownerId = null);
+
+    /// <summary>
+    /// Create a new world with given name
+    /// </summary>
+    Task<WorldResponse> CreateWorld(string worldName);
 }

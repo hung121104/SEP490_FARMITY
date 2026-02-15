@@ -57,4 +57,48 @@ public class MyWorldListService : IMyWorldListService
             }
         }
     }
+
+    public async Task<WorldResponse> CreateWorld(string worldName)
+    {
+        if (!SessionManager.Instance.IsAuthenticated())
+        {
+            Debug.LogError("User not authenticated. Cannot create world.");
+            return null;
+        }
+
+        string url = $"{BASE_URL}/player-data/world";
+        string body = "{\"worldName\": \"" + worldName + "\"}";
+
+        using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
+        {
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(body);
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.SetRequestHeader("Authorization", "Bearer " + SessionManager.Instance.JwtToken);
+
+            await request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                string jsonResponse = request.downloadHandler.text;
+                try
+                {
+                    var resp = JsonUtility.FromJson<WorldResponse>(jsonResponse);
+                    Debug.Log($"Created world: {resp.worldName} id={resp._id}");
+                    return resp;
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError("Failed to parse create-world response: " + ex.Message);
+                    return null;
+                }
+            }
+            else
+            {
+                Debug.LogError($"Error creating world: {request.error} (code: {request.responseCode}) - {request.downloadHandler.text}");
+                return null;
+            }
+        }
+    }
 }

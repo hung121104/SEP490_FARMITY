@@ -47,6 +47,42 @@ public class MyWorldListPresenter
     }
 
     /// <summary>
+    /// Create a new world using the service and notify the view.
+    /// </summary>
+    public async Task<WorldModel> CreateWorld(string worldName)
+    {
+        try
+        {
+            var resp = await service.CreateWorld(worldName);
+            if (resp == null)
+            {
+                view?.ShowError("Failed to create world.");
+                return null;
+            }
+
+            // Map WorldResponse to WorldModel
+            WorldModel model = new WorldModel()
+            {
+                _id = resp._id,
+                worldName = resp.worldName,
+                ownerId = resp.ownerId
+                // other fields remain at default values (day/month/year/hour/minute/gold)
+            };
+
+            // Notify view to add the created world to the list
+            view?.AddWorld(model);
+
+            return model;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Error creating world: {ex.Message}");
+            view?.ShowError($"Error: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Load worlds for a specific owner (admin only)
     /// </summary>
     public async Task LoadWorldsForOwner(string ownerId)
