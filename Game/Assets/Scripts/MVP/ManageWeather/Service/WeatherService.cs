@@ -3,7 +3,7 @@ using ExitGames.Client.Photon;
 
 public class WeatherService : IWeatherService
 {
-   
+    public static event System.Action<WeatherType> OnWeatherChanged;
     private const string PROP_TODAY = "weather_today";
     private const string PROP_TOMORROW = "weather_tomorrow";
 
@@ -24,13 +24,12 @@ public class WeatherService : IWeatherService
 
         var props = PhotonNetwork.CurrentRoom.CustomProperties;
 
-        
         if (!props.ContainsKey(PROP_TODAY))
         {
             if (PhotonNetwork.IsMasterClient)
             {
-                model.GenerateTomorrow();  
-                model.ShiftDay();          
+                model.GenerateTomorrow();
+                model.ShiftDay();
 
                 Hashtable newProps = new Hashtable
             {
@@ -44,8 +43,10 @@ public class WeatherService : IWeatherService
         else
         {
             LoadFromRoom();
+            OnWeatherChanged?.Invoke(model.TodayWeather);
         }
     }
+
     public WeatherType GetTodayWeather()
     {
         return model.TodayWeather;
@@ -94,14 +95,20 @@ public class WeatherService : IWeatherService
 
     public void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
+        bool changed = false;
         if (changedProps.ContainsKey(PROP_TODAY))
         {
             model.SetToday((WeatherType)(int)changedProps[PROP_TODAY]);
+            changed = true;
         }
 
         if (changedProps.ContainsKey(PROP_TOMORROW))
         {
             model.SetTomorrow((WeatherType)(int)changedProps[PROP_TOMORROW]);
+        }
+        if (changed)
+        {
+            OnWeatherChanged?.Invoke(model.TodayWeather);
         }
     }
 
