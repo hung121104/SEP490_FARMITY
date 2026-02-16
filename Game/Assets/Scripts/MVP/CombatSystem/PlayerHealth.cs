@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
 public class PlayerHealth : MonoBehaviour
 {
@@ -10,6 +11,7 @@ public class PlayerHealth : MonoBehaviour
 
     private float targetHealthValue;
     private StatsManager statsManager;
+    private bool isInvulnerable = false;
 
     private void Start()
     {
@@ -58,7 +60,8 @@ public class PlayerHealth : MonoBehaviour
 
     public void ChangeHealth(int amount)
     {
-        if (statsManager == null)
+        // Don't apply damage if invulnerable
+        if (statsManager == null || (isInvulnerable && amount < 0))
             return;
 
         statsManager.CurrentHealth += amount;
@@ -103,4 +106,34 @@ public class PlayerHealth : MonoBehaviour
             healthText.text = statsManager.CurrentHealth.ToString();
         }
     }
+
+    #region Invulnerability (iFrames)
+
+    /// <summary>
+    /// Make player invulnerable for a duration
+    /// </summary>
+    /// <param name="duration">Duration in seconds</param>
+    public void SetInvulnerable(float duration)
+    {
+        StartCoroutine(InvulnerabilityCoroutine(duration));
+    }
+
+    /// <summary>
+    /// Instantly enable/disable invulnerability
+    /// </summary>
+    public void SetInvulnerable(bool invulnerable)
+    {
+        isInvulnerable = invulnerable;
+    }
+
+    private IEnumerator InvulnerabilityCoroutine(float duration)
+    {
+        isInvulnerable = true;
+        yield return new WaitForSeconds(duration);
+        isInvulnerable = false;
+    }
+
+    public bool IsInvulnerable => isInvulnerable;
+
+    #endregion
 }

@@ -466,8 +466,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 18b6bbf4ed9704c4a845f0be2b91f37c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  strength: 20
-  vitality: 20
+  strength: 5
+  vitality: 10
   attackRange: 1
   knockbackForce: 50
   cooldownTime: 1
@@ -1723,8 +1723,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ebc1f60c53593f429c33d1325ef4517, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  currentHealth: 100
-  maxHealth: 100
+  currentHealth: 200
+  maxHealth: 200
 --- !u!70 &835830964
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -1774,7 +1774,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8f1bb32fa5a15343ba9778afbe8292e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  damageAmount: 1
+  damageAmount: 10
   knockbackForce: 10
   damagePopupPrefab: {fileID: 6620676086198952409, guid: 26064304fbc9d04448d8b1e1d10f1876, type: 3}
 --- !u!114 &835830966
@@ -2214,7 +2214,7 @@ PrefabInstance:
       addedObject: {fileID: 1653533839}
     - targetCorrespondingSourceObject: {fileID: 1083092175523969477, guid: 79f6bc42335333f4c9cc04b30ea2016d, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1653533847}
+      addedObject: {fileID: 1653533848}
   m_SourcePrefab: {fileID: 100100000, guid: 79f6bc42335333f4c9cc04b30ea2016d, type: 3}
 --- !u!1 &876093993
 GameObject:
@@ -20155,7 +20155,7 @@ MonoBehaviour:
   waveDuration: 0.4
   flashDuration: 0.3
   flashCount: 2
---- !u!114 &1653533847
+--- !u!114 &1653533848
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -20164,9 +20164,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 1653533810}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4a4b18f5efb2e3142b739f249b3cda44, type: 3}
+  m_Script: {fileID: 11500000, guid: b4a3850667da110459e6a8a021625191, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  skillKey: 49
+  skillCooldown: 3
+  movementDistance: 2
+  skillTier: 6
+  skillMultiplier: 1.5
 --- !u!1 &1720431993
 GameObject:
   m_ObjectHideFlags: 0
