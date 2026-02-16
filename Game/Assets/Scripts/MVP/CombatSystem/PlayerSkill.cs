@@ -13,6 +13,11 @@ public class PlayerSkill : MonoBehaviour
     [SerializeField] private DiceTier skillTier = DiceTier.D6;
     [SerializeField] private float skillMultiplier = 1.5f;
 
+    [Header("Roll Display")]
+    [SerializeField] private RollDisplayController rollDisplayPrefab;
+    [SerializeField] private Vector3 rollDisplayOffset = new Vector3(0f, 1.8f, 0f);
+    [SerializeField] private float rollAnimationDuration = 0.4f;
+
     #endregion
 
     #region Private Fields
@@ -23,6 +28,9 @@ public class PlayerSkill : MonoBehaviour
     private PlayerHealth playerHealth;
     private SpriteRenderer spriteRenderer;
     private StatsManager statsManager;
+
+    // Roll Display
+    private RollDisplayController rollDisplayInstance;
 
     // Skill State
     private float skillTimer = 0f;
@@ -58,10 +66,21 @@ public class PlayerSkill : MonoBehaviour
         playerMovement = GetComponent<PlayerMovement>();
         playerHealth = GetComponent<PlayerHealth>();
         spriteRenderer = GetComponent<SpriteRenderer>();
-        
+
         statsManager = StatsManager.Instance;
         if (statsManager == null)
             statsManager = FindObjectOfType<StatsManager>();
+
+        EnsureRollDisplay();
+    }
+
+    private void EnsureRollDisplay()
+    {
+        if (rollDisplayInstance != null || rollDisplayPrefab == null)
+            return;
+
+        rollDisplayInstance = Instantiate(rollDisplayPrefab, transform);
+        rollDisplayInstance.AttachTo(transform, rollDisplayOffset);
     }
 
     #endregion
@@ -103,7 +122,6 @@ public class PlayerSkill : MonoBehaviour
     {
         EnableInvulnerability(true);
 
-        // Execute both hits
         yield return StartCoroutine(ExecuteSingleHit(1));
         yield return StartCoroutine(ExecuteSingleHit(2));
 
@@ -118,24 +136,31 @@ public class PlayerSkill : MonoBehaviour
         currentHitNumber = hitNumber;
         hasDealtDamageThisHit = false;
 
-        // Roll dice for this hit
         currentDiceRoll = DiceRoller.Roll(skillTier);
-        Debug.Log($"Hit {hitNumber}: Rolled {currentDiceRoll}");
+        ShowRollDisplay(currentDiceRoll);
 
-        // Play skill animation
         yield return StartCoroutine(PlaySkillAnimation());
 
-        // Move forward during animation
         MoveForward();
 
-        // Wait for animation to complete
         yield return new WaitForSeconds(1.4f);
 
-        // Stop animation
         StopSkillAnimation();
 
-        // Small delay before next hit
         yield return new WaitForSeconds(0.1f);
+    }
+
+    #endregion
+
+    #region Roll Display
+
+    private void ShowRollDisplay(int rollValue)
+    {
+        EnsureRollDisplay();
+        if (rollDisplayInstance == null)
+            return;
+
+        rollDisplayInstance.PlayRoll(rollValue, skillTier, rollAnimationDuration);
     }
 
     #endregion
@@ -147,18 +172,13 @@ public class PlayerSkill : MonoBehaviour
         if (playerCombat == null || playerCombat.anim == null)
             yield break;
 
-        // Reset other animation states
         playerCombat.anim.SetBool("isWalking", false);
         playerCombat.anim.SetBool("isAttacking", false);
 
-        // Force reset the animation by toggling off then on
         playerCombat.anim.SetBool("isUsingSkill", false);
-
-        // Wait one frame to ensure reset
         yield return null;
 
         playerCombat.anim.SetBool("isUsingSkill", true);
-        Debug.Log($"Triggering skill animation for hit {currentHitNumber}");
     }
 
     private void StopSkillAnimation()
@@ -195,9 +215,6 @@ public class PlayerSkill : MonoBehaviour
 
     #region Damage Handling
 
-    /// <summary>
-    /// Called by Animation Event at slash frame
-    /// </summary>
     public void OnSkillHit()
     {
         if (playerCombat == null || statsManager == null || hasDealtDamageThisHit)
@@ -206,12 +223,10 @@ public class PlayerSkill : MonoBehaviour
         hasDealtDamageThisHit = true;
 
         int skillDamage = DamageCalculator.CalculateSkillDamage(
-            currentDiceRoll, 
-            statsManager.strength, 
+            currentDiceRoll,
+            statsManager.strength,
             skillMultiplier
         );
-
-        Debug.Log($"Hit {currentHitNumber}: Applying Damage {skillDamage}");
 
         ApplyDamageToEnemies(skillDamage);
     }
@@ -236,17 +251,14 @@ public class PlayerSkill : MonoBehaviour
         if (enemyHealth == null)
             return;
 
-        // Apply damage
         enemyHealth.ChangeHealth(-damage);
 
-        // Apply knockback
         EnemyKnockback enemyKnockback = enemy.GetComponent<EnemyKnockback>();
         if (enemyKnockback != null)
         {
             enemyKnockback.Knockback(transform, statsManager.knockbackForce);
         }
 
-        // Show damage popup
         ShowDamagePopup(enemy.transform.position, damage);
     }
 
@@ -264,9 +276,6 @@ public class PlayerSkill : MonoBehaviour
 
     #region Animation Events
 
-    /// <summary>
-    /// Called by Animation Event at end of animation
-    /// </summary>
     public void OnSkillAnimationEnd()
     {
         StopSkillAnimation();
@@ -305,7 +314,6 @@ public class PlayerSkill : MonoBehaviour
     #region Public API
 
     public float GetSkillCooldownPercent() => Mathf.Clamp01(1f - (skillTimer / skillCooldown));
-
     public bool IsExecuting => isExecuting;
 
     #endregion
