@@ -1,3 +1,5 @@
+using ExitGames.Client.Photon;
+
 public class WeatherPresenter
 {
     private IWeatherService service;
@@ -21,14 +23,22 @@ public class WeatherPresenter
         service.OnNewDay();
     }
 
-    public void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable props)
+    public void OnRoomPropertiesUpdate(Hashtable props)
     {
         service.OnRoomPropertiesUpdate(props);
         RefreshView();
     }
-
     public void RefreshView()
     {
-        view.DisplayWeather(service.GetCurrentWeather());
+        view.DisplayWeather(service.GetTodayWeather());
+    }
+    public WeatherType GetTodayWeather()
+    {
+        return service.GetTodayWeather();
+    }
+
+    public WeatherType GetTomorrowWeather()
+    {
+        return service.GetTomorrowWeather();
     }
 }
