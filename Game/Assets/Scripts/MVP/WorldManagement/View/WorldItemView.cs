@@ -61,9 +61,12 @@ public class WorldItemView : MonoBehaviour
             return;
         }
 
-        // ensure a session manager exists and store the id in-session only (no PlayerPrefs)
+        // ensure a session manager exists and store the id and name in-session only (no PlayerPrefs)
         var manager = WorldSelectionManager.EnsureExists();
-        manager.SetSelectedWorldId(Id);
+        string displayName = worldData != null && !string.IsNullOrEmpty(worldData.worldName) 
+            ? worldData.worldName 
+            : "Unnamed World";
+        manager.SetSelectedWorld(Id, displayName);
 
         if (string.IsNullOrEmpty(sceneName))
         {

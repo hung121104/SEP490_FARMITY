@@ -1,14 +1,20 @@
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using Photon.Pun;
 
 public class CreateWorld : MonoBehaviour
 {
-    public string apiUrl = "http://localhost:3000/player-data/world";
     public string token;
-    public string worldName = "World 7";
+    public string worldName = "Unnamed world";
     // Legacy InputField (UI) to read world name from; set in Inspector
     public InputField legacyWorldNameInput;
+    
+    [Header("Scene")]
+    [SerializeField]
+    [Tooltip("Scene to load after world creation (e.g., LoadWorldScene)")]
+    private string sceneToLoad = "LoadGameScene";
 
     private MyWorldListPresenter presenter;
 
@@ -56,6 +62,36 @@ public class CreateWorld : MonoBehaviour
     void OnSuccess(WorldResponse resp)
     {
         Debug.Log("Created world: " + resp.worldName + " id: " + resp._id);
+        
+        // Load the newly created world using WorldSelectionManager
+        LoadCreatedWorld(resp._id, resp.worldName);
+    }
+    
+    private void LoadCreatedWorld(string worldId, string worldName)
+    {
+        if (string.IsNullOrEmpty(worldId))
+        {
+            Debug.LogError("CreateWorld.LoadCreatedWorld: worldId is empty - cannot load world.");
+            return;
+        }
+        
+        // Store the world id and name in WorldSelectionManager
+        var manager = WorldSelectionManager.EnsureExists();
+        string displayName = !string.IsNullOrEmpty(worldName) ? worldName : "Unnamed World";
+        manager.SetSelectedWorld(worldId, displayName);
+        
+        if (string.IsNullOrEmpty(sceneToLoad))
+        {
+            Debug.LogWarning("CreateWorld.LoadCreatedWorld: no scene name provided. Scene will not be loaded, but id is saved.");
+            return;
+        }
+        
+        // Properly handle Photon message queue when loading scenes
+        if (PhotonNetwork.IsConnected)
+        {
+            PhotonNetwork.IsMessageQueueRunning = false;
+        }
+        SceneManager.LoadScene(sceneToLoad);
     }
 
     void OnError(string err)

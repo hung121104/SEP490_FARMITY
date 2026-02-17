@@ -71,7 +71,7 @@ public class MyWorldListPresenter
 
             // Notify view to add the created world to the list
             view?.AddWorld(model);
-
+            Debug.Log("Create world: "+model);
             return model;
         }
         catch (System.Exception ex)

@@ -19,7 +19,15 @@ public class OnlineWorldItemView : MonoBehaviour
         onJoinCallback = joinCallback;
 
         if (roomNameText != null)
-            roomNameText.text = roomInfo.Name;
+        {
+            // Use displayName from custom properties, fallback to room name
+            string displayName = roomInfo.Name;
+            if (roomInfo.CustomProperties != null && roomInfo.CustomProperties.ContainsKey("displayName"))
+            {
+                displayName = roomInfo.CustomProperties["displayName"].ToString();
+            }
+            roomNameText.text = displayName;
+        }
 
         if (playerCountText != null)
             playerCountText.text = $"{roomInfo.PlayerCount}/{roomInfo.MaxPlayers}";

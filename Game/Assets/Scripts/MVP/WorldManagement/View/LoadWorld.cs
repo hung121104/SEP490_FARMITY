@@ -3,6 +3,7 @@ using UnityEngine;
 using Photon.Pun;
 using UnityEngine.SceneManagement;
 using Photon.Realtime;
+using ExitGames.Client.Photon;
 public class LoadWorld : MonoBehaviourPunCallbacks
 {
     private void Start()
@@ -38,7 +39,23 @@ public class LoadWorld : MonoBehaviourPunCallbacks
         }
 
         Debug.Log($"Joining or creating Photon room for world id: {selectedId}");
-        var roomOptions = new RoomOptions { MaxPlayers = 4, IsVisible = true, IsOpen = true };
+        
+        // Set up custom properties for the room
+        var customProps = new Hashtable();
+        string displayName = !string.IsNullOrEmpty(manager.WorldName) 
+            ? manager.WorldName 
+            : selectedId;
+        customProps["displayName"] = displayName;
+        
+        var roomOptions = new RoomOptions 
+        { 
+            MaxPlayers = 4, 
+            IsVisible = true, 
+            IsOpen = true,
+            CustomRoomProperties = customProps,
+            CustomRoomPropertiesForLobby = new string[] { "displayName" }
+        };
+        
         PhotonNetwork.JoinOrCreateRoom(selectedId, roomOptions, TypedLobby.Default);
     }
     public override void OnJoinedRoom()
