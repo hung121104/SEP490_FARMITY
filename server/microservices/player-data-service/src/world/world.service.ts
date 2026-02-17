@@ -113,6 +113,10 @@ export class WorldService {
     if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {
       throw new RpcException({ status: 401, message: 'Not authorized to delete this world' });
     }
+    // Delete all characters associated with this world
+    const deletedCharactersCount = await this.characterService.deleteByWorldId(getWorldDto._id);
+    console.log(`[WorldService] Deleted ${deletedCharactersCount} character(s) for world ${getWorldDto._id}`);
+    // Delete the world itself
     const deleted = await this.worldModel.findByIdAndDelete(getWorldDto._id).exec();
     return deleted;
   }
