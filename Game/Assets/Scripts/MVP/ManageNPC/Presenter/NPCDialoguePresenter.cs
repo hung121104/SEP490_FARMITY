@@ -1,9 +1,7 @@
-public class NPCDialoguePresenter
+﻿public class NPCDialoguePresenter
 {
     private INPCDialogueService service;
     private NPCDialogueView view;
-
-    private string currentDialogue;
 
     public NPCDialoguePresenter(
         INPCDialogueService service,
@@ -13,27 +11,75 @@ public class NPCDialoguePresenter
         this.view = view;
     }
 
-    public void OnInteract()
+    public void StartDialogue()
     {
-        currentDialogue = service.GetNextDialogue();
+        ShowCurrentNode();
+    }
 
-        if (currentDialogue == null)
+    public void Continue()
+    {
+        var node = service.GetCurrentNode();
+
+        if (node == null)
         {
             view.Hide();
+            service.Reset();
             return;
         }
 
-        view.Show(
+        //
+        if (node.options != null && node.options.Count > 0)
+            return;
+
+        bool hasNext = service.MoveNext();
+
+        if (!hasNext)
+        {
+            view.Hide();
+            service.Reset();
+            return;
+        }
+
+        ShowCurrentNode();
+    }
+
+
+    public void SelectOption(int index)
+    {
+        var node = service.GetCurrentNode();
+
+        if (node == null) return;
+
+        if (node.options == null || index >= node.options.Count)
+            return;
+
+        service.ChooseOption(index);
+        ShowCurrentNode();
+    }
+
+
+    private void ShowCurrentNode()
+    {
+        var node = service.GetCurrentNode();
+
+        if (node == null)
+        {
+            view.Hide();
+            service.Reset();
+            return;
+        }
+
+        view.ShowNode(
             service.GetNPCName(),
-            currentDialogue,
+            node,
             service.GetAvatar()
         );
     }
-
-    public void ShowFullCurrentText()
+    public DialogueNode GetCurrentNode()
     {
-        view.ShowFullText(currentDialogue);
+        return service.GetCurrentNode();
     }
+
 
     public bool IsDialogueActive()
     {

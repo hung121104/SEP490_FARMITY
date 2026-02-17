@@ -10,6 +10,9 @@ public class InventoryPresenter
     // Item detail system integration
     private ItemDetailView itemDetailView;
     private ItemPresenter currentItemPresenter;
+    
+    // Track which slot is currently showing tooltip
+    private int currentTooltipSlot = -1;
 
     // Events for GameView or other systems
     public event Action<ItemModel> OnItemUsed;
@@ -65,6 +68,7 @@ public class InventoryPresenter
         view.OnSortRequested += HandleSort;
         view.OnSlotHoverEnter += HandleSlotHoverEnter;
         view.OnSlotHoverExit += HandleSlotHoverExit;
+        view.OnItemDeleteRequested += HandleItemDelete;
     }
 
     private void UnsubscribeFromViewEvents()
@@ -79,6 +83,7 @@ public class InventoryPresenter
         view.OnSortRequested -= HandleSort;
         view.OnSlotHoverEnter -= HandleSlotHoverEnter;
         view.OnSlotHoverExit -= HandleSlotHoverExit;
+        view.OnItemDeleteRequested -= HandleItemDelete;
     }
 
     #endregion
@@ -103,6 +108,12 @@ public class InventoryPresenter
     private void HandleItemRemoved(ItemModel item, int slotIndex)
     {
         view?.ClearSlot(slotIndex);
+
+        // If tooltip was showing for this slot, hide it
+        if (currentTooltipSlot == slotIndex)
+        {
+            HideCurrentItemDetail();
+        }
     }
 
     private void HandleItemsMoved(int fromSlot, int toSlot)
@@ -118,6 +129,12 @@ public class InventoryPresenter
     {
         var item = service.GetItemAtSlot(slotIndex);
         view?.UpdateSlot(slotIndex, item);
+
+        // Refresh tooltip if it's showing for this slot
+        if (currentTooltipSlot == slotIndex)
+        {
+            RefreshTooltipForSlot(slotIndex);
+        }
     }
 
     private void HandleInventoryChanged()
@@ -177,6 +194,9 @@ public class InventoryPresenter
         if (draggedSlot != -1 && draggedSlot != targetSlotIndex)
         {
             service.MoveItem(draggedSlot, targetSlotIndex);
+
+            //Show tooltip for the target slot after swap
+            ShowTooltipAfterDrop(targetSlotIndex);
         }
 
         draggedSlot = -1;
@@ -214,6 +234,63 @@ public class InventoryPresenter
     private void HandleSort()
     {
         service.SortInventory();
+        HideCurrentItemDetail();
+    }
+
+    #endregion
+
+    #region Delete Event Handler
+
+    private void HandleItemDelete(int slotIndex)
+    {
+        var item = service.GetItemAtSlot(slotIndex);
+
+        if (item == null)
+        {
+            Debug.LogWarning($"[InventoryPresenter] No item at slot {slotIndex} to delete");
+            return;
+        }
+
+        // Prevent deletion of quest items and artifacts
+        if (item.IsQuestItem)
+        {
+            view?.ShowNotification("Cannot delete quest items!");
+            Debug.LogWarning($"[InventoryPresenter] Cannot delete quest item: {item.ItemName}");
+            return;
+        }
+
+        if (item.IsArtifact)
+        {
+            view?.ShowNotification("Cannot delete artifact items!");
+            Debug.LogWarning($"[InventoryPresenter] Cannot delete artifact: {item.ItemName}");
+            return;
+        }
+
+        // Delete the entire stack
+        int quantity = item.Quantity;
+        string itemName = item.ItemName;
+
+        bool success = service.RemoveItemFromSlot(slotIndex, quantity);
+
+        if (success)
+        {
+            view?.ShowNotification($"Deleted {itemName} x{quantity}");
+            Debug.Log($"[InventoryPresenter] Deleted {itemName} x{quantity} from slot {slotIndex}");
+
+            view?.HideDragPreview();
+
+            // Hide tooltip if it was showing
+            if (currentTooltipSlot == slotIndex)
+            {
+                HideCurrentItemDetail();               
+            }
+        }
+        else
+        {
+            view?.ShowNotification("Failed to delete item!");
+            Debug.LogError($"[InventoryPresenter] Failed to delete item from slot {slotIndex}");
+        }
+        draggedSlot = -1;
     }
 
     #endregion
@@ -222,18 +299,16 @@ public class InventoryPresenter
 
     private void HandleSlotHoverEnter(int slotIndex, Vector2 screenPosition)
     {
+        // Don't show tooltip if currently dragging
+        if (draggedSlot != -1)
+        {
+            return; // Skip showing tooltip
+        }
+
         var itemModel = service.GetItemAtSlot(slotIndex);
         if (itemModel == null || itemDetailView == null) return;
 
-        IItemService itemService = new ItemService(itemModel);
-        currentItemPresenter = new ItemPresenter(itemModel, itemService);
-        currentItemPresenter.SetView(itemDetailView);
-
-        // Subscribe to item interactions if needed
-        currentItemPresenter.OnItemInteracted += HandleItemDetailInteraction;
-
-        // Show details at cursor position
-        currentItemPresenter.ShowItemDetailsAtPosition(screenPosition);
+        ShowTooltipForSlot(slotIndex, screenPosition);
     }
 
     private void HandleSlotHoverExit(int slotIndex)
@@ -245,17 +320,100 @@ public class InventoryPresenter
     {
         if (currentItemPresenter != null)
         {
-            currentItemPresenter.OnItemInteracted -= HandleItemDetailInteraction;
             currentItemPresenter.HideItemDetails();
             currentItemPresenter.RemoveView();
             currentItemPresenter = null;
         }
+        currentTooltipSlot = -1;
     }
 
-    //Need for checking
-    private void HandleItemDetailInteraction(ItemModel itemModel)
+    private void HideCurrentItemDetailImmediate()
     {
-        Debug.Log($"[InventoryPresenter] Item detail interaction: {itemModel.ItemName}");
+        if (currentItemPresenter != null)
+        {
+            currentItemPresenter.HideItemDetailsImmediate();
+            currentItemPresenter.RemoveView();
+            currentItemPresenter = null;
+        }
+        currentTooltipSlot = -1;
+    }
+
+    #endregion
+
+    #region Tooltip Management
+
+    /// <summary>
+    /// Show tooltip for specific slot at given position
+    /// </summary>
+    private void ShowTooltipForSlot(int slotIndex, Vector2 screenPosition)
+    {
+        var itemModel = service.GetItemAtSlot(slotIndex);
+        if (itemModel == null || itemDetailView == null)
+        {
+            Debug.LogWarning($"[InventoryPresenter] Cannot show tooltip for slot {slotIndex} - item or view missing");
+            return;
+        }
+
+        // Hide previous tooltip if any
+        if (currentItemPresenter != null)
+        {
+            HideCurrentItemDetail();
+        }
+
+        // Track which slot is showing tooltip
+        currentTooltipSlot = slotIndex;
+
+        // Create ItemService and ItemPresenter
+        IItemService itemService = new ItemService(itemModel);
+        currentItemPresenter = new ItemPresenter(itemModel, itemService);
+        currentItemPresenter.SetView(itemDetailView);
+
+        // Show details at cursor position
+        currentItemPresenter.ShowItemDetailsAtPosition(screenPosition);
+    }
+
+    /// <summary>
+    /// Show tooltip after drop/swap completes
+    /// </summary>
+    private void ShowTooltipAfterDrop(int slotIndex)
+    {
+        var itemModel = service.GetItemAtSlot(slotIndex);
+
+        if (itemModel == null)
+        {
+            Debug.Log($"[InventoryPresenter] Slot {slotIndex} is empty after drop - no tooltip");
+            return;
+        }
+
+        // Get current mouse position
+        Vector2 mousePosition = Input.mousePosition;
+
+        // Show tooltip at current mouse position
+        ShowTooltipForSlot(slotIndex, mousePosition);
+    }
+
+    /// <summary>
+    /// Refresh tooltip for specific slot (update to new item data)
+    /// </summary>
+    private void RefreshTooltipForSlot(int slotIndex)
+    {
+        if (itemDetailView == null || currentItemPresenter == null)
+            return;
+
+        var newItem = service.GetItemAtSlot(slotIndex);
+
+        if (newItem == null)
+        {
+            // Slot now empty, hide tooltip
+            HideCurrentItemDetail();
+            return;
+        }
+
+        // Get current mouse position
+        Vector2 mousePosition = Input.mousePosition;
+
+        // Show updated tooltip
+        ShowTooltipForSlot(slotIndex, mousePosition);
     }
 
     #endregion
@@ -282,6 +440,23 @@ public class InventoryPresenter
         return service.GetItemCount(itemId);
     }
 
+    public void CancelAllActions()
+    {
+        // 1. Reset dragged slot state
+        draggedSlot = -1;
+
+        // 2. Reset selected slot state
+        selectedSlot = -1;
+
+        // 3. Hide item detail tooltip immediately
+        HideCurrentItemDetailImmediate();
+
+        // 4. Call view to cancel all visual actions
+        view?.CancelAllActions();
+
+        Debug.Log("[InventoryPresenter] All inventory actions cancelled");
+    }
+
     #endregion
 
     #region Helper Methods
@@ -299,6 +474,7 @@ public class InventoryPresenter
 
     public void Cleanup()
     {
+        CancelAllActions();
         RemoveView();
         HideCurrentItemDetail();
     }

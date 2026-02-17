@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class InventoryGameView : MonoBehaviour
 {
@@ -8,6 +8,7 @@ public class InventoryGameView : MonoBehaviour
     [Header("References")]
     [SerializeField] private InventoryView inventoryView;
     [SerializeField] private ItemDetailView itemDetailView;
+    [SerializeField] private ItemDeleteView itemDeleteView;
 
     private InventoryModel model;
     private IInventoryService service;
@@ -55,6 +56,28 @@ public class InventoryGameView : MonoBehaviour
         presenter.OnItemDropped += HandleItemDropped;
     }
     #endregion
+
+    public void OpenInventory()
+    {
+        if (inventoryView != null)
+        {
+            //Re-enable drops when opening inventory
+            if (itemDeleteView != null)
+            {
+                itemDeleteView.EnableDrops();
+            }
+            Debug.Log("[InventoryGameView] Inventory opened");
+        }
+    }
+
+    public void CloseInventory()
+    {
+        if (inventoryView != null)
+        {
+            presenter?.CancelAllActions();
+            Debug.Log("[InventoryGameView] Inventory closed");
+        }
+    }
 
     #region Public API for Player/Other Systems
 
