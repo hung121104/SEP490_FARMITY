@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, ClientSession } from 'mongoose';
 import { ClientProxy } from '@nestjs/microservices';
@@ -7,7 +7,7 @@ import { SavePositionDto } from './dto/save-position.dto';
 import { GetPositionDto } from './dto/get-position.dto';
 
 @Injectable()
-export class CharacterService {
+export class CharacterService implements OnModuleInit {
   private savePositionCounter = 0;
   private getPositionCounter = 0;
 
@@ -15,6 +15,26 @@ export class CharacterService {
     @InjectModel(Character.name) private characterModel: Model<CharacterDocument>,
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
   ) {}
+
+  async onModuleInit() {
+    // Drop legacy unique index on `worldId` + `playerID` if it exists
+    try {
+      await this.characterModel.collection.dropIndex('worldId_1_playerID_1');
+      console.log('[character-service] Dropped legacy index worldId_1_playerID_1');
+    } catch (err) {
+      const msg = (err && (err as any).errmsg) || (err && (err as any).message) || String(err);
+      console.log('[character-service] No legacy playerID index to drop:', msg);
+    }
+
+    // Ensure compound unique index on worldId + accountId exists
+    try {
+      await this.characterModel.collection.createIndex({ worldId: 1, accountId: 1 }, { unique: true });
+      console.log('[character-service] Ensured unique index on worldId+accountId');
+    } catch (err) {
+      const msg = (err && (err as any).errmsg) || (err && (err as any).message) || String(err);
+      console.log('[character-service] Could not create unique index worldId+accountId:', msg);
+    }
+  }
 
   async createCharacter(
     worldId: Types.ObjectId,

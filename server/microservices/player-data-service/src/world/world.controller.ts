@@ -4,6 +4,7 @@ import { WorldService } from './world.service';
 import { CreateWorldDto } from './dto/create-world.dto';
 import { GetWorldDto } from './dto/get-world.dto';
 import { GetWorldsByOwnerDto } from './dto/get-worlds-by-owner.dto';
+import { GetCharacterInWorldDto } from './dto/get-character-in-world.dto';
 
 @Controller()
 export class WorldController {
@@ -27,5 +28,10 @@ export class WorldController {
   @MessagePattern('delete-world')
   async deleteWorld(@Body() getWorldDto: GetWorldDto) {
     return this.worldService.deleteWorld(getWorldDto);
+  }
+
+  @MessagePattern('get-character-in-world')
+  async getCharacterInWorld(@Body() dto: GetCharacterInWorldDto) {
+    return this.worldService.getCharacterInWorld(dto);
   }
 }

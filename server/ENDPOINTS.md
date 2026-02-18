@@ -178,6 +178,18 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Optional query: `ownerId=string` (only allowed for admin accounts)
     - Response: array of world documents (each includes `day`, `month`, `year`, `hour`, `minute`, `gold`, all numeric, default `0`).
 
+- **GET** `/player-data/worlds/:worldId/characters/:accountId/position`: Get or create a character for a player in a world.
+  - Headers: `Authorization: Bearer <token>` (world owner only)
+  - Path parameters:
+    - `worldId`: string - The ID of the world
+    - `accountId`: string - The ID of the player's account
+  - Response: Character document `{ "worldId": "string", "accountId": "string", "positionX": number, "positionY": number, "sectionIndex": number }`
+  - Notes: 
+    - Only the owner of the world can access this endpoint.
+    - If the player already has a character in the world, it returns the existing character.
+    - If the player doesn't have a character, it creates a new one with default position (0, 0, 0) and returns it.
+    - This endpoint is typically used when a player joins a world owned by another player.
+
 ## Blog
 
 - **POST** `/blog/create`: Create a blog post (admin only).
