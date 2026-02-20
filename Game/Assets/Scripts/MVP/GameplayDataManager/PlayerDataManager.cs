@@ -33,7 +33,7 @@ public class PlayerDataManager : MonoBehaviourPunCallbacks
 	public string authHeaderPrefix = "Bearer ";
 
 	[Header("Fetched Players")]
-	[SerializeField] private List<PlayerData> players = new List<PlayerData>();
+	[SerializeField] public List<PlayerData> players = new List<PlayerData>();
 
 	private void PopulateIds()
 	{

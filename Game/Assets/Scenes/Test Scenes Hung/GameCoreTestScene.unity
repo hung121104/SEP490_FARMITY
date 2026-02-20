@@ -172,7 +172,7 @@ MonoBehaviour:
   plantRepeatInterval: 0.1
   playerCameraTag: MainCamera
   cropPrefab: {fileID: 9165000289063299726, guid: bb78198dacabce642a87ec5356ebdb4b, type: 3}
-  showDebugLogs: 1
+  showDebugLogs: 0
 --- !u!1 &52024647
 GameObject:
   m_ObjectHideFlags: 0
@@ -1142,7 +1142,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   chunksPerBatch: 10
   batchDelay: 0.5
-  showDebugLogs: 1
+  showDebugLogs: 0
 --- !u!114 &331681580
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3432,6 +3432,38 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1374581872}
   m_CullTransparentMesh: 1
+--- !u!1 &1442737408
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1442737409}
+  m_Layer: 0
+  m_Name: LoadDataSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1442737409
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1442737408}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -148.79108, y: 60.92714, z: -0.032578114}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1809101611}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1513455387
 GameObject:
   m_ObjectHideFlags: 0
@@ -3740,50 +3772,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1608406097}
   m_CullTransparentMesh: 1
---- !u!1 &1613496535
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1613496537}
-  - component: {fileID: 1613496536}
-  m_Layer: 0
-  m_Name: SaveGameSystem
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1613496536
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1613496535}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 452705b43836502489fa4927352fa7c6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!4 &1613496537
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1613496535}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -8.343792}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1639494997
 GameObject:
   m_ObjectHideFlags: 0
@@ -4033,6 +4021,51 @@ MonoBehaviour:
   m_Spacing: {x: 20, y: 0}
   m_Constraint: 0
   m_ConstraintCount: 2
+--- !u!1 &1809101610
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1809101611}
+  - component: {fileID: 1809101612}
+  m_Layer: 0
+  m_Name: LoadPlayerData
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1809101611
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1809101610}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1442737409}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1809101612
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1809101610}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dca34fac1c373314ea7ec71f55ebc1ad, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerId: 
 --- !u!1 &1866735579
 GameObject:
   m_ObjectHideFlags: 0
@@ -4226,7 +4259,7 @@ MonoBehaviour:
   enableGrowth: 1
   growthSpeedMultiplier: 1
   cropVisualsParent: {fileID: 0}
-  showDebugLogs: 1
+  showDebugLogs: 0
 --- !u!4 &1955384471
 Transform:
   m_ObjectHideFlags: 0
@@ -4290,37 +4323,6 @@ MonoBehaviour:
   hotbarPanel: {fileID: 1608406097}
   inventoryGameView: {fileID: 853836405}
   useMenu: 101
---- !u!1 &2011318203
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2011318204}
-  m_Layer: 0
-  m_Name: DataSystem
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2011318204
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2011318203}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -143.02199, y: 67.06027, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2021699363
 GameObject:
   m_ObjectHideFlags: 0
@@ -4359,8 +4361,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   tilledTilemapName: TillableTilemap
-  showDebugLogs: 1
-  showLoadedChunksGizmos: 1
+  showDebugLogs: 0
+  showLoadedChunksGizmos: 0
   enableDailyReload: 1
 --- !u!4 &2021699365
 Transform:
@@ -4807,16 +4809,15 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 679646518}
-  - {fileID: 1613496537}
+  - {fileID: 921824171}
+  - {fileID: 244448537}
+  - {fileID: 331681578}
+  - {fileID: 1955384471}
+  - {fileID: 1442737409}
   - {fileID: 76351688}
   - {fileID: 525205932}
-  - {fileID: 2011318204}
   - {fileID: 776307874}
   - {fileID: 1138086812}
   - {fileID: 761236216}
   - {fileID: 583161136}
   - {fileID: 2134384687}
-  - {fileID: 1955384471}
-  - {fileID: 244448537}
-  - {fileID: 331681578}
-  - {fileID: 921824171}
