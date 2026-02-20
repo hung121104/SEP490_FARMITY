@@ -1,16 +1,16 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class CraftingPresenter
+public class CookingPresenter
 {
     private readonly CraftingModel model;
     private readonly ICraftingService craftingService;
     private readonly IInventoryService inventoryService;
 
     // Main view and sub-views
-    private ICraftingMainView mainView;
+    private ICookingMainView mainView;
     private IRecipeListView recipeListView;
     private IRecipeDetailView recipeDetailView;
     private IFilterView filterView;
@@ -23,12 +23,12 @@ public class CraftingPresenter
     private string selectedRecipeID;
 
     // Events for external systems
-    public event Action<RecipeModel, int> OnItemCrafted;
-    public event Action<string> OnCraftFailed;
+    public event Action<RecipeModel, int> OnItemCooked;
+    public event Action<string> OnCookFailed;
 
     #region Initialization
 
-    public CraftingPresenter(
+    public CookingPresenter(
         CraftingModel craftingModel,
         ICraftingService craftingService,
         IInventoryService inventoryService)
@@ -43,7 +43,7 @@ public class CraftingPresenter
     /// <summary>
     /// Set the main view and all sub-views
     /// </summary>
-    public void SetView(ICraftingMainView mainView)
+    public void SetView(ICookingMainView mainView)
     {
         // Unsubscribe from old view if exists
         if (this.mainView != null)
@@ -101,7 +101,7 @@ public class CraftingPresenter
 
         if (recipeDetailView != null)
         {
-            recipeDetailView.OnCraftRequested += HandleCraftRequested;
+            recipeDetailView.OnCraftRequested += HandleCookRequested; // Note: Using OnCraftRequested for interface consistency
             recipeDetailView.OnAmountChanged += HandleAmountChanged;
         }
 
@@ -125,7 +125,7 @@ public class CraftingPresenter
 
         if (recipeDetailView != null)
         {
-            recipeDetailView.OnCraftRequested -= HandleCraftRequested;
+            recipeDetailView.OnCraftRequested -= HandleCookRequested;
             recipeDetailView.OnAmountChanged -= HandleAmountChanged;
         }
 
@@ -141,27 +141,27 @@ public class CraftingPresenter
 
     private void SubscribeToServiceEvents()
     {
-        craftingService.OnItemCrafted += HandleItemCrafted;
-        craftingService.OnCraftFailed += HandleCraftFailed;
+        craftingService.OnItemCrafted += HandleItemCooked;
+        craftingService.OnCraftFailed += HandleCookFailed;
         craftingService.OnRecipeUnlocked += HandleRecipeUnlocked;
 
-        // Listen to inventory changes to update craftable status
+        // Listen to inventory changes to update cookable status
         inventoryService.OnInventoryChanged += HandleInventoryChanged;
     }
 
     private void UnsubscribeFromServiceEvents()
     {
-        craftingService.OnItemCrafted -= HandleItemCrafted;
-        craftingService.OnCraftFailed -= HandleCraftFailed;
+        craftingService.OnItemCrafted -= HandleItemCooked;
+        craftingService.OnCraftFailed -= HandleCookFailed;
         craftingService.OnRecipeUnlocked -= HandleRecipeUnlocked;
         inventoryService.OnInventoryChanged -= HandleInventoryChanged;
     }
 
-    private void HandleItemCrafted(RecipeModel recipe, int amount)
+    private void HandleItemCooked(RecipeModel recipe, int amount)
     {
-        notificationView?.ShowCraftingResult(recipe.RecipeName, amount, true);
+        notificationView?.ShowNotification($"✓ Cooked {recipe.RecipeName} x{amount}", NotificationType.Success);
 
-        // Refresh recipe list to update craftable status
+        // Refresh recipe list to update cookable status
         RefreshRecipeList();
 
         // Refresh selected recipe detail if it's still selected
@@ -170,25 +170,29 @@ public class CraftingPresenter
             ShowRecipeDetail(selectedRecipeID);
         }
 
-        OnItemCrafted?.Invoke(recipe, amount);
+        OnItemCooked?.Invoke(recipe, amount);
     }
 
-    private void HandleCraftFailed(string reason)
+    private void HandleCookFailed(string reason)
     {
-        notificationView?.ShowNotification($"Crafting failed: {reason}", NotificationType.Error);
-        OnCraftFailed?.Invoke(reason);
+        notificationView?.ShowNotification($"Cooking failed: {reason}", NotificationType.Error);
+        OnCookFailed?.Invoke(reason);
     }
 
     private void HandleRecipeUnlocked(string recipeID)
     {
-        notificationView?.ShowNotification("New recipe unlocked!", NotificationType.Success);
-        RefreshRecipeList();
+        var recipe = craftingService.GetRecipe(recipeID);
+        if (recipe != null && recipe.RecipeType == RecipeType.Cooking)
+        {
+            notificationView?.ShowNotification("New cooking recipe unlocked!", NotificationType.Success);
+            RefreshRecipeList();
+        }
     }
 
     private void HandleInventoryChanged()
     {
-        // Update craftable status when inventory changes
-        RefreshCraftableStatus();
+        // Update cookable status when inventory changes
+        RefreshCookableStatus();
 
         // Update detail view if a recipe is selected
         if (!string.IsNullOrEmpty(selectedRecipeID))
@@ -207,7 +211,7 @@ public class CraftingPresenter
         ShowRecipeDetail(recipeID);
     }
 
-    private void HandleCraftRequested(string recipeID, int amount)
+    private void HandleCookRequested(string recipeID, int amount)
     {
         if (string.IsNullOrEmpty(recipeID))
         {
@@ -222,10 +226,10 @@ public class CraftingPresenter
             return;
         }
 
-        // Check if can craft
-        bool canCraft = craftingService.CanCraftRecipe(recipeID, inventoryService);
+        // Check if can cook
+        bool canCook = craftingService.CanCraftRecipe(recipeID, inventoryService);
 
-        if (!canCraft)
+        if (!canCook)
         {
             var missingIngredients = craftingService.GetMissingIngredients(recipeID, inventoryService);
             if (missingIngredients.Count > 0)
@@ -236,17 +240,17 @@ public class CraftingPresenter
             }
             else
             {
-                notificationView?.ShowNotification("Cannot craft this recipe", NotificationType.Warning);
+                notificationView?.ShowNotification("Cannot cook this recipe", NotificationType.Warning);
             }
             return;
         }
 
-        // Attempt to craft
+        // Attempt to cook
         bool success = craftingService.CraftRecipe(recipeID, inventoryService, amount);
 
         if (!success)
         {
-            notificationView?.ShowNotification("Crafting failed", NotificationType.Error);
+            notificationView?.ShowNotification("Cooking failed", NotificationType.Error);
         }
     }
 
@@ -263,13 +267,12 @@ public class CraftingPresenter
 
     private void HandleCloseRequested()
     {
-        CloseCraftingUI();
+        CloseCookingUI();
     }
 
     private void HandleAmountChanged(int newAmount)
     {
         // Could add logic here if needed
-        // For example, update max craftable amount display
     }
 
     #endregion
@@ -280,17 +283,15 @@ public class CraftingPresenter
     {
         if (filterView == null) return;
 
-        // Define crafting categories
-        CraftingCategory[] craftingCategories = new[]
+        // Define cooking categories (different from crafting)
+        CraftingCategory[] cookingCategories = new[]
         {
             CraftingCategory.General,
-            CraftingCategory.Tools,
-            CraftingCategory.Materials,
-            CraftingCategory.Equipment,
-            CraftingCategory.Furniture
+            CraftingCategory.Food,
+            CraftingCategory.Materials
         };
 
-        filterView.InitializeCategories(craftingCategories);
+        filterView.InitializeCategories(cookingCategories);
         filterView.SetActiveCategory(CraftingCategory.General);
     }
 
@@ -304,30 +305,30 @@ public class CraftingPresenter
         // Update view with recipes
         recipeListView.ShowRecipes(recipes);
 
-        // Update craftable status for each recipe
+        // Update cookable status for each recipe
         foreach (var recipe in recipes)
         {
-            bool canCraft = craftingService.CanCraftRecipe(recipe.RecipeID, inventoryService);
-            recipeListView.UpdateRecipeSlot(recipe.RecipeID, canCraft);
+            bool canCook = craftingService.CanCraftRecipe(recipe.RecipeID, inventoryService);
+            recipeListView.UpdateRecipeSlot(recipe.RecipeID, canCook);
         }
     }
 
-    private void RefreshCraftableStatus()
+    private void RefreshCookableStatus()
     {
         if (recipeListView == null) return;
 
         var recipes = GetFilteredRecipes();
         foreach (var recipe in recipes)
         {
-            bool canCraft = craftingService.CanCraftRecipe(recipe.RecipeID, inventoryService);
-            recipeListView.UpdateRecipeSlot(recipe.RecipeID, canCraft);
+            bool canCook = craftingService.CanCraftRecipe(recipe.RecipeID, inventoryService);
+            recipeListView.UpdateRecipeSlot(recipe.RecipeID, canCook);
         }
     }
 
     private List<RecipeModel> GetFilteredRecipes()
     {
-        // Get crafting recipes only
-        List<RecipeModel> recipes = craftingService.GetRecipesByType(RecipeType.Crafting);
+        // Get cooking recipes only
+        List<RecipeModel> recipes = craftingService.GetRecipesByType(RecipeType.Cooking);
 
         // Filter by category if not "All"
         if (currentCategory != CraftingCategory.General)
@@ -343,20 +344,26 @@ public class CraftingPresenter
         var recipe = craftingService.GetRecipe(recipeID);
         if (recipe == null)
         {
-            Debug.LogWarning($"[CraftingPresenter] Recipe not found: {recipeID}");
+            Debug.LogWarning($"[CookingPresenter] Recipe not found: {recipeID}");
             return;
         }
 
-        bool canCraft = craftingService.CanCraftRecipe(recipeID, inventoryService);
+        bool canCook = craftingService.CanCraftRecipe(recipeID, inventoryService);
         var missingIngredients = craftingService.GetMissingIngredients(recipeID, inventoryService);
 
-        // Calculate max craftable amount
-        int maxAmount = CalculateMaxCraftableAmount(recipe, missingIngredients);
+        // Calculate max cookable amount
+        int maxAmount = CalculateMaxCookableAmount(recipe, missingIngredients);
 
         // Show detail
-        recipeDetailView?.ShowRecipeDetail(recipe, canCraft, missingIngredients);
+        recipeDetailView?.ShowRecipeDetail(recipe, canCook, missingIngredients);
 
-        // Set max amount
+        // Set max amount for cooking detail view
+        if (recipeDetailView is CookingDetailView cookingDetailView)
+        {
+            cookingDetailView.SetMaxCookAmount(maxAmount);
+        }
+
+        // Set default amount
         recipeDetailView?.SetCraftAmount(1);
 
         // Update selection in list
@@ -371,12 +378,12 @@ public class CraftingPresenter
         }
     }
 
-    private int CalculateMaxCraftableAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
+    private int CalculateMaxCookableAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
     {
         if (recipe == null || recipe.Ingredients == null || recipe.Ingredients.Length == 0)
             return 0;
 
-        // If any ingredient is missing, can't craft
+        // If any ingredient is missing, can't cook
         if (missingIngredients != null && missingIngredients.Count > 0)
             return 0;
 
@@ -398,26 +405,26 @@ public class CraftingPresenter
     #region Public API
 
     /// <summary>
-    /// Open crafting UI
+    /// Open cooking UI
     /// </summary>
-    public void OpenCraftingUI()
+    public void OpenCookingUI()
     {
         if (mainView == null)
         {
-            Debug.LogError("[CraftingPresenter] Main view is not set");
+            Debug.LogError("[CookingPresenter] Main view is not set");
             return;
         }
 
         mainView.Show();
         RefreshRecipeList();
 
-        Debug.Log("[CraftingPresenter] Crafting UI opened");
+        Debug.Log("[CookingPresenter] Cooking UI opened");
     }
 
     /// <summary>
-    /// Close crafting UI
+    /// Close cooking UI
     /// </summary>
-    public void CloseCraftingUI()
+    public void CloseCookingUI()
     {
         if (mainView == null) return;
 
@@ -425,7 +432,7 @@ public class CraftingPresenter
         recipeDetailView?.HideRecipeDetail();
         selectedRecipeID = null;
 
-        Debug.Log("[CraftingPresenter] Crafting UI closed");
+        Debug.Log("[CookingPresenter] Cooking UI closed");
     }
 
     /// <summary>
@@ -433,15 +440,19 @@ public class CraftingPresenter
     /// </summary>
     public bool IsUIOpen()
     {
-        return mainView != null && (mainView as CraftingMainView)?.IsVisible() == true;
+        return mainView != null && (mainView as CookingMainView)?.IsVisible() == true;
     }
 
     /// <summary>
-    /// Unlock a recipe
+    /// Unlock a cooking recipe
     /// </summary>
     public void UnlockRecipe(string recipeID)
     {
-        craftingService.UnlockRecipe(recipeID);
+        var recipe = craftingService.GetRecipe(recipeID);
+        if (recipe != null && recipe.RecipeType == RecipeType.Cooking)
+        {
+            craftingService.UnlockRecipe(recipeID);
+        }
     }
 
     /// <summary>
@@ -453,11 +464,13 @@ public class CraftingPresenter
     }
 
     /// <summary>
-    /// Get all craftable recipes
+    /// Get all cookable recipes
     /// </summary>
-    public List<RecipeModel> GetCraftableRecipes()
+    public List<RecipeModel> GetCookableRecipes()
     {
-        return craftingService.GetCraftableRecipes(inventoryService);
+        return craftingService.GetCraftableRecipes(inventoryService)
+            .Where(r => r.RecipeType == RecipeType.Cooking)
+            .ToList();
     }
 
     #endregion
@@ -473,7 +486,7 @@ public class CraftingPresenter
         UnsubscribeFromServiceEvents();
         selectedRecipeID = null;
 
-        Debug.Log("[CraftingPresenter] Cleaned up");
+        Debug.Log("[CookingPresenter] Cleaned up");
     }
 
     #endregion

@@ -14,6 +14,9 @@ public class IngredientSlotUI : MonoBehaviour
     [SerializeField] private Color hasEnoughColor = Color.white;
     [SerializeField] private Color missingColor = Color.red;
 
+    /// <summary>
+    /// Initialize ingredient slot with item data and availability
+    /// </summary>
     public void Initialize(ItemDataSO item, int requiredAmount, int missingAmount)
     {
         if (item == null) return;

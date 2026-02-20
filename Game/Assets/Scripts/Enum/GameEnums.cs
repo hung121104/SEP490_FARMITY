@@ -125,3 +125,11 @@ public enum CraftingCategory
     Furniture,
     Equipment
 }
+
+public enum NotificationType
+{
+    Info,
+    Success,
+    Warning,
+    Error
+}
