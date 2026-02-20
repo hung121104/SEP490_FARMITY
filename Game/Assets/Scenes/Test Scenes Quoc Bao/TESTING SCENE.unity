@@ -1601,8 +1601,8 @@ Transform:
   m_GameObject: {fileID: 835830957}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.27, y: -7.24, z: 0.012221192}
-  m_LocalScale: {x: 10, y: 10, z: 10}
+  m_LocalPosition: {x: 0.448, y: -7.1928, z: 0.012221192}
+  m_LocalScale: {x: 3.3179026, y: 2.9651964, z: 10}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 526781250}
@@ -1759,8 +1759,8 @@ CapsuleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.003630066, y: -0.03339362}
-  m_Size: {x: 0.18178101, y: 0.25437593}
+  m_Offset: {x: 0.049692538, y: -0.0017253876}
+  m_Size: {x: 1.0109085, y: 1.1929047}
   m_Direction: 0
 --- !u!114 &835830965
 MonoBehaviour:
@@ -20172,6 +20172,9 @@ MonoBehaviour:
   movementDistance: 2
   skillTier: 6
   skillMultiplier: 1.5
+  rollDisplayPrefab: {fileID: 5096749956982789368, guid: 7d11ca176bb8f904fb4decef66e831e1, type: 3}
+  rollDisplayOffset: {x: 0, y: 1.8, z: 0}
+  rollAnimationDuration: 0.4
 --- !u!1 &1720431993
 GameObject:
   m_ObjectHideFlags: 0
