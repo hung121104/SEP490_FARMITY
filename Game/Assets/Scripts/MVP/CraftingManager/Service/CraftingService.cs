@@ -29,6 +29,24 @@ public class CraftingService : ICraftingService
         // Check all ingredients
         foreach (var ingredient in recipe.Ingredients)
         {
+            // Validate ingredient
+            if (ingredient == null)
+            {
+                Debug.LogWarning($"[CraftingService] Recipe {recipeID} has null ingredient");
+                continue;
+            }
+
+            if (ingredient.item == null)
+            {
+                Debug.LogWarning($"[CraftingService] Recipe {recipeID} has ingredient with null item");
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(ingredient.item.itemID))
+            {
+                Debug.LogWarning($"[CraftingService] Recipe {recipeID} has ingredient with null itemID");
+                continue;
+            }
             if (!inventory.HasItem(ingredient.item.itemID, ingredient.quantity))
                 return false;
         }

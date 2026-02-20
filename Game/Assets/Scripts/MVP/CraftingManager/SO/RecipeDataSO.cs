@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-[CreateAssetMenu(fileName = "New Recipe", menuName = "Farmity/Crafting/Recipe")]
+[CreateAssetMenu(fileName = "New Recipe", menuName = "Scriptable Objects/Recipe")]
 public class RecipeDataSO : ScriptableObject
 {
     [Header("Recipe Info")]

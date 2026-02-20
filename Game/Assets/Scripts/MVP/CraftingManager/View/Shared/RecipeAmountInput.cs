@@ -6,11 +6,10 @@ using UnityEngine.UI;
 public class RecipeAmountInput : MonoBehaviour
 {
     [Header("UI References")]
-    [SerializeField] private TMP_InputField amountInputField;
+    [SerializeField] private InputField amountInputField;
     [SerializeField] private Button increaseButton;
     [SerializeField] private Button decreaseButton;
     [SerializeField] private Button maxButton;
-    [SerializeField] private TextMeshProUGUI maxAmountText; 
 
     [Header("Settings")]
     [SerializeField] private int minAmount = 1;
@@ -35,7 +34,7 @@ public class RecipeAmountInput : MonoBehaviour
     {
         increaseButton?.onClick.AddListener(IncreaseAmount);
         decreaseButton?.onClick.AddListener(DecreaseAmount);
-        maxButton?.onClick.AddListener(SetToMaxAmount); // NEW
+        maxButton?.onClick.AddListener(SetToMaxAmount);
 
         amountInputField?.onEndEdit.AddListener(OnInputFieldChanged);
         amountInputField?.onValueChanged.AddListener(OnInputFieldValueChanged);
@@ -137,12 +136,6 @@ public class RecipeAmountInput : MonoBehaviour
         if (maxButton != null)
         {
             maxButton.interactable = (currentAmount < maxPossibleAmount);
-        }
-
-        // Update max amount display (optional)
-        if (maxAmountText != null)
-        {
-            maxAmountText.text = $"/ {maxPossibleAmount}";
         }
     }
 
