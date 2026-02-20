@@ -24,8 +24,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
 
     [Header("Other UI")]
     [SerializeField] private Button sortButton;
-    [SerializeField] private TextMeshProUGUI notificationText;
-    [SerializeField] private float notificationDuration = 2f;
 
     [Header("Drag Preview")]
     [SerializeField] private Image dragPreviewIcon;
@@ -62,9 +60,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
         HideDragPreview();
         InitializeDeleteZone();
         ConfigureVerticalLayout();
-
-        if (notificationText != null)
-            notificationText.gameObject.SetActive(false);
     }
 
     #region Initialize
@@ -290,16 +285,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
             dragPreviewObject.SetActive(false);
     }
 
-    public void ShowNotification(string message)
-    {
-        if (notificationText == null) return;
-
-        if (notificationCoroutine != null)
-            StopCoroutine(notificationCoroutine);
-
-        notificationCoroutine = StartCoroutine(ShowNotificationCoroutine(message));
-    }
-
     public void CancelAllActions()
     {
         ForceStopDragInEventSystem();
@@ -312,12 +297,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
         {
             StopCoroutine(notificationCoroutine);
             notificationCoroutine = null;
-        }
-
-        // 3. Hide notification text
-        if (notificationText != null)
-        {
-            notificationText.gameObject.SetActive(false);
         }
 
         // 4. Reset all slots hover state
@@ -382,15 +361,5 @@ public class InventoryView : MonoBehaviour, IInventoryView
     private void HandleSlotClicked(int slotIndex)
     {
         OnSlotClicked?.Invoke(slotIndex);
-    }
-
-    private System.Collections.IEnumerator ShowNotificationCoroutine(string message)
-    {
-        notificationText.text = message;
-        notificationText.gameObject.SetActive(true);
-
-        yield return new WaitForSeconds(notificationDuration);
-
-        notificationText.gameObject.SetActive(false);
     }
 }
