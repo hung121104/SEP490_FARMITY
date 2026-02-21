@@ -16,7 +16,7 @@ public class WorldDataBootstrapper : MonoBehaviour
     public bool IsReady { get; private set; } = false;
 
     [Header("API")]
-    [SerializeField] private string apiBaseUrl = "https://localhost:3000";
+    // Base URL is defined in AppConfig.ApiBaseUrl
 
     private string _worldId;
     private string _authToken;
@@ -49,7 +49,7 @@ public class WorldDataBootstrapper : MonoBehaviour
 
     private IEnumerator FetchAndDistribute()
     {
-        string url = $"{apiBaseUrl.TrimEnd('/')}/player-data/world?_id={_worldId}";
+        string url = $"{AppConfig.ApiBaseUrl.TrimEnd('/')}/player-data/world?_id={_worldId}";
         Debug.Log($"[WorldDataBootstrapper] Fetching: {url}");
 
         using (UnityWebRequest req = UnityWebRequest.Get(url))

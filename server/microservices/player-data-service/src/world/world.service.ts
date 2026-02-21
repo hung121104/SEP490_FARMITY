@@ -5,6 +5,7 @@ import { Model, Types } from 'mongoose';
 import { World, WorldDocument } from './world.schema';
 import { CreateWorldDto } from './dto/create-world.dto';
 import { GetWorldDto } from './dto/get-world.dto';
+import { UpdateWorldDto } from './dto/update-world.dto';
 import { CharacterService } from '../character/character.service';
 
 @Injectable()
@@ -112,6 +113,51 @@ export class WorldService {
     }
     return result;
   }
+  async updateWorld(dto: UpdateWorldDto): Promise<any> {
+    if (!dto.worldId) throw new RpcException({ status: 400, message: 'worldId required' });
+    if (!dto.ownerId) throw new RpcException({ status: 400, message: 'ownerId required' });
+
+    const world = await this.worldModel.findById(dto.worldId).exec();
+    if (!world) throw new RpcException({ status: 404, message: 'World not found' });
+
+    const ownerObjId = new Types.ObjectId(dto.ownerId);
+    if (world.ownerId?.toString() !== ownerObjId.toString()) {
+      throw new RpcException({ status: 401, message: 'Not authorized to update this world' });
+    }
+
+    // Build partial update for world fields
+    const worldUpdate: Partial<World> = {};
+    if (dto.day !== undefined) worldUpdate.day = dto.day;
+    if (dto.month !== undefined) worldUpdate.month = dto.month;
+    if (dto.year !== undefined) worldUpdate.year = dto.year;
+    if (dto.hour !== undefined) worldUpdate.hour = dto.hour;
+    if (dto.minute !== undefined) worldUpdate.minute = dto.minute;
+    if (dto.gold !== undefined) worldUpdate.gold = dto.gold;
+
+    const updatedWorld = Object.keys(worldUpdate).length > 0
+      ? await this.worldModel.findByIdAndUpdate(dto.worldId, { $set: worldUpdate }, { new: true }).exec()
+      : world;
+
+    // Upsert up to 4 characters
+    const charactersResult: any[] = [];
+    if (dto.characters && dto.characters.length > 0) {
+      const capped = dto.characters.slice(0, 4);
+      for (const charDto of capped) {
+        try {
+          const c = await this.characterService.upsertCharacter(dto.worldId, charDto);
+          charactersResult.push(c);
+        } catch (err) {
+          console.error('[WorldService.updateWorld] upsertCharacter error', err);
+          throw new RpcException({ status: 400, message: `Failed to upsert character for accountId ${charDto.accountId}: ${(err as any)?.message ?? err}` });
+        }
+      }
+    }
+
+    const result: any = (updatedWorld as any).toObject ? (updatedWorld as any).toObject() : { ...(updatedWorld || {}) };
+    result.characters = charactersResult;
+    return result;
+  }
+
   async deleteWorld(getWorldDto: GetWorldDto): Promise<World | null> {
     if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
     const world = await this.worldModel.findById(getWorldDto._id).exec();

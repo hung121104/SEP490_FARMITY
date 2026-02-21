@@ -172,6 +172,29 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Optional query: `ownerId=string` (only allowed for admin accounts)
     - Response: array of world documents (each includes `day`, `month`, `year`, `hour`, `minute`, `gold`, all numeric, default `0`).
 
+- **PUT** `/player-data/world`: Update world fields and/or upsert up to 4 player characters.
+  - Headers: `Authorization: Bearer <token>` (gateway middleware verifies JWT; `ownerId` is injected from token)
+  - Body:
+    ```json
+    {
+      "worldId": "string",
+      "day": 5,
+      "month": 3,
+      "year": 1,
+      "hour": 12,
+      "minute": 30,
+      "gold": 500,
+      "characters": [
+        { "accountId": "string", "positionX": 10, "positionY": 20 },
+        { "accountId": "string", "positionX": 5,  "positionY": 15, "sectionIndex": 2 }
+      ]
+    }
+    ```
+  - All fields except `worldId` are optional.
+  - `characters` is optional and capped at **4** entries. Each character is matched by `(worldId, accountId)` and created if it does not exist or updated if it does.
+  - Response: updated world document with a `characters` array of upserted character documents.
+  - Notes: Only the owner of the world (verified via JWT) may call this endpoint.
+
 - **GET** `/player-data/worlds/:worldId/characters/:accountId/position`: Get or create a character for a player in a world.
   - Headers: `Authorization: Bearer <token>` (world owner only)
   - Path parameters:
@@ -280,6 +303,26 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 - **Message** `get-worlds-by-owner`: Get all worlds owned by an account.
   - Body: `{ "ownerId": "string" }`
   - Notes: `ownerId` should be provided by the gateway after verifying the caller's JWT; the microservice returns worlds for the supplied `ownerId`.
+
+- **Message** `update-world`: Update world fields and/or upsert up to 4 player characters.
+  - Body:
+    ```json
+    {
+      "worldId": "string",
+      "ownerId": "string",
+      "day"?: number,
+      "month"?: number,
+      "year"?: number,
+      "hour"?: number,
+      "minute"?: number,
+      "gold"?: number,
+      "characters"?: [
+        { "accountId": "string", "positionX": number, "positionY": number, "sectionIndex"?: number }
+      ]
+    }
+    ```
+  - Notes: `ownerId` is injected by the gateway from the verified JWT. World fields are only updated when present. `characters` is capped at 4; each entry is upserted by `(worldId, accountId)` — insert on first appearance, update on subsequent calls.
+  - Response: updated world document with a `characters` array of upserted character documents.
 
 - **Message** `delete-world`: Delete a world by id.
   - Body: `{ "_id": "string", "ownerId": "string" }`
