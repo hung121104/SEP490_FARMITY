@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class PlayerSkill : MonoBehaviour
 {
@@ -13,6 +14,13 @@ public class PlayerSkill : MonoBehaviour
     [SerializeField] private DiceTier skillTier = DiceTier.D6;
     [SerializeField] private float skillMultiplier = 1.5f;
 
+    [Header("Charge Animation")]
+    [SerializeField] private string chargeAnimationBool = "isCharging";
+    [SerializeField] private string attackAnimationBool = "isUsingSkill";
+
+    [Header("Timing")]
+    [SerializeField] private float minRollDisplayTime = 0.5f; // Minimum time to show roll before allowing confirm
+
     #endregion
 
     #region Private Fields
@@ -23,6 +31,7 @@ public class PlayerSkill : MonoBehaviour
     private PlayerHealth playerHealth;
     private SpriteRenderer spriteRenderer;
     private StatsManager statsManager;
+    private SkillInputHandler inputHandler;
 
     // Roll Display
     private RollDisplayController rollDisplayInstance;
@@ -61,6 +70,10 @@ public class PlayerSkill : MonoBehaviour
         playerMovement = GetComponent<PlayerMovement>();
         playerHealth = GetComponent<PlayerHealth>();
         spriteRenderer = GetComponent<SpriteRenderer>();
+        inputHandler = GetComponent<SkillInputHandler>();
+
+        if (inputHandler == null)
+            inputHandler = gameObject.AddComponent<SkillInputHandler>();
 
         statsManager = StatsManager.Instance;
         if (statsManager == null)
@@ -74,7 +87,6 @@ public class PlayerSkill : MonoBehaviour
         if (rollDisplayInstance != null)
             return;
 
-        // Create RollDisplayController as a new GameObject
         GameObject rollDisplayGO = new GameObject("RollDisplay");
         rollDisplayGO.transform.SetParent(transform);
         rollDisplayGO.transform.localPosition = Vector3.zero;
@@ -90,7 +102,7 @@ public class PlayerSkill : MonoBehaviour
     private void UpdateSkillCooldown()
     {
         if (skillTimer > 0)
-            skillTimer -= Time.deltaTime;
+            skillTimer -= Time.unscaledDeltaTime;
     }
 
     private void CheckSkillInput()
@@ -118,7 +130,7 @@ public class PlayerSkill : MonoBehaviour
         StartCoroutine(ExecuteDoubleStrikeSequence());
     }
 
-    private System.Collections.IEnumerator ExecuteDoubleStrikeSequence()
+    private IEnumerator ExecuteDoubleStrikeSequence()
     {
         EnableInvulnerability(true);
 
@@ -131,23 +143,82 @@ public class PlayerSkill : MonoBehaviour
         isExecuting = false;
     }
 
-    private System.Collections.IEnumerator ExecuteSingleHit(int hitNumber)
+    private IEnumerator ExecuteSingleHit(int hitNumber)
     {
         currentHitNumber = hitNumber;
         hasDealtDamageThisHit = false;
 
+        // Roll dice
         currentDiceRoll = DiceRoller.Roll(skillTier);
+        Debug.Log($"Hit {hitNumber}: Rolled {currentDiceRoll}");
+
+        // Enter slow motion FIRST
+        TimeManager.Instance.EnterSlowMotion();
+        
+        // Wait one frame for time scale to apply
+        yield return null;
+
+        // Play charge animation
+        PlayChargeAnimation();
+
+        // Show dice roll
         ShowRollDisplay(currentDiceRoll);
 
-        yield return StartCoroutine(PlaySkillAnimation());
+        // Wait minimum time for roll to be visible (using unscaled time)
+        yield return new WaitForSecondsRealtime(minRollDisplayTime);
 
-        MoveForward();
+        // Wait for player confirmation
+        yield return StartCoroutine(WaitForPlayerConfirmation());
 
-        yield return new WaitForSeconds(1.4f);
+        // Stop charge animation BEFORE checking confirmation
+        StopChargeAnimation();
 
-        StopSkillAnimation();
+        // If player confirmed, execute attack
+        if (inputHandler.IsConfirmed())
+        {
+            Debug.Log($"Hit {hitNumber}: Confirmed - Attacking");
 
-        yield return new WaitForSeconds(0.1f);
+            // Resume normal time
+            TimeManager.Instance.ResumeNormalTime();
+
+            // Wait one frame for time to resume
+            yield return null;
+
+            // Play attack animation
+            PlayAttackAnimation();
+
+            // Move forward
+            MoveForward();
+
+            // Wait for attack animation to complete
+            yield return new WaitForSeconds(0.6f);
+
+            // Stop attack animation
+            StopAttackAnimation();
+        }
+        else
+        {
+            Debug.Log($"Hit {hitNumber}: Cancelled");
+            
+            // Player cancelled - resume time
+            TimeManager.Instance.ResumeNormalTime();
+        }
+
+        // Small delay before next hit
+        yield return new WaitForSeconds(0.2f);
+    }
+
+    private IEnumerator WaitForPlayerConfirmation()
+    {
+        inputHandler.StartWaiting();
+
+        // Wait until player makes a decision (using unscaled time for slow motion)
+        while (!inputHandler.HasInput())
+        {
+            yield return null;
+        }
+
+        inputHandler.StopWaiting();
     }
 
     #endregion
@@ -169,24 +240,46 @@ public class PlayerSkill : MonoBehaviour
 
     #region Animation Control
 
-    private System.Collections.IEnumerator PlaySkillAnimation()
+    private void PlayChargeAnimation()
     {
         if (playerCombat == null || playerCombat.anim == null)
-            yield break;
+            return;
 
+        // Reset all other animation states to prevent conflicts
         playerCombat.anim.SetBool("isWalking", false);
         playerCombat.anim.SetBool("isAttacking", false);
-
         playerCombat.anim.SetBool("isUsingSkill", false);
-        yield return null;
-
-        playerCombat.anim.SetBool("isUsingSkill", true);
+        
+        // Enable charge animation
+        playerCombat.anim.SetBool(chargeAnimationBool, true);
     }
 
-    private void StopSkillAnimation()
+    private void StopChargeAnimation()
     {
-        if (playerCombat != null && playerCombat.anim != null)
-            playerCombat.anim.SetBool("isUsingSkill", false);
+        if (playerCombat == null || playerCombat.anim == null)
+            return;
+
+        playerCombat.anim.SetBool(chargeAnimationBool, false);
+    }
+
+    private void PlayAttackAnimation()
+    {
+        if (playerCombat == null || playerCombat.anim == null)
+            return;
+
+        // Make sure charge is off
+        playerCombat.anim.SetBool(chargeAnimationBool, false);
+        
+        // Enable attack animation
+        playerCombat.anim.SetBool(attackAnimationBool, true);
+    }
+
+    private void StopAttackAnimation()
+    {
+        if (playerCombat == null || playerCombat.anim == null)
+            return;
+
+        playerCombat.anim.SetBool(attackAnimationBool, false);
     }
 
     #endregion
@@ -198,7 +291,7 @@ public class PlayerSkill : MonoBehaviour
         StartCoroutine(SmoothMoveForward());
     }
 
-    private System.Collections.IEnumerator SmoothMoveForward()
+    private IEnumerator SmoothMoveForward()
     {
         float direction = spriteRenderer != null && spriteRenderer.flipX ? -1f : 1f;
         Vector3 targetPosition = transform.position + new Vector3(direction * movementDistance, 0f, 0f);
@@ -229,6 +322,8 @@ public class PlayerSkill : MonoBehaviour
             statsManager.strength,
             skillMultiplier
         );
+
+        Debug.Log($"Hit {currentHitNumber}: Applying Damage {skillDamage}");
 
         ApplyDamageToEnemies(skillDamage);
     }
@@ -280,7 +375,7 @@ public class PlayerSkill : MonoBehaviour
 
     public void OnSkillAnimationEnd()
     {
-        StopSkillAnimation();
+        StopAttackAnimation();
     }
 
     #endregion
