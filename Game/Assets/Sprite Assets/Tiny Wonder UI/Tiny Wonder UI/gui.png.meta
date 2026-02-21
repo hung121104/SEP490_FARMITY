@@ -862,13 +862,13 @@ TextureImporter:
       name: gui_20
       rect:
         serializedVersion: 2
-        x: 106
-        y: 298
-        width: 28
-        height: 28
+        x: 107
+        y: 299
+        width: 26
+        height: 26
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
+      border: {x: 3, y: 3, z: 3, w: 3}
       customData: 
       outline: []
       physicsShape: []
@@ -884,13 +884,13 @@ TextureImporter:
       name: gui_21
       rect:
         serializedVersion: 2
-        x: 150
-        y: 294
-        width: 36
-        height: 36
+        x: 151
+        y: 295
+        width: 34
+        height: 34
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
+      border: {x: 6, y: 5, z: 6, w: 7}
       customData: 
       outline: []
       physicsShape: []

@@ -28,9 +28,6 @@ public interface IInventoryView
     void UpdateDragPreview(Vector2 position);
     void HideDragPreview();
 
-    // Notifications
-    void ShowNotification(string message);
-
     //Close operations
     void CancelAllActions();
 }
