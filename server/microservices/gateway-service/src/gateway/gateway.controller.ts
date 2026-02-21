@@ -132,39 +132,6 @@ export class GatewayController {
     }
   }
 
-  @Get('player-data/worlds/:worldId/characters/:accountId')
-  async getCharacterInWorld(
-    @Param('worldId') worldId: string,
-    @Param('accountId') accountId: string,
-    @Req() req: Request,
-  ) {
-    const ownerIdRaw = req['user']?.sub;
-    const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
-    if (!ownerId) throw new UnauthorizedException('Missing owner');
-    try {
-      return await firstValueFrom(
-        this.playerDataClient.send('get-character-in-world', { worldId, accountId, ownerId }),
-      );
-    } catch (err) {
-      const payload = err?.message ?? err;
-      let status = 500;
-      let message = 'Internal server error';
-      if (typeof payload === 'string') {
-        try {
-          const parsed = JSON.parse(payload);
-          status = parsed.status || status;
-          message = parsed.message || parsed.error || payload;
-        } catch {
-          message = payload;
-        }
-      } else if (payload && typeof payload === 'object') {
-        status = payload.status || payload.code || status;
-        message = payload.message || payload.error || JSON.stringify(payload);
-      }
-      throw new HttpException(message, status);
-    }
-  }
-
   @Post('auth/register')
   async register(@Body() createAccountDto: CreateAccountDto) {
     return this.authClient.send('register', createAccountDto);

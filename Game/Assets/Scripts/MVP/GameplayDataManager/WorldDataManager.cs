@@ -98,7 +98,38 @@ public class WorldDataManager : MonoBehaviour
     
     private bool isInitialized = false;
     public bool IsInitialized => isInitialized;
-    
+
+    // --- World Meta (populated by WorldDataBootstrapper) ---
+    [Header("World Meta")]
+    [SerializeField] private string worldName;
+    [SerializeField] private int day;
+    [SerializeField] private int month;
+    [SerializeField] private int year;
+    [SerializeField] private int hour;
+    [SerializeField] private int minute;
+    [SerializeField] private int gold;
+
+    public string WorldName  => worldName;
+    public int Day    => day;
+    public int Month  => month;
+    public int Year   => year;
+    public int Hour   => hour;
+    public int Minute => minute;
+    public int Gold   => gold;
+
+    /// <summary>Called by WorldDataBootstrapper to load world time/economy data.</summary>
+    public void PopulateWorldMeta(WorldApiResponse data)
+    {
+        worldName = data.worldName;
+        day       = data.day;
+        month     = data.month;
+        year      = data.year;
+        hour      = data.hour;
+        minute    = data.minute;
+        gold      = data.gold;
+        Debug.Log($"[WorldDataManager] World meta loaded: {worldName} | Day {day} | Gold {gold}");
+    }
+
     // Public access to modules
     public CropDataModule CropData => cropModule;
     

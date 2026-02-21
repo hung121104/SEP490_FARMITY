@@ -11,11 +11,9 @@ public class LoadPlayerData : MonoBehaviour
 
     private IEnumerator WaitAndApplyAllPositions()
     {
-        // Wait until PlayerDataManager has finished fetching data from the API.
-        // We use a Coroutine here (not async/await) because PlayerDataManager uses
-        // UnityWebRequest inside a Coroutine - its results are only available on the
-        // main thread via WaitUntil, which integrates cleanly with Unity's frame loop.
-        yield return new WaitUntil(() => PlayerDataManager.Instance != null);
+        // Wait until WorldDataBootstrapper has finished the single API fetch
+        yield return new WaitUntil(() =>
+            WorldDataBootstrapper.Instance != null && WorldDataBootstrapper.Instance.IsReady);
 
         GameObject[] playerObjects = GameObject.FindGameObjectsWithTag("PlayerEntity");
 
@@ -31,9 +29,11 @@ public class LoadPlayerData : MonoBehaviour
 
             string userId = view.Owner.UserId; // Use UserId, not NickName
 
-            // Wait until this specific player's data has been fetched
-            yield return new WaitUntil(() =>
-                PlayerDataManager.Instance.players.Exists(p => p.accountId == userId));
+            if (!PlayerDataManager.Instance.players.Exists(p => p.accountId == userId))
+            {
+                Debug.LogWarning($"[LoadPlayerData] No data found for player {userId}. Skipping.");
+                continue;
+            }
 
             PlayerData data = PlayerDataManager.Instance.players.Find(p => p.accountId == userId);
             Vector3 loadedPos = new Vector3(data.positionX, data.positionY, player.transform.position.z);

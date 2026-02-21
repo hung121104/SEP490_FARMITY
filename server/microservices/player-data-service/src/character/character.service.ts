@@ -108,6 +108,12 @@ export class CharacterService implements OnModuleInit {
     return character;
   }
 
+  // Get all characters belonging to a world.
+  async getAllByWorldId(worldId: string | Types.ObjectId): Promise<Character[]> {
+    const oid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
+    return this.characterModel.find({ worldId: oid }).exec();
+  }
+
   // Delete all characters belonging to a world. Returns number of deleted documents.
   async deleteByWorldId(worldId: string | Types.ObjectId): Promise<number> {
     const oid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;

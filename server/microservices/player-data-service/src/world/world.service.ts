@@ -5,9 +5,7 @@ import { Model, Types } from 'mongoose';
 import { World, WorldDocument } from './world.schema';
 import { CreateWorldDto } from './dto/create-world.dto';
 import { GetWorldDto } from './dto/get-world.dto';
-import { GetCharacterInWorldDto } from './dto/get-character-in-world.dto';
 import { CharacterService } from '../character/character.service';
-import { Character } from '../character/character.schema';
 
 @Injectable()
 export class WorldService {
@@ -88,22 +86,29 @@ export class WorldService {
   }
 
   async getWorld(getWorldDto: GetWorldDto): Promise<any> {
+
     if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
     const world = await this.worldModel.findById(getWorldDto._id).exec();
+
     if (!world) throw new RpcException({ status: 404, message: 'World not found' });
+
     // Verify the requester is the owner of this world
     const ownerObjId = getWorldDto.ownerId ? new Types.ObjectId(getWorldDto.ownerId) : undefined;
+
     if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {
       throw new RpcException({ status: 401, message: 'Not authorized to access this world' });
     }
+
     // Convert to plain object so we can attach extra properties
     const result: any = world.toObject();
-    // Fetch the character for the owner in this world and attach to response
+
+    // Fetch all characters associated with this world
     try {
-      const character = await this.characterService.getCharacter(world._id, ownerObjId);
-      if (character) result.character = character;
+      const characters = await this.characterService.getAllByWorldId(world._id);
+      result.characters = characters;
     } catch (err) {
-      console.error('[WorldService] Failed to fetch character for owner', err);
+      console.error('[WorldService] Failed to fetch characters for world', err);
+      result.characters = [];
     }
     return result;
   }
@@ -127,35 +132,4 @@ export class WorldService {
     return this.worldModel.find({ ownerId: ownerObjId }).exec();
   }
 
-  /**
-   * Get or create a character for a player in a world.
-   * This is used by the world owner when a player joins their world.
-   * If the player already has a character in that world, return it.
-   * Otherwise, create a new character and return it.
-   */
-  async getCharacterInWorld(dto: GetCharacterInWorldDto): Promise<Character> {
-    const worldObjId = new Types.ObjectId(dto.worldId);
-    const accountObjId = new Types.ObjectId(dto.accountId);
-
-    // Verify the world exists and the requester is the owner
-    const world = await this.worldModel.findById(worldObjId).exec();
-    if (!world) {
-      throw new RpcException({ status: 404, message: 'World not found' });
-    }
-
-    const ownerObjId = dto.ownerId ? new Types.ObjectId(dto.ownerId) : undefined;
-    if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {
-      throw new RpcException({ status: 401, message: 'Not authorized to access this world' });
-    }
-
-    // Try to find existing character
-    const existingCharacter = await this.characterService.getCharacter(worldObjId, accountObjId);
-    if (existingCharacter) {
-      return existingCharacter;
-    }
-
-    // Create new character if not found
-    const newCharacter = await this.characterService.createCharacter(worldObjId, accountObjId);
-    return newCharacter;
-  }
 }
