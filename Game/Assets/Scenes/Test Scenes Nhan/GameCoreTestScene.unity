@@ -2037,7 +2037,7 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0.32
+      scalar: 0.5
       minScalar: 1
       maxCurve:
         serializedVersion: 2
@@ -2422,7 +2422,7 @@ ParticleSystem:
     donutRadius: 0.2
     m_Position: {x: 0, y: 0, z: 0}
     m_Rotation: {x: 0, y: 0, z: 0}
-    m_Scale: {x: 50, y: 40, z: 0}
+    m_Scale: {x: 50, y: 100, z: 0}
     placementMode: 0
     m_MeshMaterialIndex: 0
     m_MeshNormalOffset: 0
@@ -2620,7 +2620,7 @@ ParticleSystem:
     rateOverTime:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 100
+      scalar: 250
       minScalar: 10
       maxCurve:
         serializedVersion: 2
@@ -6514,14 +6514,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 532496816}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.595604, y: 0.38112447, z: 0.15165992, w: 0.69065136}
-  m_LocalPosition: {x: -157.81137, y: 75.30791, z: 5.921672}
+  m_LocalRotation: {x: 0.39764708, y: -0.8049241, z: -0.32049268, w: -0.30209008}
+  m_LocalPosition: {x: -156, y: 69.1, z: -33.7}
   m_LocalScale: {x: 1, y: 1, z: 1.18}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1234750582}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: -69.77, y: 90, z: -45}
+  m_LocalEulerAnglesHint: {x: 229.13, y: -20.713013, z: 136.97}
 --- !u!1 &568174555
 GameObject:
   m_ObjectHideFlags: 0
@@ -6930,7 +6930,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa5d86d50d5703c49ac5f1b864475de0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rainEffect: {fileID: 0}
+  rainEffect: {fileID: 532496816}
 --- !u!4 &617649732
 Transform:
   m_ObjectHideFlags: 0
@@ -7928,7 +7928,7 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0.3
+      scalar: 0.5
       minScalar: 1
       maxCurve:
         serializedVersion: 2
