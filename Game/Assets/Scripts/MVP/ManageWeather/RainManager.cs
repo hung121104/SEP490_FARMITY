@@ -23,7 +23,7 @@ public class RainManager : MonoBehaviour
 
     private void Update()
     {
-        // 1️⃣ Nếu chưa có player → tìm player
+        // find player tab and spawn first zone
         if (!initialized)
         {
             GameObject p = GameObject.FindWithTag("PlayerEntity");
@@ -37,7 +37,7 @@ public class RainManager : MonoBehaviour
             return;
         }
 
-        // 2️⃣ Kiểm tra gần mép zone
+        // check distance to player and spawn new zone if needed
         Vector2 playerPos = player.position;
         float distance = Vector2.Distance(playerPos, currentCenter);
 
@@ -64,7 +64,7 @@ public class RainManager : MonoBehaviour
         );
 
         activeZones.Add(zone);
-
+        // limit zone amount to 3 and fade out oldest one
         if (activeZones.Count > 2)
         {
             StartCoroutine(FadeAndDestroy(activeZones[0]));
