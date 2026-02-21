@@ -913,6 +913,59 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 335401070}
   m_CullTransparentMesh: 1
+--- !u!1 &477333924
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 477333925}
+  - component: {fileID: 477333926}
+  m_Layer: 0
+  m_Name: RollDisplayManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &477333925
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 477333924}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 526781250}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &477333926
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 477333924}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c57ea9d076bb60c48be30ee87a328566, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  d6Prefab: {fileID: 6620676086198952409, guid: 7d11ca176bb8f904fb4decef66e831e1, type: 3}
+  d8Prefab: {fileID: 6620676086198952409, guid: af68e074fe74e8e4d93b1969393b6d4c, type: 3}
+  d10Prefab: {fileID: 6620676086198952409, guid: 4f2e56057fc77044ebeb3863e52a9f6c, type: 3}
+  d12Prefab: {fileID: 6620676086198952409, guid: 228ca7fd4a1ced146986e5057b6037eb, type: 3}
+  d20Prefab: {fileID: 6620676086198952409, guid: c89bb2742dc059e42bf1157d67f61174, type: 3}
+  rollDisplayOffset: {x: 0, y: 1.8, z: 0}
+  rollAnimationDuration: 0.4
+  wobbleScale: 1.15
+  wobbleSpeed: 10
 --- !u!1 &483193349
 GameObject:
   m_ObjectHideFlags: 0
@@ -1202,6 +1255,7 @@ Transform:
   - {fileID: 835830958}
   - {fileID: 164896964}
   - {fileID: 1101536458}
+  - {fileID: 477333925}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &543588300
@@ -20172,9 +20226,6 @@ MonoBehaviour:
   movementDistance: 2
   skillTier: 6
   skillMultiplier: 1.5
-  rollDisplayPrefab: {fileID: 5096749956982789368, guid: 7d11ca176bb8f904fb4decef66e831e1, type: 3}
-  rollDisplayOffset: {x: 0, y: 1.8, z: 0}
-  rollAnimationDuration: 0.4
 --- !u!1 &1720431993
 GameObject:
   m_ObjectHideFlags: 0

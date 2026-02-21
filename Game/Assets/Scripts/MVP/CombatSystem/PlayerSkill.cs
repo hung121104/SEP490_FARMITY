@@ -13,11 +13,6 @@ public class PlayerSkill : MonoBehaviour
     [SerializeField] private DiceTier skillTier = DiceTier.D6;
     [SerializeField] private float skillMultiplier = 1.5f;
 
-    [Header("Roll Display")]
-    [SerializeField] private RollDisplayController rollDisplayPrefab;
-    [SerializeField] private Vector3 rollDisplayOffset = new Vector3(0f, 1.8f, 0f);
-    [SerializeField] private float rollAnimationDuration = 0.4f;
-
     #endregion
 
     #region Private Fields
@@ -76,11 +71,16 @@ public class PlayerSkill : MonoBehaviour
 
     private void EnsureRollDisplay()
     {
-        if (rollDisplayInstance != null || rollDisplayPrefab == null)
+        if (rollDisplayInstance != null)
             return;
 
-        rollDisplayInstance = Instantiate(rollDisplayPrefab, transform);
-        rollDisplayInstance.AttachTo(transform, rollDisplayOffset);
+        // Create RollDisplayController as a new GameObject
+        GameObject rollDisplayGO = new GameObject("RollDisplay");
+        rollDisplayGO.transform.SetParent(transform);
+        rollDisplayGO.transform.localPosition = Vector3.zero;
+
+        rollDisplayInstance = rollDisplayGO.AddComponent<RollDisplayController>();
+        rollDisplayInstance.AttachTo(transform, DiceDisplayManager.Instance.GetRollDisplayOffset());
     }
 
     #endregion
@@ -160,7 +160,9 @@ public class PlayerSkill : MonoBehaviour
         if (rollDisplayInstance == null)
             return;
 
-        rollDisplayInstance.PlayRoll(rollValue, skillTier, rollAnimationDuration);
+        rollDisplayInstance.Show();
+        float duration = DiceDisplayManager.Instance.GetRollAnimationDuration();
+        rollDisplayInstance.PlayRoll(rollValue, skillTier, duration);
     }
 
     #endregion

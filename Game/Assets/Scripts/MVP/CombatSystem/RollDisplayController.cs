@@ -1,37 +1,27 @@
 using UnityEngine;
-using TMPro;
 using System.Collections;
 
 public class RollDisplayController : MonoBehaviour
 {
-    [SerializeField] private TextMeshProUGUI diceNumber;
-
-    [Header("Colors")]
-    [SerializeField] private Color lowColor = new Color(0.9f, 0.3f, 0.2f);
-    [SerializeField] private Color midColor = new Color(1f, 0.85f, 0.2f);
-    [SerializeField] private Color highColor = new Color(0.3f, 0.9f, 0.4f);
-
-    [Header("Animation")]
-    [SerializeField] private float wobbleScale = 1.15f;
-    [SerializeField] private float wobbleSpeed = 10f;
-
     private Transform followTarget;
     private Vector3 followOffset;
     private Coroutine rollRoutine;
-    private Vector3 baseScale;
-
-    private void Awake()
-    {
-        if (diceNumber == null)
-            diceNumber = GetComponentInChildren<TextMeshProUGUI>();
-
-        baseScale = transform.localScale;
-    }
+    private GameObject currentDiceInstance;
 
     private void LateUpdate()
     {
         if (followTarget != null)
-            transform.position = followTarget.position + followOffset;
+        {
+            // Update both this GameObject and the dice instance position
+            Vector3 targetPosition = followTarget.position + followOffset;
+            transform.position = targetPosition;
+            
+            // Also update the dice instance directly (for world-space canvas)
+            if (currentDiceInstance != null)
+            {
+                currentDiceInstance.transform.position = targetPosition;
+            }
+        }
     }
 
     public void AttachTo(Transform target, Vector3 offset)
@@ -45,9 +35,6 @@ public class RollDisplayController : MonoBehaviour
 
     public void PlayRoll(int finalValue, DiceTier tier, float duration)
     {
-        if (diceNumber == null)
-            return;
-
         if (rollRoutine != null)
             StopCoroutine(rollRoutine);
 
@@ -56,42 +43,68 @@ public class RollDisplayController : MonoBehaviour
 
     private IEnumerator RollRoutine(int finalValue, DiceTier tier, float duration)
     {
+        InstantiateDice(tier);
+
+        if (currentDiceInstance == null)
+            yield break;
+
         float elapsed = 0f;
         int sides = (int)tier;
 
+        // Rapidly cycle through numbers during animation
         while (elapsed < duration)
         {
             int tempValue = Random.Range(1, sides + 1);
-            SetNumber(tempValue, sides);
-
-            float wobble = 1f + Mathf.Sin(Time.time * wobbleSpeed) * 0.05f;
-            transform.localScale = baseScale * wobble * wobbleScale;
+            UpdateDiceDisplay(tempValue);
 
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        SetNumber(finalValue, sides);
-        transform.localScale = baseScale;
+        // Show final value
+        UpdateDiceDisplay(finalValue);
         rollRoutine = null;
     }
 
-    private void SetNumber(int value, int sides)
+    private void InstantiateDice(DiceTier tier)
     {
-        diceNumber.text = value.ToString();
-        diceNumber.color = GetColorForRoll(value, sides);
+        if (currentDiceInstance != null)
+            Destroy(currentDiceInstance);
+
+        GameObject prefabToUse = DiceDisplayManager.Instance.GetDicePrefab(tier);
+        if (prefabToUse == null)
+        {
+            Debug.LogError($"Dice prefab for {tier} not assigned in DiceDisplayManager!");
+            return;
+        }
+
+        // Instantiate dice at the controller's position
+        Vector3 spawnPosition = followTarget != null ? followTarget.position + followOffset : transform.position;
+        currentDiceInstance = Instantiate(prefabToUse, spawnPosition, Quaternion.identity);
     }
 
-    private Color GetColorForRoll(int value, int sides)
+    private void UpdateDiceDisplay(int value)
     {
-        float ratio = value / (float)sides;
+        if (currentDiceInstance == null)
+            return;
 
-        if (ratio <= 0.34f)
-            return lowColor;
+        TMPro.TextMeshProUGUI numberText = currentDiceInstance.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+        if (numberText != null)
+        {
+            numberText.text = value.ToString();
+            numberText.color = Color.white;
+        }
+    }
 
-        if (ratio <= 0.67f)
-            return midColor;
+    public void Hide()
+    {
+        if (currentDiceInstance != null)
+            currentDiceInstance.SetActive(false);
+    }
 
-        return highColor;
+    public void Show()
+    {
+        if (currentDiceInstance != null)
+            currentDiceInstance.SetActive(true);
     }
 }
