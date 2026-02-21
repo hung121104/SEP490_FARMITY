@@ -4281,7 +4281,8 @@ MonoBehaviour:
   rainPrefab: {fileID: 1854443877689547427, guid: 348feeeb673e4d0449bc6cc04825bff7, type: 3}
   zoneSize: 30
   spawnEdgeDistance: 15
-  heightOffset: 20
+  heightOffset: 10
+  baseEmissionRate: 1000
   fadeDuration: 3
 --- !u!4 &2126748214
 Transform:
