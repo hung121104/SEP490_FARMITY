@@ -52,7 +52,9 @@ public class RainManager : MonoBehaviour
             currentCenter = newCenter;
         }
     }
-
+    /// <summary>
+    /// Instantiates a rain zone at the given center position.
+    /// </summary>
     private void SpawnZone(Vector2 center)
     {
         GameObject zone = Instantiate(rainPrefab);
@@ -64,14 +66,18 @@ public class RainManager : MonoBehaviour
         );
 
         activeZones.Add(zone);
-        // limit zone amount to 3 and fade out oldest one
+
+        // Keep only the last 2 zones active.
+        // Fade out and destroy the oldest one if more than 2 exist.
         if (activeZones.Count > 2)
         {
             StartCoroutine(FadeAndDestroy(activeZones[0]));
             activeZones.RemoveAt(0);
         }
     }
-
+    /// <summary>
+    /// Gradually reduces the emission rate of a rain zone and destroys it.
+    /// </summary>
     private IEnumerator FadeAndDestroy(GameObject zone)
     {
         ParticleSystem ps = zone.GetComponent<ParticleSystem>();
