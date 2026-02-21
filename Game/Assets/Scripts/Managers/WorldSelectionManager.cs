@@ -14,7 +14,12 @@ public class WorldSelectionManager : MonoBehaviour
     [Tooltip("Runtime selected world id (session-only). Visible in Inspector during Play.")]
     private string selectedWorldId;
 
+    [SerializeField]
+    [Tooltip("Runtime selected world name (session-only). Visible in Inspector during Play.")]
+    private string worldName;
+
     public string SelectedWorldId => selectedWorldId;
+    public string WorldName => worldName;
 
     private void Awake()
     {
@@ -43,8 +48,20 @@ public class WorldSelectionManager : MonoBehaviour
         selectedWorldId = id;
     }
 
+    public void SetWorldName(string name)
+    {
+        worldName = name;
+    }
+
+    public void SetSelectedWorld(string id, string name)
+    {
+        selectedWorldId = id;
+        worldName = name;
+    }
+
     public void ClearSelectedWorldId()
     {
         selectedWorldId = null;
+        worldName = null;
     }
 }

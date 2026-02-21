@@ -36,6 +36,7 @@ export class GatewayModule implements NestModule {
         { path: 'auth/logout', method: RequestMethod.POST },
         { path: 'player-data/world', method: RequestMethod.ALL },
         { path: 'player-data/worlds', method: RequestMethod.ALL },
+        { path: 'player-data/worlds/:worldId/characters/:accountId', method: RequestMethod.GET },
         { path: 'blog/create', method: RequestMethod.POST },
         { path: 'blog/update/:id', method: RequestMethod.POST },
         { path: 'blog/delete/:id', method: RequestMethod.DELETE },
