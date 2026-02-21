@@ -6,6 +6,10 @@ public class ConnectToServer : MonoBehaviourPunCallbacks
 {
     private void Start()
     {
+        if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
+        {
+            PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
+        }
         PhotonNetwork.ConnectUsingSettings();
     }
 

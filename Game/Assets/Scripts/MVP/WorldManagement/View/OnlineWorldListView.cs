@@ -63,6 +63,10 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         }
         else
         {
+            if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
+            {
+                PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
+            }
             PhotonNetwork.ConnectUsingSettings();
         }
     }

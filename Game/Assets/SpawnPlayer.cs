@@ -1,5 +1,6 @@
 using UnityEngine;
 using Photon.Pun;
+using ExitGames.Client.Photon;
 public class SpawnPlayer : MonoBehaviour
 {
     [SerializeField]
@@ -15,6 +16,19 @@ public class SpawnPlayer : MonoBehaviour
             Debug.LogError("Player prefab or spawn points not set up correctly.");
             return;
         }
+
+        // Broadcast this client's real accountId so the master client can look up PlayerData
+        if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
+        {
+            PhotonNetwork.LocalPlayer.SetCustomProperties(
+                new Hashtable { { "accountId", SessionManager.Instance.UserId } });
+            Debug.Log($"[SpawnPlayer] Set accountId custom property: {SessionManager.Instance.UserId}");
+        }
+        else
+        {
+            Debug.LogWarning("[SpawnPlayer] SessionManager has no UserId — position restore may not work.");
+        }
+
         // Choose a random spawn point
         Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
         // Instantiate the player prefab at the chosen spawn point using PhotonNetwork

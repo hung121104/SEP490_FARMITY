@@ -29,6 +29,12 @@ public class WorldDataBootstrapper : MonoBehaviour
 
     private void Start()
     {
+        if (!Photon.Pun.PhotonNetwork.IsMasterClient)
+        {
+            Debug.Log("[WorldDataBootstrapper] Not master client — skipping world data fetch.");
+            return;
+        }
+
         _worldId   = WorldSelectionManager.Instance != null ? WorldSelectionManager.Instance.SelectedWorldId : null;
         _authToken = SessionManager.Instance != null ? SessionManager.Instance.JwtToken : null;
 

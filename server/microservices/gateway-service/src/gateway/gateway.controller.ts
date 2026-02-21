@@ -1,8 +1,6 @@
 import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req, HttpException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { CreateAccountDto } from './dto/create-account.dto';
-import { SavePositionDto } from './dto/save-position.dto';
-import { GetPositionDto } from './dto/get-position.dto';
 import { firstValueFrom } from 'rxjs';
 import { Response, Request } from 'express';
 import { CreateBlogDto } from './dto/create-blog.dto';
@@ -159,16 +157,6 @@ export class GatewayController {
       maxAge: 60 * 60 * 1000,
     });
     return { userId: result.userId, username: result.username, access_token: token };
-  }
-
-  @Post('player-data/save-position')
-  async savePosition(@Body() savePositionDto: SavePositionDto) {
-    return this.playerDataClient.send('save-position', savePositionDto);
-  }
-
-  @Get('player-data/position')
-  async getPosition(@Query() getPositionDto: GetPositionDto) {
-    return this.playerDataClient.send('get-position', getPositionDto);
   }
 
   @Get('auth/admin-check')
