@@ -1,17 +1,11 @@
 using UnityEngine;
 
-/// <summary>
-/// Manages game time scale for slow-motion effects
-/// </summary>
 public class TimeManager : MonoBehaviour
 {
     public static TimeManager Instance { get; private set; }
 
-    [SerializeField] private float slowMotionScale = 0.2f;
-    [SerializeField] private float slowMotionTransitionSpeed = 5f;
-
-    private float targetTimeScale = 1f;
-    private bool isSlowMotion = false;
+    private float normalTimeScale = 1f;
+    private float slowTimeScale = 0.3f;
 
     private void Awake()
     {
@@ -25,30 +19,20 @@ public class TimeManager : MonoBehaviour
         }
     }
 
-    private void Update()
+    public void SetSlowMotion()
     {
-        // Smoothly transition to target time scale
-        Time.timeScale = Mathf.Lerp(Time.timeScale, targetTimeScale, slowMotionTransitionSpeed * Time.unscaledDeltaTime);
+        Time.timeScale = slowTimeScale;
     }
 
-    /// <summary>
-    /// Enter slow motion mode
-    /// </summary>
-    public void EnterSlowMotion()
+    public void SetNormalSpeed()
     {
-        targetTimeScale = slowMotionScale;
-        isSlowMotion = true;
+        Time.timeScale = normalTimeScale;
     }
 
-    /// <summary>
-    /// Resume normal time
-    /// </summary>
-    public void ResumeNormalTime()
+    public void SetTimeScale(float scale)
     {
-        targetTimeScale = 1f;
-        isSlowMotion = false;
+        Time.timeScale = Mathf.Clamp01(scale);
     }
 
-    public bool IsSlowMotion => isSlowMotion;
-    public float SlowMotionScale => slowMotionScale;
+    public bool IsSlowMotion => Time.timeScale < normalTimeScale;
 }
