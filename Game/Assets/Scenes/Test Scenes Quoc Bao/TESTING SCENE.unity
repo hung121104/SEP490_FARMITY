@@ -1701,7 +1701,7 @@ Transform:
   m_GameObject: {fileID: 835830957}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 4.47, y: -7.57, z: 0.012221192}
+  m_LocalPosition: {x: 4.03, y: -7.62, z: 0.012221192}
   m_LocalScale: {x: 0.8, y: 0.8, z: 0.8}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1901,12 +1901,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   detectionRange: 8
   attackRange: 1.5
+  fieldOfViewAngle: 120
   playerLayer:
     serializedVersion: 2
     m_Bits: 0
+  obstacleLayer:
+    serializedVersion: 2
+    m_Bits: 0
   moveSpeed: 2
-  chaseSpeed: 3
-  animator: {fileID: 0}
+  chaseSpeed: 2
+  wanderSpeed: 1.5
+  wanderChangeInterval: 3
+  wanderRange: 5
+  animator: {fileID: 835830969}
   spriteRenderer: {fileID: 835830959}
 --- !u!95 &835830969
 Animator:

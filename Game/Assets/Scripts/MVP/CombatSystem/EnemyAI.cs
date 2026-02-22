@@ -5,7 +5,9 @@ public class EnemyAI : MonoBehaviour
     [Header("Detection")]
     [SerializeField] private float detectionRange = 8f;
     [SerializeField] private float attackRange = 1.5f;
+    [SerializeField] private float fieldOfViewAngle = 120f; // Vision cone angle
     [SerializeField] private LayerMask playerLayer;
+    [SerializeField] private LayerMask obstacleLayer;
 
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 2f;
@@ -29,6 +31,7 @@ public class EnemyAI : MonoBehaviour
     private Vector3 wanderTarget;
     private float wanderTimer = 0f;
     private Vector2 currentWanderDirection = Vector2.right;
+    private Vector2 facingDirection = Vector2.right;
 
     private enum EnemyState
     {
@@ -116,8 +119,8 @@ public class EnemyAI : MonoBehaviour
 
     private void HandleIdleState(float distanceToPlayer)
     {
-        // Detect player in range
-        if (distanceToPlayer <= detectionRange)
+        // Detect player in range AND in line of sight
+        if (distanceToPlayer <= detectionRange && CanSeePlayer())
         {
             currentState = EnemyState.Chasing;
             return;
@@ -129,8 +132,8 @@ public class EnemyAI : MonoBehaviour
 
     private void HandleWanderingState(float distanceToPlayer)
     {
-        // Detect player in range
-        if (distanceToPlayer <= detectionRange)
+        // Detect player in range AND in line of sight
+        if (distanceToPlayer <= detectionRange && CanSeePlayer())
         {
             currentState = EnemyState.Chasing;
             return;
@@ -152,8 +155,8 @@ public class EnemyAI : MonoBehaviour
             return;
         }
 
-        // Lost player
-        if (distanceToPlayer > detectionRange + 2f)
+        // Lost player (out of range or out of sight)
+        if (distanceToPlayer > detectionRange + 2f || !CanSeePlayer())
         {
             currentState = EnemyState.Wandering;
             GenerateNewWanderTarget();
@@ -167,6 +170,43 @@ public class EnemyAI : MonoBehaviour
         {
             currentState = EnemyState.Chasing;
         }
+    }
+
+    #endregion
+
+    #region Line of Sight
+
+    private bool CanSeePlayer()
+    {
+        if (player == null)
+            return false;
+
+        Vector2 directionToPlayer = (player.position - transform.position).normalized;
+        float distanceToPlayer = Vector2.Distance(transform.position, player.position);
+
+        // Check if player is in field of view cone
+        if (!IsInFieldOfView(directionToPlayer))
+            return false;
+
+        // Raycast to check for obstacles between enemy and player
+        RaycastHit2D hit = Physics2D.Raycast(
+            transform.position,
+            directionToPlayer,
+            distanceToPlayer,
+            obstacleLayer
+        );
+
+        // If raycast hit something before reaching player, can't see
+        return hit.collider == null;
+    }
+
+    private bool IsInFieldOfView(Vector2 directionToPlayer)
+    {
+        // Calculate angle between facing direction and player direction
+        float angle = Vector2.Angle(facingDirection, directionToPlayer);
+
+        // Check if within field of view cone
+        return angle <= fieldOfViewAngle / 2f;
     }
 
     #endregion
@@ -200,7 +240,8 @@ public class EnemyAI : MonoBehaviour
         Vector2 direction = (wanderTarget - transform.position).normalized;
         rb.linearVelocity = direction * wanderSpeed;
 
-        // Flip sprite based on wander direction
+        // Store facing direction and flip sprite
+        facingDirection = direction;
         if (spriteRenderer != null)
         {
             spriteRenderer.flipX = direction.x > 0;
@@ -219,7 +260,8 @@ public class EnemyAI : MonoBehaviour
         Vector2 direction = (player.position - transform.position).normalized;
         rb.linearVelocity = direction * chaseSpeed;
 
-        // Flip sprite based on movement direction
+        // Store facing direction and flip sprite
+        facingDirection = direction;
         if (spriteRenderer != null)
         {
             spriteRenderer.flipX = direction.x > 0;
@@ -262,7 +304,30 @@ public class EnemyAI : MonoBehaviour
             // Draw line to current wander target
             Gizmos.color = Color.blue;
             Gizmos.DrawLine(transform.position, wanderTarget);
+
+            // Draw field of view cone
+            DrawFieldOfViewCone();
         }
+    }
+
+    private void DrawFieldOfViewCone()
+    {
+        // Draw the viewing cone
+        float halfFOV = fieldOfViewAngle / 2f * Mathf.Deg2Rad;
+        
+        Vector2 leftRay = new Vector2(
+            Mathf.Cos(Mathf.Atan2(facingDirection.y, facingDirection.x) - halfFOV),
+            Mathf.Sin(Mathf.Atan2(facingDirection.y, facingDirection.x) - halfFOV)
+        );
+        
+        Vector2 rightRay = new Vector2(
+            Mathf.Cos(Mathf.Atan2(facingDirection.y, facingDirection.x) + halfFOV),
+            Mathf.Sin(Mathf.Atan2(facingDirection.y, facingDirection.x) + halfFOV)
+        );
+
+        Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
+        Gizmos.DrawLine(transform.position, (Vector2)transform.position + leftRay * detectionRange);
+        Gizmos.DrawLine(transform.position, (Vector2)transform.position + rightRay * detectionRange);
     }
 
     #endregion
