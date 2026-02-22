@@ -10,7 +10,7 @@ public class ResourceDataSO : ItemDataSO
 
     [Header("Cooking/Crafting")]
     public bool canBeCrafted = false;
-    public Recipe craftingRecipe;
+    public RecipeDataSO craftingRecipe;
 
     public override ItemType GetItemType() => ItemType.Resource;
     public ItemCategory GetItemCategory() => ItemCategory.Mining;

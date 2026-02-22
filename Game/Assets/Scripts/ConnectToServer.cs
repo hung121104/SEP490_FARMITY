@@ -6,6 +6,10 @@ public class ConnectToServer : MonoBehaviourPunCallbacks
 {
     private void Start()
     {
+        if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
+        {
+            PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
+        }
         PhotonNetwork.ConnectUsingSettings();
     }
 
@@ -19,6 +23,8 @@ public class ConnectToServer : MonoBehaviourPunCallbacks
     {
         Debug.Log("Joined Lobby");
         // You can now join or create rooms
+        // Pause message queue before loading scene to avoid Photon errors
+        PhotonNetwork.IsMessageQueueRunning = false;
         SceneManager.LoadScene("LobbyScene");
     }
 }

@@ -5,7 +5,7 @@ public class MaterialDataSO : ItemDataSO
 {
     [Header("Cooking/Crafting")]
     public bool canBeCrafted = false;
-    public Recipe craftingRecipe;
+    public RecipeDataSO craftingRecipe;
 
     public override ItemType GetItemType() => ItemType.Material;
     public ItemCategory GetItemCategory() => ItemCategory.Crafting;
