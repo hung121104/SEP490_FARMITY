@@ -8,14 +8,6 @@ public class StatModifier
 }
 
 [System.Serializable]
-public class Recipe
-{
-    public ItemIngredient[] ingredients;
-    public int craftTime = 1;
-    public bool requiresCratingStation = false;
-}
-
-[System.Serializable]
 public class ItemIngredient
 {
     public ItemDataSO item;

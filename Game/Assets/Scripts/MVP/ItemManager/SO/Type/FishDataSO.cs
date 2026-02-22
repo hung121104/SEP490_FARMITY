@@ -10,7 +10,7 @@ public class FishDataSO : ItemDataSO
 
     [Header("Cooking/Crafting")]
     public bool canBeCooked = true;
-    public Recipe cookingRecipe;
+    public RecipeDataSO cookingRecipe;
 
     public override ItemType GetItemType() => ItemType.Fish;
     public ItemCategory GetItemCategory() => ItemCategory.Fishing;

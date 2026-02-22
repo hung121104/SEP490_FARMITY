@@ -12,6 +12,9 @@ public class RainManager : MonoBehaviour
     [SerializeField] private float spawnEdgeDistance = 15f;
     [SerializeField] private float heightOffset = 20f;
 
+    [Header("Density Settings")]
+    [SerializeField] private float baseEmissionRate = 800f;
+
     [Header("Fade Settings")]
     [SerializeField] private float fadeDuration = 3f;
 
@@ -20,10 +23,19 @@ public class RainManager : MonoBehaviour
     private Vector2 currentCenter;
 
     private bool initialized = false;
+    private float baseCameraArea;
+
+    private void Start()
+    {
+        
+        float h = Camera.main.orthographicSize * 2f;
+        float w = h * Camera.main.aspect;
+        baseCameraArea = w * h;
+    }
 
     private void Update()
     {
-        // find player tab and spawn first zone
+        
         if (!initialized)
         {
             GameObject p = GameObject.FindWithTag("PlayerEntity");
@@ -37,18 +49,16 @@ public class RainManager : MonoBehaviour
             return;
         }
 
-        // check distance to player and spawn new zone if needed
+        
         Vector2 playerPos = player.position;
         float distance = Vector2.Distance(playerPos, currentCenter);
 
         if (distance > spawnEdgeDistance)
         {
             Vector2 direction = (playerPos - currentCenter).normalized;
-
             Vector2 newCenter = currentCenter + direction * zoneSize;
 
             SpawnZone(newCenter);
-
             currentCenter = newCenter;
         }
     }
@@ -63,13 +73,45 @@ public class RainManager : MonoBehaviour
             rainPrefab.transform.position.z
         );
 
+        ParticleSystem ps = zone.GetComponent<ParticleSystem>();
+
+        AdjustShapeToCamera(ps);
+        AdjustEmissionToCamera(ps);
+
         activeZones.Add(zone);
-        // limit zone amount to 3 and fade out oldest one
+
         if (activeZones.Count > 2)
         {
             StartCoroutine(FadeAndDestroy(activeZones[0]));
             activeZones.RemoveAt(0);
         }
+    }
+
+    private void AdjustShapeToCamera(ParticleSystem ps)
+    {
+        var shape = ps.shape;
+
+        float camHeight = Camera.main.orthographicSize * 2f;
+        float camWidth = camHeight * Camera.main.aspect;
+
+        shape.scale = new Vector3(
+            camWidth * 1.5f,
+            shape.scale.y,
+            camHeight * 1.5f
+        );
+    }
+
+    private void AdjustEmissionToCamera(ParticleSystem ps)
+    {
+        var emission = ps.emission;
+
+        float h = Camera.main.orthographicSize * 2f;
+        float w = h * Camera.main.aspect;
+        float currentArea = w * h;
+
+        float densityFactor = currentArea / baseCameraArea;
+
+        emission.rateOverTime = baseEmissionRate * densityFactor;
     }
 
     private IEnumerator FadeAndDestroy(GameObject zone)
