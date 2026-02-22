@@ -19,7 +19,10 @@ public class EnemyAI : MonoBehaviour
 
     [Header("Guarding")]
     [SerializeField] private float guardDuration = 2f;
-    [SerializeField] private float guardLookDuration = 1f; // How long to look each side
+    [SerializeField] private float guardLookDuration = 1f;
+
+    [Header("Combat")]
+    [SerializeField] private float hitAlertDuration = 5f; // How long to chase after being hit
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
@@ -41,6 +44,10 @@ public class EnemyAI : MonoBehaviour
     private int guardDirection = 1;
     private float guardLookTimer = 0f;
     private bool isLookingLeft = false;
+
+    // Combat alert
+    private bool isAlerted = false;
+    private float alertTimer = 0f;
 
     private enum EnemyState
     {
@@ -89,6 +96,16 @@ public class EnemyAI : MonoBehaviour
             return;
 
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
+
+        // Handle combat alert
+        if (isAlerted)
+        {
+            alertTimer -= Time.deltaTime;
+            if (alertTimer <= 0f)
+            {
+                isAlerted = false;
+            }
+        }
 
         // State machine
         switch (currentState)
@@ -139,6 +156,13 @@ public class EnemyAI : MonoBehaviour
 
     private void HandleGuardState(float distanceToPlayer)
     {
+        // If alerted (hit), immediately start chasing
+        if (isAlerted)
+        {
+            currentState = EnemyState.Chasing;
+            return;
+        }
+
         // Detect player in range AND in line of sight
         if (distanceToPlayer <= detectionRange && CanSeePlayer())
         {
@@ -159,6 +183,13 @@ public class EnemyAI : MonoBehaviour
 
     private void HandleWanderingState(float distanceToPlayer)
     {
+        // If alerted (hit), immediately start chasing
+        if (isAlerted)
+        {
+            currentState = EnemyState.Chasing;
+            return;
+        }
+
         // Detect player in range AND in line of sight
         if (distanceToPlayer <= detectionRange && CanSeePlayer())
         {
@@ -184,11 +215,33 @@ public class EnemyAI : MonoBehaviour
             return;
         }
 
-        // Lost player (out of range or out of sight)
-        if (distanceToPlayer > detectionRange + 2f || !CanSeePlayer())
+        // Lost player - check if still alerted and within pursuit range
+        if (distanceToPlayer > detectionRange + 2f)
+        {
+            // If no longer alerted, go back to guarding
+            if (!isAlerted)
+            {
+                currentState = EnemyState.Guard;
+                StartGuard();
+                return;
+            }
+            else
+            {
+                // If still alerted but out of range, stop chasing and go back
+                // This prevents endless pursuit
+                currentState = EnemyState.Guard;
+                StartGuard();
+                isAlerted = false; // Reset alert so they don't immediately chase again
+                return;
+            }
+        }
+
+        // Can't see player through obstacles but still in range
+        if (!CanSeePlayer() && distanceToPlayer > detectionRange)
         {
             currentState = EnemyState.Guard;
             StartGuard();
+            isAlerted = false;
         }
     }
 
@@ -196,6 +249,25 @@ public class EnemyAI : MonoBehaviour
     {
         // Player moved out of attack range
         if (distanceToPlayer > attackRange + 0.5f)
+        {
+            currentState = EnemyState.Chasing;
+        }
+    }
+
+    #endregion
+
+    #region Hit Detection
+
+    /// <summary>
+    /// Called when enemy takes damage - triggers combat alert
+    /// </summary>
+    public void OnHit()
+    {
+        isAlerted = true;
+        alertTimer = hitAlertDuration;
+
+        // Immediately start chasing if not already
+        if (currentState != EnemyState.Chasing && currentState != EnemyState.Attacking)
         {
             currentState = EnemyState.Chasing;
         }
@@ -226,7 +298,7 @@ public class EnemyAI : MonoBehaviour
 
         guardLookTimer = 0f;
         isLookingLeft = false;
-        guardDirection = Random.Range(0, 2) == 0 ? -1 : 1; // Random starting direction
+        guardDirection = Random.Range(0, 2) == 0 ? -1 : 1;
     }
 
     private void UpdateGuardFacing()
@@ -427,6 +499,13 @@ public class EnemyAI : MonoBehaviour
 
             // Draw field of view cone
             DrawFieldOfViewCone();
+
+            // Show alert status
+            if (isAlerted)
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawWireSphere(transform.position, 0.3f);
+            }
         }
     }
 

@@ -1,10 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// Handles player skill execution with time slowdown, dice roll display, mouse aiming, and attack confirmation system.
-/// Double Strike: Press skill key → slow motion → roll dice → aim with mouse → confirm/cancel → attack → repeat for second hit
+/// Double Strike skill - A two-hit attack with time slowdown, dice roll display, and mouse aiming.
+/// Press skill key → slow motion → roll dice → aim with mouse → confirm/cancel → attack → repeat for second hit
 /// </summary>
-public class PlayerSkill : MonoBehaviour
+public class DoubleStrike : MonoBehaviour
 {
     #region Enums
 

@@ -13,12 +13,15 @@ public class EnemiesHealth : MonoBehaviour
     public void ChangeHealth(int amount)
     {
         currentHealth += amount;
-        if (currentHealth > maxHealth)
+
+        // Alert enemy AI that they were hit
+        EnemyAI enemyAI = GetComponent<EnemyAI>();
+        if (enemyAI != null && amount < 0) // Only on damage, not healing
         {
-            currentHealth = maxHealth;
+            enemyAI.OnHit();
         }
 
-        else if (currentHealth <= 0)
+        if (currentHealth <= 0)
         {
             Destroy(gameObject);
         }
