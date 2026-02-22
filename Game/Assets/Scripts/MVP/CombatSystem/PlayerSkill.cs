@@ -29,6 +29,8 @@ public class PlayerSkill : MonoBehaviour
     [SerializeField] private float skillCooldown = 3f;
     [SerializeField] private int totalHits = 2;
     [SerializeField] private float movementDistance = 2f;
+    [SerializeField] private float minMovementDistance = 0.5f;
+    [SerializeField] private float maxMovementDistance = 3.5f;
 
     [Header("Dice")]
     [SerializeField] private DiceTier skillTier = DiceTier.D6;
@@ -57,6 +59,7 @@ public class PlayerSkill : MonoBehaviour
     private bool isExecuting = false;
     private float skillTimer = 0f;
     private Vector3 targetDirection = Vector3.right;
+    private float currentMovementDistance = 2f;
 
     #endregion
 
@@ -159,10 +162,22 @@ public class PlayerSkill : MonoBehaviour
         mousePos.z = 0f;
 
         // Calculate direction from player to mouse
-        Vector3 direction = (mousePos - transform.position).normalized;
+        Vector3 directionToMouse = (mousePos - transform.position);
+        float distanceToMouse = directionToMouse.magnitude;
+        
+        // Normalize direction
+        Vector3 direction = directionToMouse.normalized;
         
         // Store the direction
         targetDirection = direction;
+
+        // Calculate movement distance based on mouse distance
+        // Map mouse distance to movement distance range
+        currentMovementDistance = Mathf.Clamp(
+            distanceToMouse,
+            minMovementDistance,
+            maxMovementDistance
+        );
 
         // Flip sprite based on direction
         if (spriteRenderer != null)
@@ -254,8 +269,7 @@ public class PlayerSkill : MonoBehaviour
         PlayAttackAnimation();
         yield return new WaitForSeconds(0.1f);
 
-        // Apply damage and move in aimed direction
-        OnSkillHit();
+        // Move and damage enemies along the path
         MoveForward();
 
         // Wait for attack animation to finish
@@ -353,9 +367,13 @@ public class PlayerSkill : MonoBehaviour
 
     private System.Collections.IEnumerator SmoothMoveForward()
     {
-        // Use the aimed direction
-        Vector3 targetPosition = transform.position + (targetDirection * movementDistance);
-        float moveSpeed = movementDistance / 0.3f;
+        // Use the aimed direction and dynamic distance
+        Vector3 startPosition = transform.position;
+        Vector3 targetPosition = startPosition + (targetDirection * currentMovementDistance);
+        float moveSpeed = currentMovementDistance / 0.3f;
+
+        // Track enemies already hit to prevent multiple hits on same enemy
+        System.Collections.Generic.HashSet<Collider2D> hitEnemies = new System.Collections.Generic.HashSet<Collider2D>();
 
         while (Vector3.Distance(transform.position, targetPosition) > 0.01f)
         {
@@ -364,10 +382,46 @@ public class PlayerSkill : MonoBehaviour
                 targetPosition,
                 moveSpeed * Time.deltaTime
             );
+
+            // Detect and damage enemies during movement
+            DamageEnemiesAlongPath(hitEnemies);
+
             yield return null;
         }
 
         transform.position = targetPosition;
+    }
+
+    private void DamageEnemiesAlongPath(System.Collections.Generic.HashSet<Collider2D> alreadyHit)
+    {
+        if (playerCombat == null || statsManager == null)
+            return;
+
+        // Detect enemies in attack range
+        Collider2D[] enemies = Physics2D.OverlapCircleAll(
+            playerCombat.attackPoint.position,
+            statsManager.attackRange,
+            playerCombat.enemyLayers
+        );
+
+        int skillDamage = DamageCalculator.CalculateSkillDamage(
+            currentDiceRoll,
+            statsManager.strength,
+            skillMultiplier
+        );
+
+        foreach (Collider2D enemy in enemies)
+        {
+            // Skip if already hit this enemy
+            if (alreadyHit.Contains(enemy))
+                continue;
+
+            // Mark as hit
+            alreadyHit.Add(enemy);
+
+            // Damage the enemy
+            DamageEnemy(enemy, skillDamage);
+        }
     }
 
     #endregion
