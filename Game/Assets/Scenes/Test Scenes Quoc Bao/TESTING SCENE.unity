@@ -163,8 +163,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d6da3a0bcbbf704cb08c84a824e4e70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  slowMotionScale: 0.2
-  slowMotionTransitionSpeed: 5
 --- !u!1 &52024647
 GameObject:
   m_ObjectHideFlags: 0
@@ -20269,13 +20267,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillKey: 49
+  confirmKey: 101
+  cancelKey: 113
   skillCooldown: 3
   movementDistance: 2
   skillTier: 6
   skillMultiplier: 1.5
-  chargeAnimationBool: isCharging
-  attackAnimationBool: isUsingSkill
-  minRollDisplayTime: 0.5
+  rollDisplayDuration: 0.4
+  attackAnimationDuration: 0.6
 --- !u!1 &1720431993
 GameObject:
   m_ObjectHideFlags: 0

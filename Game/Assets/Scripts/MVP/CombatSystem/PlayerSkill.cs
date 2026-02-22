@@ -1,14 +1,33 @@
 using UnityEngine;
 
+/// <summary>
+/// Handles player skill execution with time slowdown, dice roll display, and attack confirmation system.
+/// Double Strike: Press skill key → slow motion → roll dice → confirm/cancel → attack → repeat for second hit
+/// </summary>
 public class PlayerSkill : MonoBehaviour
 {
+    #region Enums
+
+    public enum SkillState
+    {
+        Idle,           // Not using skill
+        Charging,       // Playing charge animation in slow motion
+        WaitingConfirm, // Waiting for player to confirm or cancel attack
+        Attacking       // Executing attack in normal speed
+    }
+
+    #endregion
+
     #region Serialized Fields
 
-    [Header("Double Strike Settings")]
+    [Header("Input")]
     [SerializeField] private KeyCode skillKey = KeyCode.Alpha1;
     [SerializeField] private KeyCode confirmKey = KeyCode.E;
     [SerializeField] private KeyCode cancelKey = KeyCode.Q;
+
+    [Header("Skill Settings")]
     [SerializeField] private float skillCooldown = 3f;
+    [SerializeField] private int totalHits = 2;
     [SerializeField] private float movementDistance = 2f;
 
     [Header("Dice")]
@@ -21,9 +40,8 @@ public class PlayerSkill : MonoBehaviour
 
     #endregion
 
-    #region Private Fields
+    #region Private Fields - Components
 
-    // Component References
     private PlayerCombat playerCombat;
     private PlayerMovement playerMovement;
     private PlayerHealth playerHealth;
@@ -31,17 +49,21 @@ public class PlayerSkill : MonoBehaviour
     private StatsManager statsManager;
     private RollDisplayController rollDisplayInstance;
 
-    // Skill State
-    private float skillTimer = 0f;
+    #endregion
+
+    #region Private Fields - State
+
+    private SkillState currentState = SkillState.Idle;
     private bool isExecuting = false;
-    private int totalHits = 2;
+    private float skillTimer = 0f;
+
+    #endregion
+
+    #region Private Fields - Hit Tracking
+
     private int currentHitNumber = 0;
     private int currentDiceRoll = 0;
     private bool hasDealtDamageThisHit = false;
-
-    // State Machine
-    private SkillState currentState = SkillState.Idle;
-    public enum SkillState { Idle, Charging, WaitingConfirm, Attacking }
 
     #endregion
 
@@ -65,15 +87,18 @@ public class PlayerSkill : MonoBehaviour
 
     private void InitializeComponents()
     {
+        // Get component references
         playerCombat = GetComponent<PlayerCombat>();
         playerMovement = GetComponent<PlayerMovement>();
         playerHealth = GetComponent<PlayerHealth>();
         spriteRenderer = GetComponent<SpriteRenderer>();
 
+        // Get StatsManager singleton
         statsManager = StatsManager.Instance;
         if (statsManager == null)
             statsManager = FindObjectOfType<StatsManager>();
 
+        // Setup roll display UI
         EnsureRollDisplay();
     }
 
@@ -82,6 +107,7 @@ public class PlayerSkill : MonoBehaviour
         if (rollDisplayInstance != null)
             return;
 
+        // Create roll display controller
         GameObject rollDisplayGO = new GameObject("RollDisplay");
         rollDisplayGO.transform.SetParent(transform);
         rollDisplayGO.transform.localPosition = Vector3.zero;
@@ -92,17 +118,11 @@ public class PlayerSkill : MonoBehaviour
 
     #endregion
 
-    #region Input & Cooldown
-
-    private void UpdateSkillCooldown()
-    {
-        if (skillTimer > 0)
-            skillTimer -= Time.deltaTime;
-    }
+    #region Input Handling
 
     private void CheckSkillInput()
     {
-        if (Input.GetKeyDown(skillKey) && !isExecuting && currentState == SkillState.Idle)
+        if (Input.GetKeyDown(skillKey) && CanTriggerSkill())
         {
             TriggerDoubleStrike();
         }
@@ -110,29 +130,40 @@ public class PlayerSkill : MonoBehaviour
 
     private void HandleStateInput()
     {
-        if (currentState == SkillState.WaitingConfirm)
-        {
-            if (Input.GetKeyDown(confirmKey))
-            {
-                ConfirmAttack();
-            }
+        if (currentState != SkillState.WaitingConfirm)
+            return;
 
-            if (Input.GetKeyDown(cancelKey))
-            {
-                CancelSkill();
-            }
+        if (Input.GetKeyDown(confirmKey))
+        {
+            ConfirmAttack();
+        }
+        else if (Input.GetKeyDown(cancelKey))
+        {
+            CancelSkill();
         }
     }
 
     #endregion
 
-    #region Skill Execution
+    #region Cooldown Management
+
+    private void UpdateSkillCooldown()
+    {
+        if (skillTimer > 0)
+            skillTimer -= Time.deltaTime;
+    }
+
+    private bool CanTriggerSkill()
+    {
+        return !isExecuting && currentState == SkillState.Idle && skillTimer <= 0;
+    }
+
+    #endregion
+
+    #region Skill Execution Flow
 
     private void TriggerDoubleStrike()
     {
-        if (skillTimer > 0)
-            return;
-
         isExecuting = true;
         skillTimer = skillCooldown;
         currentHitNumber = 0;
@@ -145,20 +176,18 @@ public class PlayerSkill : MonoBehaviour
     {
         EnableInvulnerability(true);
 
+        // Execute all hits in sequence
         for (int i = 1; i <= totalHits; i++)
         {
             yield return StartCoroutine(ExecuteSingleHit(i));
 
-            if (!isExecuting) // Cancelled
+            // Check if player cancelled
+            if (!isExecuting)
                 break;
         }
 
-        EnableInvulnerability(false);
-        EnablePlayerSystems();
-
-        isExecuting = false;
-        currentState = SkillState.Idle;
-        TimeManager.Instance.SetNormalSpeed();
+        // Cleanup after all hits or cancellation
+        EndSkillExecution();
     }
 
     private System.Collections.IEnumerator ExecuteSingleHit(int hitNumber)
@@ -166,48 +195,42 @@ public class PlayerSkill : MonoBehaviour
         currentHitNumber = hitNumber;
         hasDealtDamageThisHit = false;
 
-        // Slow down time
+        // === CHARGE PHASE (Slow Motion) ===
         TimeManager.Instance.SetSlowMotion();
-
-        // Play charge animation
         PlayChargeAnimation();
-        yield return new WaitForSecondsRealtime(0.2f); // Brief pause before roll
+        yield return new WaitForSecondsRealtime(0.2f);
 
-        // Roll dice and display
+        // === ROLL PHASE (Slow Motion) ===
         currentDiceRoll = DiceRoller.Roll(skillTier);
         ShowRollDisplay(currentDiceRoll);
-
-        // Wait for roll display to finish
         yield return new WaitForSecondsRealtime(rollDisplayDuration);
 
-        // Wait for player confirmation in slow motion
+        // === WAIT FOR CONFIRMATION (Slow Motion) ===
         currentState = SkillState.WaitingConfirm;
         while (currentState == SkillState.WaitingConfirm && isExecuting)
         {
             yield return null;
         }
 
-        if (!isExecuting) // Cancelled
+        // Check if cancelled during confirmation
+        if (!isExecuting)
         {
             TimeManager.Instance.SetNormalSpeed();
             yield break;
         }
 
-        // Resume normal speed and attack
+        // === ATTACK PHASE (Normal Speed) ===
         TimeManager.Instance.SetNormalSpeed();
         currentState = SkillState.Attacking;
 
-        // Play attack animation
         PlayAttackAnimation();
-        yield return new WaitForSeconds(0.1f); // Small delay before hit
+        yield return new WaitForSeconds(0.1f);
 
-        // Apply damage
+        // Apply damage and move
         OnSkillHit();
-
-        // Move forward
         MoveForward();
 
-        // Wait for attack animation to complete
+        // Wait for attack animation to finish
         yield return new WaitForSeconds(attackAnimationDuration);
     }
 
@@ -221,22 +244,36 @@ public class PlayerSkill : MonoBehaviour
 
     private void CancelSkill()
     {
-        if (isExecuting)
-        {
-            isExecuting = false;
-            currentState = SkillState.Idle;
-            TimeManager.Instance.SetNormalSpeed();
-            EnablePlayerSystems();
-        }
+        if (!isExecuting)
+            return;
+
+        isExecuting = false;
+        currentState = SkillState.Idle;
+        
+        TimeManager.Instance.SetNormalSpeed();
+        StopSkillAnimation();
+        EnablePlayerSystems();
+    }
+
+    private void EndSkillExecution()
+    {
+        EnableInvulnerability(false);
+        EnablePlayerSystems();
+        StopSkillAnimation();
+
+        isExecuting = false;
+        currentState = SkillState.Idle;
+        TimeManager.Instance.SetNormalSpeed();
     }
 
     #endregion
 
-    #region Roll Display
+    #region Roll Display UI
 
     private void ShowRollDisplay(int rollValue)
     {
         EnsureRollDisplay();
+        
         if (rollDisplayInstance == null)
             return;
 
@@ -250,7 +287,7 @@ public class PlayerSkill : MonoBehaviour
 
     private void PlayChargeAnimation()
     {
-        if (playerCombat == null || playerCombat.anim == null)
+        if (playerCombat?.anim == null)
             return;
 
         playerCombat.anim.SetBool("isWalking", false);
@@ -261,7 +298,7 @@ public class PlayerSkill : MonoBehaviour
 
     private void PlayAttackAnimation()
     {
-        if (playerCombat == null || playerCombat.anim == null)
+        if (playerCombat?.anim == null)
             return;
 
         playerCombat.anim.SetBool("isSkillCharging", false);
@@ -270,7 +307,7 @@ public class PlayerSkill : MonoBehaviour
 
     private void StopSkillAnimation()
     {
-        if (playerCombat == null || playerCombat.anim == null)
+        if (playerCombat?.anim == null)
             return;
 
         playerCombat.anim.SetBool("isSkillCharging", false);
@@ -294,7 +331,11 @@ public class PlayerSkill : MonoBehaviour
 
         while (Vector3.Distance(transform.position, targetPosition) > 0.01f)
         {
-            transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed * Time.deltaTime);
+            transform.position = Vector3.MoveTowards(
+                transform.position,
+                targetPosition,
+                moveSpeed * Time.deltaTime
+            );
             yield return null;
         }
 
@@ -303,8 +344,11 @@ public class PlayerSkill : MonoBehaviour
 
     #endregion
 
-    #region Damage Handling
+    #region Damage System
 
+    /// <summary>
+    /// Called by Animation Event in SkillAttack animation at hit frame
+    /// </summary>
     public void OnSkillHit()
     {
         if (playerCombat == null || statsManager == null || hasDealtDamageThisHit)
@@ -341,14 +385,17 @@ public class PlayerSkill : MonoBehaviour
         if (enemyHealth == null)
             return;
 
+        // Apply damage
         enemyHealth.ChangeHealth(-damage);
 
+        // Apply knockback
         EnemyKnockback enemyKnockback = enemy.GetComponent<EnemyKnockback>();
         if (enemyKnockback != null)
         {
             enemyKnockback.Knockback(transform, statsManager.knockbackForce);
         }
 
+        // Show damage popup
         ShowDamagePopup(enemy.transform.position, damage);
     }
 
@@ -358,13 +405,18 @@ public class PlayerSkill : MonoBehaviour
             return;
 
         Vector3 spawnPos = position + Vector3.up * 0.8f;
-        GameObject damagePopup = Instantiate(playerCombat.damagePopupPrefab, spawnPos, Quaternion.identity);
+        GameObject damagePopup = Instantiate(
+            playerCombat.damagePopupPrefab,
+            spawnPos,
+            Quaternion.identity
+        );
+
         damagePopup.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = damage.ToString();
     }
 
     #endregion
 
-    #region Player State Management
+    #region Player System Management
 
     private void DisablePlayerSystems()
     {
@@ -394,8 +446,19 @@ public class PlayerSkill : MonoBehaviour
 
     #region Public API
 
+    /// <summary>
+    /// Returns cooldown progress (0 = on cooldown, 1 = ready)
+    /// </summary>
     public float GetSkillCooldownPercent() => Mathf.Clamp01(1f - (skillTimer / skillCooldown));
+
+    /// <summary>
+    /// Returns true if skill is currently being executed
+    /// </summary>
     public bool IsExecuting => isExecuting;
+
+    /// <summary>
+    /// Returns current skill execution state
+    /// </summary>
     public SkillState GetCurrentState => currentState;
 
     #endregion
