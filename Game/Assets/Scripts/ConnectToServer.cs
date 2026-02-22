@@ -22,9 +22,6 @@ public class ConnectToServer : MonoBehaviourPunCallbacks
     public override void OnJoinedLobby()
     {
         Debug.Log("Joined Lobby");
-        // You can now join or create rooms
-        // Pause message queue before loading scene to avoid Photon errors
-        PhotonNetwork.IsMessageQueueRunning = false;
         SceneManager.LoadScene("LobbyScene");
     }
 }
