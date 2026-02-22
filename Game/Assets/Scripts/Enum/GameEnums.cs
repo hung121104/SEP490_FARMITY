@@ -133,3 +133,12 @@ public enum NotificationType
     Warning,
     Error
 }
+
+public enum ToolType
+{
+    Hoe,
+    WateringCan,
+    Pickaxe,
+    Axe,
+    FishingRod
+}
