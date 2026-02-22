@@ -1,8 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// Handles player skill execution with time slowdown, dice roll display, and attack confirmation system.
-/// Double Strike: Press skill key → slow motion → roll dice → confirm/cancel → attack → repeat for second hit
+/// Handles player skill execution with time slowdown, dice roll display, mouse aiming, and attack confirmation system.
+/// Double Strike: Press skill key → slow motion → roll dice → aim with mouse → confirm/cancel → attack → repeat for second hit
 /// </summary>
 public class PlayerSkill : MonoBehaviour
 {
@@ -12,7 +12,7 @@ public class PlayerSkill : MonoBehaviour
     {
         Idle,           // Not using skill
         Charging,       // Playing charge animation in slow motion
-        WaitingConfirm, // Waiting for player to confirm or cancel attack
+        WaitingConfirm, // Waiting for player to confirm or cancel attack (can aim with mouse)
         Attacking       // Executing attack in normal speed
     }
 
@@ -56,6 +56,7 @@ public class PlayerSkill : MonoBehaviour
     private SkillState currentState = SkillState.Idle;
     private bool isExecuting = false;
     private float skillTimer = 0f;
+    private Vector3 targetDirection = Vector3.right;
 
     #endregion
 
@@ -79,6 +80,7 @@ public class PlayerSkill : MonoBehaviour
         UpdateSkillCooldown();
         CheckSkillInput();
         HandleStateInput();
+        UpdateAiming();
     }
 
     #endregion
@@ -145,6 +147,32 @@ public class PlayerSkill : MonoBehaviour
 
     #endregion
 
+    #region Aiming System
+
+    private void UpdateAiming()
+    {
+        if (currentState != SkillState.WaitingConfirm)
+            return;
+
+        // Get mouse position in world space
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mousePos.z = 0f;
+
+        // Calculate direction from player to mouse
+        Vector3 direction = (mousePos - transform.position).normalized;
+        
+        // Store the direction
+        targetDirection = direction;
+
+        // Flip sprite based on direction
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.flipX = direction.x < 0;
+        }
+    }
+
+    #endregion
+
     #region Cooldown Management
 
     private void UpdateSkillCooldown()
@@ -205,7 +233,7 @@ public class PlayerSkill : MonoBehaviour
         ShowRollDisplay(currentDiceRoll);
         yield return new WaitForSecondsRealtime(rollDisplayDuration);
 
-        // === WAIT FOR CONFIRMATION (Slow Motion) ===
+        // === WAIT FOR CONFIRMATION (Slow Motion - Player can aim with mouse) ===
         currentState = SkillState.WaitingConfirm;
         while (currentState == SkillState.WaitingConfirm && isExecuting)
         {
@@ -226,7 +254,7 @@ public class PlayerSkill : MonoBehaviour
         PlayAttackAnimation();
         yield return new WaitForSeconds(0.1f);
 
-        // Apply damage and move
+        // Apply damage and move in aimed direction
         OnSkillHit();
         MoveForward();
 
@@ -325,8 +353,8 @@ public class PlayerSkill : MonoBehaviour
 
     private System.Collections.IEnumerator SmoothMoveForward()
     {
-        float direction = spriteRenderer != null && spriteRenderer.flipX ? -1f : 1f;
-        Vector3 targetPosition = transform.position + new Vector3(direction * movementDistance, 0f, 0f);
+        // Use the aimed direction
+        Vector3 targetPosition = transform.position + (targetDirection * movementDistance);
         float moveSpeed = movementDistance / 0.3f;
 
         while (Vector3.Distance(transform.position, targetPosition) > 0.01f)
