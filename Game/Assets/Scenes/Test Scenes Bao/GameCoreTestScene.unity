@@ -7292,7 +7292,7 @@ Animator:
   m_GameObject: {fileID: 2025648305}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 83ab334b2d17e1b4bb1741c4f159b1bf, type: 2}
+  m_Controller: {fileID: 9100000, guid: cdd29c989574b154da5b850a03ea0428, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -7313,7 +7313,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2025648305}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 265c3d744e00766409f6b629e489745f, type: 3}
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Navigation:
@@ -7323,7 +7323,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 2
+  m_Transition: 3
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
@@ -7334,7 +7334,7 @@ MonoBehaviour:
     m_FadeDuration: 0.1
   m_SpriteState:
     m_HighlightedSprite: {fileID: 0}
-    m_PressedSprite: {fileID: -1326542488, guid: b015256ec400c7a4ea29a2a844a75ca2, type: 3}
+    m_PressedSprite: {fileID: 0}
     m_SelectedSprite: {fileID: 0}
     m_DisabledSprite: {fileID: 0}
   m_AnimationTriggers:
@@ -7347,9 +7347,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2025648310}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
-  pressDelay: 0.2
-  highlightDelay: 0
+      m_Calls:
+      - m_Target: {fileID: 166570037}
+        m_TargetAssemblyTypeName: ItemDeleteView, Assembly-CSharp
+        m_MethodName: OnAction
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!1 &2043340969
 GameObject:
   m_ObjectHideFlags: 0
