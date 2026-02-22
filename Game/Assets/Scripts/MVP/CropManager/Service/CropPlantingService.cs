@@ -28,7 +28,7 @@ public class CropPlantingService : ICropPlantingService
         }
     }
 
-    public bool CanPlantCrop(Vector3 worldPosition, int cropTypeID)
+    public bool CanPlantCrop(Vector3 worldPosition, string plantId)
     {
         // Check if position is in active section
         if (!IsPositionInActiveSection(worldPosition))
@@ -53,10 +53,10 @@ public class CropPlantingService : ICropPlantingService
         return true;
     }
 
-    public bool PlantCrop(Vector3 worldPosition, int cropTypeID)
+    public bool PlantCrop(Vector3 worldPosition, string plantId)
     {
         // Validate before planting
-        if (!CanPlantCrop(worldPosition, cropTypeID))
+        if (!CanPlantCrop(worldPosition, plantId))
         {
             return false;
         }
@@ -66,13 +66,13 @@ public class CropPlantingService : ICropPlantingService
         int worldY = Mathf.FloorToInt(worldPosition.y);
 
         // Plant the crop in the world data manager
-        bool success = WorldDataManager.Instance.PlantCropAtWorldPosition(worldPosition, (ushort)cropTypeID);
+        bool success = WorldDataManager.Instance.PlantCropAtWorldPosition(worldPosition, plantId);
 
         if (success)
         {
             if (showDebugLogs)
             {
-                Debug.Log($"✓ Planted crop type {cropTypeID} at ({worldX}, {worldY})");
+                Debug.Log($"✓ Planted plant '{plantId}' at ({worldX}, {worldY})");
             }
 
             // Refresh chunk visuals
@@ -85,7 +85,7 @@ public class CropPlantingService : ICropPlantingService
             // Sync to network if connected
             if (PhotonNetwork.IsConnected && syncManager != null)
             {
-                BroadcastCropPlanted(worldX, worldY, cropTypeID);
+                BroadcastCropPlanted(worldX, worldY, plantId);
             }
 
             return true;
@@ -127,11 +127,11 @@ public class CropPlantingService : ICropPlantingService
         return WorldDataManager.Instance.WorldToChunkCoords(worldPosition);
     }
 
-    public void BroadcastCropPlanted(int worldX, int worldY, int cropTypeID)
+    public void BroadcastCropPlanted(int worldX, int worldY, string plantId)
     {
         if (syncManager != null)
         {
-            syncManager.BroadcastCropPlanted(worldX, worldY, cropTypeID);
+            syncManager.BroadcastCropPlanted(worldX, worldY, plantId);
         }
         else
         {

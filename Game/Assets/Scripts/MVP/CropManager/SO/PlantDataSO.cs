@@ -5,6 +5,10 @@ using System;
 [CreateAssetMenu(fileName = "PlantDataSO", menuName = "Scriptable Objects/PlantDataSO")]
 public class PlantDataSO : ScriptableObject
 {
+    [Header("Plant Id")]
+    [Tooltip("Id of the plant.")]
+    public string PlantId;
+
     [Header("Plant Info")]
     [Tooltip("The name of the plant (e.g., 'Wheat', 'Tomato').")]
     public string PlantName;
@@ -14,7 +18,11 @@ public class PlantDataSO : ScriptableObject
 
     [Header("Harvest Info")]
     [Tooltip("The item prefab to spawn when the plant is harvested.")]
-    public String HarvestedItemID;
+    public ItemDataSO HarvestedItem;
+
+    [Header("Season")]
+    [Tooltip("The season in which this plant can grow.")]
+    public Season GrowingSeason;
 
 }
 

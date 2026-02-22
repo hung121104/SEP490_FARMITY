@@ -11,9 +11,9 @@ public static class WorldDataManagerCropExtensions
     /// <summary>
     /// Plant crop at world position
     /// </summary>
-    public static bool PlantCropAtWorldPosition(this WorldDataManager manager, Vector3 worldPos, ushort cropTypeID)
+    public static bool PlantCropAtWorldPosition(this WorldDataManager manager, Vector3 worldPos, string plantId)
     {
-        return manager.CropData?.PlantCropAtWorldPosition(worldPos, cropTypeID) ?? false;
+        return manager.CropData?.PlantCropAtWorldPosition(worldPos, plantId) ?? false;
     }
     
     /// <summary>

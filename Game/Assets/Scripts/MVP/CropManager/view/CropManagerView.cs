@@ -193,7 +193,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
                         continue;
 
                     // Check if crop should advance to next stage
-                    PlantDataSO plantData = GetPlantData(tileData.CropTypeID);
+                    PlantDataSO plantData = GetPlantData(tileData.PlantId);
                     if (plantData != null && tileData.CropStage < plantData.GrowthStages.Count - 1)
                     {
                         // Check next stage to see if we should advance
@@ -222,7 +222,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
 
                             if (showDebugLogs)
                             {
-                                Debug.Log($"[CropManagerView] Crop {tileData.CropTypeID} at ({tile.WorldX}, {tile.WorldY}) " +
+                                Debug.Log($"[CropManagerView] Crop '{tileData.PlantId}' at ({tile.WorldX}, {tile.WorldY}) " +
                                          $"advanced to stage {newStage} (age: {tileData.TotalAge} days)");
                             }
 
@@ -235,7 +235,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
                                 cropsHarvested++;
                                 if (showDebugLogs)
                                 {
-                                    Debug.Log($"[CropManagerView] Crop {tileData.CropTypeID} at ({tile.WorldX}, {tile.WorldY}) " +
+                                    Debug.Log($"[CropManagerView] Crop '{tileData.PlantId}' at ({tile.WorldX}, {tile.WorldY}) " +
                                              $"is ready to harvest! (Total age: {tileData.TotalAge} days)");
                                 }
                             }
@@ -347,16 +347,21 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
-    /// Get plant data for a specific crop type ID
+    /// Get plant data by PlantId string
     /// </summary>
-    private PlantDataSO GetPlantData(ushort cropTypeID)
+    private PlantDataSO GetPlantData(string plantId)
     {
-        if (plantDatabase == null || cropTypeID >= plantDatabase.Length)
+        if (plantDatabase == null || string.IsNullOrEmpty(plantId))
         {
-            Debug.LogWarning($"[CropManagerView] No plant data for crop type {cropTypeID}");
+            Debug.LogWarning($"[CropManagerView] No plant data for plant id '{plantId}'");
             return null;
         }
-        return plantDatabase[cropTypeID];
+        foreach (var plant in plantDatabase)
+        {
+            if (plant != null && plant.PlantId == plantId) return plant;
+        }
+        Debug.LogWarning($"[CropManagerView] Plant id '{plantId}' not found in plantDatabase.");
+        return null;
     }
 
     /// <summary>
@@ -378,7 +383,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         if (!worldDataManager.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
             return false;
 
-        PlantDataSO plantData = GetPlantData(tileData.CropTypeID);
+        PlantDataSO plantData = GetPlantData(tileData.PlantId);
         if (plantData == null) return false;
 
         return tileData.CropStage >= plantData.GrowthStages.Count - 1;
@@ -395,7 +400,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         if (!worldDataManager.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
             return 0f;
 
-        PlantDataSO plantData = GetPlantData(tileData.CropTypeID);
+        PlantDataSO plantData = GetPlantData(tileData.PlantId);
         if (plantData == null || plantData.GrowthStages.Count == 0) return 0f;
 
         return (float)tileData.CropStage / (plantData.GrowthStages.Count - 1);
@@ -415,7 +420,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
             return;
         }
 
-        PlantDataSO plantData = GetPlantData(tileData.CropTypeID);
+        PlantDataSO plantData = GetPlantData(tileData.PlantId);
         if (plantData == null) return;
 
         if (tileData.CropStage < plantData.GrowthStages.Count - 1)

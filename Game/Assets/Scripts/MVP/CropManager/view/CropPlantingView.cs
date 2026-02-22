@@ -13,8 +13,13 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     public static CropPlantingView Instance { get; private set; }
 
     [Header("Planting Settings")]
-    [Tooltip("Crop type ID to plant (1=Wheat, 2=Corn, etc.)")]
-    public int currentCropTypeID = 1;
+    [Tooltip("Seed ScriptableObject. The PlantId from SeedDataSO.CropDataSo is used to resolve the crop type index when planting.")]
+    public SeedDataSO seedDataSO;
+
+    /// <summary>Returns the PlantId string from the assigned SeedDataSO, or empty if none is set.</summary>
+    public string CurrentPlantId => (seedDataSO != null && seedDataSO.CropDataSo != null)
+        ? seedDataSO.CropDataSo.PlantId
+        : string.Empty;
     [Tooltip("Planting mode: at mouse, around player (1 tile radius), or far around player (2 tile radius)")]
     public PlantingMode plantingMode = PlantingMode.AroundPlayer;
     [Tooltip("Tag to find the player GameObject")]
@@ -103,7 +108,7 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
         }
 
         // Last resort: find any camera in scene
-        Camera[] cameras = FindObjectsOfType<Camera>();
+        Camera[] cameras = FindObjectsByType<Camera>(FindObjectsSortMode.None);
         if (cameras.Length > 0)
         {
             if (showDebugLogs)
@@ -180,14 +185,14 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Allows external scripts to trigger crop planting programmatically.
+    /// Uses the PlantId string to resolve the crop index in the plant database.
     /// </summary>
-    public void PlantCropAtPosition(Vector3 screenPosition, int cropTypeID)
+    public void PlantCropAtPosition(Vector3 screenPosition, string plantId)
     {
-        if (presenter != null && targetCamera != null)
-        {
-            List<Vector3> positions = new List<Vector3> { ScreenToWorldPosition(screenPosition) };
-            presenter.HandlePlantCrops(positions, cropTypeID);
-        }
+        if (presenter == null || targetCamera == null) return;
+        if (string.IsNullOrEmpty(plantId)) return;
+        List<Vector3> positions = new List<Vector3> { ScreenToWorldPosition(screenPosition) };
+        presenter.HandlePlantCrops(positions, plantId);
     }
 
     /// <summary>
@@ -239,13 +244,22 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Triggers planting by calculating positions and sending to presenter.
+    /// Derives the crop PlantId from SeedDataSO.CropDataSo.PlantId and passes it as a string.
     /// </summary>
     private void TriggerPlanting()
     {
+        string plantId = CurrentPlantId;
+        if (string.IsNullOrEmpty(plantId))
+        {
+            if (showDebugLogs)
+                Debug.LogWarning("[CropPlantingView] No PlantId available. Assign a SeedDataSO with a valid CropDataSo.");
+            return;
+        }
+
         List<Vector3> positions = CalculatePlantingPositions();
         if (positions.Count > 0)
         {
-            presenter.HandlePlantCrops(positions, currentCropTypeID);
+            presenter.HandlePlantCrops(positions, plantId);
         }
     }
 
@@ -429,11 +443,11 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     /// Receives network events and forwards to presenter.
     /// </summary>
     [PunRPC]
-    private void RPC_PlantCrop(Vector3 worldPosition, int cropTypeID)
+    private void RPC_PlantCrop(Vector3 worldPosition, string plantId)
     {
         if (presenter != null)
         {
-            presenter.HandleNetworkCropPlanted(worldPosition, cropTypeID);
+            presenter.HandleNetworkCropPlanted(worldPosition, plantId);
         }
         else
         {

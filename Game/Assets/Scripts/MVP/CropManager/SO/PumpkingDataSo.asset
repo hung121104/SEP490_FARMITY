@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8d1fe37b738e1d4b8593ba545858269, type: 3}
   m_Name: PumpkingDataSo
   m_EditorClassIdentifier: 
-  PlantName: Pumpking
+  PlantId: pumkin_plant
+  PlantName: Pumpkin
   GrowthStages:
   - stageNum: 0
     stageSprite: {fileID: 5214640707927695005, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
@@ -29,4 +30,5 @@ MonoBehaviour:
   - stageNum: 4
     stageSprite: {fileID: -8963360674610236421, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
     age: 4
-  HarvestedItemID: abc
+  HarvestedItem: {fileID: 11400000, guid: 4c3ae79185f20c145a7b58859ac6ab8f, type: 2}
+  GrowingSeason: 0
