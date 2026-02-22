@@ -1899,7 +1899,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 628fc278085fac348935a938cca23728, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  detectionRange: 8
+  detectionRange: 6
   attackRange: 1.5
   fieldOfViewAngle: 120
   playerLayer:
