@@ -12,6 +12,7 @@ public class LoadWorld : MonoBehaviourPunCallbacks
         {
             PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
         }
+        PhotonNetwork.PhotonServerSettings.AppSettings.FixedRegion = "hk";
         PhotonNetwork.ConnectUsingSettings();
     }
 
@@ -57,7 +58,8 @@ public class LoadWorld : MonoBehaviourPunCallbacks
             IsVisible = true, 
             IsOpen = true,
             CustomRoomProperties = customProps,
-            CustomRoomPropertiesForLobby = new string[] { "displayName" }
+            CustomRoomPropertiesForLobby = new string[] { "displayName" },
+            
         };
         
         PhotonNetwork.JoinOrCreateRoom(selectedId, roomOptions, TypedLobby.Default);

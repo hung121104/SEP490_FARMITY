@@ -186,7 +186,8 @@ public class CropHarvestingView : MonoBehaviourPun
         if (promptText == null) return;
 
         promptText.enabled = true;
-        promptText.text = $"{harvestKey.ToString()} to harvest";
+        //harvest promt
+        promptText.text = $"{harvestKey.ToString()}";
     }
 
     private void HidePrompt()
