@@ -102,7 +102,6 @@ public class InventoryPresenter
     private void HandleItemAdded(ItemModel item, int slotIndex)
     {
         view?.UpdateSlot(slotIndex, item);
-        view?.ShowNotification($"Added {item.ItemName} x{item.Quantity}");
     }
 
     private void HandleItemRemoved(ItemModel item, int slotIndex)
@@ -225,10 +224,6 @@ public class InventoryPresenter
             OnItemDropped?.Invoke(item);
             service.RemoveItemFromSlot(slotIndex, 1);
         }
-        else if (item != null && item.IsQuestItem)
-        {
-            view?.ShowNotification("Cannot drop quest items!");
-        }
     }
 
     private void HandleSort()
@@ -254,14 +249,12 @@ public class InventoryPresenter
         // Prevent deletion of quest items and artifacts
         if (item.IsQuestItem)
         {
-            view?.ShowNotification("Cannot delete quest items!");
             Debug.LogWarning($"[InventoryPresenter] Cannot delete quest item: {item.ItemName}");
             return;
         }
 
         if (item.IsArtifact)
         {
-            view?.ShowNotification("Cannot delete artifact items!");
             Debug.LogWarning($"[InventoryPresenter] Cannot delete artifact: {item.ItemName}");
             return;
         }
@@ -274,7 +267,6 @@ public class InventoryPresenter
 
         if (success)
         {
-            view?.ShowNotification($"Deleted {itemName} x{quantity}");
             Debug.Log($"[InventoryPresenter] Deleted {itemName} x{quantity} from slot {slotIndex}");
 
             view?.HideDragPreview();
@@ -287,7 +279,6 @@ public class InventoryPresenter
         }
         else
         {
-            view?.ShowNotification("Failed to delete item!");
             Debug.LogError($"[InventoryPresenter] Failed to delete item from slot {slotIndex}");
         }
         draggedSlot = -1;

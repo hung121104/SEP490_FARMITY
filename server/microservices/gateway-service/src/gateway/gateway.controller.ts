@@ -1,8 +1,6 @@
-import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req, HttpException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req, HttpException, Put } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { CreateAccountDto } from './dto/create-account.dto';
-import { SavePositionDto } from './dto/save-position.dto';
-import { GetPositionDto } from './dto/get-position.dto';
 import { firstValueFrom } from 'rxjs';
 import { Response, Request } from 'express';
 import { CreateBlogDto } from './dto/create-blog.dto';
@@ -14,6 +12,7 @@ import { UpdateMediaDto } from './dto/update-media.dto';
 import { UploadSignatureDto } from './dto/upload-signature.dto';
 import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
 import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
+import { UpdateWorldDto } from './dto/update-world.dto';
 
 @Controller()
 export class GatewayController {
@@ -57,6 +56,35 @@ export class GatewayController {
       const ownerIdRaw = req['user']?.sub;
       const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
       return await firstValueFrom(this.playerDataClient.send('get-world', { _id, ownerId }));
+    } catch (err) {
+      const payload = err?.message ?? err;
+      let status = 500;
+      let message = 'Internal server error';
+      if (typeof payload === 'string') {
+        try {
+          const parsed = JSON.parse(payload);
+          status = parsed.status || status;
+          message = parsed.message || parsed.error || payload;
+        } catch {
+          message = payload;
+        }
+      } else if (payload && typeof payload === 'object') {
+        status = payload.status || payload.code || status;
+        message = payload.message || payload.error || JSON.stringify(payload);
+      }
+      throw new HttpException(message, status);
+    }
+  }
+
+  @Put('player-data/world')
+  async updateWorld(@Body() body: UpdateWorldDto, @Req() req: Request) {
+    const ownerIdRaw = req['user']?.sub;
+    const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
+    if (!ownerId) throw new UnauthorizedException('Missing owner');
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('update-world', { ...body, ownerId }),
+      );
     } catch (err) {
       const payload = err?.message ?? err;
       let status = 500;
@@ -159,16 +187,6 @@ export class GatewayController {
       maxAge: 60 * 60 * 1000,
     });
     return { userId: result.userId, username: result.username, access_token: token };
-  }
-
-  @Post('player-data/save-position')
-  async savePosition(@Body() savePositionDto: SavePositionDto) {
-    return this.playerDataClient.send('save-position', savePositionDto);
-  }
-
-  @Get('player-data/position')
-  async getPosition(@Query() getPositionDto: GetPositionDto) {
-    return this.playerDataClient.send('get-position', getPositionDto);
   }
 
   @Get('auth/admin-check')

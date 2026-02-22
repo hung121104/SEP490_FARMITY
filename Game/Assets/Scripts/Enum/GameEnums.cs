@@ -104,3 +104,32 @@ public enum PlantingMode
     AroundPlayer,      // Plant in direction of mouse within radius around player (3x3 = 1 tile away)
     FarAroundPlayer    // Plant in direction of mouse within larger radius (5x5 = 2 tiles away)
 }
+
+// ==================== CRAFTING MANAGEMENT ====================
+
+/// <summary>
+/// Defines the type of recipe.
+/// </summary>
+public enum RecipeType
+{
+    Crafting,
+    Cooking
+}
+
+public enum CraftingCategory
+{
+    General,
+    Tools,
+    Food,
+    Materials,
+    Furniture,
+    Equipment
+}
+
+public enum NotificationType
+{
+    Info,
+    Success,
+    Warning,
+    Error
+}
