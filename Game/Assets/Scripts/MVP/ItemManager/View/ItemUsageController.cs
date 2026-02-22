@@ -10,6 +10,7 @@ public class ItemUsageController : MonoBehaviour
     [SerializeField] private LayerMask targetLayer;
 
     private HotbarPresenter presenter;
+    private ItemUsagePresenter itemUsagePresenter;
     private bool isSubscribed = false;
 
     private void Start()
@@ -39,6 +40,7 @@ public class ItemUsageController : MonoBehaviour
             return;
         }
 
+        itemUsagePresenter = new ItemUsagePresenter(new ItemUsageService());
         presenter.OnItemUsed += HandleItemUsed;
         isSubscribed = true;
         Debug.Log("ItemUsageController: Subscribed to Hotbar");
@@ -84,42 +86,22 @@ public class ItemUsageController : MonoBehaviour
     //Add specific item usage implementations below
     private bool UseTool(ItemDataSO item, Vector3 pos)
     {
-        Debug.Log("Using tool: " + item.itemName);
-
-        RaycastHit2D hit = Physics2D.Raycast(pos, Vector2.zero, 0.1f, targetLayer);
-        if (hit.collider != null)
-        {
-            Debug.Log("Hit: " + hit.collider.name);
-        }
-
-        return false;
+        return itemUsagePresenter.UseTool(item, pos);
     }
 
     private (bool, int) UseSeed(ItemDataSO item, Vector3 pos)
     {
-        Debug.Log("Planting seed: " + item.itemName);
-
-        RaycastHit2D hit = Physics2D.Raycast(pos, Vector2.zero, 0.1f, farmableGroundLayer);
-        if (hit.collider != null)
-        {
-            Debug.Log("Planted on: " + hit.collider.name);
-            return (true, 1);
-        }
-
-        Debug.LogWarning("Cannot plant here");
-        return (false, 0);
+        return itemUsagePresenter.UseSeed(item,pos);
     }
 
     private (bool, int) UseConsumable(ItemDataSO item, Vector3 pos)
     {
-        Debug.Log("Consuming: " + item.itemName);
-        return (true, 1);
+         return itemUsagePresenter.UseConsumable(item,pos);
     }
 
     private bool UseWeapon(ItemDataSO item, Vector3 pos)
     {
-        Debug.Log("Using weapon: " + item.itemName);
-        return false;
+        return itemUsagePresenter.UseWeapon(item,pos);
     }
 
     private void OnDestroy()
