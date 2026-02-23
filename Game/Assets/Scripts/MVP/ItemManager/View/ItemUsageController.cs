@@ -4,6 +4,7 @@ public class ItemUsageController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private HotbarView hotbarView;
+    [SerializeField] private CropPlowingView cropPlowingView;
 
     [Header("Settings")]
     [SerializeField] private LayerMask farmableGroundLayer;
@@ -40,7 +41,12 @@ public class ItemUsageController : MonoBehaviour
             return;
         }
 
-        itemUsagePresenter = new ItemUsagePresenter(new ItemUsageService(new UseToolService()));
+        // Resolve CropPlowingView if not assigned in Inspector
+        if (cropPlowingView == null)
+            cropPlowingView = Object.FindFirstObjectByType<CropPlowingView>();
+
+        // Build UseToolService — inject the view so UseHoe resolves the presenter lazily
+        itemUsagePresenter = new ItemUsagePresenter(new ItemUsageService(new UseToolService(cropPlowingView)));
         presenter.OnItemUsed += HandleItemUsed;
         isSubscribed = true;
         Debug.Log("ItemUsageController: Subscribed to Hotbar");

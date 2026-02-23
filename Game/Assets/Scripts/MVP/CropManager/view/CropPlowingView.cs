@@ -21,6 +21,7 @@ public class CropPlowingView : MonoBehaviour
     [SerializeField] private bool showDebugLogs = false;
     
     private CropPlowingPresenter presenter;
+    public CropPlowingPresenter GetPresenter() => presenter;
     private Transform playerTransform;
     private Vector2Int lastPlowedTile = new Vector2Int(int.MinValue, int.MinValue);
     private float holdTimer = 0f;
