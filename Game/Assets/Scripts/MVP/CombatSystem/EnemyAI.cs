@@ -22,7 +22,8 @@ public class EnemyAI : MonoBehaviour
     [SerializeField] private float guardLookDuration = 1f;
 
     [Header("Combat")]
-    [SerializeField] private float hitAlertDuration = 5f; // How long to chase after being hit
+    [SerializeField] private float hitAlertDuration = 5f;
+    [SerializeField] private float knockbackDuration = 0.3f;
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
@@ -49,6 +50,10 @@ public class EnemyAI : MonoBehaviour
     private bool isAlerted = false;
     private float alertTimer = 0f;
 
+    // Knockback
+    private bool isKnockedBack = false;
+    private float knockbackTimer = 0f;
+
     private enum EnemyState
     {
         Guard,
@@ -59,9 +64,9 @@ public class EnemyAI : MonoBehaviour
 
     private enum GuardBehavior
     {
-        NoCheck,      // Just stand, no looking
-        OneCheck,     // Look one direction
-        BothCheck     // Look both directions
+        NoCheck,
+        OneCheck,
+        BothCheck
     }
 
     #region Unity Lifecycle
@@ -76,16 +81,13 @@ public class EnemyAI : MonoBehaviour
         if (spriteRenderer == null)
             spriteRenderer = GetComponent<SpriteRenderer>();
 
-        // Find player with PlayerEntity tag
         GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
         if (playerObj != null)
             player = playerObj.transform;
 
-        // Setup wandering
         startPosition = transform.position;
         GenerateNewWanderTarget();
         
-        // Start with guard state
         currentState = EnemyState.Guard;
         StartGuard();
     }
@@ -95,9 +97,20 @@ public class EnemyAI : MonoBehaviour
         if (player == null)
             return;
 
+        // Handle knockback timer
+        if (isKnockedBack)
+        {
+            knockbackTimer -= Time.deltaTime;
+            if (knockbackTimer <= 0f)
+            {
+                isKnockedBack = false;
+            }
+            return; // Skip all AI logic while knocked back
+        }
+
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
 
-        // Handle combat alert
+        // Handle combat alert timer
         if (isAlerted)
         {
             alertTimer -= Time.deltaTime;
@@ -132,6 +145,10 @@ public class EnemyAI : MonoBehaviour
 
     private void FixedUpdate()
     {
+        // Don't override velocity while knocked back
+        if (isKnockedBack)
+            return;
+
         switch (currentState)
         {
             case EnemyState.Wandering:
@@ -144,7 +161,6 @@ public class EnemyAI : MonoBehaviour
 
             case EnemyState.Guard:
             case EnemyState.Attacking:
-                // Stop moving
                 rb.linearVelocity = Vector2.Lerp(rb.linearVelocity, Vector2.zero, Time.fixedDeltaTime * 10f);
                 break;
         }
@@ -156,24 +172,20 @@ public class EnemyAI : MonoBehaviour
 
     private void HandleGuardState(float distanceToPlayer)
     {
-        // If alerted (hit), immediately start chasing
         if (isAlerted)
         {
             currentState = EnemyState.Chasing;
             return;
         }
 
-        // Detect player in range AND in line of sight
         if (distanceToPlayer <= detectionRange && CanSeePlayer())
         {
             currentState = EnemyState.Chasing;
             return;
         }
 
-        // Update guard timer
         guardTimer -= Time.deltaTime;
 
-        // Guard duration finished, start wandering
         if (guardTimer <= 0f)
         {
             currentState = EnemyState.Wandering;
@@ -183,24 +195,20 @@ public class EnemyAI : MonoBehaviour
 
     private void HandleWanderingState(float distanceToPlayer)
     {
-        // If alerted (hit), immediately start chasing
         if (isAlerted)
         {
             currentState = EnemyState.Chasing;
             return;
         }
 
-        // Detect player in range AND in line of sight
         if (distanceToPlayer <= detectionRange && CanSeePlayer())
         {
             currentState = EnemyState.Chasing;
             return;
         }
 
-        // Check if reached wander target
         if (Vector2.Distance(transform.position, wanderTarget) < 0.3f)
         {
-            // Switch to guarding
             currentState = EnemyState.Guard;
             StartGuard();
         }
@@ -208,35 +216,20 @@ public class EnemyAI : MonoBehaviour
 
     private void HandleChasingState(float distanceToPlayer)
     {
-        // Enter attack range
         if (distanceToPlayer <= attackRange)
         {
             currentState = EnemyState.Attacking;
             return;
         }
 
-        // Lost player - check if still alerted and within pursuit range
         if (distanceToPlayer > detectionRange + 2f)
         {
-            // If no longer alerted, go back to guarding
-            if (!isAlerted)
-            {
-                currentState = EnemyState.Guard;
-                StartGuard();
-                return;
-            }
-            else
-            {
-                // If still alerted but out of range, stop chasing and go back
-                // This prevents endless pursuit
-                currentState = EnemyState.Guard;
-                StartGuard();
-                isAlerted = false; // Reset alert so they don't immediately chase again
-                return;
-            }
+            currentState = EnemyState.Guard;
+            StartGuard();
+            isAlerted = false;
+            return;
         }
 
-        // Can't see player through obstacles but still in range
         if (!CanSeePlayer() && distanceToPlayer > detectionRange)
         {
             currentState = EnemyState.Guard;
@@ -247,7 +240,6 @@ public class EnemyAI : MonoBehaviour
 
     private void HandleAttackingState(float distanceToPlayer)
     {
-        // Player moved out of attack range
         if (distanceToPlayer > attackRange + 0.5f)
         {
             currentState = EnemyState.Chasing;
@@ -256,17 +248,22 @@ public class EnemyAI : MonoBehaviour
 
     #endregion
 
-    #region Hit Detection
+    #region Hit & Knockback
 
     /// <summary>
     /// Called when enemy takes damage - triggers combat alert
     /// </summary>
     public void OnHit()
     {
+        // Trigger alert
         isAlerted = true;
         alertTimer = hitAlertDuration;
 
-        // Immediately start chasing if not already
+        // Trigger knockback pause
+        isKnockedBack = true;
+        knockbackTimer = knockbackDuration;
+
+        // Immediately start chasing after knockback
         if (currentState != EnemyState.Chasing && currentState != EnemyState.Attacking)
         {
             currentState = EnemyState.Chasing;
@@ -279,22 +276,15 @@ public class EnemyAI : MonoBehaviour
 
     private void StartGuard()
     {
-        // Randomly pick guard behavior
         int randomBehavior = Random.Range(0, 3);
         guardBehavior = (GuardBehavior)randomBehavior;
 
-        // Base guard duration
         guardTimer = guardDuration;
 
-        // Add extra time for looking behaviors
         if (guardBehavior == GuardBehavior.OneCheck)
-        {
             guardTimer += guardLookDuration;
-        }
         else if (guardBehavior == GuardBehavior.BothCheck)
-        {
             guardTimer += guardLookDuration * 2f;
-        }
 
         guardLookTimer = 0f;
         isLookingLeft = false;
@@ -306,11 +296,9 @@ public class EnemyAI : MonoBehaviour
         switch (guardBehavior)
         {
             case GuardBehavior.NoCheck:
-                // Just stand, keep current direction
                 break;
 
             case GuardBehavior.OneCheck:
-                // Look one direction for guardLookDuration then stand
                 if (guardLookTimer < guardLookDuration)
                 {
                     guardDirection = isLookingLeft ? -1 : 1;
@@ -318,44 +306,35 @@ public class EnemyAI : MonoBehaviour
                 }
                 else
                 {
-                    // Stop looking, go back to neutral
                     guardDirection = 1;
                 }
                 break;
 
             case GuardBehavior.BothCheck:
-                // Look left, then right, taking longer
                 float totalLookTime = guardLookDuration * 2f;
                 guardLookTimer += Time.deltaTime;
 
                 if (guardLookTimer < guardLookDuration)
                 {
-                    // First half: look left
                     guardDirection = -1;
                     isLookingLeft = true;
                 }
                 else if (guardLookTimer < totalLookTime)
                 {
-                    // Second half: look right
                     guardDirection = 1;
                     isLookingLeft = false;
                 }
                 else
                 {
-                    // Done looking, return to neutral
                     guardDirection = 1;
                 }
                 break;
         }
 
-        // Update facing direction
         facingDirection = new Vector2(guardDirection, 0f);
 
-        // Flip sprite
         if (spriteRenderer != null)
-        {
             spriteRenderer.flipX = guardDirection > 0;
-        }
     }
 
     #endregion
@@ -370,11 +349,9 @@ public class EnemyAI : MonoBehaviour
         Vector2 directionToPlayer = (player.position - transform.position).normalized;
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
 
-        // Check if player is in field of view cone
         if (!IsInFieldOfView(directionToPlayer))
             return false;
 
-        // Raycast to check for obstacles between enemy and player
         RaycastHit2D hit = Physics2D.Raycast(
             transform.position,
             directionToPlayer,
@@ -382,16 +359,12 @@ public class EnemyAI : MonoBehaviour
             obstacleLayer
         );
 
-        // If raycast hit something before reaching player, can't see
         return hit.collider == null;
     }
 
     private bool IsInFieldOfView(Vector2 directionToPlayer)
     {
-        // Calculate angle between facing direction and player direction
         float angle = Vector2.Angle(facingDirection, directionToPlayer);
-
-        // Check if within field of view cone
         return angle <= fieldOfViewAngle / 2f;
     }
 
@@ -401,20 +374,15 @@ public class EnemyAI : MonoBehaviour
 
     private void GenerateNewWanderTarget()
     {
-        // Random angle
         float randomAngle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
-        
-        // Random distance within wander range
         float randomDistance = Random.Range(1f, wanderRange);
         
-        // Calculate new target relative to start position
         wanderTarget = startPosition + new Vector3(
             Mathf.Cos(randomAngle) * randomDistance,
             Mathf.Sin(randomAngle) * randomDistance,
             0f
         );
 
-        // Store direction for animation
         currentWanderDirection = (wanderTarget - transform.position).normalized;
     }
 
@@ -426,12 +394,9 @@ public class EnemyAI : MonoBehaviour
         Vector2 direction = (wanderTarget - transform.position).normalized;
         rb.linearVelocity = direction * wanderSpeed;
 
-        // Store facing direction and flip sprite
         facingDirection = direction;
         if (spriteRenderer != null)
-        {
             spriteRenderer.flipX = direction.x > 0;
-        }
     }
 
     #endregion
@@ -446,12 +411,9 @@ public class EnemyAI : MonoBehaviour
         Vector2 direction = (player.position - transform.position).normalized;
         rb.linearVelocity = direction * chaseSpeed;
 
-        // Store facing direction and flip sprite
         facingDirection = direction;
         if (spriteRenderer != null)
-        {
             spriteRenderer.flipX = direction.x > 0;
-        }
     }
 
     #endregion
@@ -463,11 +425,8 @@ public class EnemyAI : MonoBehaviour
         if (animator == null)
             return;
 
-        // Update guard facing when in guard state
         if (currentState == EnemyState.Guard)
-        {
             UpdateGuardFacing();
-        }
 
         bool isMoving = currentState == EnemyState.Wandering || currentState == EnemyState.Chasing;
         animator.SetBool("isWalking", isMoving);
@@ -479,32 +438,33 @@ public class EnemyAI : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        // Detection range
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, detectionRange);
 
-        // Attack range
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
 
-        // Wander range
         if (Application.isPlaying)
         {
             Gizmos.color = Color.green;
             Gizmos.DrawWireSphere(startPosition, wanderRange);
 
-            // Draw line to current wander target
             Gizmos.color = Color.blue;
             Gizmos.DrawLine(transform.position, wanderTarget);
 
-            // Draw field of view cone
             DrawFieldOfViewCone();
 
-            // Show alert status
+            // Red dot = alerted, Orange dot = knocked back
             if (isAlerted)
             {
                 Gizmos.color = Color.red;
                 Gizmos.DrawWireSphere(transform.position, 0.3f);
+            }
+
+            if (isKnockedBack)
+            {
+                Gizmos.color = Color.yellow;
+                Gizmos.DrawWireSphere(transform.position, 0.5f);
             }
         }
     }
