@@ -76,7 +76,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -90,7 +90,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -155,10 +155,10 @@ TextureImporter:
       name: Portrait_0
       rect:
         serializedVersion: 2
-        x: 8
-        y: 127
-        width: 44
-        height: 56
+        x: 0
+        y: 128
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -177,10 +177,10 @@ TextureImporter:
       name: Portrait_1
       rect:
         serializedVersion: 2
-        x: 69
-        y: 127
-        width: 55
-        height: 63
+        x: 64
+        y: 128
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -199,10 +199,10 @@ TextureImporter:
       name: Portrait_2
       rect:
         serializedVersion: 2
-        x: 72
-        y: 180
-        width: 9
-        height: 11
+        x: 128
+        y: 128
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -221,10 +221,10 @@ TextureImporter:
       name: Portrait_3
       rect:
         serializedVersion: 2
-        x: 116
-        y: 176
-        width: 9
-        height: 9
+        x: 192
+        y: 128
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -243,10 +243,10 @@ TextureImporter:
       name: Portrait_4
       rect:
         serializedVersion: 2
-        x: 132
-        y: 127
-        width: 48
-        height: 58
+        x: 0
+        y: 64
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -265,10 +265,10 @@ TextureImporter:
       name: Portrait_5
       rect:
         serializedVersion: 2
-        x: 200
-        y: 127
-        width: 44
-        height: 56
+        x: 64
+        y: 64
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -287,10 +287,10 @@ TextureImporter:
       name: Portrait_6
       rect:
         serializedVersion: 2
-        x: 65
-        y: 162
-        width: 9
-        height: 9
+        x: 128
+        y: 64
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -309,10 +309,10 @@ TextureImporter:
       name: Portrait_7
       rect:
         serializedVersion: 2
-        x: 8
-        y: 63
-        width: 44
-        height: 56
+        x: 192
+        y: 64
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -331,10 +331,10 @@ TextureImporter:
       name: Portrait_8
       rect:
         serializedVersion: 2
-        x: 72
-        y: 63
-        width: 44
-        height: 56
+        x: 0
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -353,10 +353,10 @@ TextureImporter:
       name: Portrait_9
       rect:
         serializedVersion: 2
-        x: 136
-        y: 63
-        width: 44
-        height: 56
+        x: 64
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -375,10 +375,10 @@ TextureImporter:
       name: Portrait_10
       rect:
         serializedVersion: 2
-        x: 200
-        y: 63
-        width: 44
-        height: 56
+        x: 128
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -393,77 +393,11 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
-    - serializedVersion: 2
-      name: Portrait_11
-      rect:
-        serializedVersion: 2
-        x: 8
-        y: 0
-        width: 44
-        height: 55
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 3ba5658fe0170a270800000000000000
-      internalID: 8259726025707379379
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Portrait_12
-      rect:
-        serializedVersion: 2
-        x: 72
-        y: 0
-        width: 44
-        height: 55
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: feb3c816418dbaad0800000000000000
-      internalID: -2689818770376213521
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Portrait_13
-      rect:
-        serializedVersion: 2
-        x: 136
-        y: 0
-        width: 44
-        height: 55
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 7166f1ccebb2375d0800000000000000
-      internalID: -3066058822840785385
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 37579ac592957f644a3c98d426ddc119
     internalID: 0
     vertices: []
     indices: 
@@ -476,9 +410,6 @@ TextureImporter:
       Portrait_0: -9180426125723624345
       Portrait_1: -7200388489344414348
       Portrait_10: -1229185169664441540
-      Portrait_11: 8259726025707379379
-      Portrait_12: -2689818770376213521
-      Portrait_13: -3066058822840785385
       Portrait_2: -6013459150365757729
       Portrait_3: -1574949385015627090
       Portrait_4: 2508781651783504918
