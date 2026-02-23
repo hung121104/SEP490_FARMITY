@@ -17,7 +17,7 @@ MonoBehaviour:
   icon: {fileID: 6761164967045977113, guid: 7621cbce9a49a844a922c7b2adf4cc34, type: 3}
   description: Ready to become an carriage
   maxStack: 99
-  isStackable: 0
+  isStackable: 1
   quality: 0
   basePrice: 200
   buyPrice: 200

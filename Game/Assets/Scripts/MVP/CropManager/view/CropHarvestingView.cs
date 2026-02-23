@@ -6,13 +6,17 @@ using Photon.Pun;
 public class CropHarvestingView : MonoBehaviourPun
 {
     [Header("Harvest Settings")]
-    public float checkRadius = 1.5f; // radius (in world units) to search for crops
+    public float checkRadius = 2f; // radius (in world units) to search for crops
     public KeyCode harvestKey = KeyCode.F;
+    public bool allowHoldToHarvest = true;
+    [Tooltip("How often (seconds) to attempt harvesting while holding the harvest key.")]
+    public float harvestRepeatInterval = 0.15f;
     [Tooltip("Tag to find the player GameObject (used to locate CenterPoint child)")]
     public string playerTag = "PlayerEntity";
     [Tooltip("How often (seconds) to scan for nearby harvestable crops")]
     public float checkInterval = 0.12f; // default ~8 checks/sec
     private float nextScanTime = 0f;
+    private float holdTimer = 0f;
 
     [Header("UI")]
     public Canvas uiCanvas; // optional: assign a screen-space canvas; if null one will be created on the main camera
@@ -27,6 +31,7 @@ public class CropHarvestingView : MonoBehaviourPun
     private CropManagerView cropManagerView;
     private ChunkDataSyncManager syncManager;
     private ChunkLoadingManager loadingManager;
+    private InventoryGameView inventoryGameView;
     private Transform playerTransform;
 
     void Awake()
@@ -35,6 +40,10 @@ public class CropHarvestingView : MonoBehaviourPun
         cropManagerView = FindAnyObjectByType<CropManagerView>();
         syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
         loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
+        inventoryGameView = FindAnyObjectByType<InventoryGameView>();
+
+        if (inventoryGameView == null)
+            Debug.LogWarning("[CropHarvestingView] InventoryGameView not found in scene! Harvested items will not be added to inventory.");
     }
 
     void Start()
@@ -61,19 +70,63 @@ public class CropHarvestingView : MonoBehaviourPun
             ScanForNearbyHarvestable();
         }
 
-        if (Input.GetKeyDown(harvestKey))
+        if (allowHoldToHarvest)
         {
-            Vector3 target = GetDirectionalTileForHarvesting();
-            if (target != Vector3.zero)
+            if (Input.GetKeyDown(harvestKey))
             {
-                // Only attempt harvest if there's a ready crop
-                int wx = Mathf.FloorToInt(target.x);
-                int wy = Mathf.FloorToInt(target.y);
-                if (worldDataManager != null && worldDataManager.HasCropAtWorldPosition(target) && cropManagerView.IsCropReadyToHarvest(wx, wy))
+                // Immediate harvest on key down
+                HandleHarvestInput();
+                holdTimer = harvestRepeatInterval;
+            }
+
+            if (Input.GetKey(harvestKey))
+            {
+                holdTimer -= Time.deltaTime;
+                if (holdTimer <= 0f)
                 {
-                    PerformHarvest(target);
+                    HandleHarvestInput();
+                    holdTimer = harvestRepeatInterval;
                 }
             }
+
+            if (Input.GetKeyUp(harvestKey))
+            {
+                holdTimer = 0f;
+                lastHarvestTile = new Vector2Int(int.MinValue, int.MinValue);
+            }
+        }
+        else
+        {
+            if (Input.GetKeyDown(harvestKey))
+            {
+                HandleHarvestInput();
+            }
+
+            if (Input.GetKeyUp(harvestKey))
+            {
+                lastHarvestTile = new Vector2Int(int.MinValue, int.MinValue);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Evaluates the tile under the cursor and performs a harvest if the crop is ready.
+    /// Called on immediate key-down and on every hold-repeat tick.
+    /// </summary>
+    private void HandleHarvestInput()
+    {
+        Vector3 target = GetDirectionalTileForHarvesting();
+        if (target == Vector3.zero) return;
+
+        int wx = Mathf.FloorToInt(target.x);
+        int wy = Mathf.FloorToInt(target.y);
+
+        if (worldDataManager != null
+            && worldDataManager.HasCropAtWorldPosition(target)
+            && cropManagerView != null
+            && cropManagerView.IsCropReadyToHarvest(wx, wy))
+        {
+            PerformHarvest(target);
         }
     }
 
@@ -202,9 +255,22 @@ public class CropHarvestingView : MonoBehaviourPun
 
         int worldX = Mathf.FloorToInt(tilePos.x);
         int worldY = Mathf.FloorToInt(tilePos.y);
-
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
 
+        // ── Resolve the harvested item BEFORE removing the crop data ──
+        ItemDataSO harvestedItem = null;
+        if (worldDataManager.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData)
+            && cropManagerView != null
+            && !string.IsNullOrEmpty(tileData.PlantId))
+        {
+            PlantDataSO plantData = cropManagerView.GetPlantData(tileData.PlantId);
+            if (plantData != null)
+                harvestedItem = plantData.HarvestedItem;
+            else
+                Debug.LogWarning($"[CropHarvestingView] No PlantDataSO found for plantId '{tileData.PlantId}'.");
+        }
+
+        // ── Remove the crop from world data ──
         bool removed = worldDataManager.RemoveCropAtWorldPosition(worldPos);
         if (!removed)
         {
@@ -227,69 +293,42 @@ public class CropHarvestingView : MonoBehaviourPun
             loadingManager.RefreshChunkVisuals(chunkPos);
         }
 
+        // ── Add the harvested item to the player's inventory ──
+        if (harvestedItem != null)
+        {
+            if (inventoryGameView != null)
+            {
+                bool added = inventoryGameView.AddItem(harvestedItem, 1);
+                if (!added)
+                    Debug.LogWarning($"[CropHarvestingView] Inventory full — could not add '{harvestedItem.itemName}'.");
+                else
+                    Debug.Log($"[CropHarvestingView] Added '{harvestedItem.itemName}' to inventory from harvest at ({worldX},{worldY}).");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[CropHarvestingView] Crop at ({worldX},{worldY}) has no HarvestedItem set in its PlantDataSO.");
+        }
+
         HidePrompt();
     }
 
     /// <summary>
-    /// Determine directional tile to harvest using same 8-direction logic as plowing.
-    /// Uses player's CenterPoint if available; returns Vector3.zero if invalid.
+    /// Determine directional tile to harvest using 8-direction logic.
+    /// Delegates to the shared <see cref="CropTileSelector"/> utility.
     /// </summary>
     private Vector3 GetDirectionalTileForHarvesting()
     {
-        // Use cached playerTransform from Awake
         if (Camera.main == null || playerTransform == null)
-        {
             return Vector3.zero;
-        }
 
         Vector3 playerPos = playerTransform.position;
         Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.z = 0;
 
-        int playerTileX = Mathf.RoundToInt(playerPos.x);
-        int playerTileY = Mathf.RoundToInt(playerPos.y);
-
-        Vector2 direction = new Vector2(mouseWorldPos.x - playerPos.x, mouseWorldPos.y - playerPos.y);
-        float distance = direction.magnitude;
-
-        // if mouse very close, target player's tile
-        if (distance < 0.5f)
-        {
-            Vector2Int playerTileCoords = new Vector2Int(playerTileX, playerTileY);
-            if (playerTileCoords == lastHarvestTile)
-                return Vector3.zero;
-
-            lastHarvestTile = playerTileCoords;
-            return new Vector3(playerTileX, playerTileY, 0);
-        }
-
-        direction.Normalize();
-
-        int offsetX = 0;
-        int offsetY = 0;
-        if (direction.x > 0.4f) offsetX = 1;
-        else if (direction.x < -0.4f) offsetX = -1;
-        if (direction.y > 0.4f) offsetY = 1;
-        else if (direction.y < -0.4f) offsetY = -1;
-
-        int targetX = playerTileX + offsetX;
-        int targetY = playerTileY + offsetY;
-        Vector2Int targetTile = new Vector2Int(targetX, targetY);
-
-        Vector3 targetTileCenter = new Vector3(targetX, targetY, 0);
-        float distanceToTarget = Vector3.Distance(playerPos, targetTileCenter);
-
-        if (distanceToTarget > checkRadius)
-        {
-            return Vector3.zero;
-        }
-
-        if (targetTile == lastHarvestTile)
-        {
-            return Vector3.zero;
-        }
-
-        lastHarvestTile = targetTile;
-        return new Vector3(targetX, targetY, 0);
+        return CropTileSelector.GetDirectionalTile(
+            playerPos,
+            mouseWorldPos,
+            checkRadius,
+            ref lastHarvestTile);
     }
 }

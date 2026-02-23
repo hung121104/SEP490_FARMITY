@@ -349,7 +349,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     /// <summary>
     /// Get plant data by PlantId string
     /// </summary>
-    private PlantDataSO GetPlantData(string plantId)
+    public PlantDataSO GetPlantData(string plantId)
     {
         if (plantDatabase == null || string.IsNullOrEmpty(plantId))
         {

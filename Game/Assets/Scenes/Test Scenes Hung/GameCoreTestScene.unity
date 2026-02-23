@@ -1786,8 +1786,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5b475eea467dbc4bb7840083c6737ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  checkRadius: 1.5
-  harvestKey: 102
+  checkRadius: 2
+  harvestKey: 324
+  allowHoldToHarvest: 1
+  harvestRepeatInterval: 0.15
   playerTag: PlayerEntity
   checkInterval: 0.12
   uiCanvas: {fileID: 583161139}

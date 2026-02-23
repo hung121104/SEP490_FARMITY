@@ -307,119 +307,31 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Gets the tile in the direction of the mouse, within radius around player.
-    /// Returns the specific tile based on 8-directional input (or player's own tile).
+    /// Delegates to the shared <see cref="CropTileSelector"/> utility.
     /// </summary>
     private Vector3 GetDirectionalTileAroundPlayer(int maxRadius)
     {
         if (targetCamera == null || playerTransform == null)
         {
             if (showDebugLogs)
-            {
                 Debug.LogWarning("[CropPlantingView] Camera or Player not found. Cannot calculate tile.");
-            }
             return Vector3.zero;
         }
 
         Vector3 playerPos = playerTransform.position;
         Vector3 mouseWorldPos = ScreenToWorldPosition(Input.mousePosition);
 
-        // Get player tile position
-        int playerTileX = Mathf.RoundToInt(playerPos.x);
-        int playerTileY = Mathf.RoundToInt(playerPos.y);
+        Vector3 result = CropTileSelector.GetDirectionalTile(
+            playerPos,
+            mouseWorldPos,
+            plantingRange,
+            ref lastTriedArea,
+            maxRadius);
 
-        // Calculate direction from player to mouse
-        Vector2 direction = new Vector2(mouseWorldPos.x - playerPos.x, mouseWorldPos.y - playerPos.y);
-        float distance = direction.magnitude;
+        if (showDebugLogs && result != Vector3.zero)
+            Debug.Log($"[CropPlantingView] Planting at tile ({result.x}, {result.y})");
 
-        // If mouse is very close to player (within 0.5 units), plant at player's tile
-        if (distance < 0.5f)
-        {
-            Vector2Int playerTileCoords = new Vector2Int(playerTileX, playerTileY);
-            
-            if (playerTileCoords == lastTriedArea)
-            {
-                return Vector3.zero;
-            }
-            
-            lastTriedArea = playerTileCoords;
-            
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlantingView] Planting at player tile ({playerTileX}, {playerTileY})");
-            }
-            
-            return new Vector3(playerTileX, playerTileY, 0);
-        }
-
-        // Normalize direction
-        direction.Normalize();
-
-        // Determine offset based on 8-directional input
-        int offsetX = 0;
-        int offsetY = 0;
-
-        // Determine horizontal component
-        if (direction.x > 0.4f) offsetX = 1;
-        else if (direction.x < -0.4f) offsetX = -1;
-
-        // Determine vertical component
-        if (direction.y > 0.4f) offsetY = 1;
-        else if (direction.y < -0.4f) offsetY = -1;
-
-        // Clamp to max radius
-        offsetX = Mathf.Clamp(offsetX, -maxRadius, maxRadius);
-        offsetY = Mathf.Clamp(offsetY, -maxRadius, maxRadius);
-
-        int targetX = playerTileX + offsetX;
-        int targetY = playerTileY + offsetY;
-        Vector2Int targetTile = new Vector2Int(targetX, targetY);
-
-        // Check if target tile is within planting range from player position
-        Vector3 targetTileCenter = new Vector3(targetX, targetY, 0);
-        float distanceToTarget = Vector3.Distance(playerPos, targetTileCenter);
-        
-        if (distanceToTarget > plantingRange)
-        {
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlantingView] Target tile too far: {distanceToTarget:F2} > {plantingRange}");
-            }
-            return Vector3.zero;
-        }
-
-        // Prevent replanting same tile
-        if (targetTile == lastTriedArea)
-        {
-            return Vector3.zero;
-        }
-
-        lastTriedArea = targetTile;
-
-        Vector3 plantPosition = new Vector3(targetX, targetY, 0);
-
-        if (showDebugLogs)
-        {
-            string directionName = GetDirectionName(offsetX, offsetY);
-            Debug.Log($"[CropPlantingView] Planting {directionName} of player at ({targetX}, {targetY})");
-        }
-
-        return plantPosition;
-    }
-
-    /// <summary>
-    /// Gets a human-readable direction name for debugging.
-    /// </summary>
-    private string GetDirectionName(int offsetX, int offsetY)
-    {
-        if (offsetX == 0 && offsetY == 1) return "above";
-        if (offsetX == 0 && offsetY == -1) return "below";
-        if (offsetX == 1 && offsetY == 0) return "right";
-        if (offsetX == -1 && offsetY == 0) return "left";
-        if (offsetX == 1 && offsetY == 1) return "top-right";
-        if (offsetX == -1 && offsetY == 1) return "top-left";
-        if (offsetX == 1 && offsetY == -1) return "bottom-right";
-        if (offsetX == -1 && offsetY == -1) return "bottom-left";
-        return "at player";
+        return result;
     }
 
     /// <summary>
