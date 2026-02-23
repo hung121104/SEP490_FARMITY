@@ -5,6 +5,7 @@ import { Model, Types } from 'mongoose';
 import { World, WorldDocument } from './world.schema';
 import { CreateWorldDto } from './dto/create-world.dto';
 import { GetWorldDto } from './dto/get-world.dto';
+import { UpdateWorldDto } from './dto/update-world.dto';
 import { CharacterService } from '../character/character.service';
 
 @Injectable()
@@ -85,12 +86,78 @@ export class WorldService {
     }
   }
 
-  async getWorld(getWorldDto: GetWorldDto): Promise<World> {
+  async getWorld(getWorldDto: GetWorldDto): Promise<any> {
+
     if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
     const world = await this.worldModel.findById(getWorldDto._id).exec();
+
     if (!world) throw new RpcException({ status: 404, message: 'World not found' });
-    return world;
+
+    // Verify the requester is the owner of this world
+    const ownerObjId = getWorldDto.ownerId ? new Types.ObjectId(getWorldDto.ownerId) : undefined;
+
+    if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {
+      throw new RpcException({ status: 401, message: 'Not authorized to access this world' });
+    }
+
+    // Convert to plain object so we can attach extra properties
+    const result: any = world.toObject();
+
+    // Fetch all characters associated with this world
+    try {
+      const characters = await this.characterService.getAllByWorldId(world._id);
+      result.characters = characters;
+    } catch (err) {
+      console.error('[WorldService] Failed to fetch characters for world', err);
+      result.characters = [];
+    }
+    return result;
   }
+  async updateWorld(dto: UpdateWorldDto): Promise<any> {
+    if (!dto.worldId) throw new RpcException({ status: 400, message: 'worldId required' });
+    if (!dto.ownerId) throw new RpcException({ status: 400, message: 'ownerId required' });
+
+    const world = await this.worldModel.findById(dto.worldId).exec();
+    if (!world) throw new RpcException({ status: 404, message: 'World not found' });
+
+    const ownerObjId = new Types.ObjectId(dto.ownerId);
+    if (world.ownerId?.toString() !== ownerObjId.toString()) {
+      throw new RpcException({ status: 401, message: 'Not authorized to update this world' });
+    }
+
+    // Build partial update for world fields
+    const worldUpdate: Partial<World> = {};
+    if (dto.day !== undefined) worldUpdate.day = dto.day;
+    if (dto.month !== undefined) worldUpdate.month = dto.month;
+    if (dto.year !== undefined) worldUpdate.year = dto.year;
+    if (dto.hour !== undefined) worldUpdate.hour = dto.hour;
+    if (dto.minute !== undefined) worldUpdate.minute = dto.minute;
+    if (dto.gold !== undefined) worldUpdate.gold = dto.gold;
+
+    const updatedWorld = Object.keys(worldUpdate).length > 0
+      ? await this.worldModel.findByIdAndUpdate(dto.worldId, { $set: worldUpdate }, { new: true }).exec()
+      : world;
+
+    // Upsert up to 4 characters
+    const charactersResult: any[] = [];
+    if (dto.characters && dto.characters.length > 0) {
+      const capped = dto.characters.slice(0, 4);
+      for (const charDto of capped) {
+        try {
+          const c = await this.characterService.upsertCharacter(dto.worldId, charDto);
+          charactersResult.push(c);
+        } catch (err) {
+          console.error('[WorldService.updateWorld] upsertCharacter error', err);
+          throw new RpcException({ status: 400, message: `Failed to upsert character for accountId ${charDto.accountId}: ${(err as any)?.message ?? err}` });
+        }
+      }
+    }
+
+    const result: any = (updatedWorld as any).toObject ? (updatedWorld as any).toObject() : { ...(updatedWorld || {}) };
+    result.characters = charactersResult;
+    return result;
+  }
+
   async deleteWorld(getWorldDto: GetWorldDto): Promise<World | null> {
     if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
     const world = await this.worldModel.findById(getWorldDto._id).exec();
@@ -99,6 +166,10 @@ export class WorldService {
     if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {
       throw new RpcException({ status: 401, message: 'Not authorized to delete this world' });
     }
+    // Delete all characters associated with this world
+    const deletedCharactersCount = await this.characterService.deleteByWorldId(getWorldDto._id);
+    console.log(`[WorldService] Deleted ${deletedCharactersCount} character(s) for world ${getWorldDto._id}`);
+    // Delete the world itself
     const deleted = await this.worldModel.findByIdAndDelete(getWorldDto._id).exec();
     return deleted;
   }
@@ -106,4 +177,5 @@ export class WorldService {
     const ownerObjId = dto.ownerId ? new Types.ObjectId(dto.ownerId) : undefined;
     return this.worldModel.find({ ownerId: ownerObjId }).exec();
   }
+
 }

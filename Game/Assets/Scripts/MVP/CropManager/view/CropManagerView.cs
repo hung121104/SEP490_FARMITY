@@ -42,9 +42,6 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     [Header("Debug")]
     public bool showDebugLogs = true;
     
-    // Track when each crop was planted (worldX_worldY -> planting day)
-    private Dictionary<string, CropGrowthData> cropGrowthTracker = new Dictionary<string, CropGrowthData>();
-    
     // Visual representation (worldX_worldY -> GameObject)
     private Dictionary<string, GameObject> cropVisuals = new Dictionary<string, GameObject>();
 
@@ -186,50 +183,38 @@ public class CropManagerView : MonoBehaviourPunCallbacks
                 {
                     if (!tile.HasCrop) continue;
 
-                    string key = GetCropKey(tile.WorldX, tile.WorldY);
+                    Vector3 worldPos = new Vector3(tile.WorldX, tile.WorldY, 0);
                     
-                    // Initialize growth data if not tracked yet
-                    if (!cropGrowthTracker.ContainsKey(key))
-                    {
-                        cropGrowthTracker[key] = new CropGrowthData
-                        {
-                            cropTypeID = tile.CropTypeID,
-                            currentStage = tile.CropStage,
-                            totalAge = 0, // Total days since planting
-                            worldX = tile.WorldX,
-                            worldY = tile.WorldY
-                        };
-                    }
+                    // Increment age
+                    worldDataManager.IncrementCropAge(worldPos);
+                    
+                    // Get updated tile data
+                    if (!worldDataManager.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+                        continue;
 
-                    CropGrowthData growthData = cropGrowthTracker[key];
-                    growthData.totalAge++; // Increment total age each day
-
-                    // Check if crop should advance to next stage based on total age
-                    PlantDataSO plantData = GetPlantData(tile.CropTypeID);
-                    if (plantData != null && growthData.currentStage < plantData.GrowthStages.Count - 1)
+                    // Check if crop should advance to next stage
+                    PlantDataSO plantData = GetPlantData(tileData.CropTypeID);
+                    if (plantData != null && tileData.CropStage < plantData.GrowthStages.Count - 1)
                     {
                         // Check next stage to see if we should advance
-                        int nextStageIndex = growthData.currentStage + 1;
+                        int nextStageIndex = tileData.CropStage + 1;
                         GrowthStage nextStageData = plantData.GrowthStages[nextStageIndex];
                         
                         // Apply growth speed multiplier
                         int ageRequired = Mathf.RoundToInt(nextStageData.age / growthSpeedMultiplier);
                         
-                        if (growthData.totalAge >= ageRequired)
+                        if (tileData.TotalAge >= ageRequired)
                         {
                             // Advance to next stage
-                            growthData.currentStage = nextStageIndex;
+                            byte newStage = (byte)nextStageIndex;
                             
                             // Update in WorldDataManager
-                            worldDataManager.UpdateCropStage(
-                                new Vector3(tile.WorldX, tile.WorldY, 0), 
-                                (byte)growthData.currentStage
-                            );
+                            worldDataManager.UpdateCropStage(worldPos, newStage);
                             
                             // Broadcast crop stage update to other clients
                             if (PhotonNetwork.IsConnected && syncManager != null)
                             {
-                                syncManager.BroadcastCropStageUpdated(tile.WorldX, tile.WorldY, (byte)growthData.currentStage);
+                                syncManager.BroadcastCropStageUpdated(tile.WorldX, tile.WorldY, newStage);
                             }
                             
                             chunkModified = true;
@@ -237,27 +222,25 @@ public class CropManagerView : MonoBehaviourPunCallbacks
 
                             if (showDebugLogs)
                             {
-                                Debug.Log($"[CropManagerView] Crop {tile.CropTypeID} at ({tile.WorldX}, {tile.WorldY}) " +
-                                         $"advanced to stage {growthData.currentStage} (age: {growthData.totalAge} days)");
+                                Debug.Log($"[CropManagerView] Crop {tileData.CropTypeID} at ({tile.WorldX}, {tile.WorldY}) " +
+                                         $"advanced to stage {newStage} (age: {tileData.TotalAge} days)");
                             }
 
                             // Update visual
-                            UpdateCropVisual(tile.WorldX, tile.WorldY, plantData, growthData.currentStage);
+                            UpdateCropVisual(tile.WorldX, tile.WorldY, plantData, newStage);
 
                             // Check if fully grown (ready to harvest)
-                            if (growthData.currentStage >= plantData.GrowthStages.Count - 1)
+                            if (newStage >= plantData.GrowthStages.Count - 1)
                             {
                                 cropsHarvested++;
                                 if (showDebugLogs)
                                 {
-                                    Debug.Log($"[CropManagerView] Crop {tile.CropTypeID} at ({tile.WorldX}, {tile.WorldY}) " +
-                                             $"is ready to harvest! (Total age: {growthData.totalAge} days)");
+                                    Debug.Log($"[CropManagerView] Crop {tileData.CropTypeID} at ({tile.WorldX}, {tile.WorldY}) " +
+                                             $"is ready to harvest! (Total age: {tileData.TotalAge} days)");
                                 }
                             }
                         }
                     }
-
-                    cropGrowthTracker[key] = growthData;
                 }
 
                 // Refresh chunk visuals if modified
@@ -276,52 +259,11 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
-    /// Register a newly planted crop for growth tracking
-    /// </summary>
-    public void RegisterPlantedCrop(int worldX, int worldY, ushort cropTypeID)
-    {
-        string key = GetCropKey(worldX, worldY);
-        
-        cropGrowthTracker[key] = new CropGrowthData
-        {
-            cropTypeID = cropTypeID,
-            currentStage = 0,
-            totalAge = 0, // Start from day 0
-            worldX = worldX,
-            worldY = worldY
-        };
-
-        // Create visual
-        PlantDataSO plantData = GetPlantData(cropTypeID);
-        if (plantData != null)
-        {
-            // If ChunkLoadingManager is available, refresh that chunk's visuals
-            // Otherwise, create our own visual
-            if (chunkLoadingManager != null)
-            {
-                Vector2Int chunkPos = worldDataManager.WorldToChunkCoords(new Vector3(worldX, worldY, 0));
-                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
-            }
-            else
-            {
-                CreateCropVisual(worldX, worldY, plantData, 0);
-            }
-        }
-
-        if (showDebugLogs)
-        {
-            Debug.Log($"[CropManagerView] Registered new crop {cropTypeID} at ({worldX}, {worldY})");
-        }
-    }
-
-    /// <summary>
     /// Unregister a crop (when harvested or removed)
     /// </summary>
     public void UnregisterCrop(int worldX, int worldY)
     {
         string key = GetCropKey(worldX, worldY);
-        
-        cropGrowthTracker.Remove(key);
         
         // Remove visual or refresh chunk
         if (chunkLoadingManager != null)
@@ -430,16 +372,16 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     /// </summary>
     public bool IsCropReadyToHarvest(int worldX, int worldY)
     {
-        string key = GetCropKey(worldX, worldY);
+        if (worldDataManager == null) return false;
         
-        if (!cropGrowthTracker.ContainsKey(key)) return false;
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        if (!worldDataManager.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+            return false;
 
-        CropGrowthData growthData = cropGrowthTracker[key];
-        PlantDataSO plantData = GetPlantData(growthData.cropTypeID);
-        
+        PlantDataSO plantData = GetPlantData(tileData.CropTypeID);
         if (plantData == null) return false;
 
-        return growthData.currentStage >= plantData.GrowthStages.Count - 1;
+        return tileData.CropStage >= plantData.GrowthStages.Count - 1;
     }
 
     /// <summary>
@@ -447,16 +389,16 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     /// </summary>
     public float GetCropGrowthProgress(int worldX, int worldY)
     {
-        string key = GetCropKey(worldX, worldY);
+        if (worldDataManager == null) return 0f;
         
-        if (!cropGrowthTracker.ContainsKey(key)) return 0f;
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        if (!worldDataManager.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+            return 0f;
 
-        CropGrowthData growthData = cropGrowthTracker[key];
-        PlantDataSO plantData = GetPlantData(growthData.cropTypeID);
-        
+        PlantDataSO plantData = GetPlantData(tileData.CropTypeID);
         if (plantData == null || plantData.GrowthStages.Count == 0) return 0f;
 
-        return (float)growthData.currentStage / (plantData.GrowthStages.Count - 1);
+        return (float)tileData.CropStage / (plantData.GrowthStages.Count - 1);
     }
 
     /// <summary>
@@ -464,41 +406,33 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     /// </summary>
     public void ForceGrowCrop(int worldX, int worldY)
     {
-        string key = GetCropKey(worldX, worldY);
+        if (worldDataManager == null) return;
         
-        if (!cropGrowthTracker.ContainsKey(key))
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        if (!worldDataManager.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
         {
             Debug.LogWarning($"[CropManagerView] No crop at ({worldX}, {worldY}) to force grow");
             return;
         }
 
-        CropGrowthData growthData = cropGrowthTracker[key];
-        PlantDataSO plantData = GetPlantData(growthData.cropTypeID);
-        
+        PlantDataSO plantData = GetPlantData(tileData.CropTypeID);
         if (plantData == null) return;
 
-        if (growthData.currentStage < plantData.GrowthStages.Count - 1)
+        if (tileData.CropStage < plantData.GrowthStages.Count - 1)
         {
-            growthData.currentStage++;
+            byte newStage = (byte)(tileData.CropStage + 1);
             
             // Set age to the requirement for this stage
-            if (growthData.currentStage < plantData.GrowthStages.Count)
-            {
-                growthData.totalAge = plantData.GrowthStages[growthData.currentStage].age;
-            }
+            int newAge = newStage < plantData.GrowthStages.Count ? plantData.GrowthStages[newStage].age : tileData.TotalAge;
             
-            cropGrowthTracker[key] = growthData;
+            worldDataManager.UpdateCropStage(worldPos, newStage);
+            worldDataManager.UpdateCropAge(worldPos, newAge);
 
-            worldDataManager.UpdateCropStage(
-                new Vector3(worldX, worldY, 0), 
-                (byte)growthData.currentStage
-            );
-
-            UpdateCropVisual(worldX, worldY, plantData, growthData.currentStage);
+            UpdateCropVisual(worldX, worldY, plantData, newStage);
 
             if (showDebugLogs)
             {
-                Debug.Log($"[CropManagerView] Force grew crop at ({worldX}, {worldY}) to stage {growthData.currentStage} (age: {growthData.totalAge})");
+                Debug.Log($"[CropManagerView] Force grew crop at ({worldX}, {worldY}) to stage {newStage} (age: {newAge})");
             }
         }
     }
@@ -508,8 +442,6 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     /// </summary>
     public void ClearAllGrowthData()
     {
-        cropGrowthTracker.Clear();
-        
         foreach (var visual in cropVisuals.Values)
         {
             if (visual != null) Destroy(visual);
@@ -521,17 +453,4 @@ public class CropManagerView : MonoBehaviourPunCallbacks
             Debug.Log("[CropManagerView] Cleared all growth data");
         }
     }
-}
-
-/// <summary>
-/// Data structure to track individual crop growth
-/// </summary>
-[System.Serializable]
-public struct CropGrowthData
-{
-    public ushort cropTypeID;
-    public int currentStage;
-    public int totalAge; // Total days since planting
-    public int worldX;
-    public int worldY;
 }

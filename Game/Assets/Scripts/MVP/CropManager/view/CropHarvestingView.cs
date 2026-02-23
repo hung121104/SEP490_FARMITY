@@ -39,19 +39,20 @@ public class CropHarvestingView : MonoBehaviourPun
 
     void Start()
     {
-        if (!photonView.IsMine)
-        {
-            // only the local player should run the UI / input logic
-            enabled = false;
-            return;
-        }
-
+        // Find the local player (the one owned by this client)
+        FindLocalPlayer();
         SetupUIIfNeeded();
     }
 
     void Update()
     {
-        if (!photonView.IsMine) return;
+        // Re-check if player becomes null (e.g., respawn)
+        if (playerTransform == null)
+        {
+            FindLocalPlayer();
+        }
+
+        if (playerTransform == null) return;
 
         // Run proximity scan at the configured interval to reduce work per-frame
         if (Time.time >= nextScanTime)
@@ -78,7 +79,8 @@ public class CropHarvestingView : MonoBehaviourPun
 
     private void SetupUIIfNeeded()
     {
-        if (promptText != null) return;
+        // Check if promptText is valid and usable
+        if (promptText != null && promptText.gameObject != null) return;
 
         // Ensure there's a Canvas to host the prompt (screen-space overlay)
         if (uiCanvas == null)
@@ -120,25 +122,33 @@ public class CropHarvestingView : MonoBehaviourPun
         rt.sizeDelta = new Vector2(300, 30);
     }
 
+    /// <summary>
+    /// Finds the local player (the one controlled by this client) in multiplayer.
+    /// </summary>
+    private void FindLocalPlayer()
+    {
+        GameObject[] players = GameObject.FindGameObjectsWithTag(playerTag);
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                // Found the local player
+                Transform centerPoint = player.transform.Find("CenterPoint");
+                playerTransform = centerPoint != null ? centerPoint : player.transform;
+                return;
+            }
+        }
+    }
+
     private void ScanForNearbyHarvestable()
     {
         canHarvestNearby = false;
         currentHarvestTile = Vector3.zero;
 
-        if (worldDataManager == null || cropManagerView == null) return;
+        if (worldDataManager == null || cropManagerView == null || playerTransform == null) return;
 
-        // Determine player reference (try cached first)
-        if (playerTransform == null)
-        {
-            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
-            if (playerEntity != null)
-            {
-                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
-                playerTransform = centerPoint != null ? centerPoint : playerEntity.transform;
-            }
-        }
-
-        Vector3 pos = playerTransform != null ? playerTransform.position : transform.position;
+        Vector3 pos = playerTransform.position;
 
         // check the tile player stands on and immediate neighbors (3x3)
         int px = Mathf.RoundToInt(pos.x);
@@ -176,7 +186,8 @@ public class CropHarvestingView : MonoBehaviourPun
         if (promptText == null) return;
 
         promptText.enabled = true;
-        promptText.text = $"{harvestKey.ToString()} to harvest";
+        //harvest promt
+        promptText.text = $"{harvestKey.ToString()}";
     }
 
     private void HidePrompt()
@@ -225,16 +236,7 @@ public class CropHarvestingView : MonoBehaviourPun
     /// </summary>
     private Vector3 GetDirectionalTileForHarvesting()
     {
-        if (playerTransform == null)
-        {
-            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
-            if (playerEntity != null)
-            {
-                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
-                playerTransform = centerPoint != null ? centerPoint : playerEntity.transform;
-            }
-        }
-
+        // Use cached playerTransform from Awake
         if (Camera.main == null || playerTransform == null)
         {
             return Vector3.zero;

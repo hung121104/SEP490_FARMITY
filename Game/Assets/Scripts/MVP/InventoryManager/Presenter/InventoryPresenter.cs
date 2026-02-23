@@ -68,6 +68,7 @@ public class InventoryPresenter
         view.OnSortRequested += HandleSort;
         view.OnSlotHoverEnter += HandleSlotHoverEnter;
         view.OnSlotHoverExit += HandleSlotHoverExit;
+        view.OnItemDeleteRequested += HandleItemDelete;
     }
 
     private void UnsubscribeFromViewEvents()
@@ -82,6 +83,7 @@ public class InventoryPresenter
         view.OnSortRequested -= HandleSort;
         view.OnSlotHoverEnter -= HandleSlotHoverEnter;
         view.OnSlotHoverExit -= HandleSlotHoverExit;
+        view.OnItemDeleteRequested -= HandleItemDelete;
     }
 
     #endregion
@@ -100,7 +102,6 @@ public class InventoryPresenter
     private void HandleItemAdded(ItemModel item, int slotIndex)
     {
         view?.UpdateSlot(slotIndex, item);
-        view?.ShowNotification($"Added {item.ItemName} x{item.Quantity}");
     }
 
     private void HandleItemRemoved(ItemModel item, int slotIndex)
@@ -184,6 +185,7 @@ public class InventoryPresenter
     private void HandleSlotEndDrag()
     {
         view?.HideDragPreview();
+        draggedSlot = -1;
     }
 
     private void HandleSlotDrop(int targetSlotIndex)
@@ -222,16 +224,64 @@ public class InventoryPresenter
             OnItemDropped?.Invoke(item);
             service.RemoveItemFromSlot(slotIndex, 1);
         }
-        else if (item != null && item.IsQuestItem)
-        {
-            view?.ShowNotification("Cannot drop quest items!");
-        }
     }
 
     private void HandleSort()
     {
         service.SortInventory();
         HideCurrentItemDetail();
+    }
+
+    #endregion
+
+    #region Delete Event Handler
+
+    private void HandleItemDelete(int slotIndex)
+    {
+        var item = service.GetItemAtSlot(slotIndex);
+
+        if (item == null)
+        {
+            Debug.LogWarning($"[InventoryPresenter] No item at slot {slotIndex} to delete");
+            return;
+        }
+
+        // Prevent deletion of quest items and artifacts
+        if (item.IsQuestItem)
+        {
+            Debug.LogWarning($"[InventoryPresenter] Cannot delete quest item: {item.ItemName}");
+            return;
+        }
+
+        if (item.IsArtifact)
+        {
+            Debug.LogWarning($"[InventoryPresenter] Cannot delete artifact: {item.ItemName}");
+            return;
+        }
+
+        // Delete the entire stack
+        int quantity = item.Quantity;
+        string itemName = item.ItemName;
+
+        bool success = service.RemoveItemFromSlot(slotIndex, quantity);
+
+        if (success)
+        {
+            Debug.Log($"[InventoryPresenter] Deleted {itemName} x{quantity} from slot {slotIndex}");
+
+            view?.HideDragPreview();
+
+            // Hide tooltip if it was showing
+            if (currentTooltipSlot == slotIndex)
+            {
+                HideCurrentItemDetail();               
+            }
+        }
+        else
+        {
+            Debug.LogError($"[InventoryPresenter] Failed to delete item from slot {slotIndex}");
+        }
+        draggedSlot = -1;
     }
 
     #endregion
@@ -262,6 +312,17 @@ public class InventoryPresenter
         if (currentItemPresenter != null)
         {
             currentItemPresenter.HideItemDetails();
+            currentItemPresenter.RemoveView();
+            currentItemPresenter = null;
+        }
+        currentTooltipSlot = -1;
+    }
+
+    private void HideCurrentItemDetailImmediate()
+    {
+        if (currentItemPresenter != null)
+        {
+            currentItemPresenter.HideItemDetailsImmediate();
             currentItemPresenter.RemoveView();
             currentItemPresenter = null;
         }
@@ -370,6 +431,23 @@ public class InventoryPresenter
         return service.GetItemCount(itemId);
     }
 
+    public void CancelAllActions()
+    {
+        // 1. Reset dragged slot state
+        draggedSlot = -1;
+
+        // 2. Reset selected slot state
+        selectedSlot = -1;
+
+        // 3. Hide item detail tooltip immediately
+        HideCurrentItemDetailImmediate();
+
+        // 4. Call view to cancel all visual actions
+        view?.CancelAllActions();
+
+        Debug.Log("[InventoryPresenter] All inventory actions cancelled");
+    }
+
     #endregion
 
     #region Helper Methods
@@ -387,6 +465,7 @@ public class InventoryPresenter
 
     public void Cleanup()
     {
+        CancelAllActions();
         RemoveView();
         HideCurrentItemDetail();
     }

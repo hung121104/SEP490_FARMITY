@@ -10,8 +10,8 @@ public class CookingDataSO : ItemDataSO
     public StatModifier[] statModifiers;
 
     [Header("Cooking Recipe")]
-    public Recipe cookingRecipe;    
+    public RecipeDataSO cookingRecipe;    
 
     public override ItemType GetItemType() => ItemType.Cooking;
     public ItemCategory GetItemCategory() => ItemCategory.Cooking;
-}   
+}
