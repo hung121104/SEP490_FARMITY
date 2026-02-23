@@ -47,6 +47,8 @@ MonoBehaviour:
   - RPC_RespondHarvestValidation
   - RPC_RequestFetchPlayer
   - RPC_RequestFetch
+  - RPC_PlayerEntered
+  - RPC_PlayerExited
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1
