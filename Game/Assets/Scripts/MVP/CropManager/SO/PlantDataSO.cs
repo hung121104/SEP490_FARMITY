@@ -20,6 +20,16 @@ public class PlantDataSO : ScriptableObject
     [Tooltip("The item prefab to spawn when the plant is harvested.")]
     public ItemDataSO HarvestedItem;
 
+    [Header("Pollen / Crossbreeding")]
+    [Tooltip("Whether this plant produces pollen at the flowering stage (for the crossbreeding system).")]
+    public bool canProducePollen = false;
+
+    [Tooltip("The growth stage index at which pollen can be collected. Defaults to 3 (flowering).")]
+    public int pollenStage = 3;
+
+    [Tooltip("The pollen item given to the player when they collect pollen from this plant.")]
+    public PollenDataSO PollenItem;
+
     [Header("Season")]
     [Tooltip("The season in which this plant can grow.")]
     public Season GrowingSeason;

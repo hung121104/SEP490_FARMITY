@@ -31,4 +31,7 @@ MonoBehaviour:
     stageSprite: {fileID: -8963360674610236421, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
     age: 4
   HarvestedItem: {fileID: 11400000, guid: 4c3ae79185f20c145a7b58859ac6ab8f, type: 2}
+  canProducePollen: 1
+  pollenStage: 3
+  PollenItem: {fileID: 11400000, guid: a8a9b27bbb8422e409aacf0aea2a37ca, type: 2}
   GrowingSeason: 0

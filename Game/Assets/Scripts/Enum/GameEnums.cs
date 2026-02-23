@@ -7,6 +7,7 @@ public enum ItemType
     Tool,           // Hoe, Watering Can, Pickaxe, Axe
     Seed,           // All plantable seeds
     Crop,           // Harvested crops
+    Pollen,         // Collected from flowering plants (stage 3) — used for crossbreeding
     Consumable,     // Food, drinks
     Material,       // Wood, stone, ore
     Weapon,         // Swords, rings

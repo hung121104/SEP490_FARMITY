@@ -66,24 +66,7 @@ public class UseToolService : IUseToolService
         return true;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────
-
-    /// <summary>Finds the Photon-local player by tag, returns its CenterPoint (or root).</summary>
-    private Transform FindLocalPlayer()
-    {
-        if (string.IsNullOrEmpty(playerTag)) return null;
-
-        foreach (GameObject player in GameObject.FindGameObjectsWithTag(playerTag))
-        {
-            PhotonView pv = player.GetComponent<PhotonView>();
-            if (pv != null && pv.IsMine)
-            {
-                Transform center = player.transform.Find("CenterPoint");
-                return center != null ? center : player.transform;
-            }
-        }
-        return null;
-    }
+   
 
     // ── Other tools (unchanged) ───────────────────────────────────────────
 
@@ -109,5 +92,25 @@ public class UseToolService : IUseToolService
     {
         Debug.Log("[UseToolService] UseFishingRod: " + item + " at: " + pos);
         return true;
+    }
+
+
+     // ── Helpers ──────────────────────────────────────────────────────────
+
+    /// <summary>Finds the Photon-local player by tag, returns its CenterPoint (or root).</summary>
+    private Transform FindLocalPlayer()
+    {
+        if (string.IsNullOrEmpty(playerTag)) return null;
+
+        foreach (GameObject player in GameObject.FindGameObjectsWithTag(playerTag))
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                Transform center = player.transform.Find("CenterPoint");
+                return center != null ? center : player.transform;
+            }
+        }
+        return null;
     }
 }
