@@ -13,9 +13,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
     [SerializeField] private CookingRecipeListView recipeListView;
     [SerializeField] private CookingDetailView detailView;
 
-    [Header("Notification")]
-    [SerializeField] private CraftingNotificationView notificationView;
-
     [Header("Title")]
     [SerializeField] private TMPro.TextMeshProUGUI titleText;
     [SerializeField] private string defaultTitle = "Cooking";
@@ -31,7 +28,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
     public IRecipeListView RecipeListView => recipeListView;
     public IRecipeDetailView RecipeDetailView => detailView;
     public IFilterView FilterView => filterView;
-    public ICraftingNotification NotificationView => notificationView;
 
     private void Awake()
     {
@@ -63,9 +59,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
 
         if (detailView == null)
             Debug.LogWarning("[CookingMainView] DetailView reference is missing");
-
-        if (notificationView == null)
-            Debug.LogWarning("[CookingMainView] NotificationView reference is missing");
     }
 
     private void SetupCookingVisuals()
