@@ -1687,7 +1687,7 @@ GameObject:
   - component: {fileID: 835830969}
   m_Layer: 7
   m_Name: Dummy
-  m_TagString: Dummy
+  m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -3555,6 +3555,10 @@ PrefabInstance:
     - target: {fileID: 372591978817517267, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
       propertyPath: m_Name
       value: WorldMap 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 372591978817517267, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
+      propertyPath: m_TagString
+      value: Untagged
       objectReference: {fileID: 0}
     - target: {fileID: 1179181333881286393, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
       propertyPath: m_TileMatrixArray.Array.size
@@ -20319,13 +20323,13 @@ MonoBehaviour:
   cancelKey: 113
   skillCooldown: 3
   totalHits: 2
-  movementDistance: 2
   minMovementDistance: 0.5
   maxMovementDistance: 3.5
   skillTier: 6
   skillMultiplier: 1.5
   rollDisplayDuration: 0.4
   attackAnimationDuration: 0.6
+  indicatorPrefab: {fileID: 6620676086198952409, guid: aa15ba07a198da84bb8815393538673b, type: 3}
 --- !u!1 &1720431993
 GameObject:
   m_ObjectHideFlags: 0

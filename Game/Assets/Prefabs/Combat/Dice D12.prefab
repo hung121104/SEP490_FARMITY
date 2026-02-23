@@ -85,8 +85,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5081295308052017354}
-  - component: {fileID: 6126073320205548404}
   - component: {fileID: 5096749956982789368}
+  - component: {fileID: 5163522701505491169}
   m_Layer: 3
   m_Name: Dice D12
   m_TagString: Untagged
@@ -110,7 +110,19 @@ Transform:
   - {fileID: 3285491522118071613}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &6126073320205548404
+--- !u!114 &5096749956982789368
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6620676086198952409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a83a914bd7866f45888c06e349539ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &5163522701505491169
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -152,24 +164,6 @@ MonoBehaviour:
   peakScale: {x: 1.1, y: 1.1, z: 1}
   endScale: {x: 1, y: 1, z: 1}
   fadeOutStart: 0.5
---- !u!114 &5096749956982789368
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6620676086198952409}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0a83a914bd7866f45888c06e349539ba, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  diceNumber: {fileID: 8432526358241501263}
-  lowColor: {r: 0.9, g: 0.3, b: 0.2, a: 1}
-  midColor: {r: 1, g: 0.85, b: 0.2, a: 1}
-  highColor: {r: 0.3, g: 0.9, b: 0.4, a: 1}
-  wobbleScale: 1.15
-  wobbleSpeed: 10
 --- !u!1 &6744129756146072599
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Double Strike skill - A two-hit attack with time slowdown, dice roll display, and mouse aiming.
+/// Double Strike skill - A two-hit attack with time slowdown, dice roll display and mouse aiming.
 /// Press skill key → slow motion → roll dice → aim with mouse → confirm/cancel → attack → repeat for second hit
 /// </summary>
 public class DoubleStrike : MonoBehaviour
@@ -10,10 +10,10 @@ public class DoubleStrike : MonoBehaviour
 
     public enum SkillState
     {
-        Idle,           // Not using skill
-        Charging,       // Playing charge animation in slow motion
-        WaitingConfirm, // Waiting for player to confirm or cancel attack (can aim with mouse)
-        Attacking       // Executing attack in normal speed
+        Idle,
+        Charging,
+        WaitingConfirm,
+        Attacking
     }
 
     #endregion
@@ -28,9 +28,9 @@ public class DoubleStrike : MonoBehaviour
     [Header("Skill Settings")]
     [SerializeField] private float skillCooldown = 3f;
     [SerializeField] private int totalHits = 2;
-    [SerializeField] private float movementDistance = 2f;
-    [SerializeField] private float minMovementDistance = 0.5f;
-    [SerializeField] private float maxMovementDistance = 3.5f;
+
+    [Header("Movement")]
+    [SerializeField] private float movementDistance = 10f;
 
     [Header("Dice")]
     [SerializeField] private DiceTier skillTier = DiceTier.D6;
@@ -92,18 +92,15 @@ public class DoubleStrike : MonoBehaviour
 
     private void InitializeComponents()
     {
-        // Get component references
         playerCombat = GetComponent<PlayerCombat>();
         playerMovement = GetComponent<PlayerMovement>();
         playerHealth = GetComponent<PlayerHealth>();
         spriteRenderer = GetComponent<SpriteRenderer>();
 
-        // Get StatsManager singleton
         statsManager = StatsManager.Instance;
         if (statsManager == null)
             statsManager = FindObjectOfType<StatsManager>();
 
-        // Setup roll display UI
         EnsureRollDisplay();
     }
 
@@ -112,7 +109,6 @@ public class DoubleStrike : MonoBehaviour
         if (rollDisplayInstance != null)
             return;
 
-        // Create roll display controller
         GameObject rollDisplayGO = new GameObject("RollDisplay");
         rollDisplayGO.transform.SetParent(transform);
         rollDisplayGO.transform.localPosition = Vector3.zero;
@@ -155,35 +151,26 @@ public class DoubleStrike : MonoBehaviour
     private void UpdateAiming()
     {
         if (currentState != SkillState.WaitingConfirm)
+        {
+            SkillIndicatorManager.Instance?.HideAll();
             return;
+        }
 
-        // Get mouse position in world space
-        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mousePos.z = 0f;
-
-        // Calculate direction from player to mouse
-        Vector3 directionToMouse = (mousePos - transform.position);
-        float distanceToMouse = directionToMouse.magnitude;
-        
-        // Normalize direction
-        Vector3 direction = directionToMouse.normalized;
-        
-        // Store the direction
-        targetDirection = direction;
-
-        // Calculate movement distance based on mouse distance
-        // Map mouse distance to movement distance range
-        currentMovementDistance = Mathf.Clamp(
-            distanceToMouse,
-            minMovementDistance,
-            maxMovementDistance
+        // Show arrow with exact dash distance
+        SkillIndicatorManager.Instance?.ShowIndicator(
+            SkillIndicatorData.Arrow(movementDistance)
         );
 
-        // Flip sprite based on direction
-        if (spriteRenderer != null)
+        // Get direction from indicator
+        if (SkillIndicatorManager.Instance != null)
         {
-            spriteRenderer.flipX = direction.x < 0;
+            targetDirection = SkillIndicatorManager.Instance.GetAimedDirection();
+            currentMovementDistance = movementDistance;
         }
+
+        // Flip sprite
+        if (spriteRenderer != null)
+            spriteRenderer.flipX = targetDirection.x < 0;
     }
 
     #endregion
@@ -219,17 +206,14 @@ public class DoubleStrike : MonoBehaviour
     {
         EnableInvulnerability(true);
 
-        // Execute all hits in sequence
         for (int i = 1; i <= totalHits; i++)
         {
             yield return StartCoroutine(ExecuteSingleHit(i));
 
-            // Check if player cancelled
             if (!isExecuting)
                 break;
         }
 
-        // Cleanup after all hits or cancellation
         EndSkillExecution();
     }
 
@@ -238,41 +222,39 @@ public class DoubleStrike : MonoBehaviour
         currentHitNumber = hitNumber;
         hasDealtDamageThisHit = false;
 
-        // === CHARGE PHASE (Slow Motion) ===
+        // === CHARGE PHASE ===
         TimeManager.Instance.SetSlowMotion();
         PlayChargeAnimation();
         yield return new WaitForSecondsRealtime(0.2f);
 
-        // === ROLL PHASE (Slow Motion) ===
+        // === ROLL PHASE ===
         currentDiceRoll = DiceRoller.Roll(skillTier);
         ShowRollDisplay(currentDiceRoll);
         yield return new WaitForSecondsRealtime(rollDisplayDuration);
 
-        // === WAIT FOR CONFIRMATION (Slow Motion - Player can aim with mouse) ===
+        // === WAIT FOR CONFIRMATION ===
         currentState = SkillState.WaitingConfirm;
         while (currentState == SkillState.WaitingConfirm && isExecuting)
         {
             yield return null;
         }
 
-        // Check if cancelled during confirmation
+        // Check if cancelled
         if (!isExecuting)
         {
             TimeManager.Instance.SetNormalSpeed();
             yield break;
         }
 
-        // === ATTACK PHASE (Normal Speed) ===
+        // === ATTACK PHASE ===
         TimeManager.Instance.SetNormalSpeed();
         currentState = SkillState.Attacking;
 
         PlayAttackAnimation();
         yield return new WaitForSeconds(0.1f);
 
-        // Move and damage enemies along the path
         MoveForward();
 
-        // Wait for attack animation to finish
         yield return new WaitForSeconds(attackAnimationDuration);
     }
 
@@ -286,14 +268,14 @@ public class DoubleStrike : MonoBehaviour
 
     private void CancelSkill()
     {
-        if (!isExecuting)
-            return;
+        if (!isExecuting) return;
 
         isExecuting = false;
         currentState = SkillState.Idle;
-        
+
         TimeManager.Instance.SetNormalSpeed();
         StopSkillAnimation();
+        SkillIndicatorManager.Instance?.HideAll();
         EnablePlayerSystems();
     }
 
@@ -302,6 +284,7 @@ public class DoubleStrike : MonoBehaviour
         EnableInvulnerability(false);
         EnablePlayerSystems();
         StopSkillAnimation();
+        SkillIndicatorManager.Instance?.HideAll();
 
         isExecuting = false;
         currentState = SkillState.Idle;
@@ -315,7 +298,7 @@ public class DoubleStrike : MonoBehaviour
     private void ShowRollDisplay(int rollValue)
     {
         EnsureRollDisplay();
-        
+
         if (rollDisplayInstance == null)
             return;
 
@@ -367,13 +350,11 @@ public class DoubleStrike : MonoBehaviour
 
     private System.Collections.IEnumerator SmoothMoveForward()
     {
-        // Use the aimed direction and dynamic distance
-        Vector3 startPosition = transform.position;
-        Vector3 targetPosition = startPosition + (targetDirection * currentMovementDistance);
+        Vector3 targetPosition = transform.position + (targetDirection * currentMovementDistance);
         float moveSpeed = currentMovementDistance / 0.3f;
 
-        // Track enemies already hit to prevent multiple hits on same enemy
-        System.Collections.Generic.HashSet<Collider2D> hitEnemies = new System.Collections.Generic.HashSet<Collider2D>();
+        System.Collections.Generic.HashSet<Collider2D> hitEnemies =
+            new System.Collections.Generic.HashSet<Collider2D>();
 
         while (Vector3.Distance(transform.position, targetPosition) > 0.01f)
         {
@@ -383,7 +364,6 @@ public class DoubleStrike : MonoBehaviour
                 moveSpeed * Time.deltaTime
             );
 
-            // Detect and damage enemies during movement
             DamageEnemiesAlongPath(hitEnemies);
 
             yield return null;
@@ -397,7 +377,6 @@ public class DoubleStrike : MonoBehaviour
         if (playerCombat == null || statsManager == null)
             return;
 
-        // Detect enemies in attack range
         Collider2D[] enemies = Physics2D.OverlapCircleAll(
             playerCombat.attackPoint.position,
             statsManager.attackRange,
@@ -412,14 +391,10 @@ public class DoubleStrike : MonoBehaviour
 
         foreach (Collider2D enemy in enemies)
         {
-            // Skip if already hit this enemy
             if (alreadyHit.Contains(enemy))
                 continue;
 
-            // Mark as hit
             alreadyHit.Add(enemy);
-
-            // Damage the enemy
             DamageEnemy(enemy, skillDamage);
         }
     }
@@ -428,56 +403,18 @@ public class DoubleStrike : MonoBehaviour
 
     #region Damage System
 
-    /// <summary>
-    /// Called by Animation Event in SkillAttack animation at hit frame
-    /// </summary>
-    public void OnSkillHit()
-    {
-        if (playerCombat == null || statsManager == null || hasDealtDamageThisHit)
-            return;
-
-        hasDealtDamageThisHit = true;
-
-        int skillDamage = DamageCalculator.CalculateSkillDamage(
-            currentDiceRoll,
-            statsManager.strength,
-            skillMultiplier
-        );
-
-        ApplyDamageToEnemies(skillDamage);
-    }
-
-    private void ApplyDamageToEnemies(int damage)
-    {
-        Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(
-            playerCombat.attackPoint.position,
-            statsManager.attackRange,
-            playerCombat.enemyLayers
-        );
-
-        foreach (Collider2D enemy in hitEnemies)
-        {
-            DamageEnemy(enemy, damage);
-        }
-    }
-
     private void DamageEnemy(Collider2D enemy, int damage)
     {
         EnemiesHealth enemyHealth = enemy.GetComponent<EnemiesHealth>();
         if (enemyHealth == null)
             return;
 
-        // Apply damage
         enemyHealth.ChangeHealth(-damage);
 
-        // Apply knockback
         EnemyKnockback enemyKnockback = enemy.GetComponent<EnemyKnockback>();
         if (enemyKnockback != null)
-        {
             enemyKnockback.Knockback(transform, statsManager.knockbackForce);
-        }
 
-        // Show damage popup
         ShowDamagePopup(enemy.transform.position, damage);
     }
 
@@ -528,19 +465,8 @@ public class DoubleStrike : MonoBehaviour
 
     #region Public API
 
-    /// <summary>
-    /// Returns cooldown progress (0 = on cooldown, 1 = ready)
-    /// </summary>
     public float GetSkillCooldownPercent() => Mathf.Clamp01(1f - (skillTimer / skillCooldown));
-
-    /// <summary>
-    /// Returns true if skill is currently being executed
-    /// </summary>
     public bool IsExecuting => isExecuting;
-
-    /// <summary>
-    /// Returns current skill execution state
-    /// </summary>
     public SkillState GetCurrentState => currentState;
 
     #endregion

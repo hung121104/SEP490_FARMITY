@@ -7,6 +7,8 @@ TagManager:
   - Bullet
   - PlayerEntity
   - Dummy
+  - Enemy
+  - Background
   layers:
   - Default
   - TransparentFX
