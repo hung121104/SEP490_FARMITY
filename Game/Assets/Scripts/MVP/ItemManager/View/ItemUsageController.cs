@@ -40,7 +40,7 @@ public class ItemUsageController : MonoBehaviour
             return;
         }
 
-        itemUsagePresenter = new ItemUsagePresenter(new ItemUsageService());
+        itemUsagePresenter = new ItemUsagePresenter(new ItemUsageService(new UseToolService()));
         presenter.OnItemUsed += HandleItemUsed;
         isSubscribed = true;
         Debug.Log("ItemUsageController: Subscribed to Hotbar");
