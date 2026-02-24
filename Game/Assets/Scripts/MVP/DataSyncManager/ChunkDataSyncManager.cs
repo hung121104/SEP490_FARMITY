@@ -33,6 +33,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private const byte CROP_STAGE_UPDATED_EVENT = 115;
     private const byte TILE_TILLED_EVENT = 116;
     private const byte TILE_UNTILLED_EVENT = 117;
+    private const byte POLLEN_HARVESTED_EVENT = 118;
     
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
@@ -157,6 +158,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
             case TILE_UNTILLED_EVENT:
                 HandleTileUntilled(photonEvent.CustomData);
+                break;
+
+            case POLLEN_HARVESTED_EVENT:
+                HandlePollenHarvested(photonEvent.CustomData);
                 break;
         }
     }
@@ -316,6 +321,12 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     if (tile.CropStage > 0)
                     {
                         chunk.UpdateCropStage(tile.WorldX, tile.WorldY, tile.CropStage);
+                    }
+                    // Restore pollen harvest count (UpdateCropStage resets it, so set after)
+                    if (tile.PollenHarvestCount > 0)
+                    {
+                        for (byte i = 0; i < tile.PollenHarvestCount; i++)
+                            chunk.IncrementPollenHarvestCount(tile.WorldX, tile.WorldY);
                     }
                 }
             }
@@ -584,6 +595,51 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
+    /// Broadcast to all other clients that pollen was collected at (worldX, worldY).
+    /// Sends the new authoritative count so receivers set it directly (no double-increment risk).
+    /// </summary>
+    public void BroadcastPollenHarvested(int worldX, int worldY, byte newCount)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY, newCount };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            POLLEN_HARVESTED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+    }
+
+    private void HandlePollenHarvested(object data)
+    {
+        object[] dataArray = (object[])data;
+        int  worldX   = (int)dataArray[0];
+        int  worldY   = (int)dataArray[1];
+        byte newCount = Convert.ToByte(dataArray[2]);
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+
+        // Set the tile's count to the authoritative value via the chunk directly
+        CropChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(worldPos);
+        if (chunk != null)
+        {
+            chunk.ResetPollenHarvestCount(worldX, worldY);
+            for (byte i = 0; i < newCount; i++)
+                chunk.IncrementPollenHarvestCount(worldX, worldY);
+        }
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Pollen harvested at ({worldX},{worldY}), count now {newCount}.");
+    }
+
+    /// <summary>
     /// Wait until WorldDataManager is initialized (or timeout) then send world data to the actor.
     /// This lets the master proactively sync late-join players.
     /// </summary>
@@ -650,6 +706,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 bytes.Add(tile.CropStage);                                            // 1
                 bytes.AddRange(System.BitConverter.GetBytes(tile.WorldX));            // 4
                 bytes.AddRange(System.BitConverter.GetBytes(tile.WorldY));            // 4
+                bytes.Add(tile.PollenHarvestCount);                                   // 1
             }
         }
 
@@ -691,6 +748,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 tile.CropStage = data[offset++];
                 tile.WorldX    = System.BitConverter.ToInt32(data, offset); offset += 4;
                 tile.WorldY    = System.BitConverter.ToInt32(data, offset); offset += 4;
+                tile.PollenHarvestCount = offset < data.Length ? data[offset++] : (byte)0;
 
                 chunk.Crops[j] = tile;
             }

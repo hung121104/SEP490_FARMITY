@@ -284,6 +284,21 @@ public class CropDataModule : IWorldDataModule
         return chunk.IncrementCropAge(worldX, worldY);
     }
     
+    /// <summary>Increments the pollen harvest count for the crop at world position by 1.</summary>
+    public bool IncrementPollenHarvestCount(Vector3 worldPos)
+    {
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+
+        Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+        CropChunkData chunk = GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+
+        int worldX = Mathf.FloorToInt(worldPos.x);
+        int worldY = Mathf.FloorToInt(worldPos.y);
+        return chunk.IncrementPollenHarvestCount(worldX, worldY);
+    }
+    
     /// <summary>
     /// Get a specific chunk
     /// </summary>
