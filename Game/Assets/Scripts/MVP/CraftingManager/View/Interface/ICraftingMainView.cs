@@ -9,10 +9,10 @@ public interface ICraftingMainView
 
     // Events
     event Action OnCloseRequested;
+    event Action OnOpenRequested;
 
     // Sub-view references
     IRecipeListView RecipeListView { get; }
     IRecipeDetailView RecipeDetailView { get; }
     IFilterView FilterView { get; }
-    ICraftingNotification NotificationView { get; }
 }

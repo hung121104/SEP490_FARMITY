@@ -9,10 +9,6 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
     [Header("Main Panel")]
     [SerializeField] private GameObject detailPanel;
 
-    [Header("Recipe Info")]
-    [SerializeField] private TextMeshProUGUI recipeNameText;
-    [SerializeField] private TextMeshProUGUI recipeDescriptionText;
-
     [Header("Result Item")]
     [SerializeField] private Image resultItemIcon;
     [SerializeField] private TextMeshProUGUI resultItemNameText;
@@ -76,9 +72,6 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
         // Show panel
         detailPanel.SetActive(true);
 
-        // Display recipe info
-        DisplayRecipeInfo(recipe);
-
         // Display result item
         DisplayResultItem(recipe);
 
@@ -137,19 +130,6 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
     #endregion
 
     #region Display Methods
-
-    private void DisplayRecipeInfo(RecipeModel recipe)
-    {
-        if (recipeNameText != null)
-        {
-            recipeNameText.text = recipe.RecipeName;
-        }
-
-        if (recipeDescriptionText != null)
-        {
-            recipeDescriptionText.text = recipe.Description;
-        }
-    }
 
     private void DisplayResultItem(RecipeModel recipe)
     {
@@ -243,9 +223,7 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
 
         foreach (var ingredient in recipe.Ingredients)
         {
-            // This would need IInventoryService to get actual count
-            // For now, we'll use a simple approach
-            // You can pass this calculation from Presenter instead
+            //Need inventory system service to caculte.
             int availableAmount = ingredient.quantity * 10; // Placeholder
             int maxForThisIngredient = availableAmount / ingredient.quantity;
             maxAmount = Mathf.Min(maxAmount, maxForThisIngredient);

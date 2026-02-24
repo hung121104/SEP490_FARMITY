@@ -7,14 +7,12 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
     [Header("Main Panel")]
     [SerializeField] private GameObject mainPanel;
     [SerializeField] private Button closeButton;
+    [SerializeField] private Button openButton;
 
     [Header("Sub-Views")]
     [SerializeField] private CraftingFilterView filterView;
     [SerializeField] private CraftingRecipeListView recipeListView;
     [SerializeField] private CraftingDetailView detailView;
-
-    [Header("Notification")]
-    [SerializeField] private CraftingNotificationView notificationView;
 
     [Header("Title")]
     [SerializeField] private TMPro.TextMeshProUGUI titleText;
@@ -22,12 +20,12 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
 
     // Events
     public event Action OnCloseRequested;
+    public event Action OnOpenRequested;
 
     // Properties
     public IRecipeListView RecipeListView => recipeListView;
     public IRecipeDetailView RecipeDetailView => detailView;
     public IFilterView FilterView => filterView;
-    public ICraftingNotification NotificationView => notificationView;
 
     private void Awake()
     {
@@ -46,6 +44,7 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
     private void SetupButtons()
     {
         closeButton?.onClick.AddListener(HandleCloseButtonClicked);
+        openButton?.onClick.AddListener(HandleOpenButtonClicked);
     }
 
     private void ValidateReferences()
@@ -58,9 +57,6 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
 
         if (detailView == null)
             Debug.LogWarning("[CraftingMainView] DetailView reference is missing");
-
-        if (notificationView == null)
-            Debug.LogWarning("[CraftingMainView] NotificationView reference is missing");
     }
 
     #region ICraftingMainView Implementation
@@ -105,6 +101,11 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
     private void HandleCloseButtonClicked()
     {
         OnCloseRequested?.Invoke();
+    }
+
+    private void HandleOpenButtonClicked()
+    {
+        OnOpenRequested?.Invoke();
     }
 
     #endregion
