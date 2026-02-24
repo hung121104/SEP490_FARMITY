@@ -151,24 +151,20 @@ public class DoubleStrike : MonoBehaviour
     private void UpdateAiming()
     {
         if (currentState != SkillState.WaitingConfirm)
-        {
-            SkillIndicatorManager.Instance?.HideAll();
             return;
-        }
 
-        // Show arrow with exact dash distance
-        SkillIndicatorManager.Instance?.ShowIndicator(
-            SkillIndicatorData.Arrow(movementDistance)
-        );
+        // Just track mouse direction, no ShowIndicator here!
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mousePos.z = 0f;
 
-        // Get direction from indicator
-        if (SkillIndicatorManager.Instance != null)
-        {
-            targetDirection = SkillIndicatorManager.Instance.GetAimedDirection();
-            currentMovementDistance = movementDistance;
-        }
+        Vector3 direction = mousePos - transform.position;
+        direction.z = 0f;
 
-        // Flip sprite
+        if (direction.magnitude > 0.01f)
+            targetDirection = direction.normalized;
+
+        currentMovementDistance = movementDistance;
+
         if (spriteRenderer != null)
             spriteRenderer.flipX = targetDirection.x < 0;
     }
@@ -234,10 +230,19 @@ public class DoubleStrike : MonoBehaviour
 
         // === WAIT FOR CONFIRMATION ===
         currentState = SkillState.WaitingConfirm;
+
+        // Show indicator ONCE here
+        SkillIndicatorManager.Instance?.ShowIndicator(
+            SkillIndicatorData.Arrow(movementDistance)
+        );
+
         while (currentState == SkillState.WaitingConfirm && isExecuting)
         {
             yield return null;
         }
+
+        // Hide indicator
+        SkillIndicatorManager.Instance?.HideAll();
 
         // Check if cancelled
         if (!isExecuting)

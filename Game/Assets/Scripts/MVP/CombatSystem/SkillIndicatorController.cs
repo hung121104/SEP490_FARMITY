@@ -2,23 +2,31 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
+/// Controls a single indicator canvas.
 /// Sits on Indicator_Arrow/Cone/Circle GameObject.
-/// Handles visuals for ONE indicator type.
 /// Gets told what to do by SkillIndicatorManager.
 /// </summary>
 public class SkillIndicatorController : MonoBehaviour
 {
+    public enum IndicatorType
+    {
+        Arrow,
+        Cone,
+        Circle
+    }
+
     [Header("References - Assign in Inspector")]
     [SerializeField] private Canvas indicatorCanvas;
     [SerializeField] private RectTransform imageRectTransform;
 
     [Header("Calibration")]
     [Tooltip("How many world units does the image cover at Scale Y = 1?")]
-    [SerializeField] private float referenceWorldUnitsY = 1f;
+    [SerializeField] private float referenceWorldUnitsY = 100f;
     [Tooltip("Fixed visual width - never changes")]
-    [SerializeField] private float fixedScaleX = 0.05f;
+    [SerializeField] private float fixedScaleX = 0.01f;
 
     // Runtime state
+    private IndicatorType indicatorType;
     private Transform playerTransform;
     private Camera mainCamera;
     private Vector3 mouseWorldPosition;
@@ -32,7 +40,6 @@ public class SkillIndicatorController : MonoBehaviour
     {
         mainCamera = Camera.main;
 
-        // Find PlayerEntity
         GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
         if (playerObj != null)
             playerTransform = playerObj.transform;
@@ -51,29 +58,56 @@ public class SkillIndicatorController : MonoBehaviour
         transform.position = playerTransform.position;
 
         UpdateMouseWorldPosition();
-        UpdateRotation();
+
+        switch (indicatorType)
+        {
+            case IndicatorType.Arrow:
+            case IndicatorType.Cone:
+                UpdateRotationIndicator();
+                break;
+
+            case IndicatorType.Circle:
+                UpdatePositionIndicator();
+                break;
+        }
     }
 
     #endregion
 
-    #region Setup - Called by SkillIndicatorManager
+    #region Setup
 
-    /// <summary>
-    /// Setup arrow with exact world unit range
-    /// </summary>
     public void SetupArrow(float range)
     {
+        indicatorType = IndicatorType.Arrow;
         currentRange = range;
         ApplyArrowScale(range);
     }
 
+    public void SetupCone(float range, float angle)
+    {
+        indicatorType = IndicatorType.Cone;
+        currentRange = range;
+        // TODO: Apply cone scale
+    }
+
+    public void SetupCircle(float radius, float maxRange)
+    {
+        indicatorType = IndicatorType.Circle;
+        currentRange = maxRange;
+        // TODO: Apply circle scale
+    }
+
     #endregion
 
-    #region Mouse & Rotation
+    #region Mouse Tracking
 
     private void UpdateMouseWorldPosition()
     {
-        if (mainCamera == null) return;
+        if (mainCamera == null)
+        {
+            mainCamera = Camera.main;
+            return;
+        }
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         Plane plane = new Plane(Vector3.forward, playerTransform.position);
@@ -82,7 +116,11 @@ public class SkillIndicatorController : MonoBehaviour
             mouseWorldPosition = ray.GetPoint(dist);
     }
 
-    private void UpdateRotation()
+    #endregion
+
+    #region Indicator Updates
+
+    private void UpdateRotationIndicator()
     {
         Vector3 direction = mouseWorldPosition - playerTransform.position;
         direction.z = 0f;
@@ -92,30 +130,32 @@ public class SkillIndicatorController : MonoBehaviour
 
         currentDirection = direction.normalized;
 
-        // Sprite points UP
-        // Atan2 gives angle from right (0°)
-        // -90° offset aligns it to up
+        // Sprite points UP so -90 degree offset
         float angle = Mathf.Atan2(currentDirection.y, currentDirection.x) * Mathf.Rad2Deg - 90f;
         indicatorCanvas.transform.rotation = Quaternion.Euler(0f, 0f, angle);
+    }
+
+    private void UpdatePositionIndicator()
+    {
+        Vector3 direction = mouseWorldPosition - playerTransform.position;
+        direction.z = 0f;
+
+        float clampedDistance = Mathf.Clamp(direction.magnitude, 0f, currentRange);
+        currentDirection = direction.normalized;
+
+        transform.position = playerTransform.position + currentDirection * clampedDistance;
     }
 
     #endregion
 
     #region Scale
 
-    /// <summary>
-    /// Scale arrow Y to match exact world unit range.
-    /// X stays fixed for visual width.
-    /// </summary>
     private void ApplyArrowScale(float range)
     {
         if (imageRectTransform == null)
             return;
 
-        // scaleY = range / referenceWorldUnitsY
-        // This makes the arrow tip land exactly at 'range' world units from player
         float scaleY = range / referenceWorldUnitsY;
-
         imageRectTransform.localScale = new Vector3(fixedScaleX, scaleY, 1f);
     }
 
