@@ -16,29 +16,92 @@ public class NPCInteractor : MonoBehaviour
         KeyCode.Alpha2,
         KeyCode.Alpha3
     };
+    [Header("Relationship")]
+    [SerializeField] private NPCRelationshipModel relationshipModel;
+    private DialogueNode interactionNode;
+    private NPCState currentState = NPCState.Idle;
     private NPCDialoguePresenter presenter;
     private bool playerInRange;
+    private enum NPCState
+    {
+        Idle,
+        InteractionMenu,
+        Dialogue
+    }
     private void Awake()
     {
         INPCDialogueService service = new NPCDialogueService(dialogueModel);
         presenter = new NPCDialoguePresenter(service, dialogueView);
+        CreateInteractionNode();
     }
     private void Update()
     {
         if (!playerInRange) return;
-        // Dialogue not started yet
-        if (!presenter.IsDialogueActive())
+
+        // =====================
+        // IDLE → Press E to open menu
+        // =====================
+        if (currentState == NPCState.Idle)
         {
             if (Input.GetKeyDown(interactKey))
             {
-                if (playerMovement != null)
-                    playerMovement.enabled = false;
-
-                presenter.StartDialogue();
+                ShowInteractionMenu();
             }
             return;
         }
-        // If text is typing → press E to skip
+
+        // =====================
+        // INTERACTION MENU
+        // =====================
+        if (currentState == NPCState.InteractionMenu)
+        {
+            HandleInteractionMenuInput();
+            return;
+        }
+
+        // =====================
+        // DIALOGUE STATE 
+        // =====================
+        if (currentState == NPCState.Dialogue)
+        {
+            HandleDialogueUpdate();
+        }
+        
+    }
+    private void HandleInteractionMenuInput()
+    {
+        for (int i = 0; i < interactionNode.options.Count; i++)
+        {
+            if (i < optionKeys.Count && Input.GetKeyDown(optionKeys[i]))
+            {
+                if (i == 0) // talk
+                {
+                    dialogueView.Hide();
+                    currentState = NPCState.Dialogue;
+                    presenter.StartDialogue();
+                }
+                else if (i == 1) // send gift
+                {
+                    Debug.Log("Gift mode (chưa làm)");
+                    dialogueView.Hide();
+                    UnlockPlayer();
+                    currentState = NPCState.Idle;
+                }
+
+                break;
+            }
+        }
+    }
+    private void HandleDialogueUpdate()
+    {
+        if (!presenter.IsDialogueActive())
+        {
+            dialogueView.Hide();
+            UnlockPlayer();
+            currentState = NPCState.Idle;
+            return;
+        }
+
         if (dialogueView.IsTyping())
         {
             if (Input.GetKeyDown(interactKey))
@@ -47,25 +110,49 @@ public class NPCInteractor : MonoBehaviour
             }
             return;
         }
-        // If current node has options
+
         if (dialogueView.IsShowingOptions())
         {
             HandleOptionInput();
             return;
         }
-        // Linear dialogue
+
         if (Input.GetKeyDown(interactKey))
         {
             presenter.Continue();
 
-            // If dialogue ended → unlock movement
             if (!presenter.IsDialogueActive())
             {
                 UnlockPlayer();
+                currentState = NPCState.Idle;
             }
         }
     }
-   private void HandleOptionInput()
+    private void CreateInteractionNode()
+    {
+        interactionNode = new DialogueNode();
+        interactionNode.dialogueText = "What do you want to do?";
+
+        interactionNode.options = new List<DialogueOption>
+    {
+        new DialogueOption { optionText = "Talk", nextNodeIndex = -1 },
+        new DialogueOption { optionText = "Send Gift", nextNodeIndex = -1 }
+    };
+    }
+    private void ShowInteractionMenu()
+    {
+        if (playerMovement != null)
+            playerMovement.enabled = false;
+
+        currentState = NPCState.InteractionMenu;
+
+        dialogueView.ShowNode(
+            dialogueModel.npcName,
+            interactionNode,
+            dialogueModel.avatar
+        );
+    }
+    private void HandleOptionInput()
     {
         var node = presenter.GetCurrentNode();
         if (node == null || node.options == null) return;
@@ -100,10 +187,12 @@ public class NPCInteractor : MonoBehaviour
         if (!other.CompareTag("PlayerEntity")) return;
 
         playerInRange = false;
-        dialogueView.Hide();
+        if (dialogueView != null)
+            dialogueView.Hide();
 
         UnlockPlayer();
         playerMovement = null;
+        currentState = NPCState.Idle;
     }
     private void UnlockPlayer()
     {
