@@ -4,8 +4,8 @@ using Photon.Pun;
 public class CropPlantingController : MonoBehaviourPunCallbacks
 {
     [Header("Planting Settings")]
-    [Tooltip("Crop type ID to plant (1=Wheat, 2=Corn, etc.)")]
-    public int currentCropTypeID = 1; // Changed from ushort to int
+    [Tooltip("PlantId of the plant to use (from PlantDataSO.PlantId)")]
+    public string currentPlantId = "";
     
     [Header("Input")]
     public KeyCode plantKey = KeyCode.E;
@@ -137,7 +137,7 @@ public class CropPlantingController : MonoBehaviourPunCallbacks
         int worldY = Mathf.FloorToInt(worldPosition.y);
 
         // Convert int to ushort for WorldDataManager
-        bool success = WorldDataManager.Instance.PlantCropAtWorldPosition(worldPosition, (ushort)currentCropTypeID);
+        bool success = WorldDataManager.Instance.PlantCropAtWorldPosition(worldPosition, currentPlantId);
 
         // track last tried/planted tile to prevent repeated logging while holding
         lastTriedTile = new Vector2Int(worldX, worldY);
@@ -146,7 +146,7 @@ public class CropPlantingController : MonoBehaviourPunCallbacks
         {
             if (showDebugLogs)
             {
-                Debug.Log($"✓ Planted crop type {currentCropTypeID} at ({worldX}, {worldY})");
+                Debug.Log($"✓ Planted '{currentPlantId}' at ({worldX}, {worldY})");
             }
 
             // Refresh chunk visuals instead
@@ -159,7 +159,7 @@ public class CropPlantingController : MonoBehaviourPunCallbacks
             // Sync to other players via Photon
             if (PhotonNetwork.IsConnected && syncManager != null)
             {
-                syncManager.BroadcastCropPlanted(worldX, worldY, currentCropTypeID);
+                syncManager.BroadcastCropPlanted(worldX, worldY, currentPlantId);
             }
         }
     }
@@ -168,14 +168,13 @@ public class CropPlantingController : MonoBehaviourPunCallbacks
     /// Photon RPC: Sync crop planting to other clients
     /// </summary>
     [PunRPC]
-    private void RPC_PlantCrop(Vector3 worldPosition, int cropTypeID) // Changed from ushort to int
+    private void RPC_PlantCrop(Vector3 worldPosition, string plantId)
     {
-        // Convert int back to ushort for WorldDataManager
-        WorldDataManager.Instance.PlantCropAtWorldPosition(worldPosition, (ushort)cropTypeID);
+        WorldDataManager.Instance.PlantCropAtWorldPosition(worldPosition, plantId);
 
         if (showDebugLogs)
         {
-            Debug.Log($"[Network] Received planted crop type {cropTypeID} at ({worldPosition.x:F0}, {worldPosition.y:F0})");
+            Debug.Log($"[Network] Received planted '{plantId}' at ({worldPosition.x:F0}, {worldPosition.y:F0})");
         }
     }
 

@@ -40,48 +40,14 @@ public class WorldDataManager : MonoBehaviour
         { 
             SectionId = 0, 
             SectionName = "Section 1",
-            ChunkStartX = 0, 
-            ChunkStartY = 6, 
-            ChunksWidth = 5, 
+            ChunkStartX = -8, 
+            ChunkStartY = 2, 
+            ChunksWidth = 6, 
             ChunksHeight = 4,
             DebugColor = new Color(1f, 0.5f, 0.5f, 0.3f)
         },
         
-        // Section 2: 5×5 chunks at (0,0) = World pos (0,0) to (150,150)
-        new WorldSectionConfig 
-        { 
-            SectionId = 1, 
-            SectionName = "Section 2",
-            ChunkStartX = 0, 
-            ChunkStartY = 0, 
-            ChunksWidth = 5, 
-            ChunksHeight = 5,
-            DebugColor = new Color(0.5f, 1f, 0.5f, 0.3f)
-        },
         
-        // Section 3: 4×5 chunks at (5,0) = World pos (150,0) to (270,150)
-        new WorldSectionConfig 
-        { 
-            SectionId = 2, 
-            SectionName = "Section 3",
-            ChunkStartX = 5, 
-            ChunkStartY = 0, 
-            ChunksWidth = 4, 
-            ChunksHeight = 5,
-            DebugColor = new Color(0.5f, 0.5f, 1f, 0.3f)
-        },
-        
-        // Section 4: 4×3 chunks at (5,7) = World pos (150,210) to (270,300)
-        new WorldSectionConfig 
-        { 
-            SectionId = 3, 
-            SectionName = "Section 4",
-            ChunkStartX = 5, 
-            ChunkStartY = 7, 
-            ChunksWidth = 4, 
-            ChunksHeight = 3,
-            DebugColor = new Color(1f, 1f, 0.5f, 0.3f)
-        }
     };
     
     [Header("Debug")]

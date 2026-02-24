@@ -21,6 +21,7 @@ public class CropPlowingView : MonoBehaviour
     [SerializeField] private bool showDebugLogs = false;
     
     private CropPlowingPresenter presenter;
+    public CropPlowingPresenter GetPresenter() => presenter;
     private Transform playerTransform;
     private Vector2Int lastPlowedTile = new Vector2Int(int.MinValue, int.MinValue);
     private float holdTimer = 0f;
@@ -116,116 +117,30 @@ public class CropPlowingView : MonoBehaviour
     
     /// <summary>
     /// Gets the tile in the direction of the mouse, within range of player.
-    /// Returns the specific tile based on 8-directional input (or player's own tile).
+    /// Delegates to the shared <see cref="CropTileSelector"/> utility.
     /// </summary>
     private Vector3 GetDirectionalTileForPlowing()
     {
         if (Camera.main == null || playerTransform == null)
         {
             if (showDebugLogs)
-            {
                 Debug.LogWarning("[CropPlowingView] Camera or Player not found. Cannot calculate tile.");
-            }
             return Vector3.zero;
         }
-        
+
         Vector3 playerPos = playerTransform.position;
         Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.z = 0;
-        
-        // Get player tile position
-        int playerTileX = Mathf.RoundToInt(playerPos.x);
-        int playerTileY = Mathf.RoundToInt(playerPos.y);
-        
-        // Calculate direction from player to mouse
-        Vector2 direction = new Vector2(mouseWorldPos.x - playerPos.x, mouseWorldPos.y - playerPos.y);
-        float distance = direction.magnitude;
-        
-        // If mouse is very close to player (within 0.5 units), plow at player's tile
-        if (distance < 0.5f)
-        {
-            Vector2Int playerTileCoords = new Vector2Int(playerTileX, playerTileY);
-            
-            if (playerTileCoords == lastPlowedTile)
-            {
-                return Vector3.zero;
-            }
-            
-            lastPlowedTile = playerTileCoords;
-            
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlowingView] Plowing at player tile ({playerTileX}, {playerTileY})");
-            }
-            
-            return new Vector3(playerTileX, playerTileY, 0);
-        }
-        
-        // Normalize direction
-        direction.Normalize();
-        
-        // Determine offset based on 8-directional input
-        int offsetX = 0;
-        int offsetY = 0;
-        
-        // Determine horizontal component
-        if (direction.x > 0.4f) offsetX = 1;
-        else if (direction.x < -0.4f) offsetX = -1;
-        
-        // Determine vertical component
-        if (direction.y > 0.4f) offsetY = 1;
-        else if (direction.y < -0.4f) offsetY = -1;
-        
-        int targetX = playerTileX + offsetX;
-        int targetY = playerTileY + offsetY;
-        Vector2Int targetTile = new Vector2Int(targetX, targetY);
-        
-        // Check if target tile is within plowing range from player position
-        Vector3 targetTileCenter = new Vector3(targetX, targetY, 0);
-        float distanceToTarget = Vector3.Distance(playerPos, targetTileCenter);
-        
-        if (distanceToTarget > plowingRange)
-        {
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlowingView] Target tile too far: {distanceToTarget:F2} > {plowingRange}");
-            }
-            return Vector3.zero;
-        }
-        
-        // Prevent replowing same tile
-        if (targetTile == lastPlowedTile)
-        {
-            return Vector3.zero;
-        }
-        
-        lastPlowedTile = targetTile;
-        
-        Vector3 plowPosition = new Vector3(targetX, targetY, 0);
-        
-        if (showDebugLogs)
-        {
-            string directionName = GetDirectionName(offsetX, offsetY);
-            Debug.Log($"[CropPlowingView] Plowing {directionName} of player at ({targetX}, {targetY})");
-        }
-        
-        return plowPosition;
-    }
-    
-    /// <summary>
-    /// Gets a human-readable direction name for debugging.
-    /// </summary>
-    private string GetDirectionName(int offsetX, int offsetY)
-    {
-        if (offsetX == 0 && offsetY == 1) return "above";
-        if (offsetX == 0 && offsetY == -1) return "below";
-        if (offsetX == 1 && offsetY == 0) return "right";
-        if (offsetX == -1 && offsetY == 0) return "left";
-        if (offsetX == 1 && offsetY == 1) return "top-right";
-        if (offsetX == -1 && offsetY == 1) return "top-left";
-        if (offsetX == 1 && offsetY == -1) return "bottom-right";
-        if (offsetX == -1 && offsetY == -1) return "bottom-left";
-        return "at player";
+
+        Vector3 result = CropTileSelector.GetDirectionalTile(
+            playerPos,
+            mouseWorldPos,
+            plowingRange,
+            ref lastPlowedTile);
+
+        if (showDebugLogs && result != Vector3.zero)
+            Debug.Log($"[CropPlowingView] Plowing at tile ({result.x}, {result.y})");
+
+        return result;
     }
     
     /// <summary>
