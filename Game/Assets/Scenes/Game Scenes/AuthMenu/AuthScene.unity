@@ -725,6 +725,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Login_UI
       objectReference: {fileID: 0}
+    - target: {fileID: 20712293858480959, guid: 8834870773d67a7439ca6a660cc449d3, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1105370280067418998, guid: 8834870773d67a7439ca6a660cc449d3, type: 3}
+      propertyPath: m_Text
+      value: password123
+      objectReference: {fileID: 0}
     - target: {fileID: 3255649337056044419, guid: 8834870773d67a7439ca6a660cc449d3, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -805,6 +813,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4534696512784882129, guid: 8834870773d67a7439ca6a660cc449d3, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7016873326051476380, guid: 8834870773d67a7439ca6a660cc449d3, type: 3}
+      propertyPath: m_Text
+      value: testuser
+      objectReference: {fileID: 0}
     - target: {fileID: 7642737823448371558, guid: 8834870773d67a7439ca6a660cc449d3, type: 3}
       propertyPath: m_Alpha
       value: 0
@@ -815,6 +831,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7642737823448371558, guid: 8834870773d67a7439ca6a660cc449d3, type: 3}
       propertyPath: m_BlocksRaycasts
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9059071964195494984, guid: 8834870773d67a7439ca6a660cc449d3, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9119883579467820162, guid: 8834870773d67a7439ca6a660cc449d3, type: 3}

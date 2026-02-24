@@ -3,7 +3,6 @@
 --- !u!21 &2164040
 Material:
   serializedVersion: 8
-  serializedVersion: 8
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -14,17 +13,12 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
   m_InvalidKeywords: []
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords: []
   m_LightmapFlags: 5
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
-  m_LockedProperties: 
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -49,7 +43,6 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    m_Ints: []
     m_Ints: []
     m_Floats:
     - _Ambient: 0.5
@@ -116,8 +109,6 @@ Material:
     - _UnderlayColor: {r: 0, g: 0, b: 0, a: 0.5}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
-  m_BuildTextureStacks: []
-  m_AllowLocking: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -153,8 +144,6 @@ MonoBehaviour:
     m_StrikethroughOffset: 19.2
     m_StrikethroughThickness: 4.3945312
     m_TabWidth: 22
-  m_Material: {fileID: 2164040}
-  m_SourceFontFileGUID: 4beb055f07aaff244873dec698d0363e
   m_Material: {fileID: 2164040}
   m_SourceFontFileGUID: 4beb055f07aaff244873dec698d0363e
   m_CreationSettings:
@@ -17152,33 +17141,6 @@ MonoBehaviour:
     kerningPairs: []
   fallbackFontAssets: []
   atlas: {fileID: 0}
-  m_fontInfo:
-    Name: Roboto
-    PointSize: 146
-    Scale: 1
-    CharacterCount: 98
-    LineHeight: 192.5625
-    Baseline: 0
-    Ascender: 153
-    CapHeight: 103.8125
-    Descender: -39.5625
-    CenterLine: 0
-    SuperscriptOffset: 153
-    SubscriptOffset: -14.2578125
-    SubSize: 0.5
-    Underline: -14.2578125
-    UnderlineThickness: 7.1289062
-    strikethrough: 41.25
-    strikethroughThickness: 7.1289062
-    TabWidth: 363.4375
-    Padding: 9
-    AtlasWidth: 1024
-    AtlasHeight: 1024
-  m_glyphInfoList: []
-  m_KerningTable:
-    kerningPairs: []
-  fallbackFontAssets: []
-  atlas: {fileID: 0}
 --- !u!28 &28204114720316640
 Texture2D:
   m_ObjectHideFlags: 0
@@ -17195,24 +17157,14 @@ Texture2D:
   m_Height: 1
   m_CompleteImageSize: 1
   m_MipsStripped: 0
-  m_IsAlphaChannelOptional: 0
-  serializedVersion: 3
-  m_Width: 1
-  m_Height: 1
-  m_CompleteImageSize: 1
-  m_MipsStripped: 0
   m_TextureFormat: 1
   m_MipCount: 1
   m_IsReadable: 1
   m_IsPreProcessed: 0
   m_IgnoreMipmapLimit: 0
   m_MipmapLimitGroupName: 
-  m_IsPreProcessed: 0
-  m_IgnoreMipmapLimit: 0
-  m_MipmapLimitGroupName: 
   m_StreamingMipmaps: 0
   m_StreamingMipmapsPriority: 0
-  m_VTOnly: 0
   m_VTOnly: 0
   m_AlphaIsTransparency: 0
   m_ImageCount: 1
@@ -17230,11 +17182,7 @@ Texture2D:
   m_PlatformBlob: 
   image data: 1
   _typelessdata: 00
-  m_PlatformBlob: 
-  image data: 1
-  _typelessdata: 00
   m_StreamData:
-    serializedVersion: 2
     serializedVersion: 2
     offset: 0
     size: 0
