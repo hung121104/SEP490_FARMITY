@@ -86,6 +86,14 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
         if (draggedSlot != null)
         {
+            // Validate that the slot is actually being dragged
+            if (!draggedSlot.IsDragging)
+            {
+                Debug.Log("[ItemDeleteView] Ignoring drop - slot is not actively being dragged");
+                SetHoverState(false);
+                return;
+            }
+
             var item = draggedSlot.GetCurrentItem();
 
             if (item != null)
@@ -111,10 +119,15 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
         //Check if accepting drops
         if (!acceptingDrops)
             return;
-        // Check if something is being dragged
+
+        // Check if something is genuinely being dragged (not a stale EventSystem reference)
         if (eventData.pointerDrag != null)
         {
-            SetHoverState(true);
+            var draggedSlot = eventData.pointerDrag.GetComponent<InventorySlotView>();
+            if (draggedSlot != null && draggedSlot.IsDragging)
+            {
+                SetHoverState(true);
+            }
         }
     }
 

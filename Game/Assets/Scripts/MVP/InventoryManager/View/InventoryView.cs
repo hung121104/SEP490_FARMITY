@@ -283,7 +283,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
             dragPreviewIcon.sprite = item.Icon;
 
         if (dragPreviewCanvasGroup != null)
-            dragPreviewCanvasGroup.alpha = 0.6f;
+            dragPreviewCanvasGroup.alpha = 1f;
     }
 
     public void UpdateDragPreview(Vector2 position)
@@ -332,44 +332,19 @@ public class InventoryView : MonoBehaviour, IInventoryView
         Debug.Log("[InventoryView] All actions cancelled");
     }
 
-    //Force stop drag operation in EventSystem
+    //Force stop drag operation by resetting internal slot state.
     private void ForceStopDragInEventSystem()
     {
-        if (EventSystem.current == null)
+        // Reset all slot drag states safely without touching EventSystem internals
+        foreach (var slot in slotViews)
         {
-            Debug.LogWarning("[InventoryView] No EventSystem found");
-            return;
-        }
-
-        // Get current EventSystem
-        var eventSystem = EventSystem.current;
-
-        // Check if there's an active drag
-        var currentEventData = eventSystem.currentInputModule?.GetComponent<BaseInput>();
-
-        // Set the pointerDrag to null to clear drag state
-        var pointerData = new PointerEventData(eventSystem)
-        {
-            position = Input.mousePosition
-        };
-
-        // Get all raycast results at current position
-        var raycastResults = new List<RaycastResult>();
-        eventSystem.RaycastAll(pointerData, raycastResults);
-
-        // Clear any active drag from EventSystem
-        if (eventSystem.currentInputModule != null)
-        {
-            // Force clear by simulating pointer up on all objects
-            foreach (var slot in slotViews)
+            if (slot != null)
             {
-                if (slot != null)
-                {
-                    ExecuteEvents.Execute(slot.gameObject, pointerData, ExecuteEvents.endDragHandler);
-                    ExecuteEvents.Execute(slot.gameObject, pointerData, ExecuteEvents.pointerUpHandler);
-                }
+                slot.ForceResetState();
             }
         }
+
+        Debug.Log("[InventoryView] Drag state reset via ForceStopDragInEventSystem");
     }
     #endregion
 
