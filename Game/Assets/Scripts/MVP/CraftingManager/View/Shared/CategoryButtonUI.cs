@@ -8,7 +8,6 @@ public class CategoryButtonUI : MonoBehaviour
     [Header("UI References")]
     [SerializeField] private Button button;
     [SerializeField] private Image background;
-    [SerializeField] private Image icon;
     [SerializeField] private TextMeshProUGUI label;
 
     [Header("Visual States")]
@@ -47,13 +46,6 @@ public class CategoryButtonUI : MonoBehaviour
         if (label != null)
         {
             label.text = GetCategoryDisplayName(categoryType);
-        }
-
-        // Set icon
-        if (icon != null)
-        {
-            icon.sprite = categoryIcon != null ? categoryIcon : defaultIcon;
-            icon.gameObject.SetActive(categoryIcon != null || defaultIcon != null);
         }
 
         // Set initial state

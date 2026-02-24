@@ -60,7 +60,6 @@ public class CookingPresenter
             recipeListView = mainView.RecipeListView;
             recipeDetailView = mainView.RecipeDetailView;
             filterView = mainView.FilterView;
-            notificationView = mainView.NotificationView;
 
             // Subscribe to events
             SubscribeToViewEvents();
