@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemName: Hoe
   itemID: Tool_Hoe
-  icon: {fileID: 9216205297631055959, guid: 7621cbce9a49a844a922c7b2adf4cc34, type: 3}
+  icon: {fileID: 6908069387385937300, guid: 7621cbce9a49a844a922c7b2adf4cc34, type: 3}
   description: 
   maxStack: 1
   isStackable: 0
@@ -27,6 +27,8 @@ MonoBehaviour:
   isQuestItem: 0
   isArtifact: 0
   isRareItem: 0
+  itemCategory: 0
+  toolType: 0
   toolLevel: 1
   toolPower: 1
   toolMaterial: 1

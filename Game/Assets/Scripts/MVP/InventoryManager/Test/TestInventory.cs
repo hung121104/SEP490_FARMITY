@@ -13,7 +13,7 @@ public class TestInventory : MonoBehaviour
         {
             foreach (var item in testItem) 
             {
-                inventorySystem.AddItem(item, 33, Quality.Normal);
+                inventorySystem.AddItem(item, 2, Quality.Normal);
             }             
             Debug.Log("Added test item");
         }
