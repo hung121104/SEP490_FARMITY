@@ -60,7 +60,6 @@ public class CraftingPresenter
             recipeListView = mainView.RecipeListView;
             recipeDetailView = mainView.RecipeDetailView;
             filterView = mainView.FilterView;
-            notificationView = mainView.NotificationView;
 
             // Subscribe to events
             SubscribeToViewEvents();
@@ -94,6 +93,11 @@ public class CraftingPresenter
             mainView.OnCloseRequested += HandleCloseRequested;
         }
 
+        if (mainView != null)
+        {
+            mainView.OnOpenRequested += HandleOpenRequested;
+        }
+
         if (recipeListView != null)
         {
             recipeListView.OnRecipeClicked += HandleRecipeClicked;
@@ -116,6 +120,11 @@ public class CraftingPresenter
         if (mainView != null)
         {
             mainView.OnCloseRequested -= HandleCloseRequested;
+        }
+
+        if (mainView != null)
+        {
+            mainView.OnOpenRequested -= HandleOpenRequested;
         }
 
         if (recipeListView != null)
@@ -264,6 +273,11 @@ public class CraftingPresenter
     private void HandleCloseRequested()
     {
         CloseCraftingUI();
+    }
+
+    private void HandleOpenRequested()
+    {
+        OpenCraftingUI();
     }
 
     private void HandleAmountChanged(int newAmount)

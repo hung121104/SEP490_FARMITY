@@ -15,5 +15,4 @@ public interface ICookingMainView
     IRecipeListView RecipeListView { get; }
     IRecipeDetailView RecipeDetailView { get; }
     IFilterView FilterView { get; }
-    ICraftingNotification NotificationView { get; }
 }
