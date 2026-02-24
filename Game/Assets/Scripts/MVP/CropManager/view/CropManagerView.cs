@@ -390,6 +390,40 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
+    /// Returns true if the crop at (worldX, worldY) is at its flowering/pollen stage
+    /// and has canProducePollen enabled in its PlantDataSO.
+    /// </summary>
+    public bool IsCropAtPollenStage(int worldX, int worldY)
+    {
+        if (worldDataManager == null) return false;
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        if (!worldDataManager.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+            return false;
+
+        PlantDataSO plantData = GetPlantData(tileData.PlantId);
+        if (plantData == null || !plantData.canProducePollen || plantData.PollenItem == null)
+            return false;
+
+        return tileData.CropStage == plantData.pollenStage;
+    }
+
+    /// <summary>
+    /// Returns the PollenDataSO for the crop at (worldX, worldY), or null if not applicable.
+    /// </summary>
+    public PollenDataSO GetPollenItem(int worldX, int worldY)
+    {
+        if (worldDataManager == null) return null;
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        if (!worldDataManager.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+            return null;
+
+        PlantDataSO plantData = GetPlantData(tileData.PlantId);
+        return plantData?.PollenItem;
+    }
+
+    /// <summary>
     /// Get growth progress of a crop (0-1)
     /// </summary>
     public float GetCropGrowthProgress(int worldX, int worldY)
