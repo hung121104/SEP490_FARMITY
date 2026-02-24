@@ -171,7 +171,7 @@ public class AirSlash : MonoBehaviour
     private void UpdateSkillCooldown()
     {
         if (skillTimer > 0)
-            skillTimer -= Time.unscaledDeltaTime;
+            skillTimer -= Time.deltaTime; // Back to normal deltaTime
     }
 
     private bool CanTriggerSkill()
@@ -198,14 +198,13 @@ public class AirSlash : MonoBehaviour
     {
         // === CHARGE PHASE ===
         currentState = SkillState.Charging;
-        TimeManager.Instance.SetSlowMotion();
         PlayChargeAnimation();
-        yield return new WaitForSecondsRealtime(0.2f);
+        yield return new WaitForSeconds(0.2f); // Normal time
 
         // === ROLL PHASE ===
         currentDiceRoll = DiceRoller.Roll(skillTier);
         ShowRollDisplay(currentDiceRoll);
-        yield return new WaitForSecondsRealtime(rollDisplayDuration);
+        yield return new WaitForSeconds(rollDisplayDuration); // Normal time
 
         // === WAIT FOR CONFIRMATION ===
         currentState = SkillState.WaitingConfirm;
@@ -220,16 +219,11 @@ public class AirSlash : MonoBehaviour
 
         SkillIndicatorManager.Instance?.HideAll();
 
-        // Cancelled?
         if (!isExecuting)
-        {
-            TimeManager.Instance.SetNormalSpeed();
             yield break;
-        }
 
         // === FIRE PHASE ===
         currentState = SkillState.Firing;
-        TimeManager.Instance.SetNormalSpeed();
 
         PlayAttackAnimation();
         yield return new WaitForSeconds(0.1f);
@@ -254,7 +248,6 @@ public class AirSlash : MonoBehaviour
         isExecuting = false;
         currentState = SkillState.Idle;
 
-        TimeManager.Instance.SetNormalSpeed();
         StopSkillAnimation();
         SkillIndicatorManager.Instance?.HideAll();
         EnablePlayerSystems();
@@ -268,7 +261,6 @@ public class AirSlash : MonoBehaviour
 
         isExecuting = false;
         currentState = SkillState.Idle;
-        TimeManager.Instance.SetNormalSpeed();
     }
 
     #endregion
@@ -299,10 +291,15 @@ public class AirSlash : MonoBehaviour
                 skillMultiplier
             );
 
+            // Subtract firePoint offset from range
+            // So projectile tip still lands at arrow tip
+            float firePointOffset = Vector3.Distance(transform.position, spawnPos);
+            float adjustedRange = projectileRange - firePointOffset;
+
             projectile.Initialize(
                 direction,
                 projectileSpeed,
-                projectileRange,
+                adjustedRange,
                 damage,
                 statsManager.knockbackForce,
                 transform,

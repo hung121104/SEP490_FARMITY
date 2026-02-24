@@ -20444,7 +20444,7 @@ MonoBehaviour:
   projectileRange: 8
   projectileSpeed: 10
   projectilePrefab: {fileID: 2996777577814843754, guid: 5885c9173ba4c1a48a5331c87e689021, type: 3}
-  firePoint: {fileID: 0}
+  firePoint: {fileID: 257255751}
   skillTier: 8
   skillMultiplier: 1.2
   rollDisplayDuration: 0.4

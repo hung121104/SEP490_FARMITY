@@ -176,7 +176,7 @@ public class DoubleStrike : MonoBehaviour
     private void UpdateSkillCooldown()
     {
         if (skillTimer > 0)
-            skillTimer -= Time.deltaTime;
+            skillTimer -= Time.deltaTime; // Back to normal deltaTime
     }
 
     private bool CanTriggerSkill()
@@ -219,19 +219,16 @@ public class DoubleStrike : MonoBehaviour
         hasDealtDamageThisHit = false;
 
         // === CHARGE PHASE ===
-        TimeManager.Instance.SetSlowMotion();
         PlayChargeAnimation();
-        yield return new WaitForSecondsRealtime(0.2f);
+        yield return new WaitForSeconds(0.2f); // Normal time
 
         // === ROLL PHASE ===
         currentDiceRoll = DiceRoller.Roll(skillTier);
         ShowRollDisplay(currentDiceRoll);
-        yield return new WaitForSecondsRealtime(rollDisplayDuration);
+        yield return new WaitForSeconds(rollDisplayDuration); // Normal time
 
         // === WAIT FOR CONFIRMATION ===
         currentState = SkillState.WaitingConfirm;
-
-        // Show indicator ONCE here
         SkillIndicatorManager.Instance?.ShowIndicator(
             SkillIndicatorData.Arrow(movementDistance)
         );
@@ -241,18 +238,12 @@ public class DoubleStrike : MonoBehaviour
             yield return null;
         }
 
-        // Hide indicator
         SkillIndicatorManager.Instance?.HideAll();
 
-        // Check if cancelled
         if (!isExecuting)
-        {
-            TimeManager.Instance.SetNormalSpeed();
             yield break;
-        }
 
         // === ATTACK PHASE ===
-        TimeManager.Instance.SetNormalSpeed();
         currentState = SkillState.Attacking;
 
         PlayAttackAnimation();
@@ -278,7 +269,6 @@ public class DoubleStrike : MonoBehaviour
         isExecuting = false;
         currentState = SkillState.Idle;
 
-        TimeManager.Instance.SetNormalSpeed();
         StopSkillAnimation();
         SkillIndicatorManager.Instance?.HideAll();
         EnablePlayerSystems();
