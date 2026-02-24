@@ -66,9 +66,14 @@ public class PlayerCombat : MonoBehaviour
         }
     }
 
+    [HideInInspector] public bool blockAttackDamage = false;
+
     public void DealDamage()
     {
         if (statsManager == null)
+            return;
+
+        if (blockAttackDamage)
             return;
 
         Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(
