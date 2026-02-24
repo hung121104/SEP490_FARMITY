@@ -61,7 +61,7 @@ public class CropDataModule : IWorldDataModule
     /// <summary>
     /// Plant crop at ABSOLUTE WORLD POSITION (X, Y)
     /// </summary>
-    public bool PlantCropAtWorldPosition(Vector3 worldPos, ushort cropTypeID)
+    public bool PlantCropAtWorldPosition(Vector3 worldPos, string plantId)
     {
         Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
         int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
@@ -86,12 +86,12 @@ public class CropDataModule : IWorldDataModule
         int worldX = Mathf.FloorToInt(worldPos.x);
         int worldY = Mathf.FloorToInt(worldPos.y);
         
-        bool success = chunk.PlantCrop(cropTypeID, worldX, worldY);
+        bool success = chunk.PlantCrop(plantId, worldX, worldY);
         
         if (success && showDebugLogs)
         {
             var config = manager.GetSectionConfig(sectionId);
-            Debug.Log($"✓ Planted crop type {cropTypeID} at world pos ({worldX}, {worldY}) " +
+            Debug.Log($"✓ Planted plant '{plantId}' at world pos ({worldX}, {worldY}) " +
                  $"[Chunk: ({chunkPos.x}, {chunkPos.y}), Section: {config?.SectionName}]");
         }
         

@@ -10,17 +10,17 @@ public interface ICropPlantingService
     /// Validates if a crop can be planted at the specified world position.
     /// </summary>
     /// <param name="worldPosition">The world position to check</param>
-    /// <param name="cropTypeID">The crop type ID to plant</param>
+    /// <param name="plantId">The PlantId string from PlantDataSO</param>
     /// <returns>True if the position is valid for planting</returns>
-    bool CanPlantCrop(Vector3 worldPosition, int cropTypeID);
+    bool CanPlantCrop(Vector3 worldPosition, string plantId);
 
     /// <summary>
     /// Plants a crop at the specified world position.
     /// </summary>
     /// <param name="worldPosition">The world position to plant the crop</param>
-    /// <param name="cropTypeID">The crop type ID to plant</param>
+    /// <param name="plantId">The PlantId string from PlantDataSO</param>
     /// <returns>True if the crop was successfully planted</returns>
-    bool PlantCrop(Vector3 worldPosition, int cropTypeID);
+    bool PlantCrop(Vector3 worldPosition, string plantId);
 
     /// <summary>
     /// Checks if a position is within the active game section.
@@ -48,8 +48,8 @@ public interface ICropPlantingService
     /// </summary>
     /// <param name="worldX">The world X coordinate</param>
     /// <param name="worldY">The world Y coordinate</param>
-    /// <param name="cropTypeID">The crop type ID</param>
-    void BroadcastCropPlanted(int worldX, int worldY, int cropTypeID);
+    /// <param name="plantId">The PlantId string from PlantDataSO</param>
+    void BroadcastCropPlanted(int worldX, int worldY, string plantId);
 
     /// <summary>
     /// Refreshes the visual representation of a chunk.

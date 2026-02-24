@@ -223,7 +223,7 @@ public class WorldDataManagerEditor : Editor
                             
                             if (tile.HasCrop)
                             {
-                                EditorGUILayout.LabelField($"ID: {tile.CropTypeID}", GUILayout.Width(70));
+                                EditorGUILayout.LabelField($"ID: {tile.PlantId}", GUILayout.Width(70));
                             }
                             else
                             {
@@ -238,7 +238,7 @@ public class WorldDataManagerEditor : Editor
                                 Vector3 worldPos = new Vector3(tile.WorldX, tile.WorldY, 0);
                                 SceneView.lastActiveSceneView.LookAt(worldPos);
                                 Debug.Log($"Tile at ({tile.WorldX}, {tile.WorldY}) - Tilled: {tile.IsTilled}, HasCrop: {tile.HasCrop}" + 
-                                         (tile.HasCrop ? $", CropID: {tile.CropTypeID}, Stage: {tile.CropStage}" : ""));
+                                         (tile.HasCrop ? $", PlantId: {tile.PlantId}, Stage: {tile.CropStage}" : ""));
                             }
                             
                             EditorGUILayout.EndHorizontal();

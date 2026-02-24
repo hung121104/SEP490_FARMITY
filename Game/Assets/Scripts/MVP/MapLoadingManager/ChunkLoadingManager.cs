@@ -362,11 +362,11 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             if (tile.HasCrop)
             {
                 // Get plant data for this crop type
-                PlantDataSO plantData = GetPlantData(tile.CropTypeID);
+                PlantDataSO plantData = GetPlantData(tile.PlantId);
                 if (plantData == null)
                 {
                     if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] No plant data found for crop type {tile.CropTypeID} at ({tile.WorldX}, {tile.WorldY})");
+                        Debug.LogWarning($"[ChunkLoading] No plant data found for plant id '{tile.PlantId}' at ({tile.WorldX}, {tile.WorldY})");
                     continue;
                 }
                 
@@ -400,15 +400,16 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     }
     
     /// <summary>
-    /// Get plant data for a specific crop type ID
+    /// Get plant data by PlantId string
     /// </summary>
-    private PlantDataSO GetPlantData(ushort cropTypeID)
+    private PlantDataSO GetPlantData(string plantId)
     {
-        if (plantDatabase == null || cropTypeID >= plantDatabase.Length)
+        if (plantDatabase == null || string.IsNullOrEmpty(plantId)) return null;
+        foreach (var plant in plantDatabase)
         {
-            return null;
+            if (plant != null && plant.PlantId == plantId) return plant;
         }
-        return plantDatabase[cropTypeID];
+        return null;
     }
     
     /// <summary>

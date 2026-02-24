@@ -11,13 +11,11 @@ public class CropChunkData : BaseChunkData
     {
         public bool IsTilled;      // 1 byte - whether tile is tilled
         public bool HasCrop;       // 1 byte - whether tile has a crop
-        public ushort CropTypeID;  // 2 bytes
+        public string PlantId;     // variable - plant identifier string (from PlantDataSO.PlantId)
         public byte CropStage;     // 1 byte
         public int TotalAge;       // 4 bytes - days since planting
         public int WorldX;         // 4 bytes - ABSOLUTE WORLD X
         public int WorldY;         // 4 bytes - ABSOLUTE WORLD Y
-        
-        // Total: 17 bytes per tile (unified structure)
     }
     
     // Dictionary key is world position: WorldX * 100000 + WorldY
@@ -34,7 +32,7 @@ public class CropChunkData : BaseChunkData
     /// <summary>
     /// Plant crop at ABSOLUTE world position - can only plant on tilled tiles!
     /// </summary>
-    public bool PlantCrop(ushort cropTypeID, int worldX, int worldY)
+    public bool PlantCrop(string plantId, int worldX, int worldY)
     {
         long key = GetKey(worldX, worldY);
         
@@ -54,7 +52,7 @@ public class CropChunkData : BaseChunkData
             
             // Update existing tilled tile to add crop
             tile.HasCrop = true;
-            tile.CropTypeID = cropTypeID;
+            tile.PlantId = plantId;
             tile.CropStage = 0;
             tile.TotalAge = 0;  // Start at day 0
             tiles[key] = tile;
@@ -76,7 +74,7 @@ public class CropChunkData : BaseChunkData
         if (tiles.TryGetValue(key, out TileData tile) && tile.HasCrop)
         {
             tile.HasCrop = false;
-            tile.CropTypeID = 0;
+            tile.PlantId = string.Empty;
             tile.CropStage = 0;
             tile.TotalAge = 0;
             
@@ -274,33 +272,34 @@ public class CropChunkData : BaseChunkData
     }
     
     /// <summary>
-    /// Serialize with absolute world positions - easy to debug!
-    /// Format: [ChunkX(4)] [ChunkY(4)] [SectionId(4)] [Count(2)] [Tile1(17)] [Tile2(17)] ...
+    /// Serialize with absolute world positions.
+    /// Format: [ChunkX(4)] [ChunkY(4)] [SectionId(4)] [Count(2)] [Tile...]
+    /// Per tile: IsTilled(1) + HasCrop(1) + PlantIdLen(1) + PlantId(N) + CropStage(1) + TotalAge(4) + WorldX(4) + WorldY(4)
     /// </summary>
     public override byte[] ToBytes()
     {
-        int count = tiles.Count;
-        byte[] data = new byte[14 + (count * 17)]; // 14 header + 17 bytes per tile
-        
-        BitConverter.GetBytes(ChunkX).CopyTo(data, 0);
-        BitConverter.GetBytes(ChunkY).CopyTo(data, 4);
-        BitConverter.GetBytes(SectionId).CopyTo(data, 8);
-        BitConverter.GetBytes((ushort)count).CopyTo(data, 12);
-        
-        int offset = 14;
+        var bytes = new System.Collections.Generic.List<byte>();
+        bytes.AddRange(BitConverter.GetBytes(ChunkX));           // 4
+        bytes.AddRange(BitConverter.GetBytes(ChunkY));           // 4
+        bytes.AddRange(BitConverter.GetBytes(SectionId));        // 4
+        bytes.AddRange(BitConverter.GetBytes((ushort)tiles.Count)); // 2
+
         foreach (var tile in tiles.Values)
         {
-            data[offset] = (byte)(tile.IsTilled ? 1 : 0);                    // 1 byte
-            data[offset + 1] = (byte)(tile.HasCrop ? 1 : 0);                 // 1 byte
-            BitConverter.GetBytes(tile.CropTypeID).CopyTo(data, offset + 2); // 2 bytes
-            data[offset + 4] = tile.CropStage;                                // 1 byte
-            BitConverter.GetBytes(tile.TotalAge).CopyTo(data, offset + 5);   // 4 bytes
-            BitConverter.GetBytes(tile.WorldX).CopyTo(data, offset + 9);     // 4 bytes
-            BitConverter.GetBytes(tile.WorldY).CopyTo(data, offset + 13);    // 4 bytes
-            offset += 17;
+            bytes.Add((byte)(tile.IsTilled ? 1 : 0));            // 1
+            bytes.Add((byte)(tile.HasCrop ? 1 : 0));             // 1
+            byte[] plantIdBytes = string.IsNullOrEmpty(tile.PlantId)
+                ? System.Array.Empty<byte>()
+                : System.Text.Encoding.UTF8.GetBytes(tile.PlantId);
+            bytes.Add((byte)plantIdBytes.Length);                // 1  (max 255)
+            bytes.AddRange(plantIdBytes);                        // N
+            bytes.Add(tile.CropStage);                           // 1
+            bytes.AddRange(BitConverter.GetBytes(tile.TotalAge));// 4
+            bytes.AddRange(BitConverter.GetBytes(tile.WorldX));  // 4
+            bytes.AddRange(BitConverter.GetBytes(tile.WorldY));  // 4
         }
-        
-        return data;
+
+        return bytes.ToArray();
     }
     
     public override void FromBytes(byte[] data)
@@ -310,38 +309,53 @@ public class CropChunkData : BaseChunkData
             Debug.LogError("Invalid chunk data: too short");
             return;
         }
-        
-        ChunkX = BitConverter.ToInt32(data, 0);
-        ChunkY = BitConverter.ToInt32(data, 4);
+
+        ChunkX    = BitConverter.ToInt32(data, 0);
+        ChunkY    = BitConverter.ToInt32(data, 4);
         SectionId = BitConverter.ToInt32(data, 8);
         int count = BitConverter.ToUInt16(data, 12);
-        
+
         tiles.Clear();
-        
+
         int offset = 14;
-        for (int i = 0; i < count && offset + 17 <= data.Length; i++)
+        for (int i = 0; i < count && offset < data.Length; i++)
         {
             TileData tile = new TileData
             {
-                IsTilled = data[offset] == 1,
-                HasCrop = data[offset + 1] == 1,
-                CropTypeID = BitConverter.ToUInt16(data, offset + 2),
-                CropStage = data[offset + 4],
-                TotalAge = BitConverter.ToInt32(data, offset + 5),
-                WorldX = BitConverter.ToInt32(data, offset + 9),
-                WorldY = BitConverter.ToInt32(data, offset + 13)
+                IsTilled = data[offset]     == 1,
+                HasCrop  = data[offset + 1] == 1
             };
-            
-            long key = GetKey(tile.WorldX, tile.WorldY);
-            tiles[key] = tile;
-            offset += 17;
+            offset += 2;
+
+            int plantIdLen = data[offset++];
+            tile.PlantId = plantIdLen > 0
+                ? System.Text.Encoding.UTF8.GetString(data, offset, plantIdLen)
+                : string.Empty;
+            offset += plantIdLen;
+
+            tile.CropStage = data[offset++];
+            tile.TotalAge  = BitConverter.ToInt32(data, offset); offset += 4;
+            tile.WorldX    = BitConverter.ToInt32(data, offset); offset += 4;
+            tile.WorldY    = BitConverter.ToInt32(data, offset); offset += 4;
+
+            tiles[GetKey(tile.WorldX, tile.WorldY)] = tile;
         }
-        
+
         IsLoaded = true;
-        IsDirty = false;
+        IsDirty  = false;
     }
     
-    public override int GetDataSizeBytes() => 14 + (tiles.Count * 17);
+    public override int GetDataSizeBytes()
+    {
+        int size = 14; // header
+        foreach (var tile in tiles.Values)
+        {
+            int plantIdLen = string.IsNullOrEmpty(tile.PlantId)
+                ? 0 : System.Text.Encoding.UTF8.GetByteCount(tile.PlantId);
+            size += 2 + 1 + plantIdLen + 1 + 4 + 4 + 4; // IsTilled+HasCrop + PlantIdLen + PlantId + CropStage + TotalAge + WorldX + WorldY
+        }
+        return size;
+    }
     
     public int GetCropCount()
     {

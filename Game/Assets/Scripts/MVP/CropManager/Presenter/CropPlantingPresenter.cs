@@ -27,8 +27,8 @@ public class CropPlantingPresenter
     /// Coordinates between View and Service.
     /// </summary>
     /// <param name="positions">List of world positions to plant crops</param>
-    /// <param name="cropTypeID">The crop type ID to plant</param>
-    public void HandlePlantCrops(List<Vector3> positions, int cropTypeID)
+    /// <param name="plantId">The PlantId string from PlantDataSO</param>
+    public void HandlePlantCrops(List<Vector3> positions, string plantId)
     {
         if (positions == null || positions.Count == 0)
         {
@@ -40,7 +40,7 @@ public class CropPlantingPresenter
 
         foreach (Vector3 position in positions)
         {
-            bool success = cropPlantingService.PlantCrop(position, cropTypeID);
+            bool success = cropPlantingService.PlantCrop(position, plantId);
             if (success)
             {
                 successCount++;
@@ -61,15 +61,14 @@ public class CropPlantingPresenter
     /// Handles receiving a crop planted event from the network.
     /// </summary>
     /// <param name="worldPosition">The world position of the planted crop</param>
-    /// <param name="cropTypeID">The crop type ID</param>
-    public void HandleNetworkCropPlanted(Vector3 worldPosition, int cropTypeID)
+    /// <param name="plantId">The PlantId string from PlantDataSO</param>
+    public void HandleNetworkCropPlanted(Vector3 worldPosition, string plantId)
     {
-        // Plant the crop locally (no network broadcast needed)
-        WorldDataManager.Instance.PlantCropAtWorldPosition(worldPosition, (ushort)cropTypeID);
+        WorldDataManager.Instance.PlantCropAtWorldPosition(worldPosition, plantId);
 
         if (showDebugLogs)
         {
-            Debug.Log($"[Network] Received planted crop type {cropTypeID} at ({worldPosition.x:F0}, {worldPosition.y:F0})");
+            Debug.Log($"[Network] Received planted plant '{plantId}' at ({worldPosition.x:F0}, {worldPosition.y:F0})");
         }
 
         // Refresh visuals
