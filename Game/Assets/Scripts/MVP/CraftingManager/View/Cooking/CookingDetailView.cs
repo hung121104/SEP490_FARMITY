@@ -33,11 +33,11 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
     [SerializeField] private string lockedText = "Locked";
 
     [Header("Cooking-specific UI (Optional)")]
-    [SerializeField] private Image recipeTypeIcon; // Icon hiển thị đây là cooking recipe
+    [SerializeField] private Image recipeTypeIcon;
     [SerializeField] private Sprite cookingIcon;
 
     // Events
-    public event Action<string, int> OnCraftRequested; // Vẫn dùng tên này cho interface consistency
+    public event Action<string, int> OnCraftRequested; 
     public event Action<int> OnAmountChanged;
 
     // State

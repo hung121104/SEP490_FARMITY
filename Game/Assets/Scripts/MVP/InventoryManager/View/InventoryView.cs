@@ -238,6 +238,21 @@ public class InventoryView : MonoBehaviour, IInventoryView
         }
     }
 
+    /// <summary>
+    /// Programmatically assigns a delete zone after Awake (e.g. from CraftingInventoryAdapter).
+    /// </summary>
+    public void SetDeleteZone(ItemDeleteView deleteView)
+    {
+        // Unsubscribe from previous delete zone
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.OnItemDeleteRequested -= (slot) => OnItemDeleteRequested?.Invoke(slot);
+        }
+
+        itemDeleteView = deleteView;
+        InitializeDeleteZone();
+    }
+
     #endregion 
 
     #region IInventoryView Implementation
