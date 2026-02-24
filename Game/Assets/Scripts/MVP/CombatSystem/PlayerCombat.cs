@@ -3,61 +3,39 @@ using TMPro;
 
 public class PlayerCombat : MonoBehaviour
 {
+    [Header("References")]
     public Transform attackPoint;
     public LayerMask enemyLayers;
     public GameObject damagePopupPrefab;
-
     public Animator anim;
 
-    private float timer;
+    [HideInInspector] public bool blockAttackDamage = false;
 
-    private SpriteRenderer spriteRenderer;
-    private float originalAttackPointX;
+    private float timer;
     private StatsManager statsManager;
+
+    #region Unity Lifecycle
 
     private void Start()
     {
-        spriteRenderer = GetComponent<SpriteRenderer>();
         statsManager = StatsManager.Instance;
         if (statsManager == null)
-        {
             statsManager = FindObjectOfType<StatsManager>();
-        }
-
-        if (attackPoint != null)
-        {
-            originalAttackPointX = attackPoint.localPosition.x;
-        }
     }
 
     private void Update()
     {
         if (timer > 0)
-        {
             timer -= Time.deltaTime;
-        }
-
-        if (attackPoint != null && spriteRenderer != null)
-        {
-            Vector3 attackPos = attackPoint.localPosition;
-
-            if (spriteRenderer.flipX)
-            {
-                attackPos.x = -Mathf.Abs(originalAttackPointX);
-            }
-            else
-            {
-                attackPos.x = Mathf.Abs(originalAttackPointX);
-            }
-
-            attackPoint.localPosition = attackPos;
-        }
     }
+
+    #endregion
+
+    #region Attack
 
     public void Attack()
     {
-        if (statsManager == null)
-            return;
+        if (statsManager == null) return;
 
         if (timer <= 0)
         {
@@ -66,15 +44,11 @@ public class PlayerCombat : MonoBehaviour
         }
     }
 
-    [HideInInspector] public bool blockAttackDamage = false;
-
     public void DealDamage()
     {
-        if (statsManager == null)
-            return;
-
-        if (blockAttackDamage)
-            return;
+        if (statsManager == null) return;
+        if (blockAttackDamage) return;
+        if (attackPoint == null) return;
 
         Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(
             attackPoint.position,
@@ -92,9 +66,7 @@ public class PlayerCombat : MonoBehaviour
 
                 EnemyKnockback enemyKnockback = enemy.GetComponent<EnemyKnockback>();
                 if (enemyKnockback != null)
-                {
                     enemyKnockback.Knockback(transform, statsManager.knockbackForce);
-                }
 
                 if (damagePopupPrefab != null)
                 {
@@ -111,13 +83,18 @@ public class PlayerCombat : MonoBehaviour
         anim.SetBool("isAttacking", false);
     }
 
+    #endregion
+
+    #region Gizmos
+
     private void OnDrawGizmosSelected()
     {
-        if (attackPoint == null)
-            return;
+        if (attackPoint == null) return;
 
         float range = statsManager != null ? statsManager.attackRange : 0f;
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(attackPoint.position, range);
     }
+
+    #endregion
 }
