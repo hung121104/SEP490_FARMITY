@@ -148,7 +148,7 @@ public class CookingPresenter
 
     private void HandleItemCooked(RecipeModel recipe, int amount)
     {
-        notificationView?.ShowNotification($"✓ Cooked {recipe.RecipeName} x{amount}", NotificationType.Success);
+        notificationView?.ShowCraftingResult(recipe.RecipeName, amount, true);
 
         // Refresh recipe list to update cookable status
         RefreshRecipeList();
@@ -335,17 +335,8 @@ public class CookingPresenter
         bool canCook = craftingService.CanCraftRecipe(recipeID, inventoryService);
         var missingIngredients = craftingService.GetMissingIngredients(recipeID, inventoryService);
 
-        // Calculate max cookable amount
-        int maxAmount = CalculateMaxCookableAmount(recipe, missingIngredients);
-
-        // Show detail
+        // Show detail (view handles max amount calculation internally)
         recipeDetailView?.ShowRecipeDetail(recipe, canCook, missingIngredients);
-
-        // Set max amount for cooking detail view
-        if (recipeDetailView is CookingDetailView cookingDetailView)
-        {
-            cookingDetailView.SetMaxCookAmount(maxAmount);
-        }
 
         // Set default amount
         recipeDetailView?.SetCraftAmount(1);
@@ -360,28 +351,6 @@ public class CookingPresenter
         {
             ShowRecipeDetail(selectedRecipeID);
         }
-    }
-
-    private int CalculateMaxCookableAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
-    {
-        if (recipe == null || recipe.Ingredients == null || recipe.Ingredients.Length == 0)
-            return 0;
-
-        // If any ingredient is missing, can't cook
-        if (missingIngredients != null && missingIngredients.Count > 0)
-            return 0;
-
-        int maxAmount = int.MaxValue;
-
-        // Calculate max based on each ingredient
-        foreach (var ingredient in recipe.Ingredients)
-        {
-            int availableAmount = inventoryService.GetItemCount(ingredient.item.itemID);
-            int maxForThisIngredient = availableAmount / ingredient.quantity;
-            maxAmount = Mathf.Min(maxAmount, maxForThisIngredient);
-        }
-
-        return Mathf.Max(0, maxAmount);
     }
 
     #endregion
