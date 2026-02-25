@@ -36,6 +36,8 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
     private RecipeModel currentRecipe;
     private bool canCook;
     private Dictionary<ItemDataSO, int> currentMissingIngredients;
+    private List<IngredientSlotUI> ingredientSlots = new List<IngredientSlotUI>();
+    private int currentCookAmount = 1;
 
     public bool IsVisible => detailPanel != null && detailPanel.activeSelf;
 
@@ -57,7 +59,7 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
 
     #region IRecipeDetailView Implementation
 
-    public void ShowRecipeDetail(RecipeModel recipe, bool canCraft, Dictionary<ItemDataSO, int> missingIngredients)
+    public void ShowRecipeDetail(RecipeModel recipe, bool canCraft, Dictionary<ItemDataSO, int> missingIngredients, int maxCraftableAmount)
     {
         if (recipe == null)
         {
@@ -68,6 +70,7 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         currentRecipe = recipe;
         this.canCook = canCraft;
         currentMissingIngredients = missingIngredients ?? new Dictionary<ItemDataSO, int>();
+        currentCookAmount = 1; // Reset to 1 when showing new recipe
 
         // Show panel
         detailPanel.SetActive(true);
@@ -81,8 +84,9 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         // Update cook button
         UpdateCraftButton(canCraft);
 
-        // Reset amount and calculate max possible
-        CalculateAndSetMaxAmount(recipe, currentMissingIngredients);
+        // Set max amount from presenter (calculated from actual inventory)
+        SetMaxCookAmount(maxCraftableAmount);
+        if (amountInput != null) amountInput.Reset();
     }
 
     public void HideRecipeDetail()
@@ -143,9 +147,15 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
             resultItemNameText.text = recipe.ResultItem.itemName;
         }
 
-        if (resultQuantityText != null)
+        UpdateResultQuantity();
+    }
+
+    private void UpdateResultQuantity()
+    {
+        if (resultQuantityText != null && currentRecipe != null)
         {
-            resultQuantityText.text = $"x{recipe.ResultQuantity}";
+            int totalQuantity = currentRecipe.ResultQuantity * currentCookAmount;
+            resultQuantityText.text = $"x{totalQuantity}";
         }
     }
 
@@ -184,7 +194,9 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
                 ? missingIngredients[ingredient.item]
                 : 0;
 
-            slotUI.Initialize(ingredient.item, ingredient.quantity, missingAmount);
+            int displayQuantity = ingredient.quantity * currentCookAmount;
+            slotUI.Initialize(ingredient.item, displayQuantity, missingAmount);
+            ingredientSlots.Add(slotUI);
         }
     }
 
@@ -196,6 +208,8 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         {
             Destroy(child.gameObject);
         }
+        
+        ingredientSlots.Clear();
     }
 
     #endregion
@@ -213,6 +227,7 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
 
     private void HandleAmountChanged(int newAmount)
     {
+        UpdateQuantitiesDisplay(newAmount);
         OnAmountChanged?.Invoke(newAmount);
     }
 
@@ -228,42 +243,37 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         if (amountInput != null)
         {
             amountInput.SetMaxPossibleAmount(maxAmount);
+            currentCookAmount = amountInput.CurrentAmount;
         }
     }
 
-    private void CalculateAndSetMaxAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
+    /// <summary>
+    /// Update ingredient quantities and result quantity based on cook amount
+    /// </summary>
+    private void UpdateQuantitiesDisplay(int amount)
     {
-        if (amountInput == null) return;
+        if (currentRecipe == null) return;
 
-        // Calculate max cookable amount based on ingredients
-        int maxAmount = CalculateMaxCookableAmount(recipe, missingIngredients);
+        currentCookAmount = amount;
 
-        amountInput.SetMaxPossibleAmount(maxAmount);
-        amountInput.Reset(); // Reset to 1
-    }
-
-    private int CalculateMaxCookableAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
-    {
-        if (recipe == null || recipe.Ingredients == null || recipe.Ingredients.Length == 0)
-            return 0;
-
-        // If any ingredient is missing for even 1 cook, return 0
-        if (missingIngredients != null && missingIngredients.Count > 0)
-            return 0;
-
-        // Calculate max based on each ingredient
-        int maxAmount = int.MaxValue;
-
-        foreach (var ingredient in recipe.Ingredients)
+        // Update ingredient quantities
+        for (int i = 0; i < ingredientSlots.Count && i < currentRecipe.Ingredients.Length; i++)
         {
-            // Need inventory system service to calculate.
-            int availableAmount = ingredient.quantity * 10; // Placeholder
-            int maxForThisIngredient = availableAmount / ingredient.quantity;
-            maxAmount = Mathf.Min(maxAmount, maxForThisIngredient);
+            var ingredient = currentRecipe.Ingredients[i];
+            int displayQuantity = ingredient.quantity * currentCookAmount;
+            
+            int missingAmount = currentMissingIngredients != null && currentMissingIngredients.ContainsKey(ingredient.item)
+                ? currentMissingIngredients[ingredient.item]
+                : 0;
+
+            ingredientSlots[i].Initialize(ingredient.item, displayQuantity, missingAmount);
         }
 
-        return Mathf.Max(1, maxAmount);
+        // Update result quantity
+        UpdateResultQuantity();
     }
+
+
 
     #endregion
 
