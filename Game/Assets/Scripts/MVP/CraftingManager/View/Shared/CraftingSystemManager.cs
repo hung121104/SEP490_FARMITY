@@ -13,10 +13,6 @@ public class CraftingSystemManager : MonoBehaviour
     [Header("Inventory Display")]
     [SerializeField] private CraftingInventoryAdapter craftingInventoryAdapter;
 
-    [Header("Button Display")]
-    [SerializeField] private Button closeButton;
-    [SerializeField] private Button openButton;
-
     // Core components
     private CraftingModel craftingModel;
     private ICraftingService craftingService;
