@@ -26,6 +26,7 @@
         [SerializeField] private InventoryGameView inventoryGameView;
         [SerializeField] private InventoryView inventoryView;
         [SerializeField] private GameObject inventoryMenuRoot;
+        [SerializeField] private SpriteRenderer spriteRenderer;
         private GiftPresenter giftPresenter;
         private DialogueNode interactionNode;
         private NPCState currentState = NPCState.Idle;
@@ -259,7 +260,8 @@
                 }
             }
         }
-        private void OnTriggerEnter2D(Collider2D other)
+    
+    private void OnTriggerEnter2D(Collider2D other)
         {
             if (!other.CompareTag("PlayerEntity")) return;
 
@@ -267,7 +269,8 @@
 
             // Get PlayerMovement from the player that entered
             playerMovement = other.GetComponent<PlayerMovement>();
-        }
+        
+    }
     private void OnTriggerExit2D(Collider2D other)
     {
         if (!other.CompareTag("PlayerEntity")) return;
