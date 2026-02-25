@@ -234,23 +234,33 @@ public class InventoryView : MonoBehaviour, IInventoryView
     {
         if (itemDeleteView != null)
         {
-            itemDeleteView.OnItemDeleteRequested += (slot) => OnItemDeleteRequested?.Invoke(slot);
+            itemDeleteView.OnItemDeleteRequested += HandleDeleteZoneRequest;
         }
     }
 
     /// <summary>
     /// Programmatically assigns a delete zone after Awake (e.g. from CraftingInventoryAdapter).
     /// </summary>
-    public void SetDeleteZone(ItemDeleteView deleteView)
+    public void SetDeleteZone(ItemDeleteView newDeleteView)
     {
-        // Unsubscribe from previous delete zone
+        // Unsubscribe from old delete zone if exists
         if (itemDeleteView != null)
         {
-            itemDeleteView.OnItemDeleteRequested -= (slot) => OnItemDeleteRequested?.Invoke(slot);
+            itemDeleteView.OnItemDeleteRequested -= HandleDeleteZoneRequest;
         }
 
-        itemDeleteView = deleteView;
-        InitializeDeleteZone();
+        itemDeleteView = newDeleteView;
+
+        // Subscribe new delete zone if assigned
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.OnItemDeleteRequested += HandleDeleteZoneRequest;
+        }
+    }
+
+    private void HandleDeleteZoneRequest(int slot)
+    {
+        OnItemDeleteRequested?.Invoke(slot);
     }
 
     #endregion 
@@ -326,7 +336,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
         // 5. Reset delete zone visual state
         if (itemDeleteView != null)
         {
-            itemDeleteView.ForceResetState();
+            itemDeleteView.ResetVisualOnly();
         }
 
         Debug.Log("[InventoryView] All actions cancelled");

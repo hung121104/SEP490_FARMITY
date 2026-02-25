@@ -107,6 +107,24 @@ public class CraftingInventoryAdapter : MonoBehaviour
         Debug.Log("[CraftingInventoryAdapter] Inventory injected and initialized.");
     }
 
+    public void OpenInventoryCrafting()
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            Debug.Log("[CraftingInventoryAdapter] Delete zone enabled");
+        }
+    }
+
+    public void CloseInventoryCrafting()
+    {
+        if (inventoryPresenter != null)
+        {
+            inventoryPresenter.CancelAllActions();
+        }
+        Debug.Log("[CraftingInventoryAdapter] Inventory closed");
+    }
+
     #endregion
 
     #region Public API

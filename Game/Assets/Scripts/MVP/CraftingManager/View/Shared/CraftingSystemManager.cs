@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class CraftingSystemManager : MonoBehaviour
 {
@@ -11,6 +12,10 @@ public class CraftingSystemManager : MonoBehaviour
 
     [Header("Inventory Display")]
     [SerializeField] private CraftingInventoryAdapter craftingInventoryAdapter;
+
+    [Header("Button Display")]
+    [SerializeField] private Button closeButton;
+    [SerializeField] private Button openButton;
 
     // Core components
     private CraftingModel craftingModel;
@@ -191,6 +196,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void OpenCraftingUI()
     {
         craftingPresenter?.OpenCraftingUI();
+        craftingInventoryAdapter?.OpenInventoryCrafting();
     }
 
     /// <summary>
@@ -199,6 +205,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void CloseCraftingUI()
     {
         craftingPresenter?.CloseCraftingUI();
+        craftingInventoryAdapter?.CloseInventoryCrafting();
     }
 
     /// <summary>

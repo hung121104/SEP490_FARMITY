@@ -83,6 +83,7 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
         // Get dragged slot index from event data
         var draggedSlot = eventData.pointerDrag?.GetComponent<InventorySlotView>();
+        Debug.Log($"[DEBUG DeleteView] pointerDrag = {eventData.pointerDrag?.name}, draggedSlot = {draggedSlot}");
 
         if (draggedSlot != null)
         {
@@ -163,6 +164,27 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
         // Scale animation
         StartCoroutine(AnimateScale(hovering ? originalScale * scaleMultiplier : originalScale));
     }
+
+    public void ResetVisualOnly()
+    {
+        StopAllCoroutines();
+
+        isHovering = false;
+
+        if (trashIconImage != null)
+            trashIconImage.color = normalColor;
+
+        if (canvasGroup != null)
+            canvasGroup.alpha = normalAlpha;
+
+        if (highlightEffect != null)
+            highlightEffect.SetActive(false);
+
+        transform.localScale = originalScale;
+
+        Debug.Log("[ItemDeleteView] Visual state reset (acceptingDrops unchanged)");
+    }
+
 
     // Reset to normal state 
     public void ForceResetState()
@@ -255,6 +277,7 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
     {
         gameObject.SetActive(true);
         acceptingDrops = true;
+        Debug.Log($"[DEBUG DeleteView] Hide() called\n{System.Environment.StackTrace}");
     }
 
     public void Hide()
