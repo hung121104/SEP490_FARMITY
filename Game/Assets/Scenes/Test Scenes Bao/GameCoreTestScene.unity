@@ -1160,7 +1160,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000041721116}
+  m_AnchoredPosition: {x: 0, y: 0.0006088683}
   m_SizeDelta: {x: 0, y: 206}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &160427526
@@ -3767,8 +3767,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mainPanel: {fileID: 446730377}
-  closeButton: {fileID: 1107236582}
-  openButton: {fileID: 1376843593}
   filterView: {fileID: 2128851547}
   recipeListView: {fileID: 612265990}
   detailView: {fileID: 547024733}
@@ -4487,6 +4485,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ecf607b6ebdc3764da467d55839a03fb, type: 2}
   craftingMainView: {fileID: 600964369}
   cookingMainView: {fileID: 0}
+  craftingOpenButton: {fileID: 1376843593}
+  craftingCloseButton: {fileID: 1107236582}
+  cookingOpenButton: {fileID: 0}
+  cookingCloseButton: {fileID: 0}
   craftingInventoryAdapter: {fileID: 739834323}
 --- !u!4 &739834322
 Transform:
@@ -4954,7 +4956,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 203220846}
   m_Direction: 2
   m_Value: 0
-  m_Size: 1
+  m_Size: 0.99998814
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:

@@ -10,6 +10,14 @@ public class CraftingSystemManager : MonoBehaviour
     [SerializeField] private CraftingMainView craftingMainView;
     [SerializeField] private CookingMainView cookingMainView;
 
+    [Header("Crafting Toggle Buttons")]
+    [SerializeField] private Button craftingOpenButton;
+    [SerializeField] private Button craftingCloseButton;
+
+    [Header("Cooking Toggle Buttons")]
+    [SerializeField] private Button cookingOpenButton;
+    [SerializeField] private Button cookingCloseButton;
+
     [Header("Inventory Display")]
     [SerializeField] private CraftingInventoryAdapter craftingInventoryAdapter;
 
@@ -39,7 +47,21 @@ public class CraftingSystemManager : MonoBehaviour
         craftingMainView?.Hide();
         cookingMainView?.Hide();
 
+        // Setup toggle buttons
+        SetupToggleButtons();
+
         Debug.Log("[CraftingSystemManager] UI structure setup complete");
+    }
+
+    private void SetupToggleButtons()
+    {
+        // Crafting buttons
+        craftingOpenButton?.onClick.AddListener(OpenCraftingUI);
+        craftingCloseButton?.onClick.AddListener(CloseCraftingUI);
+
+        // Cooking buttons
+        cookingOpenButton?.onClick.AddListener(OpenCookingUI);
+        cookingCloseButton?.onClick.AddListener(CloseCookingUI);
     }
 
     #region Initialization
@@ -250,6 +272,12 @@ public class CraftingSystemManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        // Cleanup toggle buttons
+        craftingOpenButton?.onClick.RemoveAllListeners();
+        craftingCloseButton?.onClick.RemoveAllListeners();
+        cookingOpenButton?.onClick.RemoveAllListeners();
+        cookingCloseButton?.onClick.RemoveAllListeners();
+
         // Cleanup presenters
         if (craftingPresenter != null)
         {

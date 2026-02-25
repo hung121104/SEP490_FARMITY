@@ -83,7 +83,6 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
         // Get dragged slot index from event data
         var draggedSlot = eventData.pointerDrag?.GetComponent<InventorySlotView>();
-        Debug.Log($"[DEBUG DeleteView] pointerDrag = {eventData.pointerDrag?.name}, draggedSlot = {draggedSlot}");
 
         if (draggedSlot != null)
         {
