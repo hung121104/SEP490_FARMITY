@@ -6,18 +6,21 @@ TagManager:
   tags:
   - Bullet
   - PlayerEntity
+  - Dummy
+  - Enemy
+  - Background
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - Player
+  - Popup
   - Water
   - UI
   - Ground
+  - Enemy
   - 
   - 
-  - 
-  - 
+  - Po
   - 
   - 
   - 

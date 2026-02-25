@@ -88,7 +88,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -102,7 +102,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -126,7 +126,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -154,10 +154,10 @@ TextureImporter:
       name: attack and die_0
       rect:
         serializedVersion: 2
-        x: 6
+        x: 0
         y: 72
-        width: 15
-        height: 21
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -176,10 +176,10 @@ TextureImporter:
       name: attack and die_1
       rect:
         serializedVersion: 2
-        x: 30
+        x: 24
         y: 72
-        width: 15
-        height: 20
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -200,8 +200,8 @@ TextureImporter:
         serializedVersion: 2
         x: 48
         y: 72
-        width: 22
-        height: 21
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -220,10 +220,10 @@ TextureImporter:
       name: attack and die_3
       rect:
         serializedVersion: 2
-        x: 79
-        y: 71
-        width: 18
-        height: 22
+        x: 72
+        y: 72
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -242,10 +242,10 @@ TextureImporter:
       name: attack and die_4
       rect:
         serializedVersion: 2
-        x: 103
-        y: 71
-        width: 17
-        height: 22
+        x: 96
+        y: 72
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -264,10 +264,10 @@ TextureImporter:
       name: attack and die_5
       rect:
         serializedVersion: 2
-        x: 6
+        x: 0
         y: 48
-        width: 15
-        height: 21
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -286,10 +286,10 @@ TextureImporter:
       name: attack and die_6
       rect:
         serializedVersion: 2
-        x: 29
+        x: 24
         y: 48
-        width: 15
-        height: 20
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -308,10 +308,10 @@ TextureImporter:
       name: attack and die_7
       rect:
         serializedVersion: 2
-        x: 49
+        x: 48
         y: 48
-        width: 18
-        height: 18
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -330,10 +330,10 @@ TextureImporter:
       name: attack and die_8
       rect:
         serializedVersion: 2
-        x: 71
-        y: 47
-        width: 22
-        height: 14
+        x: 72
+        y: 48
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -352,10 +352,10 @@ TextureImporter:
       name: attack and die_9
       rect:
         serializedVersion: 2
-        x: 5
+        x: 0
         y: 24
-        width: 15
-        height: 21
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -374,10 +374,10 @@ TextureImporter:
       name: attack and die_10
       rect:
         serializedVersion: 2
-        x: 29
+        x: 24
         y: 24
-        width: 15
-        height: 20
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -396,10 +396,10 @@ TextureImporter:
       name: attack and die_11
       rect:
         serializedVersion: 2
-        x: 52
+        x: 48
         y: 24
-        width: 21
-        height: 21
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -418,19 +418,19 @@ TextureImporter:
       name: attack and die_12
       rect:
         serializedVersion: 2
-        x: 73
-        y: 23
-        width: 18
-        height: 22
+        x: 72
+        y: 24
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 5540c317997c91870800000000000000
+      spriteID: af6da19f255fb7040a3004e019ff8bbf
       internalID: 8654167620812801109
       vertices: []
       indices: 
@@ -440,19 +440,19 @@ TextureImporter:
       name: attack and die_13
       rect:
         serializedVersion: 2
-        x: 97
-        y: 23
-        width: 18
-        height: 22
+        x: 96
+        y: 24
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 988669a571df6c2d0800000000000000
+      spriteID: 402b7d75de50985479ac1f82a9054885
       internalID: -3258639003610093431
       vertices: []
       indices: 
@@ -462,19 +462,19 @@ TextureImporter:
       name: attack and die_14
       rect:
         serializedVersion: 2
-        x: 5
+        x: 0
         y: 0
-        width: 15
-        height: 21
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 34b5eac2f9eb0f2f0800000000000000
+      spriteID: 881b5147afffa1b4ea475aa998905244
       internalID: -941042731261732029
       vertices: []
       indices: 
@@ -484,19 +484,19 @@ TextureImporter:
       name: attack and die_15
       rect:
         serializedVersion: 2
-        x: 30
+        x: 24
         y: 0
-        width: 15
-        height: 20
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: a3a5d453f231ef670800000000000000
+      spriteID: f7ce23464e6106845b1f102b945a8c23
       internalID: 8574311834038655546
       vertices: []
       indices: 
@@ -506,19 +506,19 @@ TextureImporter:
       name: attack and die_16
       rect:
         serializedVersion: 2
-        x: 54
+        x: 48
         y: 0
-        width: 18
-        height: 18
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 9b8e91e240ff45e70800000000000000
+      spriteID: 567aef472723b0c40a3d2f637e719f3b
       internalID: 9103181140241017017
       vertices: []
       indices: 
@@ -528,19 +528,19 @@ TextureImporter:
       name: attack and die_17
       rect:
         serializedVersion: 2
-        x: 75
+        x: 72
         y: 0
-        width: 22
-        height: 13
+        width: 24
+        height: 24
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: eb6443d6f5024dc00800000000000000
+      spriteID: bc0e5d6852db17d4b9c1731fbf1d7562
       internalID: 924399417743918782
       vertices: []
       indices: 
@@ -550,7 +550,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 65db4442705b9994582d0c5c9e8f2b6c
     internalID: 0
     vertices: []
     indices: 
