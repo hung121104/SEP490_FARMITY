@@ -16,10 +16,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
     [SerializeField] private TMPro.TextMeshProUGUI titleText;
     [SerializeField] private string defaultTitle = "Cooking";
 
-    [Header("Cooking-specific UI (Optional)")]
-    [SerializeField] private Image headerIcon;
-    [SerializeField] private Sprite cookingHeaderIcon;
-
     // Properties
     public IRecipeListView RecipeListView => recipeListView;
     public IRecipeDetailView RecipeDetailView => detailView;
@@ -28,7 +24,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
     private void Awake()
     {
         ValidateReferences();
-        SetupCookingVisuals();
 
         // Set title
         if (titleText != null)
@@ -49,15 +44,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
 
         if (detailView == null)
             Debug.LogWarning("[CookingMainView] DetailView reference is missing");
-    }
-
-    private void SetupCookingVisuals()
-    {
-        // Set cooking-specific visuals if available
-        if (headerIcon != null && cookingHeaderIcon != null)
-        {
-            headerIcon.sprite = cookingHeaderIcon;
-        }
     }
 
     #region ICookingMainView Implementation

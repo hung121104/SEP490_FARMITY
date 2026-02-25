@@ -9,10 +9,6 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
     [Header("Main Panel")]
     [SerializeField] private GameObject detailPanel;
 
-    [Header("Recipe Info")]
-    [SerializeField] private TextMeshProUGUI recipeNameText;
-    [SerializeField] private TextMeshProUGUI recipeDescriptionText;
-
     [Header("Result Item")]
     [SerializeField] private Image resultItemIcon;
     [SerializeField] private TextMeshProUGUI resultItemNameText;
@@ -32,10 +28,6 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
     [SerializeField] private string cannotCookText = "Cannot Cook";
     [SerializeField] private string lockedText = "Locked";
 
-    [Header("Cooking-specific UI (Optional)")]
-    [SerializeField] private Image recipeTypeIcon;
-    [SerializeField] private Sprite cookingIcon;
-
     // Events
     public event Action<string, int> OnCraftRequested; 
     public event Action<int> OnAmountChanged;
@@ -50,7 +42,6 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
     private void Awake()
     {
         SetupButtons();
-        SetupCookingIcon();
         HideRecipeDetail();
     }
 
@@ -61,15 +52,6 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         if (amountInput != null)
         {
             amountInput.OnAmountChanged += HandleAmountChanged;
-        }
-    }
-
-    private void SetupCookingIcon()
-    {
-        // Set cooking icon if available
-        if (recipeTypeIcon != null && cookingIcon != null)
-        {
-            recipeTypeIcon.sprite = cookingIcon;
         }
     }
 
@@ -90,9 +72,6 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         // Show panel
         detailPanel.SetActive(true);
 
-        // Display recipe info
-        DisplayRecipeInfo(recipe);
-
         // Display result item
         DisplayResultItem(recipe);
 
@@ -102,12 +81,8 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         // Update cook button
         UpdateCraftButton(canCraft);
 
-        // Reset amount
-        if (amountInput != null)
-        {
-            amountInput.SetMaxPossibleAmount(999); // Will be updated by presenter
-            amountInput.Reset();
-        }
+        // Reset amount and calculate max possible
+        CalculateAndSetMaxAmount(recipe, currentMissingIngredients);
     }
 
     public void HideRecipeDetail()
@@ -155,19 +130,6 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
     #endregion
 
     #region Display Methods
-
-    private void DisplayRecipeInfo(RecipeModel recipe)
-    {
-        if (recipeNameText != null)
-        {
-            recipeNameText.text = recipe.RecipeName;
-        }
-
-        if (recipeDescriptionText != null)
-        {
-            recipeDescriptionText.text = recipe.Description;
-        }
-    }
 
     private void DisplayResultItem(RecipeModel recipe)
     {
@@ -267,6 +229,40 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         {
             amountInput.SetMaxPossibleAmount(maxAmount);
         }
+    }
+
+    private void CalculateAndSetMaxAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
+    {
+        if (amountInput == null) return;
+
+        // Calculate max cookable amount based on ingredients
+        int maxAmount = CalculateMaxCookableAmount(recipe, missingIngredients);
+
+        amountInput.SetMaxPossibleAmount(maxAmount);
+        amountInput.Reset(); // Reset to 1
+    }
+
+    private int CalculateMaxCookableAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
+    {
+        if (recipe == null || recipe.Ingredients == null || recipe.Ingredients.Length == 0)
+            return 0;
+
+        // If any ingredient is missing for even 1 cook, return 0
+        if (missingIngredients != null && missingIngredients.Count > 0)
+            return 0;
+
+        // Calculate max based on each ingredient
+        int maxAmount = int.MaxValue;
+
+        foreach (var ingredient in recipe.Ingredients)
+        {
+            // Need inventory system service to calculate.
+            int availableAmount = ingredient.quantity * 10; // Placeholder
+            int maxForThisIngredient = availableAmount / ingredient.quantity;
+            maxAmount = Mathf.Min(maxAmount, maxForThisIngredient);
+        }
+
+        return Mathf.Max(1, maxAmount);
     }
 
     #endregion

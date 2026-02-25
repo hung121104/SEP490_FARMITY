@@ -30,6 +30,10 @@ public abstract class ItemDataSO : ScriptableObject
     [Header("Gift Preferences")]
     public NPCPreference[] npcPreferences;
 
+    [Header("Cooking/Crafting")]
+    public bool canBeCrafted = false;
+    public bool canBeCooked = false;
+
     [Header("Special Properties")]
     public bool isQuestItem = false;
     public bool isArtifact = false;
