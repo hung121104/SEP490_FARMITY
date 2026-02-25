@@ -1301,6 +1301,7 @@ Transform:
   - {fileID: 1101536458}
   - {fileID: 477333925}
   - {fileID: 10019650}
+  - {fileID: 906646528}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &543588300
@@ -2550,6 +2551,52 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
+--- !u!1 &906646527
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 906646528}
+  - component: {fileID: 906646529}
+  m_Layer: 0
+  m_Name: PlayerPointer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &906646528
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 906646527}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 526781250}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &906646529
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 906646527}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9cf184117d6489d488001cff6f4c7886, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pointerPrefab: {fileID: 4859915784430039372, guid: 1c815e6a711efb24c9523502ceaa96a0, type: 3}
+  orbitRadius: 1
 --- !u!1 &993545811
 GameObject:
   m_ObjectHideFlags: 0
@@ -6598,6 +6645,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2049091631077726381, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3159038807972222976, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
+      propertyPath: m_TileSpriteArray.Array.size
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3523669169531542294, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
@@ -20372,6 +20423,7 @@ MonoBehaviour:
     m_Bits: 128
   damagePopupPrefab: {fileID: 6620676086198952409, guid: 26064304fbc9d04448d8b1e1d10f1876, type: 3}
   anim: {fileID: 1653533825}
+  blockAttackDamage: 0
 --- !u!114 &1653533839
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20406,11 +20458,12 @@ MonoBehaviour:
   confirmKey: 101
   cancelKey: 113
   skillCooldown: 3
-  totalHits: 2
-  movementDistance: 5
   skillTier: 6
   skillMultiplier: 1.5
+  chargeDuration: 0.2
   rollDisplayDuration: 0.4
+  movementDistance: 5
+  totalHits: 2
   attackAnimationDuration: 0.6
 --- !u!114 &1653533867
 MonoBehaviour:
@@ -20441,14 +20494,15 @@ MonoBehaviour:
   confirmKey: 101
   cancelKey: 113
   skillCooldown: 4
-  projectileRange: 8
-  projectileSpeed: 10
-  projectilePrefab: {fileID: 2996777577814843754, guid: 5885c9173ba4c1a48a5331c87e689021, type: 3}
-  firePoint: {fileID: 257255751}
   skillTier: 8
   skillMultiplier: 1.2
+  chargeDuration: 0.2
   rollDisplayDuration: 0.4
+  projectileRange: 8
+  projectileSpeed: 10
   attackAnimationDuration: 0.5
+  projectilePrefab: {fileID: 2996777577814843754, guid: 5885c9173ba4c1a48a5331c87e689021, type: 3}
+  firePoint: {fileID: 257255751}
 --- !u!1 &1720431993
 GameObject:
   m_ObjectHideFlags: 0

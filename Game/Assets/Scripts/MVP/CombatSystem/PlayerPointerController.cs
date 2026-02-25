@@ -21,6 +21,7 @@ public class PlayerPointerController : MonoBehaviour
     #region Private Fields
 
     private Transform playerTransform;
+    private Transform centerPoint;
     private SpriteRenderer playerSpriteRenderer;
     private PlayerCombat playerCombat;
     private Camera mainCamera;
@@ -60,6 +61,16 @@ public class PlayerPointerController : MonoBehaviour
             playerTransform = playerObj.transform;
             playerSpriteRenderer = playerObj.GetComponent<SpriteRenderer>();
             playerCombat = playerObj.GetComponent<PlayerCombat>();
+
+            // Find CenterPoint child
+            Transform found = playerTransform.Find("CenterPoint");
+            if (found != null)
+                centerPoint = found;
+            else
+            {
+                Debug.LogWarning("PlayerPointerController: CenterPoint not found! Using player root instead.");
+                centerPoint = playerTransform;
+            }
         }
         else
         {
@@ -79,9 +90,11 @@ public class PlayerPointerController : MonoBehaviour
             return;
         }
 
-        GameObject pointerGO = Instantiate(pointerPrefab, playerTransform.position, Quaternion.identity);
+        GameObject pointerGO = Instantiate(pointerPrefab, centerPoint.position, Quaternion.identity);
         pointerTransform = pointerGO.transform;
-        pointerTransform.SetParent(playerTransform);
+
+        // Parent to CenterPoint so localPosition is relative to center
+        pointerTransform.SetParent(centerPoint);
 
         if (playerCombat != null)
             playerCombat.attackPoint = pointerTransform;
@@ -100,12 +113,14 @@ public class PlayerPointerController : MonoBehaviour
         }
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        Plane plane = new Plane(Vector3.forward, playerTransform.position);
+
+        // Use CenterPoint as plane origin for accurate direction
+        Plane plane = new Plane(Vector3.forward, centerPoint.position);
 
         if (plane.Raycast(ray, out float dist))
         {
             Vector3 mouseWorldPos = ray.GetPoint(dist);
-            Vector3 direction = mouseWorldPos - playerTransform.position;
+            Vector3 direction = mouseWorldPos - centerPoint.position;
             direction.z = 0f;
 
             if (direction.magnitude > 0.01f)
@@ -140,6 +155,7 @@ public class PlayerPointerController : MonoBehaviour
 
     public Vector3 GetPointerDirection() => currentDirection;
     public Vector3 GetPointerPosition() => pointerTransform != null ? pointerTransform.position : Vector3.zero;
+    public float GetOrbitRadius() => orbitRadius;
 
     #endregion
 }
