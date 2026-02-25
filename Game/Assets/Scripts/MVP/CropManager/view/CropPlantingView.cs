@@ -35,8 +35,10 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     [Tooltip("Tag to search for player camera if targetCamera is null")]
     public string playerCameraTag = "MainCamera";
 
-    [Header("Visual Feedback")]
-    public GameObject cropPrefab;
+    [Header("Tile Preview")]
+    [Range(0f, 1f)] public float previewAlpha = 0.5f;
+    public string previewSortingLayer = "WalkInfront";
+    public int    previewSortingOrder = 10;
 
     [Header("Debug")]
     public bool showDebugLogs = true;
@@ -46,6 +48,9 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     private Transform playerTransform;
     private Collider2D playerCollider;
     
+    // Preview
+    private SpriteRenderer _previewSR;
+
     // MVP Components
     private CropPlantingPresenter presenter;
     private ICropPlantingService cropPlantingService;
@@ -73,6 +78,15 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
         {
             targetCamera = FindPlayerCamera();
         }
+
+        // Build inline preview sprite renderer
+        var previewGO = new GameObject("PlantingPreview");
+        previewGO.transform.SetParent(transform, false);
+        _previewSR                  = previewGO.AddComponent<SpriteRenderer>();
+        _previewSR.color            = new Color(1f, 1f, 1f, previewAlpha);
+        _previewSR.sortingLayerName = previewSortingLayer;
+        _previewSR.sortingOrder     = previewSortingOrder;
+        _previewSR.enabled          = false;
 
         InitializeMVP();
     }
@@ -181,6 +195,7 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
         }
 
         HandleInput();
+        UpdatePlantingPreview();
     }
 
     /// <summary>
@@ -261,6 +276,74 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
         {
             presenter.HandlePlantCrops(positions, plantId);
         }
+    }
+
+    // ── Preview ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Refreshes the tile preview every frame based on current camera / player / mouse state.
+    /// Called at the end of Update().
+    /// </summary>
+    private void UpdatePlantingPreview()
+    {
+        if (_previewSR == null) return;
+
+        // Get the stage-0 sprite from the current seed
+        Sprite seedSprite = (seedDataSO?.CropDataSo?.GrowthStages?.Count > 0)
+            ? seedDataSO.CropDataSo.GrowthStages[0].stageSprite
+            : null;
+
+        if (seedSprite == null || targetCamera == null || playerTransform == null)
+        {
+            _previewSR.enabled = false;
+            return;
+        }
+
+        Vector3 tile = GetPreviewTargetTile();
+        if (tile == Vector3.zero)
+        {
+            _previewSR.enabled = false;
+            return;
+        }
+
+        _previewSR.sprite   = seedSprite;
+        _previewSR.enabled  = true;
+        _previewSR.transform.position = new Vector3(
+            Mathf.Floor(tile.x),
+            Mathf.Floor(tile.y) + 0.062f,
+            0f);
+    }
+
+    /// <summary>
+    /// Calculates the target tile for preview WITHOUT deduplication, so it refreshes every frame.
+    /// </summary>
+    private Vector3 GetPreviewTargetTile()
+    {
+        Vector3 playerPos      = playerTransform.position;
+        Vector3 mouseWorldPos  = ScreenToWorldPosition(Input.mousePosition);
+        mouseWorldPos.z        = 0f;
+
+        int playerTileX = Mathf.RoundToInt(playerPos.x);
+        int playerTileY = Mathf.RoundToInt(playerPos.y);
+
+        Vector2 dir = new Vector2(mouseWorldPos.x - playerPos.x, mouseWorldPos.y - playerPos.y);
+
+        int offsetX = 0, offsetY = 0;
+        if (dir.magnitude >= 0.5f)
+        {
+            dir.Normalize();
+            if      (dir.x >  0.4f) offsetX =  1;
+            else if (dir.x < -0.4f) offsetX = -1;
+            if      (dir.y >  0.4f) offsetY =  1;
+            else if (dir.y < -0.4f) offsetY = -1;
+        }
+
+        int maxRadius = (plantingMode == PlantingMode.FarAroundPlayer) ? 2 : 1;
+        offsetX = Mathf.Clamp(offsetX, -maxRadius, maxRadius);
+        offsetY = Mathf.Clamp(offsetY, -maxRadius, maxRadius);
+
+        Vector3 target = new Vector3(playerTileX + offsetX, playerTileY + offsetY, 0f);
+        return Vector3.Distance(playerPos, target) <= plantingRange ? target : Vector3.zero;
     }
 
     /// <summary>

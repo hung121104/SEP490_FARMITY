@@ -19,7 +19,7 @@ public class CropPlowingView : MonoBehaviour
     [Header("Plowing Settings")]
     [SerializeField] private float plowingRange = 2f;
     [SerializeField] private bool showDebugLogs = false;
-    
+
     private CropPlowingPresenter presenter;
     public CropPlowingPresenter GetPresenter() => presenter;
     private Transform playerTransform;
@@ -94,7 +94,9 @@ public class CropPlowingView : MonoBehaviour
                 lastPlowedTile = new Vector2Int(int.MinValue, int.MinValue);
             }
         }
+
     }
+
     
     
     private void HandlePlowInput()
@@ -167,9 +169,7 @@ public class CropPlowingView : MonoBehaviour
     private void ValidateReferences()
     {
         if (tilledTile == null)
-        {
             Debug.LogError("TilledTile is not assigned in CropPlowingView!");
-        }
     }
     
     private void OnDrawGizmosSelected()

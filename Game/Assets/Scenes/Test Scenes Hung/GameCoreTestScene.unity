@@ -250,7 +250,6 @@ MonoBehaviour:
   allowHoldToPlant: 1
   plantRepeatInterval: 0.1
   playerCameraTag: MainCamera
-  cropPrefab: {fileID: 9165000289063299726, guid: bb78198dacabce642a87ec5356ebdb4b, type: 3}
   showDebugLogs: 0
 --- !u!1 &52024647
 GameObject:
@@ -8203,6 +8202,7 @@ MonoBehaviour:
   timeManager: {fileID: 76351687}
   plantDatabase:
   - {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
+  - {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
   enableGrowth: 1
   growthSpeedMultiplier: 1
   cropVisualsParent: {fileID: 0}
@@ -8458,7 +8458,7 @@ MonoBehaviour:
   visualizeCrops: 1
   plantDatabase:
   - {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
-  - {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
+  - {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   tilledTilemapName: TillableTilemap
   showDebugLogs: 0
