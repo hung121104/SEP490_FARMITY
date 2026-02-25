@@ -8,9 +8,6 @@ public interface ICookingMainView
     void Hide();
     void SetInteractable(bool interactable);
 
-    // Events
-    event Action OnCloseRequested;
-
     // Sub-view references
     IRecipeListView RecipeListView { get; }
     IRecipeDetailView RecipeDetailView { get; }

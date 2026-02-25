@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class CraftingSystemManager : MonoBehaviour
 {
@@ -9,10 +10,22 @@ public class CraftingSystemManager : MonoBehaviour
     [SerializeField] private CraftingMainView craftingMainView;
     [SerializeField] private CookingMainView cookingMainView;
 
+    [Header("Crafting Toggle Buttons")]
+    [SerializeField] private Button craftingOpenButton;
+    [SerializeField] private Button craftingCloseButton;
+
+    [Header("Cooking Toggle Buttons")]
+    [SerializeField] private Button cookingOpenButton;
+    [SerializeField] private Button cookingCloseButton;
+
+    [Header("Inventory Display")]
+    [SerializeField] private CraftingInventoryAdapter craftingInventoryAdapter;
+
     // Core components
     private CraftingModel craftingModel;
     private ICraftingService craftingService;
     private IInventoryService inventoryService;
+    private InventoryModel inventoryModel;
 
     // Presenters
     private CraftingPresenter craftingPresenter;
@@ -34,9 +47,24 @@ public class CraftingSystemManager : MonoBehaviour
         craftingMainView?.Hide();
         cookingMainView?.Hide();
 
+        // Setup toggle buttons
+        SetupToggleButtons();
+
         Debug.Log("[CraftingSystemManager] UI structure setup complete");
     }
 
+    private void SetupToggleButtons()
+    {
+        // Crafting buttons
+        craftingOpenButton?.onClick.AddListener(OpenCraftingUI);
+        craftingCloseButton?.onClick.AddListener(CloseCraftingUI);
+
+        // Cooking buttons
+        cookingOpenButton?.onClick.AddListener(OpenCookingUI);
+        cookingCloseButton?.onClick.AddListener(CloseCookingUI);
+    }
+
+    #region Initialization
     private void InitializeSystem()
     {
         Debug.Log("[CraftingSystemManager] Initializing crafting system...");
@@ -45,7 +73,7 @@ public class CraftingSystemManager : MonoBehaviour
         craftingModel = new CraftingModel();
 
         // 2. Get or Create Inventory Service
-        inventoryService = InitializeInventoryService();
+        InitializeInventoryReferences();
 
         // 3. Initialize Crafting Service
         craftingService = new CraftingService(craftingModel);
@@ -67,21 +95,51 @@ public class CraftingSystemManager : MonoBehaviour
         // 6. Initialize Cooking Presenter
         //InitializeCookingPresenter();
 
+        // 7. Connect inventory adapter last (after all systems ready)
+        ConnectInventoryAdapter();
+
         Debug.Log("[CraftingSystemManager] System initialized successfully");
     }
 
-    private IInventoryService InitializeInventoryService()
+    /// <summary>
+    /// Gets both InventoryService AND InventoryModel from the existing InventoryGameView.
+    /// </summary>
+    private void InitializeInventoryReferences()
     {
-        //Get from existing system
         var existingInventory = FindFirstObjectByType<InventoryGameView>();
+
         if (existingInventory != null)
         {
-            Debug.Log("[CraftingSystemManager] Using existing inventory service");
-            return existingInventory.GetInventoryService();
+            inventoryService = existingInventory.GetInventoryService();
+            inventoryModel = existingInventory.GetInventoryModel();
+            Debug.Log("[CraftingSystemManager] Inventory references obtained from InventoryGameView.");
+        }
+        else
+        {
+            Debug.LogError("[CraftingSystemManager] InventoryGameView not found in scene!");
+        }
+    }
+
+    /// <summary>
+    /// Connects the shared inventory to the CraftingInventoryAdapter.
+    /// Called last to ensure inventoryModel and inventoryService are both ready.
+    /// </summary>
+    private void ConnectInventoryAdapter()
+    {
+        if (craftingInventoryAdapter == null)
+        {
+            Debug.LogWarning("[CraftingSystemManager] CraftingInventoryAdapter not assigned to display inventoryView");
+            return;
         }
 
-        Debug.LogError("[CraftingSystemManager] No inventory service available!");
-        return null;
+        if (inventoryModel == null || inventoryService == null)
+        {
+            Debug.LogError("[CraftingSystemManager] Cannot connect adapter, inventory model or service is null.");
+            return;
+        }
+
+        craftingInventoryAdapter.InjectInventory(inventoryModel, inventoryService);
+        Debug.Log("[CraftingSystemManager] CraftingInventoryAdapter connected.");
     }
 
     private void InitializeCraftingPresenter()
@@ -120,6 +178,8 @@ public class CraftingSystemManager : MonoBehaviour
         Debug.Log("[CraftingSystemManager] Cooking presenter initialized");
     }
 
+    #endregion
+
     #region Event Handlers
 
     private void HandleItemCrafted(RecipeModel recipe, int amount)
@@ -154,6 +214,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void OpenCraftingUI()
     {
         craftingPresenter?.OpenCraftingUI();
+        craftingInventoryAdapter?.OpenInventoryCrafting();
     }
 
     /// <summary>
@@ -162,6 +223,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void CloseCraftingUI()
     {
         craftingPresenter?.CloseCraftingUI();
+        craftingInventoryAdapter?.CloseInventoryCrafting();
     }
 
     /// <summary>
@@ -210,6 +272,12 @@ public class CraftingSystemManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        // Cleanup toggle buttons
+        craftingOpenButton?.onClick.RemoveAllListeners();
+        craftingCloseButton?.onClick.RemoveAllListeners();
+        cookingOpenButton?.onClick.RemoveAllListeners();
+        cookingCloseButton?.onClick.RemoveAllListeners();
+
         // Cleanup presenters
         if (craftingPresenter != null)
         {
