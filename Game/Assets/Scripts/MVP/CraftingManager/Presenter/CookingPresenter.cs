@@ -88,11 +88,6 @@ public class CookingPresenter
 
     private void SubscribeToViewEvents()
     {
-        if (mainView != null)
-        {
-            mainView.OnCloseRequested += HandleCloseRequested;
-        }
-
         if (recipeListView != null)
         {
             recipeListView.OnRecipeClicked += HandleRecipeClicked;
@@ -100,7 +95,7 @@ public class CookingPresenter
 
         if (recipeDetailView != null)
         {
-            recipeDetailView.OnCraftRequested += HandleCookRequested; // Note: Using OnCraftRequested for interface consistency
+            recipeDetailView.OnCraftRequested += HandleCookRequested;
             recipeDetailView.OnAmountChanged += HandleAmountChanged;
         }
 
@@ -112,11 +107,6 @@ public class CookingPresenter
 
     private void UnsubscribeFromViewEvents()
     {
-        if (mainView != null)
-        {
-            mainView.OnCloseRequested -= HandleCloseRequested;
-        }
-
         if (recipeListView != null)
         {
             recipeListView.OnRecipeClicked -= HandleRecipeClicked;
@@ -262,11 +252,6 @@ public class CookingPresenter
         // Hide detail panel when changing category
         recipeDetailView?.HideRecipeDetail();
         selectedRecipeID = null;
-    }
-
-    private void HandleCloseRequested()
-    {
-        CloseCookingUI();
     }
 
     private void HandleAmountChanged(int newAmount)

@@ -6,8 +6,6 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
 {
     [Header("Main Panel")]
     [SerializeField] private GameObject mainPanel;
-    [SerializeField] private Button closeButton;
-    [SerializeField] private Button openButton;
 
     [Header("Sub-Views")]
     [SerializeField] private CraftingFilterView filterView;
@@ -18,10 +16,6 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
     [SerializeField] private TMPro.TextMeshProUGUI titleText;
     [SerializeField] private string defaultTitle = "Crafting";
 
-    // Events
-    public event Action OnCloseRequested;
-    public event Action OnOpenRequested;
-
     // Properties
     public IRecipeListView RecipeListView => recipeListView;
     public IRecipeDetailView RecipeDetailView => detailView;
@@ -29,7 +23,6 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
 
     private void Awake()
     {
-        SetupButtons();
         ValidateReferences();
 
         // Set title
@@ -39,12 +32,6 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
         }
 
         Hide();
-    }
-
-    private void SetupButtons()
-    {
-        closeButton?.onClick.AddListener(HandleCloseButtonClicked);
-        openButton?.onClick.AddListener(HandleOpenButtonClicked);
     }
 
     private void ValidateReferences()
@@ -86,26 +73,7 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
 
     public void SetInteractable(bool interactable)
     {
-        if (closeButton != null)
-        {
-            closeButton.interactable = interactable;
-        }
-
         filterView?.SetInteractable(interactable);
-    }
-
-    #endregion
-
-    #region Event Handlers
-
-    private void HandleCloseButtonClicked()
-    {
-        OnCloseRequested?.Invoke();
-    }
-
-    private void HandleOpenButtonClicked()
-    {
-        OnOpenRequested?.Invoke();
     }
 
     #endregion
@@ -129,15 +97,6 @@ public class CraftingMainView : MonoBehaviour, ICraftingMainView
     public bool IsVisible()
     {
         return mainPanel != null && mainPanel.activeSelf;
-    }
-
-    #endregion
-
-    #region Cleanup
-
-    private void OnDestroy()
-    {
-        closeButton?.onClick.RemoveAllListeners();
     }
 
     #endregion
