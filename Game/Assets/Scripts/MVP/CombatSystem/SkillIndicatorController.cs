@@ -19,11 +19,19 @@ public class SkillIndicatorController : MonoBehaviour
     [SerializeField] private Canvas indicatorCanvas;
     [SerializeField] private RectTransform imageRectTransform;
 
-    [Header("Calibration")]
+    [Header("Calibration - Arrow & Cone")]
     [Tooltip("How many world units does the image cover at Scale Y = 1?")]
     [SerializeField] private float referenceWorldUnitsY = 100f;
     [Tooltip("Fixed visual width - never changes")]
     [SerializeField] private float fixedScaleX = 0.01f;
+
+    [Header("Calibration - Cone")]
+    [Tooltip("How wide is the cone sprite at Scale X = 1?")]
+    [SerializeField] private float referenceConeWidthUnits = 100f;
+
+    [Header("Calibration - Circle")]
+    [Tooltip("How many world units does the circle image cover at Scale = 1?")]
+    [SerializeField] private float referenceCircleUnits = 100f;
 
     // Runtime state
     private IndicatorType indicatorType;
@@ -33,6 +41,7 @@ public class SkillIndicatorController : MonoBehaviour
     private Vector3 mouseWorldPosition;
     private Vector3 currentDirection = Vector3.up;
     private float currentRange = 3f;
+    private float currentRadius = 1f;
     private bool isVisible = false;
 
     #region Unity Lifecycle
@@ -46,7 +55,6 @@ public class SkillIndicatorController : MonoBehaviour
         {
             playerTransform = playerObj.transform;
 
-            // Find CenterPoint for accurate origin
             Transform found = playerTransform.Find("CenterPoint");
             if (found != null)
                 centerPoint = found;
@@ -69,20 +77,22 @@ public class SkillIndicatorController : MonoBehaviour
         if (!isVisible || centerPoint == null)
             return;
 
-        // Always stay at center point position
-        transform.position = centerPoint.position;
-
         UpdateMouseWorldPosition();
 
         switch (indicatorType)
         {
             case IndicatorType.Arrow:
+                transform.position = centerPoint.position;
+                UpdateRotationIndicator();
+                break;
+
             case IndicatorType.Cone:
+                transform.position = centerPoint.position;
                 UpdateRotationIndicator();
                 break;
 
             case IndicatorType.Circle:
-                UpdatePositionIndicator();
+                UpdateCircleIndicator();
                 break;
         }
     }
@@ -102,14 +112,15 @@ public class SkillIndicatorController : MonoBehaviour
     {
         indicatorType = IndicatorType.Cone;
         currentRange = range;
-        // TODO: Apply cone scale
+        ApplyConeScale(range, angle);
     }
 
     public void SetupCircle(float radius, float maxRange)
     {
         indicatorType = IndicatorType.Circle;
+        currentRadius = radius;
         currentRange = maxRange;
-        // TODO: Apply circle scale
+        ApplyCircleScale(radius);
     }
 
     #endregion
@@ -125,8 +136,6 @@ public class SkillIndicatorController : MonoBehaviour
         }
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-
-        // Use centerPoint as plane origin for accurate direction
         Plane plane = new Plane(Vector3.forward, centerPoint.position);
 
         if (plane.Raycast(ray, out float dist))
@@ -139,6 +148,7 @@ public class SkillIndicatorController : MonoBehaviour
 
     private void UpdateRotationIndicator()
     {
+        // Used by both Arrow and Cone - both rotate toward mouse
         Vector3 direction = mouseWorldPosition - centerPoint.position;
         direction.z = 0f;
 
@@ -152,15 +162,17 @@ public class SkillIndicatorController : MonoBehaviour
         indicatorCanvas.transform.rotation = Quaternion.Euler(0f, 0f, angle);
     }
 
-    private void UpdatePositionIndicator()
+    private void UpdateCircleIndicator()
     {
         Vector3 direction = mouseWorldPosition - centerPoint.position;
         direction.z = 0f;
 
-        float clampedDistance = Mathf.Clamp(direction.magnitude, 0f, currentRange);
-        currentDirection = direction.normalized;
+        // Clamp to max range from center
+        float distance = Mathf.Clamp(direction.magnitude, 0f, currentRange);
+        currentDirection = direction.magnitude > 0.01f ? direction.normalized : Vector3.right;
 
-        transform.position = centerPoint.position + currentDirection * clampedDistance;
+        // Circle follows mouse but clamped to max range
+        transform.position = centerPoint.position + currentDirection * distance;
     }
 
     #endregion
@@ -169,11 +181,35 @@ public class SkillIndicatorController : MonoBehaviour
 
     private void ApplyArrowScale(float range)
     {
-        if (imageRectTransform == null)
-            return;
+        if (imageRectTransform == null) return;
 
         float scaleY = range / referenceWorldUnitsY;
         imageRectTransform.localScale = new Vector3(fixedScaleX, scaleY, 1f);
+    }
+
+    private void ApplyConeScale(float range, float angle)
+    {
+        if (imageRectTransform == null) return;
+
+        // Scale Y = length of cone (range)
+        float scaleY = range / referenceWorldUnitsY;
+
+        // Scale X = width of cone based on angle
+        // Wider angle = wider cone
+        float halfAngleRad = angle * 0.5f * Mathf.Deg2Rad;
+        float coneWidth = 2f * range * Mathf.Tan(halfAngleRad);
+        float scaleX = coneWidth / referenceConeWidthUnits;
+
+        imageRectTransform.localScale = new Vector3(scaleX, scaleY, 1f);
+    }
+
+    private void ApplyCircleScale(float radius)
+    {
+        if (imageRectTransform == null) return;
+
+        // Scale both X and Y equally for circle
+        float scale = (radius * 2f) / referenceCircleUnits;
+        imageRectTransform.localScale = new Vector3(scale, scale, 1f);
     }
 
     #endregion
@@ -199,7 +235,7 @@ public class SkillIndicatorController : MonoBehaviour
     #region Public API
 
     public Vector3 GetAimedDirection() => currentDirection;
-    public Vector3 GetAimedPosition() => centerPoint.position + currentDirection * currentRange;
+    public Vector3 GetAimedPosition() => transform.position; // Circle = its own pos, Arrow/Cone = centerPoint + direction * range
     public float GetAimedDistance() => currentRange;
 
     #endregion
