@@ -1,9 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// Global manager on PlayerEntity.
+/// Global manager inside CombatSystem.
 /// Any skill calls ShowIndicator() with SkillIndicatorData.
 /// Only one indicator active at a time.
+/// Spawns indicator prefabs at runtime - no dependency on PlayerEntity.
 /// </summary>
 public class SkillIndicatorManager : MonoBehaviour
 {
@@ -17,11 +18,12 @@ public class SkillIndicatorManager : MonoBehaviour
         Circle   // For later
     }
 
-    [Header("Indicator References - Assign in Inspector")]
-    [SerializeField] private SkillIndicatorController arrowIndicator;
-    // [SerializeField] private SkillIndicatorController coneIndicator;   // For later
-    // [SerializeField] private SkillIndicatorController circleIndicator; // For later
+    [Header("Indicator Prefabs - Assign in Inspector")]
+    [SerializeField] private GameObject arrowIndicatorPrefab;
+    // [SerializeField] private GameObject coneIndicatorPrefab;   // For later
+    // [SerializeField] private GameObject circleIndicatorPrefab; // For later
 
+    private SkillIndicatorController arrowIndicator;
     private IndicatorType currentType = IndicatorType.None;
     private SkillIndicatorController activeIndicator = null;
 
@@ -35,8 +37,31 @@ public class SkillIndicatorManager : MonoBehaviour
             return;
         }
         Instance = this;
+    }
 
+    private void Start()
+    {
+        SpawnIndicators();
         HideAll();
+    }
+
+    #endregion
+
+    #region Initialization
+
+    private void SpawnIndicators()
+    {
+        // Spawn Arrow indicator
+        if (arrowIndicatorPrefab != null)
+        {
+            GameObject arrowGO = Instantiate(arrowIndicatorPrefab, transform);
+            arrowIndicator = arrowGO.GetComponent<SkillIndicatorController>();
+
+            if (arrowIndicator == null)
+                Debug.LogWarning("SkillIndicatorManager: SkillIndicatorController missing on Arrow prefab!");
+        }
+        else
+            Debug.LogWarning("SkillIndicatorManager: Arrow indicator prefab not assigned!");
     }
 
     #endregion
@@ -62,7 +87,7 @@ public class SkillIndicatorManager : MonoBehaviour
                     activeIndicator = arrowIndicator;
                 }
                 else
-                    Debug.LogWarning("SkillIndicatorManager: Arrow indicator not assigned!");
+                    Debug.LogWarning("SkillIndicatorManager: Arrow indicator not found!");
                 break;
 
             // Cone and Circle - coming later
@@ -97,7 +122,7 @@ public class SkillIndicatorManager : MonoBehaviour
     /// </summary>
     public Vector3 GetAimedPosition()
     {
-        if (activeIndicator == null) return transform.position;
+        if (activeIndicator == null) return Vector3.zero;
         return activeIndicator.GetAimedPosition();
     }
 

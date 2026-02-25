@@ -28,6 +28,7 @@ public class SkillIndicatorController : MonoBehaviour
     // Runtime state
     private IndicatorType indicatorType;
     private Transform playerTransform;
+    private Transform centerPoint;
     private Camera mainCamera;
     private Vector3 mouseWorldPosition;
     private Vector3 currentDirection = Vector3.up;
@@ -42,20 +43,34 @@ public class SkillIndicatorController : MonoBehaviour
 
         GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
         if (playerObj != null)
+        {
             playerTransform = playerObj.transform;
+
+            // Find CenterPoint for accurate origin
+            Transform found = playerTransform.Find("CenterPoint");
+            if (found != null)
+                centerPoint = found;
+            else
+            {
+                Debug.LogWarning("SkillIndicatorController: CenterPoint not found! Using player root instead.");
+                centerPoint = playerTransform;
+            }
+        }
         else
+        {
             Debug.LogWarning("SkillIndicatorController: PlayerEntity tag not found!");
+        }
 
         Hide();
     }
 
     private void Update()
     {
-        if (!isVisible || playerTransform == null)
+        if (!isVisible || centerPoint == null)
             return;
 
-        // Always stay at player position
-        transform.position = playerTransform.position;
+        // Always stay at center point position
+        transform.position = centerPoint.position;
 
         UpdateMouseWorldPosition();
 
@@ -110,7 +125,9 @@ public class SkillIndicatorController : MonoBehaviour
         }
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        Plane plane = new Plane(Vector3.forward, playerTransform.position);
+
+        // Use centerPoint as plane origin for accurate direction
+        Plane plane = new Plane(Vector3.forward, centerPoint.position);
 
         if (plane.Raycast(ray, out float dist))
             mouseWorldPosition = ray.GetPoint(dist);
@@ -122,7 +139,7 @@ public class SkillIndicatorController : MonoBehaviour
 
     private void UpdateRotationIndicator()
     {
-        Vector3 direction = mouseWorldPosition - playerTransform.position;
+        Vector3 direction = mouseWorldPosition - centerPoint.position;
         direction.z = 0f;
 
         if (direction.magnitude < 0.01f)
@@ -137,13 +154,13 @@ public class SkillIndicatorController : MonoBehaviour
 
     private void UpdatePositionIndicator()
     {
-        Vector3 direction = mouseWorldPosition - playerTransform.position;
+        Vector3 direction = mouseWorldPosition - centerPoint.position;
         direction.z = 0f;
 
         float clampedDistance = Mathf.Clamp(direction.magnitude, 0f, currentRange);
         currentDirection = direction.normalized;
 
-        transform.position = playerTransform.position + currentDirection * clampedDistance;
+        transform.position = centerPoint.position + currentDirection * clampedDistance;
     }
 
     #endregion
@@ -182,7 +199,7 @@ public class SkillIndicatorController : MonoBehaviour
     #region Public API
 
     public Vector3 GetAimedDirection() => currentDirection;
-    public Vector3 GetAimedPosition() => playerTransform.position + currentDirection * currentRange;
+    public Vector3 GetAimedPosition() => centerPoint.position + currentDirection * currentRange;
     public float GetAimedDistance() => currentRange;
 
     #endregion
