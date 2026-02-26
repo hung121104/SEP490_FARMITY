@@ -5,6 +5,10 @@ using System;
 [CreateAssetMenu(fileName = "PlantDataSO", menuName = "Scriptable Objects/PlantDataSO")]
 public class PlantDataSO : ScriptableObject
 {
+    [Header("Plant Id")]
+    [Tooltip("Id of the plant.")]
+    public string PlantId;
+
     [Header("Plant Info")]
     [Tooltip("The name of the plant (e.g., 'Wheat', 'Tomato').")]
     public string PlantName;
@@ -14,7 +18,25 @@ public class PlantDataSO : ScriptableObject
 
     [Header("Harvest Info")]
     [Tooltip("The item prefab to spawn when the plant is harvested.")]
-    public String HarvestedItemID;
+    public ItemDataSO HarvestedItem;
+
+    [Header("Pollen / Crossbreeding")]
+    [Tooltip("Whether this plant produces pollen at the flowering stage (for the crossbreeding system).")]
+    public bool canProducePollen = false;
+
+    [Tooltip("The growth stage index at which pollen can be collected. Defaults to 3 (flowering).")]
+    public int pollenStage = 3;
+
+    [Tooltip("The pollen item given to the player when they collect pollen from this plant.")]
+    public PollenDataSO PollenItem;
+
+    [Tooltip("How many times the player can collect pollen from this plant per flowering stage. 0 = unlimited.")]
+    [Min(0)]
+    public int maxPollenHarvestsPerStage = 1;
+
+    [Header("Season")]
+    [Tooltip("The season in which this plant can grow.")]
+    public Season GrowingSeason;
 
 }
 

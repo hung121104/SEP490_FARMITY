@@ -4,6 +4,7 @@ using UnityEngine;
 public class ToolDataSO : ItemDataSO
 {
     [Header("Tool Properties")]
+    public ToolType toolType;
     public int toolLevel = 1;
     public int toolPower = 1;
     public ToolMaterial toolMaterial = ToolMaterial.Copper;

@@ -4,538 +4,340 @@ using System.Collections.Generic;
 
 /// <summary>
 /// View component for crop planting following MVP pattern.
-/// Designed to be placed on a standalone GameObject (CropPlantingManager) in the scene.
-/// Responsible for: handling user input, calculating planting positions, and visual feedback.
-/// Follows Single Responsibility Principle and Dependency Inversion Principle.
+/// Preview and planting are driven by the HotbarView:
+///   • Preview is shown whenever the selected hotbar slot contains a SeedDataSO.
+///   • Planting fires on HotbarView.OnUseItemInput (left-click).
 /// </summary>
 public class CropPlantingView : MonoBehaviourPunCallbacks
 {
     public static CropPlantingView Instance { get; private set; }
 
     [Header("Planting Settings")]
-    [Tooltip("Crop type ID to plant (1=Wheat, 2=Corn, etc.)")]
-    public int currentCropTypeID = 1;
     [Tooltip("Planting mode: at mouse, around player (1 tile radius), or far around player (2 tile radius)")]
     public PlantingMode plantingMode = PlantingMode.AroundPlayer;
     [Tooltip("Tag to find the player GameObject")]
     public string playerTag = "PlayerEntity";
     [Tooltip("Maximum distance from player to plant crops")]
     [SerializeField] private float plantingRange = 2f;
-    
-    [Header("Input")]
-    public KeyCode plantKey = KeyCode.E;
-    public bool allowHoldToPlant = true;
-    [Tooltip("How often (seconds) to attempt planting while holding the plant key.")]
-    public float plantRepeatInterval = 0.25f;
     [Tooltip("Tag to search for player camera if targetCamera is null")]
     public string playerCameraTag = "MainCamera";
 
-    [Header("Visual Feedback")]
-    public GameObject cropPrefab;
+    [Header("Tile Preview")]
+    [Range(0f, 1f)] public float previewAlpha = 0.5f;
+    public string previewSortingLayer = "WalkInfront";
+    public int    previewSortingOrder = 10;
 
     [Header("Debug")]
     public bool showDebugLogs = true;
 
-    //player Camera
+    // ── Runtime deps ───────────────────────────────────────────────────────
     private Camera targetCamera;
     private Transform playerTransform;
-    private Collider2D playerCollider;
-    
-    // MVP Components
+    private HotbarView hotbarView;
+
+    // current seed derived from hotbar; null when no seed selected
+    private SeedDataSO _currentSeed;
+    public string CurrentPlantId => (_currentSeed != null && _currentSeed.CropDataSo != null)
+        ? _currentSeed.CropDataSo.PlantId
+        : string.Empty;
+
+    // Tile preview
+    private SpriteRenderer _previewSR;
+
+    // MVP
     private CropPlantingPresenter presenter;
     private ICropPlantingService cropPlantingService;
 
-    // Hold state
-    private float holdTimer = 0f;
-    private Vector2Int lastTriedArea = new Vector2Int(int.MinValue, int.MinValue); // Last tile attempted
-
+    // ── Lifecycle ──────────────────────────────────────────────────────────
     private void Awake()
     {
-        // Singleton pattern for easy access from anywhere in the scene
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Debug.LogWarning("[CropPlantingView] Multiple instances detected. Destroying duplicate.");
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance == null) Instance = this;
+        else { Destroy(gameObject); return; }
 
-        // Set up camera reference
         if (targetCamera == null)
-        {
             targetCamera = FindPlayerCamera();
-        }
+
+        // Build inline preview sprite renderer (hidden by default)
+        var previewGO = new GameObject("PlantingPreview");
+        previewGO.transform.SetParent(transform, false);
+        _previewSR                  = previewGO.AddComponent<SpriteRenderer>();
+        _previewSR.color            = new Color(1f, 1f, 1f, previewAlpha);
+        _previewSR.sortingLayerName = previewSortingLayer;
+        _previewSR.sortingOrder     = previewSortingOrder;
+        _previewSR.enabled          = false;
 
         InitializeMVP();
     }
 
-    /// <summary>
-    /// Finds the player camera by tag or uses Camera.main as fallback.
-    /// </summary>
-    private Camera FindPlayerCamera()
+    private void Start()
     {
-        // Try to find by tag
-        GameObject cameraObject = GameObject.FindGameObjectWithTag(playerCameraTag);
-        if (cameraObject != null)
-        {
-            Camera cam = cameraObject.GetComponent<Camera>();
-            if (cam != null)
-            {
-                if (showDebugLogs)
-                {
-                    Debug.Log($"[CropPlantingView] Found camera with tag '{playerCameraTag}': {cam.name}");
-                }
-                return cam;
-            }
-        }
+        hotbarView = FindAnyObjectByType<HotbarView>();
+        if (hotbarView == null)
+            Debug.LogWarning("[CropPlantingView] HotbarView not found — preview will not show.");
 
-        // Fallback to Camera.main
-        if (Camera.main != null)
-        {
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlantingView] Using Camera.main: {Camera.main.name}");
-            }
-            return Camera.main;
-        }
-
-        // Last resort: find any camera in scene
-        Camera[] cameras = FindObjectsOfType<Camera>();
-        if (cameras.Length > 0)
-        {
-            if (showDebugLogs)
-            {
-                Debug.LogWarning($"[CropPlantingView] Using first found camera: {cameras[0].name}");
-            }
-            return cameras[0];
-        }
-
-        return null;
+        // Subscribe to seed-use event fired by UseSeedService
+        UseSeedService.OnSeedRequested += HandleSeedUseRequested;
     }
 
     private void OnDestroy()
     {
-        if (Instance == this)
-        {
-            Instance = null;
-        }
+        if (Instance == this) Instance = null;
+        UseSeedService.OnSeedRequested -= HandleSeedUseRequested;
+
+        if (_previewSR != null) _previewSR.enabled = false;
     }
 
-    /// <summary>
-    /// Initializes the MVP components (Service and Presenter).
-    /// Follows Dependency Injection principle.
-    /// </summary>
-    private void InitializeMVP()
-    {
-        // Find required managers
-        ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
-        ChunkLoadingManager loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
-
-        if (syncManager == null)
-        {
-            Debug.LogWarning("[CropPlantingView] ChunkDataSyncManager not found in scene!");
-        }
-        if (loadingManager == null)
-        {
-            Debug.LogWarning("[CropPlantingView] ChunkLoadingManager not found in scene!");
-        }
-
-        // Create service (business logic layer)
-        cropPlantingService = new CropPlantingService(syncManager, loadingManager, showDebugLogs);
-
-        // Create presenter (coordination layer)
-        presenter = new CropPlantingPresenter(cropPlantingService, showDebugLogs);
-    }
-
+    // ── Update ─────────────────────────────────────────────────────────────
     private void Update()
     {
-        // Re-check camera if it becomes null (e.g., player respawn)
         if (targetCamera == null)
-        {
             targetCamera = FindPlayerCamera();
-        }
 
-        // Re-check player if it becomes null
         if (playerTransform == null)
         {
             GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
             if (playerEntity != null)
             {
-                // Try to find CenterPoint child first
                 Transform centerPoint = playerEntity.transform.Find("CenterPoint");
                 playerTransform = centerPoint != null ? centerPoint : playerEntity.transform;
-                
-                if (showDebugLogs)
-                {
-                    Debug.Log($"[CropPlantingView] Using transform: {playerTransform.name}");
-                }
             }
         }
 
-        HandleInput();
+        // Derive current seed from hotbar each frame
+        _currentSeed = hotbarView?.GetCurrentItem()?.ItemData as SeedDataSO;
+
+        UpdatePlantingPreview();
     }
 
+    // ── Seed-use event handler ─────────────────────────────────────────────
+
     /// <summary>
-    /// Allows external scripts to trigger crop planting programmatically.
+    /// Received from ItemUsageController.OnSeedUseRequested (event — no direct coupling).
+    /// Plants at the current directional tile and consumes one seed only on success.
     /// </summary>
-    public void PlantCropAtPosition(Vector3 screenPosition, int cropTypeID)
+    private void HandleSeedUseRequested(SeedDataSO seed)
     {
-        if (presenter != null && targetCamera != null)
+        // Accept any seed, not just the one currently previewed
+        _currentSeed = seed;
+
+        bool planted = TryPlantFromItemUse();
+        if (planted)
+            hotbarView?.GetPresenter()?.ConsumeCurrentItem(1);
+    }
+    public bool TryPlantFromItemUse()
+    {
+        if (cropPlantingService == null || _currentSeed == null) return false;
+
+
+        string plantId = CurrentPlantId;
+        if (string.IsNullOrEmpty(plantId)) return false;
+
+        List<Vector3> positions = CalculatePlantingPositions();
+        if (positions.Count == 0) return false;
+
+        bool anyPlanted = false;
+        foreach (Vector3 pos in positions)
         {
-            List<Vector3> positions = new List<Vector3> { ScreenToWorldPosition(screenPosition) };
-            presenter.HandlePlantCrops(positions, cropTypeID);
+            if (cropPlantingService.PlantCrop(pos, plantId))
+            {
+                anyPlanted = true;
+                if (showDebugLogs)
+                    Debug.Log($"[CropPlantingView] Planted '{plantId}' at {pos}.");
+            }
         }
+        return anyPlanted;
     }
+    // ── Preview ────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Handles user input for planting crops.
-    /// View responsibility - captures input, calculates positions, forwards to presenter.
-    /// </summary>
-    private void HandleInput()
+    private void UpdatePlantingPreview()
     {
-        if (presenter == null)
+        if (_previewSR == null) return;
+
+        Sprite seedSprite = (_currentSeed?.CropDataSo?.GrowthStages?.Count > 0)
+            ? _currentSeed.CropDataSo.GrowthStages[0].stageSprite
+            : null;
+
+        if (seedSprite == null || targetCamera == null || playerTransform == null)
         {
-            Debug.LogError("[CropPlantingView] Presenter is null!");
+            _previewSR.enabled = false;
             return;
         }
 
-        if (allowHoldToPlant)
+        Vector3 tile = GetPreviewTargetTile();
+        if (tile == Vector3.zero)
         {
-            if (Input.GetKeyDown(plantKey))
-            {
-                // Immediate plant on key down
-                TriggerPlanting();
-                holdTimer = plantRepeatInterval;
-            }
-
-            if (Input.GetKey(plantKey))
-            {
-                holdTimer -= Time.deltaTime;
-                if (holdTimer <= 0f)
-                {
-                    TriggerPlanting();
-                    holdTimer = plantRepeatInterval;
-                }
-            }
-
-            if (Input.GetKeyUp(plantKey))
-            {
-                // Reset timer and area tracking
-                holdTimer = 0f;
-                lastTriedArea = new Vector2Int(int.MinValue, int.MinValue);
-            }
+            _previewSR.enabled = false;
+            return;
         }
-        else
-        {
-            if (Input.GetKeyDown(plantKey))
-            {
-                TriggerPlanting();
-            }
-        }
+
+        _previewSR.sprite   = seedSprite;
+        _previewSR.enabled  = true;
+        _previewSR.transform.position = new Vector3(
+            Mathf.Floor(tile.x),
+            Mathf.Floor(tile.y) + 0.062f,
+            0f);
     }
 
-    /// <summary>
-    /// Triggers planting by calculating positions and sending to presenter.
-    /// </summary>
-    private void TriggerPlanting()
+    /// <summary>Calculates target tile for preview every frame (no deduplication).</summary>
+    private Vector3 GetPreviewTargetTile()
     {
-        List<Vector3> positions = CalculatePlantingPositions();
-        if (positions.Count > 0)
+        Vector3 playerPos     = playerTransform.position;
+        Vector3 mouseWorldPos = ScreenToWorldPosition(Input.mousePosition);
+        mouseWorldPos.z       = 0f;
+
+        int playerTileX = Mathf.RoundToInt(playerPos.x);
+        int playerTileY = Mathf.RoundToInt(playerPos.y);
+
+        Vector2 dir = new Vector2(mouseWorldPos.x - playerPos.x, mouseWorldPos.y - playerPos.y);
+
+        int offsetX = 0, offsetY = 0;
+        if (dir.magnitude >= 0.5f)
         {
-            presenter.HandlePlantCrops(positions, currentCropTypeID);
+            dir.Normalize();
+            if      (dir.x >  0.4f) offsetX =  1;
+            else if (dir.x < -0.4f) offsetX = -1;
+            if      (dir.y >  0.4f) offsetY =  1;
+            else if (dir.y < -0.4f) offsetY = -1;
         }
+
+        int maxRadius = (plantingMode == PlantingMode.FarAroundPlayer) ? 2 : 1;
+        offsetX = Mathf.Clamp(offsetX, -maxRadius, maxRadius);
+        offsetY = Mathf.Clamp(offsetY, -maxRadius, maxRadius);
+
+        Vector3 target = new Vector3(playerTileX + offsetX, playerTileY + offsetY, 0f);
+        return Vector3.Distance(playerPos, target) <= plantingRange ? target : Vector3.zero;
     }
 
-    /// <summary>
-    /// Calculates planting positions based on current planting mode.
-    /// View responsibility - determines WHERE to plant based on input.
-    /// </summary>
+    // ── Planting positions ─────────────────────────────────────────────────
+
     private List<Vector3> CalculatePlantingPositions()
     {
-        List<Vector3> positions = new List<Vector3>();
+        var positions = new List<Vector3>();
 
         switch (plantingMode)
         {
             case PlantingMode.AtMouse:
                 positions.Add(GetMouseWorldPosition());
                 break;
-
             case PlantingMode.AroundPlayer:
+            {
                 Vector3 pos = GetDirectionalTileAroundPlayer(1);
                 if (pos != Vector3.zero) positions.Add(pos);
                 break;
-
+            }
             case PlantingMode.FarAroundPlayer:
+            {
                 Vector3 farPos = GetDirectionalTileAroundPlayer(2);
                 if (farPos != Vector3.zero) positions.Add(farPos);
                 break;
+            }
         }
 
         return positions;
     }
 
-    /// <summary>
-    /// Gets world position at mouse cursor.
-    /// </summary>
     private Vector3 GetMouseWorldPosition()
     {
         if (targetCamera == null) return Vector3.zero;
-        
         Vector3 worldPos = ScreenToWorldPosition(Input.mousePosition);
-        int tileX = Mathf.RoundToInt(worldPos.x);
-        int tileY = Mathf.RoundToInt(worldPos.y);
-        
-        return new Vector3(tileX, tileY, 0);
+        return new Vector3(Mathf.RoundToInt(worldPos.x), Mathf.RoundToInt(worldPos.y), 0);
     }
 
-    /// <summary>
-    /// Gets the tile in the direction of the mouse, within radius around player.
-    /// Returns the specific tile based on 8-directional input (or player's own tile).
-    /// </summary>
     private Vector3 GetDirectionalTileAroundPlayer(int maxRadius)
     {
-        if (targetCamera == null || playerTransform == null)
-        {
-            if (showDebugLogs)
-            {
-                Debug.LogWarning("[CropPlantingView] Camera or Player not found. Cannot calculate tile.");
-            }
-            return Vector3.zero;
-        }
-
-        Vector3 playerPos = playerTransform.position;
+        if (targetCamera == null || playerTransform == null) return Vector3.zero;
+        Vector3 playerPos     = playerTransform.position;
         Vector3 mouseWorldPos = ScreenToWorldPosition(Input.mousePosition);
-
-        // Get player tile position
-        int playerTileX = Mathf.RoundToInt(playerPos.x);
-        int playerTileY = Mathf.RoundToInt(playerPos.y);
-
-        // Calculate direction from player to mouse
-        Vector2 direction = new Vector2(mouseWorldPos.x - playerPos.x, mouseWorldPos.y - playerPos.y);
-        float distance = direction.magnitude;
-
-        // If mouse is very close to player (within 0.5 units), plant at player's tile
-        if (distance < 0.5f)
-        {
-            Vector2Int playerTileCoords = new Vector2Int(playerTileX, playerTileY);
-            
-            if (playerTileCoords == lastTriedArea)
-            {
-                return Vector3.zero;
-            }
-            
-            lastTriedArea = playerTileCoords;
-            
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlantingView] Planting at player tile ({playerTileX}, {playerTileY})");
-            }
-            
-            return new Vector3(playerTileX, playerTileY, 0);
-        }
-
-        // Normalize direction
-        direction.Normalize();
-
-        // Determine offset based on 8-directional input
-        int offsetX = 0;
-        int offsetY = 0;
-
-        // Determine horizontal component
-        if (direction.x > 0.4f) offsetX = 1;
-        else if (direction.x < -0.4f) offsetX = -1;
-
-        // Determine vertical component
-        if (direction.y > 0.4f) offsetY = 1;
-        else if (direction.y < -0.4f) offsetY = -1;
-
-        // Clamp to max radius
-        offsetX = Mathf.Clamp(offsetX, -maxRadius, maxRadius);
-        offsetY = Mathf.Clamp(offsetY, -maxRadius, maxRadius);
-
-        int targetX = playerTileX + offsetX;
-        int targetY = playerTileY + offsetY;
-        Vector2Int targetTile = new Vector2Int(targetX, targetY);
-
-        // Check if target tile is within planting range from player position
-        Vector3 targetTileCenter = new Vector3(targetX, targetY, 0);
-        float distanceToTarget = Vector3.Distance(playerPos, targetTileCenter);
-        
-        if (distanceToTarget > plantingRange)
-        {
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlantingView] Target tile too far: {distanceToTarget:F2} > {plantingRange}");
-            }
-            return Vector3.zero;
-        }
-
-        // Prevent replanting same tile
-        if (targetTile == lastTriedArea)
-        {
-            return Vector3.zero;
-        }
-
-        lastTriedArea = targetTile;
-
-        Vector3 plantPosition = new Vector3(targetX, targetY, 0);
-
-        if (showDebugLogs)
-        {
-            string directionName = GetDirectionName(offsetX, offsetY);
-            Debug.Log($"[CropPlantingView] Planting {directionName} of player at ({targetX}, {targetY})");
-        }
-
-        return plantPosition;
+        // No deduplication — planting is single-click, every click should evaluate fresh
+        Vector2Int dummy = new Vector2Int(int.MinValue, int.MinValue);
+        return CropTileSelector.GetDirectionalTile(playerPos, mouseWorldPos, plantingRange, ref dummy, maxRadius);
     }
 
-    /// <summary>
-    /// Gets a human-readable direction name for debugging.
-    /// </summary>
-    private string GetDirectionName(int offsetX, int offsetY)
-    {
-        if (offsetX == 0 && offsetY == 1) return "above";
-        if (offsetX == 0 && offsetY == -1) return "below";
-        if (offsetX == 1 && offsetY == 0) return "right";
-        if (offsetX == -1 && offsetY == 0) return "left";
-        if (offsetX == 1 && offsetY == 1) return "top-right";
-        if (offsetX == -1 && offsetY == 1) return "top-left";
-        if (offsetX == 1 && offsetY == -1) return "bottom-right";
-        if (offsetX == -1 && offsetY == -1) return "bottom-left";
-        return "at player";
-    }
-
-    /// <summary>
-    /// Converts screen position to world position.
-    /// </summary>
     private Vector3 ScreenToWorldPosition(Vector3 screenPosition)
     {
         if (targetCamera == null) return Vector3.zero;
-
-        Vector3 mouseScreenPos = screenPosition;
-        mouseScreenPos.z = targetCamera.transform.position.z * -1;
-
-        Vector3 mouseWorldPos = targetCamera.ScreenToWorldPoint(mouseScreenPos);
-        mouseWorldPos.z = 0;
-
-        return mouseWorldPos;
+        Vector3 pos = screenPosition;
+        pos.z = targetCamera.transform.position.z * -1;
+        Vector3 world = targetCamera.ScreenToWorldPoint(pos);
+        world.z = 0;
+        return world;
     }
 
-    /// <summary>
-    /// Photon RPC: Sync crop planting to other clients.
-    /// Receives network events and forwards to presenter.
-    /// </summary>
-    [PunRPC]
-    private void RPC_PlantCrop(Vector3 worldPosition, int cropTypeID)
+    // ── Camera search ──────────────────────────────────────────────────────
+
+    private Camera FindPlayerCamera()
     {
-        if (presenter != null)
+        GameObject camObj = GameObject.FindGameObjectWithTag(playerCameraTag);
+        if (camObj != null)
         {
-            presenter.HandleNetworkCropPlanted(worldPosition, cropTypeID);
+            Camera cam = camObj.GetComponent<Camera>();
+            if (cam != null) return cam;
         }
-        else
-        {
-            Debug.LogError("[CropPlantingView] Cannot handle network crop planted: Presenter is null!");
-        }
+        if (Camera.main != null) return Camera.main;
+        Camera[] cams = FindObjectsByType<Camera>(FindObjectsSortMode.None);
+        return cams.Length > 0 ? cams[0] : null;
     }
-    
+
+    // ── MVP init ───────────────────────────────────────────────────────────
+
+    private void InitializeMVP()
+    {
+        ChunkDataSyncManager syncManager    = FindAnyObjectByType<ChunkDataSyncManager>();
+        ChunkLoadingManager  loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
+
+        if (syncManager   == null) Debug.LogWarning("[CropPlantingView] ChunkDataSyncManager not found!");
+        if (loadingManager == null) Debug.LogWarning("[CropPlantingView] ChunkLoadingManager not found!");
+
+        cropPlantingService = new CropPlantingService(syncManager, loadingManager, showDebugLogs);
+        presenter           = new CropPlantingPresenter(cropPlantingService, showDebugLogs);
+    }
+
+    // ── Public API (kept for external callers) ─────────────────────────────
+
+    /// <summary>Plant at a specific screen position with an explicit plantId (for UI buttons etc.).</summary>
+    public void PlantCropAtPosition(Vector3 screenPosition, string plantId)
+    {
+        if (presenter == null || targetCamera == null || string.IsNullOrEmpty(plantId)) return;
+        List<Vector3> positions = new List<Vector3> { ScreenToWorldPosition(screenPosition) };
+        presenter.HandlePlantCrops(positions, plantId);
+    }
+
+    // ── Photon RPC ─────────────────────────────────────────────────────────
+
+    [PunRPC]
+    private void RPC_PlantCrop(Vector3 worldPosition, string plantId)
+    {
+        presenter?.HandleNetworkCropPlanted(worldPosition, plantId);
+    }
+
+    // ── Gizmos ─────────────────────────────────────────────────────────────
+
     private void OnDrawGizmosSelected()
     {
-        // Try to get player transform if not cached
         Transform targetTransform = playerTransform;
-        
         if (targetTransform == null)
         {
             GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
             if (playerEntity != null)
             {
-                // Try to find CenterPoint child first
-                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
-                targetTransform = centerPoint != null ? centerPoint : playerEntity.transform;
+                Transform cp = playerEntity.transform.Find("CenterPoint");
+                targetTransform = cp != null ? cp : playerEntity.transform;
             }
         }
-        
-        // Draw the planting range gizmo based on planting mode
-        if (targetTransform != null)
+
+        if (targetTransform == null || plantingRange <= 0) return;
+
+        switch (plantingMode)
         {
-            Color gizmoColor = Color.green;
-            
-            switch (plantingMode)
-            {
-                case PlantingMode.AroundPlayer:
-                case PlantingMode.FarAroundPlayer:
-                    gizmoColor = new Color(0f, 1f, 0f, 0.3f); // Green
-                    break;
-                    
-                case PlantingMode.AtMouse:
-                    // No range limit for AtMouse mode, draw a small indicator
-                    Gizmos.color = new Color(1f, 1f, 0f, 0.5f); // Yellow
-                    Gizmos.DrawWireSphere(targetTransform.position, 0.3f);
-                    return;
-            }
-            
-            if (plantingRange > 0)
-            {
-                // Draw wire sphere to show the planting range
-                Gizmos.color = gizmoColor;
+            case PlantingMode.AroundPlayer:
+            case PlantingMode.FarAroundPlayer:
+                Gizmos.color = new Color(0f, 1f, 0f, 0.3f);
                 Gizmos.DrawWireSphere(targetTransform.position, plantingRange);
-                
-                // Draw a solid disc for better visibility
-                Gizmos.color = new Color(gizmoColor.r, gizmoColor.g, gizmoColor.b, 0.1f);
-                DrawDiscGizmo(targetTransform.position, plantingRange);
-                
-                // Draw grid overlay to show tile boundaries
-                DrawTileGrid(targetTransform.position, plantingRange);
-            }
-        }
-    }
-    
-    private void DrawDiscGizmo(Vector3 center, float radius)
-    {
-        // Draw a disc on the XY plane
-        const int segments = 32;
-        float angleStep = 360f / segments;
-        
-        Vector3 prevPoint = center + new Vector3(radius, 0, 0);
-        
-        for (int i = 1; i <= segments; i++)
-        {
-            float angle = angleStep * i * Mathf.Deg2Rad;
-            Vector3 newPoint = center + new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0);
-            Gizmos.DrawLine(prevPoint, newPoint);
-            prevPoint = newPoint;
-        }
-    }
-    
-    private void DrawTileGrid(Vector3 center, float radius)
-    {
-        // Draw a grid showing tile boundaries within range
-        Gizmos.color = new Color(1f, 1f, 1f, 0.2f);
-        
-        int centerX = Mathf.RoundToInt(center.x);
-        int centerY = Mathf.RoundToInt(center.y);
-        int tileRadius = Mathf.CeilToInt(radius);
-        
-        // Draw vertical lines
-        for (int x = centerX - tileRadius; x <= centerX + tileRadius + 1; x++)
-        {
-            float xPos = x - 0.5f;
-            Gizmos.DrawLine(
-                new Vector3(xPos, center.y - radius, 0),
-                new Vector3(xPos, center.y + radius, 0)
-            );
-        }
-        
-        // Draw horizontal lines
-        for (int y = centerY - tileRadius; y <= centerY + tileRadius + 1; y++)
-        {
-            float yPos = y - 0.5f;
-            Gizmos.DrawLine(
-                new Vector3(center.x - radius, yPos, 0),
-                new Vector3(center.x + radius, yPos, 0)
-            );
+                break;
+            case PlantingMode.AtMouse:
+                Gizmos.color = new Color(1f, 1f, 0f, 0.5f);
+                Gizmos.DrawWireSphere(targetTransform.position, 0.3f);
+                break;
         }
     }
 }

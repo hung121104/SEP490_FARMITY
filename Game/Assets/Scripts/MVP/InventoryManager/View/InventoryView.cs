@@ -24,8 +24,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
 
     [Header("Other UI")]
     [SerializeField] private Button sortButton;
-    [SerializeField] private TextMeshProUGUI notificationText;
-    [SerializeField] private float notificationDuration = 2f;
 
     [Header("Drag Preview")]
     [SerializeField] private Image dragPreviewIcon;
@@ -62,9 +60,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
         HideDragPreview();
         InitializeDeleteZone();
         ConfigureVerticalLayout();
-
-        if (notificationText != null)
-            notificationText.gameObject.SetActive(false);
     }
 
     #region Initialize
@@ -239,8 +234,33 @@ public class InventoryView : MonoBehaviour, IInventoryView
     {
         if (itemDeleteView != null)
         {
-            itemDeleteView.OnItemDeleteRequested += (slot) => OnItemDeleteRequested?.Invoke(slot);
+            itemDeleteView.OnItemDeleteRequested += HandleDeleteZoneRequest;
         }
+    }
+
+    /// <summary>
+    /// Programmatically assigns a delete zone after Awake (e.g. from CraftingInventoryAdapter).
+    /// </summary>
+    public void SetDeleteZone(ItemDeleteView newDeleteView)
+    {
+        // Unsubscribe from old delete zone if exists
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.OnItemDeleteRequested -= HandleDeleteZoneRequest;
+        }
+
+        itemDeleteView = newDeleteView;
+
+        // Subscribe new delete zone if assigned
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.OnItemDeleteRequested += HandleDeleteZoneRequest;
+        }
+    }
+
+    private void HandleDeleteZoneRequest(int slot)
+    {
+        OnItemDeleteRequested?.Invoke(slot);
     }
 
     #endregion 
@@ -273,7 +293,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
             dragPreviewIcon.sprite = item.Icon;
 
         if (dragPreviewCanvasGroup != null)
-            dragPreviewCanvasGroup.alpha = 0.6f;
+            dragPreviewCanvasGroup.alpha = 1f;
     }
 
     public void UpdateDragPreview(Vector2 position)
@@ -290,16 +310,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
             dragPreviewObject.SetActive(false);
     }
 
-    public void ShowNotification(string message)
-    {
-        if (notificationText == null) return;
-
-        if (notificationCoroutine != null)
-            StopCoroutine(notificationCoroutine);
-
-        notificationCoroutine = StartCoroutine(ShowNotificationCoroutine(message));
-    }
-
     public void CancelAllActions()
     {
         ForceStopDragInEventSystem();
@@ -314,12 +324,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
             notificationCoroutine = null;
         }
 
-        // 3. Hide notification text
-        if (notificationText != null)
-        {
-            notificationText.gameObject.SetActive(false);
-        }
-
         // 4. Reset all slots hover state
         foreach (var slotView in slotViews)
         {
@@ -332,65 +336,30 @@ public class InventoryView : MonoBehaviour, IInventoryView
         // 5. Reset delete zone visual state
         if (itemDeleteView != null)
         {
-            itemDeleteView.ForceResetState();
+            itemDeleteView.ResetVisualOnly();
         }
 
         Debug.Log("[InventoryView] All actions cancelled");
     }
 
-    //Force stop drag operation in EventSystem
+    //Force stop drag operation by resetting internal slot state.
     private void ForceStopDragInEventSystem()
     {
-        if (EventSystem.current == null)
+        // Reset all slot drag states safely without touching EventSystem internals
+        foreach (var slot in slotViews)
         {
-            Debug.LogWarning("[InventoryView] No EventSystem found");
-            return;
-        }
-
-        // Get current EventSystem
-        var eventSystem = EventSystem.current;
-
-        // Check if there's an active drag
-        var currentEventData = eventSystem.currentInputModule?.GetComponent<BaseInput>();
-
-        // Set the pointerDrag to null to clear drag state
-        var pointerData = new PointerEventData(eventSystem)
-        {
-            position = Input.mousePosition
-        };
-
-        // Get all raycast results at current position
-        var raycastResults = new List<RaycastResult>();
-        eventSystem.RaycastAll(pointerData, raycastResults);
-
-        // Clear any active drag from EventSystem
-        if (eventSystem.currentInputModule != null)
-        {
-            // Force clear by simulating pointer up on all objects
-            foreach (var slot in slotViews)
+            if (slot != null)
             {
-                if (slot != null)
-                {
-                    ExecuteEvents.Execute(slot.gameObject, pointerData, ExecuteEvents.endDragHandler);
-                    ExecuteEvents.Execute(slot.gameObject, pointerData, ExecuteEvents.pointerUpHandler);
-                }
+                slot.ForceResetState();
             }
         }
+
+        Debug.Log("[InventoryView] Drag state reset via ForceStopDragInEventSystem");
     }
     #endregion
 
     private void HandleSlotClicked(int slotIndex)
     {
         OnSlotClicked?.Invoke(slotIndex);
-    }
-
-    private System.Collections.IEnumerator ShowNotificationCoroutine(string message)
-    {
-        notificationText.text = message;
-        notificationText.gameObject.SetActive(true);
-
-        yield return new WaitForSeconds(notificationDuration);
-
-        notificationText.gameObject.SetActive(false);
     }
 }

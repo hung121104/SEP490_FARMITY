@@ -10,21 +10,17 @@ public class ItemUsageController : MonoBehaviour
     [SerializeField] private LayerMask targetLayer;
 
     private HotbarPresenter presenter;
+    private ItemUsagePresenter itemUsagePresenter;
     private bool isSubscribed = false;
 
-    private void Start()
-    {
-        TrySubscribe();
-    }
+    private void Start() => TrySubscribe();
 
     private void TrySubscribe()
     {
         if (isSubscribed) return;
 
         if (hotbarView == null)
-        {
             hotbarView = FindFirstObjectByType<HotbarView>();
-        }
 
         if (hotbarView == null || !hotbarView.IsInitialized())
         {
@@ -39,94 +35,51 @@ public class ItemUsageController : MonoBehaviour
             return;
         }
 
+        // Build the service chain for tools (and consumables/weapons when ready)
+        itemUsagePresenter = new ItemUsagePresenter(new ItemUsageService(new UseToolService()));
+
         presenter.OnItemUsed += HandleItemUsed;
         isSubscribed = true;
         Debug.Log("ItemUsageController: Subscribed to Hotbar");
     }
 
-    // Handler for item usage events
     private void HandleItemUsed(ItemDataSO item, Vector3 targetPosition, int inventorySlotIndex)
     {
         Debug.Log("ItemUsageController: Using " + item.itemName + " at " + targetPosition);
 
-        bool consumed = false;
-        int amount = 0;
-
         switch (item.GetItemType())
         {
-            case ItemType.Tool:
-                consumed = UseTool(item, targetPosition);
+            case ItemType.Seed:
+                // Routed through ItemUsageService → UseSeedService → fires OnSeedRequested
+                itemUsagePresenter.UseSeed(item, targetPosition);
                 break;
 
-            case ItemType.Seed:
-                (consumed, amount) = UseSeed(item, targetPosition);
+            case ItemType.Tool:
+                // UseToolService fires per-tool events (OnHoeRequested, etc.)
+                // that the relevant Views subscribe to
+                itemUsagePresenter.UseTool(item, targetPosition);
                 break;
 
             case ItemType.Consumable:
-                (consumed, amount) = UseConsumable(item, targetPosition);
+                var (consumed, amount) = itemUsagePresenter.UseConsumable(item, targetPosition);
+                if (consumed && amount > 0)
+                    presenter.ConsumeCurrentItem(amount);
                 break;
 
             case ItemType.Weapon:
-                consumed = UseWeapon(item, targetPosition);
+                if (itemUsagePresenter.UseWeapon(item, targetPosition))
+                    presenter.ConsumeCurrentItem(1);
                 break;
 
             default:
                 Debug.LogWarning("No handler for item type: " + item.GetItemType());
                 break;
         }
-
-        if (consumed && amount > 0)
-        {
-            presenter.ConsumeCurrentItem(amount);
-        }
-    }
-
-    //Add specific item usage implementations below
-    private bool UseTool(ItemDataSO item, Vector3 pos)
-    {
-        Debug.Log("Using tool: " + item.itemName);
-
-        RaycastHit2D hit = Physics2D.Raycast(pos, Vector2.zero, 0.1f, targetLayer);
-        if (hit.collider != null)
-        {
-            Debug.Log("Hit: " + hit.collider.name);
-        }
-
-        return false;
-    }
-
-    private (bool, int) UseSeed(ItemDataSO item, Vector3 pos)
-    {
-        Debug.Log("Planting seed: " + item.itemName);
-
-        RaycastHit2D hit = Physics2D.Raycast(pos, Vector2.zero, 0.1f, farmableGroundLayer);
-        if (hit.collider != null)
-        {
-            Debug.Log("Planted on: " + hit.collider.name);
-            return (true, 1);
-        }
-
-        Debug.LogWarning("Cannot plant here");
-        return (false, 0);
-    }
-
-    private (bool, int) UseConsumable(ItemDataSO item, Vector3 pos)
-    {
-        Debug.Log("Consuming: " + item.itemName);
-        return (true, 1);
-    }
-
-    private bool UseWeapon(ItemDataSO item, Vector3 pos)
-    {
-        Debug.Log("Using weapon: " + item.itemName);
-        return false;
     }
 
     private void OnDestroy()
     {
         if (presenter != null && isSubscribed)
-        {
             presenter.OnItemUsed -= HandleItemUsed;
-        }
     }
 }

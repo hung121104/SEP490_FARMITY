@@ -8,10 +8,6 @@ public class ResourceDataSO : ItemDataSO
     public bool requiresSmelting = false;
     public ItemDataSO smeltedResult;
 
-    [Header("Cooking/Crafting")]
-    public bool canBeCrafted = false;
-    public Recipe craftingRecipe;
-
     public override ItemType GetItemType() => ItemType.Resource;
     public ItemCategory GetItemCategory() => ItemCategory.Mining;
 }

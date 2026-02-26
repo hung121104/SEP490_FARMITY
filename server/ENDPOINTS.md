@@ -51,12 +51,6 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Body: `{ "email": "string", "otp": "string", "newPassword": "string" }`
   - Response: `{ "ok": true }`
 
-## Player Data
-
-- **POST** `/player-data/save-position`: Save player position.
-  - Body: `{ "worldId": "string", "accountId": "string", "positionX": number, "positionY": number, "sectionIndex": number }`
-- **GET** `/player-data/position?worldId=string&accountId=string`: Get player position.
-
 ## Blog (Development Diary)
 
 - **POST** `/blog/create`: Create a new blog post (admin only).
@@ -178,6 +172,41 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Optional query: `ownerId=string` (only allowed for admin accounts)
     - Response: array of world documents (each includes `day`, `month`, `year`, `hour`, `minute`, `gold`, all numeric, default `0`).
 
+- **PUT** `/player-data/world`: Update world fields and/or upsert up to 4 player characters.
+  - Headers: `Authorization: Bearer <token>` (gateway middleware verifies JWT; `ownerId` is injected from token)
+  - Body:
+    ```json
+    {
+      "worldId": "string",
+      "day": 5,
+      "month": 3,
+      "year": 1,
+      "hour": 12,
+      "minute": 30,
+      "gold": 500,
+      "characters": [
+        { "accountId": "string", "positionX": 10, "positionY": 20 },
+        { "accountId": "string", "positionX": 5,  "positionY": 15, "sectionIndex": 2 }
+      ]
+    }
+    ```
+  - All fields except `worldId` are optional.
+  - `characters` is optional and capped at **4** entries. Each character is matched by `(worldId, accountId)` and created if it does not exist or updated if it does.
+  - Response: updated world document with a `characters` array of upserted character documents.
+  - Notes: Only the owner of the world (verified via JWT) may call this endpoint.
+
+- **GET** `/player-data/worlds/:worldId/characters/:accountId/position`: Get or create a character for a player in a world.
+  - Headers: `Authorization: Bearer <token>` (world owner only)
+  - Path parameters:
+    - `worldId`: string - The ID of the world
+    - `accountId`: string - The ID of the player's account
+  - Response: Character document `{ "worldId": "string", "accountId": "string", "positionX": number, "positionY": number, "sectionIndex": number }`
+  - Notes: 
+    - Only the owner of the world can access this endpoint.
+    - If the player already has a character in the world, it returns the existing character.
+    - If the player doesn't have a character, it creates a new one with default position (0, 0, 0) and returns it.
+    - This endpoint is typically used when a player joins a world owned by another player.
+
 ## Blog
 
 - **POST** `/blog/create`: Create a blog post (admin only).
@@ -274,6 +303,26 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 - **Message** `get-worlds-by-owner`: Get all worlds owned by an account.
   - Body: `{ "ownerId": "string" }`
   - Notes: `ownerId` should be provided by the gateway after verifying the caller's JWT; the microservice returns worlds for the supplied `ownerId`.
+
+- **Message** `update-world`: Update world fields and/or upsert up to 4 player characters.
+  - Body:
+    ```json
+    {
+      "worldId": "string",
+      "ownerId": "string",
+      "day"?: number,
+      "month"?: number,
+      "year"?: number,
+      "hour"?: number,
+      "minute"?: number,
+      "gold"?: number,
+      "characters"?: [
+        { "accountId": "string", "positionX": number, "positionY": number, "sectionIndex"?: number }
+      ]
+    }
+    ```
+  - Notes: `ownerId` is injected by the gateway from the verified JWT. World fields are only updated when present. `characters` is capped at 4; each entry is upserted by `(worldId, accountId)` — insert on first appearance, update on subsequent calls.
+  - Response: updated world document with a `characters` array of upserted character documents.
 
 - **Message** `delete-world`: Delete a world by id.
   - Body: `{ "_id": "string", "ownerId": "string" }`

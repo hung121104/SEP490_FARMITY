@@ -6,6 +6,10 @@ public class ConnectToServer : MonoBehaviourPunCallbacks
 {
     private void Start()
     {
+        if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
+        {
+            PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
+        }
         PhotonNetwork.ConnectUsingSettings();
     }
 
@@ -18,7 +22,6 @@ public class ConnectToServer : MonoBehaviourPunCallbacks
     public override void OnJoinedLobby()
     {
         Debug.Log("Joined Lobby");
-        // You can now join or create rooms
         SceneManager.LoadScene("LobbyScene");
     }
 }

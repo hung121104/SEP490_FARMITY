@@ -7,6 +7,7 @@ public enum ItemType
     Tool,           // Hoe, Watering Can, Pickaxe, Axe
     Seed,           // All plantable seeds
     Crop,           // Harvested crops
+    Pollen,         // Collected from flowering plants (stage 3) — used for crossbreeding
     Consumable,     // Food, drinks
     Material,       // Wood, stone, ore
     Weapon,         // Swords, rings
@@ -103,4 +104,42 @@ public enum PlantingMode
     AtMouse,           // Plant at exact mouse position
     AroundPlayer,      // Plant in direction of mouse within radius around player (3x3 = 1 tile away)
     FarAroundPlayer    // Plant in direction of mouse within larger radius (5x5 = 2 tiles away)
+}
+
+// ==================== CRAFTING MANAGEMENT ====================
+
+/// <summary>
+/// Defines the type of recipe.
+/// </summary>
+public enum RecipeType
+{
+    Crafting,
+    Cooking
+}
+
+public enum CraftingCategory
+{
+    General,
+    Tools,
+    Food,
+    Materials,
+    Furniture,
+    Equipment
+}
+
+public enum NotificationType
+{
+    Info,
+    Success,
+    Warning,
+    Error
+}
+
+public enum ToolType
+{
+    Hoe,
+    WateringCan,
+    Pickaxe,
+    Axe,
+    FishingRod
 }
