@@ -19,7 +19,7 @@ public class CropPlowingView : MonoBehaviour
     [Header("Plowing Settings")]
     [SerializeField] private float plowingRange = 2f;
     [SerializeField] private bool showDebugLogs = false;
-    
+
     private CropPlowingPresenter presenter;
     public CropPlowingPresenter GetPresenter() => presenter;
     private Transform playerTransform;
@@ -38,6 +38,9 @@ public class CropPlowingView : MonoBehaviour
         
         // Validate references
         ValidateReferences();
+
+        // Subscribe to hoe-use event fired by UseToolService
+        UseToolService.OnHoeRequested += HandleHoeUseRequested;
     }
     
     private void Update()
@@ -94,7 +97,9 @@ public class CropPlowingView : MonoBehaviour
                 lastPlowedTile = new Vector2Int(int.MinValue, int.MinValue);
             }
         }
+
     }
+
     
     
     private void HandlePlowInput()
@@ -167,10 +172,33 @@ public class CropPlowingView : MonoBehaviour
     private void ValidateReferences()
     {
         if (tilledTile == null)
-        {
             Debug.LogError("TilledTile is not assigned in CropPlowingView!");
-        }
     }
+
+    private void OnDestroy()
+    {
+        UseToolService.OnHoeRequested -= HandleHoeUseRequested;
+    }
+
+    // ── Hoe-use event handler ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Received from UseToolService.OnHoeRequested.
+    /// Plows the directional tile at the given mouse world position.
+    /// </summary>
+    private void HandleHoeUseRequested(ToolDataSO tool, Vector3 mouseWorldPos)
+    {
+        if (presenter == null || playerTransform == null) return;
+
+        Vector2Int dummy = new Vector2Int(int.MinValue, int.MinValue);
+        Vector3 snappedTile = CropTileSelector.GetDirectionalTile(
+            playerTransform.position, mouseWorldPos, plowingRange, ref dummy);
+
+        if (snappedTile == Vector3.zero) return;
+
+        presenter.HandlePlowAction(snappedTile);
+    }
+
     
     private void OnDrawGizmosSelected()
     {

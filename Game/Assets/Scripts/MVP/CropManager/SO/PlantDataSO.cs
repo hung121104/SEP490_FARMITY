@@ -30,6 +30,10 @@ public class PlantDataSO : ScriptableObject
     [Tooltip("The pollen item given to the player when they collect pollen from this plant.")]
     public PollenDataSO PollenItem;
 
+    [Tooltip("How many times the player can collect pollen from this plant per flowering stage. 0 = unlimited.")]
+    [Min(0)]
+    public int maxPollenHarvestsPerStage = 1;
+
     [Header("Season")]
     [Tooltip("The season in which this plant can grow.")]
     public Season GrowingSeason;

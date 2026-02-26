@@ -383,8 +383,18 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 visual.transform.position = new Vector3(tile.WorldX, tile.WorldY+0.062f, 0);
                 
                 // Add sprite renderer with correct stage sprite
+                Sprite stageSprite = plantData.GrowthStages[tile.CropStage].stageSprite;
+                if (stageSprite == null)
+                {
+                    if (showDebugLogs)
+                        Debug.LogWarning($"[ChunkLoading] '{plantData.PlantName}' stage {tile.CropStage} has a null stageSprite — " +
+                                         "assign a sprite in PlantDataSO.GrowthStages.");
+                    Destroy(visual);
+                    continue;
+                }
+
                 SpriteRenderer sr = visual.AddComponent<SpriteRenderer>();
-                sr.sprite = plantData.GrowthStages[tile.CropStage].stageSprite;
+                sr.sprite = stageSprite;
                 sr.sortingLayerName = "WalkInfront";
                 sr.sortingOrder = 1;
                 
@@ -408,6 +418,17 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         foreach (var plant in plantDatabase)
         {
             if (plant != null && plant.PlantId == plantId) return plant;
+        }
+        // Plant not found — log what IS registered so the user can spot the mismatch
+        if (showDebugLogs)
+        {
+            var registered = new System.Text.StringBuilder();
+            if (plantDatabase != null)
+                foreach (var p in plantDatabase)
+                    if (p != null) registered.Append($"'{p.PlantId}' ");
+            Debug.LogWarning($"[ChunkLoading] PlantId '{plantId}' not found in plantDatabase. " +
+                             $"Registered ids: [{registered}]\n" +
+                             "→ Fix: add the PlantDataSO to ChunkLoadingManager.plantDatabase in the Inspector.");
         }
         return null;
     }

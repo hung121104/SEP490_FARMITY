@@ -9,13 +9,14 @@ public class CropChunkData : BaseChunkData
     [Serializable]
     public struct TileData
     {
-        public bool IsTilled;      // 1 byte - whether tile is tilled
-        public bool HasCrop;       // 1 byte - whether tile has a crop
-        public string PlantId;     // variable - plant identifier string (from PlantDataSO.PlantId)
-        public byte CropStage;     // 1 byte
-        public int TotalAge;       // 4 bytes - days since planting
-        public int WorldX;         // 4 bytes - ABSOLUTE WORLD X
-        public int WorldY;         // 4 bytes - ABSOLUTE WORLD Y
+        public bool IsTilled;           // 1 byte - whether tile is tilled
+        public bool HasCrop;            // 1 byte - whether tile has a crop
+        public string PlantId;          // variable - plant identifier string (from PlantDataSO.PlantId)
+        public byte CropStage;          // 1 byte
+        public int TotalAge;            // 4 bytes - days since planting
+        public int WorldX;              // 4 bytes - ABSOLUTE WORLD X
+        public int WorldY;              // 4 bytes - ABSOLUTE WORLD Y
+        public byte PollenHarvestCount; // 1 byte - pollen collections this flowering stage (resets on stage change)
     }
     
     // Dictionary key is world position: WorldX * 100000 + WorldY
@@ -55,6 +56,7 @@ public class CropChunkData : BaseChunkData
             tile.PlantId = plantId;
             tile.CropStage = 0;
             tile.TotalAge = 0;  // Start at day 0
+            tile.PollenHarvestCount = 0;
             tiles[key] = tile;
         }
         else
@@ -77,6 +79,7 @@ public class CropChunkData : BaseChunkData
             tile.PlantId = string.Empty;
             tile.CropStage = 0;
             tile.TotalAge = 0;
+            tile.PollenHarvestCount = 0;
             
             // If tile is no longer tilled either, remove it completely
             if (!tile.IsTilled)
@@ -99,7 +102,39 @@ public class CropChunkData : BaseChunkData
         long key = GetKey(worldX, worldY);
         if (tiles.TryGetValue(key, out TileData tile) && tile.HasCrop)
         {
-            tile.CropStage = newStage;      
+            tile.CropStage = newStage;
+            tile.PollenHarvestCount = 0; // Reset pollen counter whenever stage changes
+            tiles[key] = tile;
+            IsDirty = true;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Increments the pollen harvest count for this tile by 1.
+    /// Returns false if the tile does not exist or has no crop.
+    /// </summary>
+    public bool IncrementPollenHarvestCount(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        if (tiles.TryGetValue(key, out TileData tile) && tile.HasCrop)
+        {
+            tile.PollenHarvestCount++;
+            tiles[key] = tile;
+            IsDirty = true;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>Resets the pollen harvest count for this tile to 0.</summary>
+    public bool ResetPollenHarvestCount(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        if (tiles.TryGetValue(key, out TileData tile) && tile.HasCrop)
+        {
+            tile.PollenHarvestCount = 0;
             tiles[key] = tile;
             IsDirty = true;
             return true;
@@ -293,10 +328,11 @@ public class CropChunkData : BaseChunkData
                 : System.Text.Encoding.UTF8.GetBytes(tile.PlantId);
             bytes.Add((byte)plantIdBytes.Length);                // 1  (max 255)
             bytes.AddRange(plantIdBytes);                        // N
-            bytes.Add(tile.CropStage);                           // 1
-            bytes.AddRange(BitConverter.GetBytes(tile.TotalAge));// 4
-            bytes.AddRange(BitConverter.GetBytes(tile.WorldX));  // 4
-            bytes.AddRange(BitConverter.GetBytes(tile.WorldY));  // 4
+            bytes.Add(tile.CropStage);                                   // 1
+            bytes.AddRange(BitConverter.GetBytes(tile.TotalAge));         // 4
+            bytes.AddRange(BitConverter.GetBytes(tile.WorldX));           // 4
+            bytes.AddRange(BitConverter.GetBytes(tile.WorldY));           // 4
+            bytes.Add(tile.PollenHarvestCount);                           // 1 (new)
         }
 
         return bytes.ToArray();
@@ -337,6 +373,8 @@ public class CropChunkData : BaseChunkData
             tile.TotalAge  = BitConverter.ToInt32(data, offset); offset += 4;
             tile.WorldX    = BitConverter.ToInt32(data, offset); offset += 4;
             tile.WorldY    = BitConverter.ToInt32(data, offset); offset += 4;
+            // PollenHarvestCount added in v2 — graceful fallback for old save data
+            tile.PollenHarvestCount = offset < data.Length ? data[offset++] : (byte)0;
 
             tiles[GetKey(tile.WorldX, tile.WorldY)] = tile;
         }
@@ -352,7 +390,7 @@ public class CropChunkData : BaseChunkData
         {
             int plantIdLen = string.IsNullOrEmpty(tile.PlantId)
                 ? 0 : System.Text.Encoding.UTF8.GetByteCount(tile.PlantId);
-            size += 2 + 1 + plantIdLen + 1 + 4 + 4 + 4; // IsTilled+HasCrop + PlantIdLen + PlantId + CropStage + TotalAge + WorldX + WorldY
+            size += 2 + 1 + plantIdLen + 1 + 4 + 4 + 4 + 1; // IsTilled+HasCrop + PlantIdLen + PlantId + CropStage + TotalAge + WorldX + WorldY + PollenHarvestCount
         }
         return size;
     }
