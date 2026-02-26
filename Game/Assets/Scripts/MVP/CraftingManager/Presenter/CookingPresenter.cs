@@ -88,11 +88,6 @@ public class CookingPresenter
 
     private void SubscribeToViewEvents()
     {
-        if (mainView != null)
-        {
-            mainView.OnCloseRequested += HandleCloseRequested;
-        }
-
         if (recipeListView != null)
         {
             recipeListView.OnRecipeClicked += HandleRecipeClicked;
@@ -100,7 +95,7 @@ public class CookingPresenter
 
         if (recipeDetailView != null)
         {
-            recipeDetailView.OnCraftRequested += HandleCookRequested; // Note: Using OnCraftRequested for interface consistency
+            recipeDetailView.OnCraftRequested += HandleCookRequested;
             recipeDetailView.OnAmountChanged += HandleAmountChanged;
         }
 
@@ -112,11 +107,6 @@ public class CookingPresenter
 
     private void UnsubscribeFromViewEvents()
     {
-        if (mainView != null)
-        {
-            mainView.OnCloseRequested -= HandleCloseRequested;
-        }
-
         if (recipeListView != null)
         {
             recipeListView.OnRecipeClicked -= HandleRecipeClicked;
@@ -158,7 +148,7 @@ public class CookingPresenter
 
     private void HandleItemCooked(RecipeModel recipe, int amount)
     {
-        notificationView?.ShowNotification($"✓ Cooked {recipe.RecipeName} x{amount}", NotificationType.Success);
+        notificationView?.ShowCraftingResult(recipe.RecipeName, amount, true);
 
         // Refresh recipe list to update cookable status
         RefreshRecipeList();
@@ -264,11 +254,6 @@ public class CookingPresenter
         selectedRecipeID = null;
     }
 
-    private void HandleCloseRequested()
-    {
-        CloseCookingUI();
-    }
-
     private void HandleAmountChanged(int newAmount)
     {
         // Could add logic here if needed
@@ -351,38 +336,21 @@ public class CookingPresenter
         var missingIngredients = craftingService.GetMissingIngredients(recipeID, inventoryService);
 
         // Calculate max cookable amount
-        int maxAmount = CalculateMaxCookableAmount(recipe, missingIngredients);
+        int maxAmount = CalculateMaxCraftableAmount(recipe, missingIngredients);
 
-        // Show detail
-        recipeDetailView?.ShowRecipeDetail(recipe, canCook, missingIngredients);
-
-        // Set max amount for cooking detail view
-        if (recipeDetailView is CookingDetailView cookingDetailView)
-        {
-            cookingDetailView.SetMaxCookAmount(maxAmount);
-        }
-
-        // Set default amount
-        recipeDetailView?.SetCraftAmount(1);
+        // Show detail and pass maxAmount to view
+        recipeDetailView?.ShowRecipeDetail(recipe, canCook, missingIngredients, maxAmount);
 
         // Update selection in list
         recipeListView?.SetRecipeSelected(recipeID, true);
     }
 
-    private void UpdateSelectedRecipeDetail()
-    {
-        if (!string.IsNullOrEmpty(selectedRecipeID))
-        {
-            ShowRecipeDetail(selectedRecipeID);
-        }
-    }
-
-    private int CalculateMaxCookableAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
+    private int CalculateMaxCraftableAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
     {
         if (recipe == null || recipe.Ingredients == null || recipe.Ingredients.Length == 0)
             return 0;
 
-        // If any ingredient is missing, can't cook
+        // If any ingredient is missing, can't craft
         if (missingIngredients != null && missingIngredients.Count > 0)
             return 0;
 
@@ -397,6 +365,14 @@ public class CookingPresenter
         }
 
         return Mathf.Max(0, maxAmount);
+    }
+
+    private void UpdateSelectedRecipeDetail()
+    {
+        if (!string.IsNullOrEmpty(selectedRecipeID))
+        {
+            ShowRecipeDetail(selectedRecipeID);
+        }
     }
 
     #endregion

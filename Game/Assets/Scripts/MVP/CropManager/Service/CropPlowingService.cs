@@ -209,4 +209,45 @@ public class CropPlowingService : ICropPlowingService
     {
         tilledPositions.Remove(tilePosition);
     }
+
+    /// <summary>
+    /// Removes the crop at a tilled tile position. Used when the hoe is applied to an occupied tile.
+    /// Syncs removal to other players via ChunkDataSyncManager.
+    /// </summary>
+    public bool RemoveCropOnTile(Vector3 worldPosition)
+    {
+        if (WorldDataManager.Instance == null) return false;
+
+        if (!WorldDataManager.Instance.HasCropAtWorldPosition(worldPosition))
+        {
+            if (showDebugLogs)
+                Debug.Log($"[CropPlowingService] RemoveCropOnTile: no crop at {worldPosition}.");
+            return false;
+        }
+
+        bool removed = WorldDataManager.Instance.RemoveCropAtWorldPosition(worldPosition);
+        if (!removed) return false;
+
+        if (showDebugLogs)
+            Debug.Log($"[CropPlowingService] ✓ Crop removed at {worldPosition}.");
+
+        // Sync to other players
+        if (PhotonNetwork.IsConnected && syncManager != null)
+        {
+            int wx = Mathf.FloorToInt(worldPosition.x);
+            int wy = Mathf.FloorToInt(worldPosition.y);
+            syncManager.BroadcastCropRemoved(wx, wy);
+        }
+
+        // Refresh visuals locally
+        ChunkLoadingManager chunkLoader = Object.FindAnyObjectByType<ChunkLoadingManager>();
+        if (chunkLoader != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPosition);
+            if (chunkLoader.IsChunkLoaded(chunkPos))
+                chunkLoader.RefreshChunkVisuals(chunkPos);
+        }
+
+        return true;
+    }
 }

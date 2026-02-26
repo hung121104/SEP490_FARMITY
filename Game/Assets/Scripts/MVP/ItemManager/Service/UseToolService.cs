@@ -1,116 +1,78 @@
 using UnityEngine;
-using Photon.Pun;
+using System;
 
+/// <summary>
+/// Dispatches tool-use requests as static events.
+/// Add a new event per tool type; the matching View subscribes to it.
+/// </summary>
 public class UseToolService : IUseToolService
 {
-    // ── Plowing integration ───────────────────────────────────────────────
-    private readonly CropPlowingView plowingView;   // resolved lazily via GetPresenter()
-    private readonly string playerTag;
-    private readonly float plowingRange;
-    /// Deduplication across rapid calls — mirrors CropPlowingView.lastPlowedTile
-    private Vector2Int lastPlowTile = new Vector2Int(int.MinValue, int.MinValue);
+    // ── Static events — one per tool type ────────────────────────────────
+    /// <summary>Fired when the Hoe is used. CropPlowingView subscribes.</summary>
+    public static event Action<ToolDataSO, Vector3> OnHoeRequested;
 
-    /// <summary>
-    /// Default constructor — no plowing integration (keep existing behaviour).
-    /// </summary>
-    public UseToolService() { }
+    /// <summary>Fired when the Watering Can is used.</summary>
+    public static event Action<ToolDataSO, Vector3> OnWateringCanRequested;
 
-    /// <summary>
-    /// Constructor used when the Hoe should delegate to the Plowing MVP.
-    /// Pass the view; the presenter is resolved lazily so timing is not an issue.
-    /// </summary>
-    public UseToolService(CropPlowingView plowingView, string playerTag = "PlayerEntity", float plowingRange = 2f)
+    /// <summary>Fired when the Pickaxe is used.</summary>
+    public static event Action<ToolDataSO, Vector3> OnPickaxeRequested;
+
+    /// <summary>Fired when the Axe is used.</summary>
+    public static event Action<ToolDataSO, Vector3> OnAxeRequested;
+
+    /// <summary>Fired when the Fishing Rod is used.</summary>
+    public static event Action<ToolDataSO, Vector3> OnFishingRodRequested;
+
+    /// <summary>Fired when a Pollen item is used. CropBreedingView subscribes.</summary>
+    public static event Action<PollenDataSO, Vector3> OnPollenRequested;
+
+    // ── IUseToolService implementation ────────────────────────────────────
+
+    public bool UseHoe(ToolDataSO item, Vector3 pos)
     {
-        this.plowingView  = plowingView;
-        this.playerTag    = playerTag;
-        this.plowingRange = plowingRange;
-    }
-
-    public bool UseHoe(ToolDataSO item, Vector3 mouseWorldPos)
-    {
-        Debug.Log("[UseToolService] UseHoe: " + item + " at: " + mouseWorldPos);
-
-        // Resolve presenter lazily — avoids the timing issue where the view exists
-        // but its Start() hasn't run yet at subscription time.
-        CropPlowingPresenter plowingPresenter = plowingView != null ? plowingView.GetPresenter() : null;
-
-        if (plowingPresenter == null)
-        {
-            Debug.LogWarning("[UseToolService] UseHoe: plowing presenter not ready yet (CropPlowingView.Start may not have run).");
-            return true; // log only — nothing destructive
-        }
-
-        // Find the local player (same logic as CropPlowingView)
-        Transform playerTransform = FindLocalPlayer();
-        if (playerTransform == null)
-        {
-            Debug.LogWarning("[UseToolService] UseHoe: local player not found.");
-            return false;
-        }
-
-        // Apply the same 8-directional tile snapping CropPlowingView uses
-        Vector3 snappedTile = CropTileSelector.GetDirectionalTile(
-            playerTransform.position,
-            mouseWorldPos,
-            plowingRange,
-            ref lastPlowTile);
-
-        if (snappedTile == Vector3.zero)
-        {
-            Debug.Log("[UseToolService] UseHoe: target tile out of range or same as last tile.");
-            return false;
-        }
-
-        // Delegate to the Plowing MVP presenter — identical call that CropPlowingView makes
-        plowingPresenter.HandlePlowAction(snappedTile);
+        Debug.Log("[UseToolService] UseHoe at: " + pos);
+        OnHoeRequested?.Invoke(item, pos);
         return true;
     }
 
-   
-
-    // ── Other tools (unchanged) ───────────────────────────────────────────
-
     public bool UseWateringCan(ToolDataSO item, Vector3 pos)
     {
-        Debug.Log("[UseToolService] UseWateringCan: " + item + " at: " + pos);
+        Debug.Log("[UseToolService] UseWateringCan at: " + pos);
+        OnWateringCanRequested?.Invoke(item, pos);
         return true;
     }
 
     public bool UsePickaxe(ToolDataSO item, Vector3 pos)
     {
-        Debug.Log("[UseToolService] UsePickaxe: " + item + " at: " + pos);
+        Debug.Log("[UseToolService] UsePickaxe at: " + pos);
+        OnPickaxeRequested?.Invoke(item, pos);
         return true;
     }
 
     public bool UseAxe(ToolDataSO item, Vector3 pos)
     {
-        Debug.Log("[UseToolService] UseAxe: " + item + " at: " + pos);
+        Debug.Log("[UseToolService] UseAxe at: " + pos);
+        OnAxeRequested?.Invoke(item, pos);
         return true;
     }
 
     public bool UseFishingRod(ToolDataSO item, Vector3 pos)
     {
-        Debug.Log("[UseToolService] UseFishingRod: " + item + " at: " + pos);
+        Debug.Log("[UseToolService] UseFishingRod at: " + pos);
+        OnFishingRodRequested?.Invoke(item, pos);
         return true;
     }
 
-
-     // ── Helpers ──────────────────────────────────────────────────────────
-
-    /// <summary>Finds the Photon-local player by tag, returns its CenterPoint (or root).</summary>
-    private Transform FindLocalPlayer()
+    public bool UsePollen(PollenDataSO pollen, Vector3 pos)
     {
-        if (string.IsNullOrEmpty(playerTag)) return null;
+        Debug.Log("[UseToolService] UsePollen at: " + pos);
+        OnPollenRequested?.Invoke(pollen, pos);
+        return true;
+    }
 
-        foreach (GameObject player in GameObject.FindGameObjectsWithTag(playerTag))
-        {
-            PhotonView pv = player.GetComponent<PhotonView>();
-            if (pv != null && pv.IsMine)
-            {
-                Transform center = player.transform.Find("CenterPoint");
-                return center != null ? center : player.transform;
-            }
-        }
-        return null;
+    private bool LogUnknownTool(ToolDataSO toolData)
+    {
+        Debug.LogWarning("[UseToolService] Unknown ToolType: " + toolData.toolType);
+        return false;
     }
 }

@@ -7,10 +7,6 @@ public interface ICraftingMainView
     void Hide();
     void SetInteractable(bool interactable);
 
-    // Events
-    event Action OnCloseRequested;
-    event Action OnOpenRequested;
-
     // Sub-view references
     IRecipeListView RecipeListView { get; }
     IRecipeDetailView RecipeDetailView { get; }
