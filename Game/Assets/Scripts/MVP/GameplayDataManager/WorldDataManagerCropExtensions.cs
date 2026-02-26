@@ -58,12 +58,19 @@ public static class WorldDataManagerCropExtensions
         return manager.CropData?.UpdateCropAge(worldPos, newAge) ?? false;
     }
     
-    /// <summary>
-    /// Increment crop age by 1 day
-    /// </summary>
+    /// <summary>Increment crop age by 1 day</summary>
     public static bool IncrementCropAge(this WorldDataManager manager, Vector3 worldPos)
     {
         return manager.CropData?.IncrementCropAge(worldPos) ?? false;
+    }
+
+    /// <summary>
+    /// Increments the pollen harvest count for the crop at worldPos by 1.
+    /// Should be called after each successful pollen collection.
+    /// </summary>
+    public static bool IncrementPollenHarvestCount(this WorldDataManager manager, Vector3 worldPos)
+    {
+        return manager.CropData?.IncrementPollenHarvestCount(worldPos) ?? false;
     }
     
     /// <summary>

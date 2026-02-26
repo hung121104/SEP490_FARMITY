@@ -15,6 +15,7 @@ public class CropHarvestingView : MonoBehaviourPun
     [Tooltip("How often (seconds) to scan for nearby harvestable crops")]
     public float checkInterval = 0.12f;
 
+
     // ── Runtime state ─────────────────────────────────────────────────────
     private float nextScanTime = 0f;
     private float holdTimer    = 0f;
@@ -34,12 +35,24 @@ public class CropHarvestingView : MonoBehaviourPun
     // ── Lifecycle ─────────────────────────────────────────────────────────
     void Awake()
     {
+        var cropManagerView  = FindAnyObjectByType<CropManagerView>();
+        var inventoryView    = FindAnyObjectByType<InventoryGameView>();
+        var syncManager      = FindAnyObjectByType<ChunkDataSyncManager>();
+
+        var pollenService = new CropPollenService(
+            WorldDataManager.Instance,
+            cropManagerView,
+            inventoryView,
+            syncManager
+        );
+
         var service = new CropHarvestingService(
             WorldDataManager.Instance,
-            FindAnyObjectByType<CropManagerView>(),
-            FindAnyObjectByType<ChunkDataSyncManager>(),
+            cropManagerView,
+            syncManager,
             FindAnyObjectByType<ChunkLoadingManager>(),
-            FindAnyObjectByType<InventoryGameView>()
+            inventoryView,
+            pollenService
         );
 
         presenter = new CropHarvestingPresenter(this, service);
@@ -102,13 +115,31 @@ public class CropHarvestingView : MonoBehaviourPun
 
     public void OnHarvestFailed(Vector3 tilePos) { }
 
+    /// <summary>Called by the Presenter when pollen was successfully collected.</summary>
+    public void OnPollenCollectSuccess(Vector3 tilePos, PollenDataSO pollen)
+    {
+        // TODO: play a VFX/SFX, show a pickup notification, etc.
+        Debug.Log($"[CropHarvestingView] Pollen '{pollen?.itemName}' collected at {tilePos}.");
+    }
+
+    /// <summary>Called by the Presenter when pollen collection failed (wrong stage, full inventory, etc.).</summary>
+    public void OnPollenCollectFailed(Vector3 tilePos)
+    {
+        // TODO: play a failure sound or show a UI hint.
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────
 
     private void HandleHarvestInput()
     {
         Vector3 target = GetDirectionalTileForHarvesting();
         if (target == Vector3.zero) return;
-        presenter.HandleHarvestAction(target);
+
+        // Context-sensitive: prefer pollen collection when the crop is flowering.
+        if (presenter.IsReadyToCollectPollen(target))
+            presenter.HandleCollectPollenAction(target);
+        else
+            presenter.HandleHarvestAction(target);
     }
 
     private void ManageHotbarInterception()
@@ -125,7 +156,8 @@ public class CropHarvestingView : MonoBehaviourPun
 
             Vector3 target = CropTileSelector.GetDirectionalTile(playerPos, mouseWorldPos, checkRadius, ref dummyTile);
             if (target != Vector3.zero)
-                targetingReadyCrop = presenter.IsReadyToHarvest(target);
+                targetingReadyCrop = presenter.IsReadyToHarvest(target)
+                                  || presenter.IsReadyToCollectPollen(target);
         }
 
         hotbarLeftClickField.SetValue(hotbarView, !targetingReadyCrop);

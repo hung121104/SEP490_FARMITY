@@ -1,23 +1,28 @@
 using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
 /// Implements pollen collection logic.
 /// The crop is NOT removed — only the pollen item is added to the player's inventory.
+/// Broadcasts the updated PollenHarvestCount to all other clients via ChunkDataSyncManager.
 /// </summary>
 public class CropPollenService : ICropPollenService
 {
     private readonly WorldDataManager worldData;
     private readonly CropManagerView cropManagerView;
     private readonly InventoryGameView inventoryGameView;
+    private readonly ChunkDataSyncManager syncManager;
 
     public CropPollenService(
         WorldDataManager worldData,
         CropManagerView cropManagerView,
-        InventoryGameView inventoryGameView)
+        InventoryGameView inventoryGameView,
+        ChunkDataSyncManager syncManager = null)
     {
         this.worldData        = worldData;
         this.cropManagerView  = cropManagerView;
         this.inventoryGameView = inventoryGameView;
+        this.syncManager      = syncManager;
     }
 
     // ── ICropPollenService ────────────────────────────────────────────────
@@ -56,7 +61,19 @@ public class CropPollenService : ICropPollenService
             return null;
         }
 
-        Debug.Log($"[CropPollenService] Collected pollen '{pollen.itemName}' from ({wx},{wy}).");
+        // Persist the harvest count locally
+        worldData.IncrementPollenHarvestCount(worldPos);
+
+        // Read back the new count so we can broadcast the authoritative value
+        byte newCount = 0;
+        if (worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+            newCount = tileData.PollenHarvestCount;
+
+        // Broadcast to other clients
+        if (PhotonNetwork.IsConnected && syncManager != null)
+            syncManager.BroadcastPollenHarvested(wx, wy, newCount);
+
+        Debug.Log($"[CropPollenService] Collected pollen '{pollen.itemName}' from ({wx},{wy}). Count: {newCount}.");
         return pollen;
     }
 

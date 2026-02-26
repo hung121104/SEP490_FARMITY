@@ -5,6 +5,7 @@ using Photon.Pun;
 /// Concrete implementation of ICropHarvestingService.
 /// Handles world data removal, plant lookup, network broadcast, visual refresh,
 /// and inventory insertion — all pure business logic with no Unity UI or input.
+/// Pollen collection is delegated to ICropPollenService.
 /// </summary>
 public class CropHarvestingService : ICropHarvestingService
 {
@@ -13,19 +14,22 @@ public class CropHarvestingService : ICropHarvestingService
     private readonly ChunkDataSyncManager syncManager;
     private readonly ChunkLoadingManager loadingManager;
     private readonly InventoryGameView inventoryGameView;
+    private readonly ICropPollenService pollenService;
 
     public CropHarvestingService(
         WorldDataManager worldData,
         CropManagerView cropManagerView,
         ChunkDataSyncManager syncManager,
         ChunkLoadingManager loadingManager,
-        InventoryGameView inventoryGameView)
+        InventoryGameView inventoryGameView,
+        ICropPollenService pollenService)
     {
-        this.worldData        = worldData;
-        this.cropManagerView  = cropManagerView;
-        this.syncManager      = syncManager;
-        this.loadingManager   = loadingManager;
+        this.worldData         = worldData;
+        this.cropManagerView   = cropManagerView;
+        this.syncManager       = syncManager;
+        this.loadingManager    = loadingManager;
         this.inventoryGameView = inventoryGameView;
+        this.pollenService     = pollenService;
     }
 
     // ── ICropHarvestingService ────────────────────────────────────────────
@@ -43,7 +47,6 @@ public class CropHarvestingService : ICropHarvestingService
     public bool TryHarvest(Vector3 worldPos, out ItemDataSO harvestedItem)
     {
         harvestedItem = null;
-
         if (worldData == null) return false;
 
         int worldX = Mathf.FloorToInt(worldPos.x);
@@ -70,7 +73,7 @@ public class CropHarvestingService : ICropHarvestingService
             return false;
         }
 
-        // Unregister from growth manager
+        // Unregister from visual manager
         cropManagerView?.UnregisterCrop(worldX, worldY);
 
         // Broadcast to other clients
@@ -115,19 +118,31 @@ public class CropHarvestingService : ICropHarvestingService
             for (int dy = -1; dy <= 1; dy++)
             {
                 Vector3 tilePos = new Vector3(px + dx, py + dy, 0);
-                float dist = Vector2.Distance(new Vector2(playerPos.x, playerPos.y), new Vector2(tilePos.x, tilePos.y));
+                float dist = Vector2.Distance(new Vector2(playerPos.x, playerPos.y),
+                                              new Vector2(tilePos.x, tilePos.y));
                 if (dist > radius) continue;
-
                 if (!worldData.HasCropAtWorldPosition(tilePos)) continue;
 
                 int wx = Mathf.FloorToInt(tilePos.x);
                 int wy = Mathf.FloorToInt(tilePos.y);
-
-                if (cropManagerView.IsCropReadyToHarvest(wx, wy))
-                    return tilePos;
+                if (cropManagerView.IsCropReadyToHarvest(wx, wy)) return tilePos;
             }
         }
 
         return Vector3.zero;
+    }
+
+    // ── Pollen harvesting — delegated to ICropPollenService ───────────────
+
+    public bool IsReadyToCollectPollen(Vector3 worldPos)
+        => pollenService != null && pollenService.CanCollectPollen(worldPos);
+
+    public bool TryCollectPollen(Vector3 worldPos, out PollenDataSO pollenItem)
+    {
+        pollenItem = null;
+        if (pollenService == null) return false;
+
+        pollenItem = pollenService.TryCollectPollen(worldPos);
+        return pollenItem != null;
     }
 }

@@ -13,9 +13,6 @@ public class CropPlantingController : MonoBehaviourPunCallbacks
     [Tooltip("How often (seconds) to attempt planting while holding the plant key.")]
     public float plantRepeatInterval = 0.25f;
 
-    [Header("Visual Feedback")]
-    public GameObject cropPrefab;
-
     [Header("Debug")]
     public bool showDebugLogs = true;
 
