@@ -44,6 +44,7 @@ public class PlayerAttackController : MonoBehaviour
     private Animator playerAnimator;
     private StatsManager statsManager;
     private PlayerPointerController pointerController;
+    private SkillBase skillBase;
 
     private int currentComboStep = 0;
     private float comboResetTimer = 0f;
@@ -78,23 +79,16 @@ public class PlayerAttackController : MonoBehaviour
             playerTransform = playerObj.transform;
             playerAnimator = playerObj.GetComponent<Animator>();
 
-            // Find CenterPoint
             Transform found = playerTransform.Find("CenterPoint");
-            if (found != null)
-                centerPoint = found;
-            else
-            {
-                Debug.LogWarning("PlayerAttackController: CenterPoint not found! Using player root instead.");
-                centerPoint = playerTransform;
-            }
+            centerPoint = found != null ? found : playerTransform;
 
-            // Register references into PlayerCombat for SkillBase compatibility
-            PlayerCombat playerCombat = playerObj.GetComponent<PlayerCombat>();
-            if (playerCombat != null)
+            // Register shared references into SkillBase
+            skillBase = playerObj.GetComponent<SkillBase>();
+            if (skillBase != null)
             {
-                playerCombat.damagePopupPrefab = damagePopupPrefab;
-                playerCombat.enemyLayers = enemyLayers;
-                playerCombat.anim = playerAnimator;
+                skillBase.damagePopupPrefab = damagePopupPrefab;
+                skillBase.enemyLayers = enemyLayers;
+                skillBase.anim = playerAnimator;
             }
         }
         else

@@ -1,12 +1,15 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
 /// The flying slash projectile for AirSlash skill.
 /// Flies straight, destroys on hit or when max range reached.
-/// Distance is measured from PLAYER position, not spawn point.
+/// Uses OverlapCircle for hit detection - same as DoubleStrike.
 /// </summary>
 public class AirSlashProjectile : MonoBehaviour
 {
+    #region Private Fields
+
     private Vector3 direction;
     private float speed;
     private float maxRange;
@@ -15,41 +18,32 @@ public class AirSlashProjectile : MonoBehaviour
     private Transform playerTransform;
     private LayerMask enemyLayers;
     private GameObject damagePopupPrefab;
+    private float hitRadius = 0.5f;
 
-    // Track from PLAYER position, not spawn point
-    private Vector3 playerStartPosition;
+    private Vector3 spawnPosition;
     private bool isInitialized = false;
-    private Rigidbody2D rb;
+    private bool isDestroyed = false;
+
+    private HashSet<Collider2D> alreadyHit = new HashSet<Collider2D>();
+
+    #endregion
 
     #region Unity Lifecycle
 
-    private void Awake()
-    {
-        rb = GetComponent<Rigidbody2D>();
-    }
-
     private void Update()
     {
-        if (!isInitialized) return;
+        if (!isInitialized || isDestroyed) return;
 
-        // Measure distance from PLAYER start position
-        // This matches exactly where the arrow tip is
-        float distanceTravelled = Vector3.Distance(playerStartPosition, transform.position);
+        transform.position += direction * speed * Time.deltaTime;
+
+        float distanceTravelled = Vector3.Distance(spawnPosition, transform.position);
         if (distanceTravelled >= maxRange)
         {
             DestroyProjectile();
+            return;
         }
-    }
 
-    private void OnTriggerEnter2D(Collider2D other)
-    {
-        if (!isInitialized) return;
-
-        if (((1 << other.gameObject.layer) & enemyLayers) != 0)
-        {
-            HitEnemy(other);
-            DestroyProjectile();
-        }
+        CheckHits();
     }
 
     #endregion
@@ -64,7 +58,8 @@ public class AirSlashProjectile : MonoBehaviour
         float kbForce,
         Transform player,
         LayerMask layers,
-        GameObject popupPrefab)
+        GameObject popupPrefab,
+        float hitDetectionRadius = 0.5f)
     {
         direction = dir.normalized;
         speed = spd;
@@ -74,15 +69,40 @@ public class AirSlashProjectile : MonoBehaviour
         playerTransform = player;
         enemyLayers = layers;
         damagePopupPrefab = popupPrefab;
+        hitRadius = hitDetectionRadius;
 
-        // Store PLAYER position as start, not firePoint position
-        playerStartPosition = player.position;
+        spawnPosition = transform.position;
         isInitialized = true;
 
+        Rigidbody2D rb = GetComponent<Rigidbody2D>();
         if (rb != null)
-            rb.linearVelocity = direction * speed;
-        else
-            Debug.LogWarning("AirSlashProjectile: No Rigidbody2D found!");
+        {
+            rb.linearVelocity = Vector2.zero;
+            rb.bodyType = RigidbodyType2D.Kinematic;
+        }
+    }
+
+    #endregion
+
+    #region Hit Detection
+
+    private void CheckHits()
+    {
+        Collider2D[] hits = Physics2D.OverlapCircleAll(
+            transform.position,
+            hitRadius,
+            enemyLayers
+        );
+
+        foreach (Collider2D hit in hits)
+        {
+            if (alreadyHit.Contains(hit)) continue;
+
+            alreadyHit.Add(hit);
+            HitEnemy(hit);
+            DestroyProjectile();
+            return;
+        }
     }
 
     #endregion
@@ -113,7 +133,20 @@ public class AirSlashProjectile : MonoBehaviour
 
     private void DestroyProjectile()
     {
+        if (isDestroyed) return;
+
+        isDestroyed = true;
         Destroy(gameObject);
+    }
+
+    #endregion
+
+    #region Gizmos
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, hitRadius);
     }
 
     #endregion

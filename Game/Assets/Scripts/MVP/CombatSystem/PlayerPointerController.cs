@@ -23,7 +23,7 @@ public class PlayerPointerController : MonoBehaviour
     private Transform playerTransform;
     private Transform centerPoint;
     private SpriteRenderer playerSpriteRenderer;
-    private PlayerCombat playerCombat;
+    private SkillBase skillBase;
     private Camera mainCamera;
     private Transform pointerTransform;
     private Vector3 currentDirection = Vector3.right;
@@ -60,17 +60,10 @@ public class PlayerPointerController : MonoBehaviour
         {
             playerTransform = playerObj.transform;
             playerSpriteRenderer = playerObj.GetComponent<SpriteRenderer>();
-            playerCombat = playerObj.GetComponent<PlayerCombat>();
+            skillBase = playerObj.GetComponent<SkillBase>();
 
-            // Find CenterPoint child
             Transform found = playerTransform.Find("CenterPoint");
-            if (found != null)
-                centerPoint = found;
-            else
-            {
-                Debug.LogWarning("PlayerPointerController: CenterPoint not found! Using player root instead.");
-                centerPoint = playerTransform;
-            }
+            centerPoint = found != null ? found : playerTransform;
         }
         else
         {
@@ -78,8 +71,8 @@ public class PlayerPointerController : MonoBehaviour
             return;
         }
 
-        if (playerCombat == null)
-            Debug.LogWarning("PlayerPointerController: PlayerCombat not found on PlayerEntity!");
+        if (skillBase == null)
+            Debug.LogWarning("PlayerPointerController: SkillBase not found on PlayerEntity!");
     }
 
     private void SpawnPointer()
@@ -92,12 +85,11 @@ public class PlayerPointerController : MonoBehaviour
 
         GameObject pointerGO = Instantiate(pointerPrefab, centerPoint.position, Quaternion.identity);
         pointerTransform = pointerGO.transform;
-
-        // Parent to CenterPoint so localPosition is relative to center
         pointerTransform.SetParent(centerPoint);
 
-        if (playerCombat != null)
-            playerCombat.attackPoint = pointerTransform;
+        // Register pointer as attackPoint in SkillBase
+        if (skillBase != null)
+            skillBase.attackPoint = pointerTransform;
     }
 
     #endregion
@@ -113,8 +105,6 @@ public class PlayerPointerController : MonoBehaviour
         }
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-
-        // Use CenterPoint as plane origin for accurate direction
         Plane plane = new Plane(Vector3.forward, centerPoint.position);
 
         if (plane.Raycast(ray, out float dist))

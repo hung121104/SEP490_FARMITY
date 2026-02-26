@@ -4,6 +4,7 @@ using System.Collections;
 /// <summary>
 /// Base class for all skills.
 /// Handles global flow: Charge -> Roll -> Confirm/Cancel -> Execute
+/// Also holds shared combat references previously in PlayerCombat.
 /// Each skill only overrides GetIndicatorData() and OnExecute()
 /// </summary>
 public abstract class SkillBase : MonoBehaviour
@@ -38,16 +39,23 @@ public abstract class SkillBase : MonoBehaviour
     [SerializeField] protected float chargeDuration = 0.2f;
     [SerializeField] protected float rollDisplayDuration = 0.4f;
 
+    [Header("Combat References - Base")]
+    [HideInInspector] public Transform attackPoint;
+    [HideInInspector] public LayerMask enemyLayers;
+    [HideInInspector] public GameObject damagePopupPrefab;
+    [HideInInspector] public Animator anim;
+    [HideInInspector] public bool blockAttackDamage = false;
+
     #endregion
 
     #region Protected Fields - Components
 
-    protected PlayerCombat playerCombat;
     protected PlayerMovement playerMovement;
     protected PlayerHealth playerHealth;
     protected SpriteRenderer spriteRenderer;
     protected StatsManager statsManager;
     protected Camera mainCamera;
+    protected Transform centerPoint;  // ← add this
 
     #endregion
 
@@ -89,11 +97,15 @@ public abstract class SkillBase : MonoBehaviour
 
     private void InitializeBaseComponents()
     {
-        playerCombat = GetComponent<PlayerCombat>();
         playerMovement = GetComponent<PlayerMovement>();
         playerHealth = GetComponent<PlayerHealth>();
         spriteRenderer = GetComponent<SpriteRenderer>();
+        anim = GetComponent<Animator>();
         mainCamera = Camera.main;
+
+        // Find CenterPoint
+        Transform found = transform.Find("CenterPoint");
+        centerPoint = found != null ? found : transform;
 
         statsManager = StatsManager.Instance;
         if (statsManager == null)
@@ -104,8 +116,7 @@ public abstract class SkillBase : MonoBehaviour
 
     private void EnsureRollDisplay()
     {
-        if (rollDisplayInstance != null)
-            return;
+        if (rollDisplayInstance != null) return;
 
         GameObject rollDisplayGO = new GameObject($"RollDisplay_{GetType().Name}");
         rollDisplayGO.transform.SetParent(transform);
@@ -127,8 +138,7 @@ public abstract class SkillBase : MonoBehaviour
 
     private void HandleStateInput()
     {
-        if (currentState != SkillState.WaitingConfirm)
-            return;
+        if (currentState != SkillState.WaitingConfirm) return;
 
         if (Input.GetKeyDown(confirmKey))
             ConfirmSkill();
@@ -142,8 +152,7 @@ public abstract class SkillBase : MonoBehaviour
 
     private void UpdateAiming()
     {
-        if (currentState != SkillState.WaitingConfirm)
-            return;
+        if (currentState != SkillState.WaitingConfirm) return;
 
         if (mainCamera == null)
             mainCamera = Camera.main;
@@ -161,7 +170,6 @@ public abstract class SkillBase : MonoBehaviour
                 targetDirection = direction.normalized;
         }
 
-        // Flip sprite based on mouse direction
         if (spriteRenderer != null)
             spriteRenderer.flipX = targetDirection.x < 0;
     }
@@ -206,17 +214,18 @@ public abstract class SkillBase : MonoBehaviour
         // === ROLL PHASE ===
         currentDiceRoll = DiceRoller.Roll(skillTier);
         ShowRollDisplay(currentDiceRoll);
+        EnablePlayerSystems();  // ← Allow movement during roll display
         yield return new WaitForSeconds(rollDisplayDuration);
 
         // === FIRST CONFIRMATION ===
         yield return StartCoroutine(WaitForConfirmation());
 
-        // Cancelled?
         if (!isExecuting)
             yield break;
 
         // === EXECUTE PHASE ===
         currentState = SkillState.Executing;
+        DisablePlayerSystems();  // ← Disable again before execution
         PlayAttackAnimation();
         yield return new WaitForSeconds(0.1f);
 
@@ -225,20 +234,16 @@ public abstract class SkillBase : MonoBehaviour
         EndSkillExecution();
     }
 
-    /// <summary>
-    /// Waits for player to confirm or cancel.
-    /// Can be called multiple times for multi-hit skills.
-    /// </summary>
     protected IEnumerator WaitForConfirmation()
     {
         currentState = SkillState.WaitingConfirm;
         SkillIndicatorManager.Instance?.ShowIndicator(GetIndicatorData());
+        // Note: Player systems already enabled from roll phase
 
         while (currentState == SkillState.WaitingConfirm && isExecuting)
-        {
             yield return null;
-        }
 
+        DisablePlayerSystems();  // ← Disable before execution
         SkillIndicatorManager.Instance?.HideAll();
     }
 
@@ -289,29 +294,29 @@ public abstract class SkillBase : MonoBehaviour
 
     private void PlayChargeAnimation()
     {
-        if (playerCombat?.anim == null) return;
+        if (anim == null) return;
 
-        playerCombat.anim.SetBool("isWalking", false);
-        playerCombat.anim.SetBool("isAttacking", false);
-        playerCombat.anim.SetBool("isSkillCharging", true);
-        playerCombat.anim.SetBool("isSkillAttacking", false);
+        anim.SetBool("isWalking", false);
+        anim.SetBool("isAttacking", false);
+        anim.SetBool("isSkillCharging", true);
+        anim.SetBool("isSkillAttacking", false);
     }
 
     private void PlayAttackAnimation()
     {
-        if (playerCombat?.anim == null) return;
+        if (anim == null) return;
 
-        playerCombat.anim.SetBool("isSkillCharging", false);
-        playerCombat.anim.SetBool("isAttacking", true);
+        anim.SetBool("isSkillCharging", false);
+        anim.SetBool("isAttacking", true);
     }
 
     private void StopSkillAnimation()
     {
-        if (playerCombat?.anim == null) return;
+        if (anim == null) return;
 
-        playerCombat.anim.SetBool("isSkillCharging", false);
-        playerCombat.anim.SetBool("isSkillAttacking", false);
-        playerCombat.anim.SetBool("isAttacking", false);
+        anim.SetBool("isSkillCharging", false);
+        anim.SetBool("isSkillAttacking", false);
+        anim.SetBool("isAttacking", false);
     }
 
     #endregion
@@ -320,11 +325,7 @@ public abstract class SkillBase : MonoBehaviour
 
     private void DisablePlayerSystems()
     {
-        if (playerCombat != null)
-        {
-            playerCombat.enabled = false;
-            playerCombat.blockAttackDamage = true; // Block animation event damage
-        }
+        blockAttackDamage = true;
 
         if (playerMovement != null)
             playerMovement.enabled = false;
@@ -332,11 +333,7 @@ public abstract class SkillBase : MonoBehaviour
 
     private void EnablePlayerSystems()
     {
-        if (playerCombat != null)
-        {
-            playerCombat.enabled = true;
-            playerCombat.blockAttackDamage = false; // Re-enable normal attack damage
-        }
+        blockAttackDamage = false;
 
         if (playerMovement != null)
             playerMovement.enabled = true;
@@ -357,11 +354,6 @@ public abstract class SkillBase : MonoBehaviour
 
     #endregion
 
-    /// <summary>
-    /// Roll dice and show display.
-    /// Can be called by skills that need multiple rolls (e.g DoubleStrike).
-    /// Returns the rolled value.
-    /// </summary>
     protected int RollAndDisplay()
     {
         int roll = DiceRoller.Roll(skillTier);

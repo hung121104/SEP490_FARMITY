@@ -62,18 +62,18 @@ public class DoubleStrike : SkillBase
 
     private void PlayNextHitCharge()
     {
-        if (playerCombat?.anim == null) return;
+        if (anim == null) return;
 
-        playerCombat.anim.SetBool("isAttacking", false);
-        playerCombat.anim.SetBool("isSkillCharging", true);
+        anim.SetBool("isAttacking", false);
+        anim.SetBool("isSkillCharging", true);
     }
 
     private void PlayNextHitAttack()
     {
-        if (playerCombat?.anim == null) return;
+        if (anim == null) return;
 
-        playerCombat.anim.SetBool("isSkillCharging", false);
-        playerCombat.anim.SetBool("isAttacking", true);
+        anim.SetBool("isSkillCharging", false);
+        anim.SetBool("isAttacking", true);
     }
 
     #endregion
@@ -82,6 +82,14 @@ public class DoubleStrike : SkillBase
 
     private IEnumerator DashAndDamage(int diceRoll, HashSet<Collider2D> hitEnemies)
     {
+        // Clear player velocity before dashing
+        if (playerMovement != null)
+        {
+            Rigidbody2D rb = playerMovement.GetComponent<Rigidbody2D>();
+            if (rb != null)
+                rb.linearVelocity = Vector2.zero;
+        }
+
         Vector3 targetPosition = transform.position + (targetDirection * movementDistance);
         float moveSpeed = movementDistance / 0.3f;
 
@@ -99,18 +107,26 @@ public class DoubleStrike : SkillBase
         }
 
         transform.position = targetPosition;
+
+        // Clear velocity again after dash completes
+        if (playerMovement != null)
+        {
+            Rigidbody2D rb = playerMovement.GetComponent<Rigidbody2D>();
+            if (rb != null)
+                rb.linearVelocity = Vector2.zero;
+        }
+
         yield return new WaitForSeconds(attackAnimationDuration);
     }
 
     private void DamageEnemiesAlongPath(HashSet<Collider2D> alreadyHit, int diceRoll)
     {
-        if (playerCombat == null || statsManager == null)
-            return;
+        if (statsManager == null) return;
 
         Collider2D[] enemies = Physics2D.OverlapCircleAll(
-            playerCombat.attackPoint.position,
+            attackPoint.position,
             statsManager.attackRange,
-            playerCombat.enemyLayers
+            enemyLayers
         );
 
         int damage = DamageCalculator.CalculateSkillDamage(
@@ -121,8 +137,7 @@ public class DoubleStrike : SkillBase
 
         foreach (Collider2D enemy in enemies)
         {
-            if (alreadyHit.Contains(enemy))
-                continue;
+            if (alreadyHit.Contains(enemy)) continue;
 
             alreadyHit.Add(enemy);
             DamageEnemy(enemy, damage);
@@ -144,14 +159,10 @@ public class DoubleStrike : SkillBase
 
     private void ShowDamagePopup(Vector3 position, int damage)
     {
-        if (playerCombat.damagePopupPrefab == null) return;
+        if (damagePopupPrefab == null) return;
 
         Vector3 spawnPos = position + Vector3.up * 0.8f;
-        GameObject popup = Instantiate(
-            playerCombat.damagePopupPrefab,
-            spawnPos,
-            Quaternion.identity
-        );
+        GameObject popup = Instantiate(damagePopupPrefab, spawnPos, Quaternion.identity);
         popup.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = damage.ToString();
     }
 
