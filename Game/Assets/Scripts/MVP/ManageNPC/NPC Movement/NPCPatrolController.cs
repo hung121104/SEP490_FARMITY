@@ -54,7 +54,19 @@ public class NPCPatrolController : MonoBehaviourPun, IPunObservable
         }
 
         // ===== MASTER =====
-        if (playersNearbyCount > 0 || isWaiting)
+        if (playersNearbyCount > 0)
+        {
+            if (animator != null)
+                animator.SetBool("isWalking", false);
+
+            networkIsWalking = false;
+
+            FaceNearestPlayer();   // look at player when they are nearby
+
+            return;
+        }
+
+        if (isWaiting)
         {
             if (animator != null)
                 animator.SetBool("isWalking", false);
@@ -175,6 +187,43 @@ public class NPCPatrolController : MonoBehaviourPun, IPunObservable
         else
         {
             photonView.RPC("RPC_PlayerExited", RpcTarget.MasterClient);
+        }
+    }
+    private void SetFlip(float scaleX)
+    {
+        transform.localScale = new Vector3(scaleX, 1, 1);
+        networkScaleX = scaleX;
+    }
+    private void FaceNearestPlayer()
+    {
+        GameObject[] players = GameObject.FindGameObjectsWithTag("PlayerEntity");
+
+        if (players.Length == 0) return;
+
+        GameObject nearest = null;
+        float minDist = float.MaxValue;
+
+        foreach (var p in players)
+        {
+            float dist = Vector2.Distance(transform.position, p.transform.position);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                nearest = p;
+            }
+        }
+
+        if (nearest == null) return;
+
+        float direction = nearest.transform.position.x - transform.position.x;
+
+        if (direction > 0.01f)
+        {
+            SetFlip(1f);
+        }
+        else if (direction < -0.01f)
+        {
+            SetFlip(-1f);
         }
     }
 

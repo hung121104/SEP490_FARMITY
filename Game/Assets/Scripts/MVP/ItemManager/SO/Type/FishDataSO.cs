@@ -8,10 +8,6 @@ public class FishDataSO : ItemDataSO
     public Season[] fishingSeasons;
     public bool isLegendary = false;
 
-    [Header("Cooking/Crafting")]
-    public bool canBeCooked = true;
-    public RecipeDataSO cookingRecipe;
-
     public override ItemType GetItemType() => ItemType.Fish;
     public ItemCategory GetItemCategory() => ItemCategory.Fishing;
 
