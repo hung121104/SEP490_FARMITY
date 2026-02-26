@@ -1,0 +1,273 @@
+fileFormatVersion: 2
+guid: b21a8128b0025dd40ae45bfee2290928
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -4969272351635240384
+    second: MP_Skeleton_Default_Walk_Sword+Shield_0
+  - first:
+      213: 5919709811508476964
+    second: MP_Skeleton_Default_Walk_Sword+Shield_1
+  - first:
+      213: 7117421273687598385
+    second: MP_Skeleton_Default_Walk_Sword+Shield_2
+  - first:
+      213: 3848774756093315557
+    second: MP_Skeleton_Default_Walk_Sword+Shield_3
+  - first:
+      213: -7450017784705603758
+    second: MP_Skeleton_Default_Walk_Sword+Shield_4
+  - first:
+      213: 5949383372235616723
+    second: MP_Skeleton_Default_Walk_Sword+Shield_5
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: MP_Skeleton_Default_Walk_Sword+Shield_0
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 15
+        width: 35
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04a8c90ef19990bb0800000000000000
+      internalID: -4969272351635240384
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: MP_Skeleton_Default_Walk_Sword+Shield_1
+      rect:
+        serializedVersion: 2
+        x: 77
+        y: 15
+        width: 32
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 42c7b58a5b8072250800000000000000
+      internalID: 5919709811508476964
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: MP_Skeleton_Default_Walk_Sword+Shield_2
+      rect:
+        serializedVersion: 2
+        x: 142
+        y: 15
+        width: 30
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13525fe40f826c260800000000000000
+      internalID: 7117421273687598385
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: MP_Skeleton_Default_Walk_Sword+Shield_3
+      rect:
+        serializedVersion: 2
+        x: 204
+        y: 15
+        width: 34
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e9ce6dbf38996530800000000000000
+      internalID: 3848774756093315557
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: MP_Skeleton_Default_Walk_Sword+Shield_4
+      rect:
+        serializedVersion: 2
+        x: 267
+        y: 15
+        width: 36
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 257a744fb483c9890800000000000000
+      internalID: -7450017784705603758
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: MP_Skeleton_Default_Walk_Sword+Shield_5
+      rect:
+        serializedVersion: 2
+        x: 330
+        y: 15
+        width: 37
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d138b6e7a4709250800000000000000
+      internalID: 5949383372235616723
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      MP_Skeleton_Default_Walk_Sword+Shield_0: -4969272351635240384
+      MP_Skeleton_Default_Walk_Sword+Shield_1: 5919709811508476964
+      MP_Skeleton_Default_Walk_Sword+Shield_2: 7117421273687598385
+      MP_Skeleton_Default_Walk_Sword+Shield_3: 3848774756093315557
+      MP_Skeleton_Default_Walk_Sword+Shield_4: -7450017784705603758
+      MP_Skeleton_Default_Walk_Sword+Shield_5: 5949383372235616723
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

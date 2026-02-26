@@ -60,7 +60,6 @@ public class CraftingPresenter
             recipeListView = mainView.RecipeListView;
             recipeDetailView = mainView.RecipeDetailView;
             filterView = mainView.FilterView;
-            notificationView = mainView.NotificationView;
 
             // Subscribe to events
             SubscribeToViewEvents();
@@ -89,11 +88,6 @@ public class CraftingPresenter
 
     private void SubscribeToViewEvents()
     {
-        if (mainView != null)
-        {
-            mainView.OnCloseRequested += HandleCloseRequested;
-        }
-
         if (recipeListView != null)
         {
             recipeListView.OnRecipeClicked += HandleRecipeClicked;
@@ -113,11 +107,6 @@ public class CraftingPresenter
 
     private void UnsubscribeFromViewEvents()
     {
-        if (mainView != null)
-        {
-            mainView.OnCloseRequested -= HandleCloseRequested;
-        }
-
         if (recipeListView != null)
         {
             recipeListView.OnRecipeClicked -= HandleRecipeClicked;
@@ -259,11 +248,6 @@ public class CraftingPresenter
         // Hide detail panel when changing category
         recipeDetailView?.HideRecipeDetail();
         selectedRecipeID = null;
-    }
-
-    private void HandleCloseRequested()
-    {
-        CloseCraftingUI();
     }
 
     private void HandleAmountChanged(int newAmount)

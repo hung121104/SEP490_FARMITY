@@ -99,6 +99,15 @@ public class InventoryPresenter
         service.OnInventoryChanged += HandleInventoryChanged;
     }
 
+    private void UnsubscribeFromServiceEvents()
+    {
+        service.OnItemAdded -= HandleItemAdded;
+        service.OnItemRemoved -= HandleItemRemoved;
+        service.OnItemsMoved -= HandleItemsMoved;
+        service.OnQuantityChanged -= HandleQuantityChanged;
+        service.OnInventoryChanged -= HandleInventoryChanged;
+    }
+
     private void HandleItemAdded(ItemModel item, int slotIndex)
     {
         view?.UpdateSlot(slotIndex, item);
@@ -242,7 +251,11 @@ public class InventoryPresenter
 
         if (item == null)
         {
-            Debug.LogWarning($"[InventoryPresenter] No item at slot {slotIndex} to delete");
+            // Item already removed - sync the view to match service state
+            Debug.Log($"[InventoryPresenter] Slot {slotIndex} is already empty, syncing view");
+            view?.ClearSlot(slotIndex);
+            view?.HideDragPreview();
+            draggedSlot = -1;
             return;
         }
 
@@ -467,6 +480,7 @@ public class InventoryPresenter
     {
         CancelAllActions();
         RemoveView();
+        UnsubscribeFromServiceEvents();
         HideCurrentItemDetail();
     }
 

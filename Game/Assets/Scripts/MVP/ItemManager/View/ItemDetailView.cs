@@ -9,7 +9,8 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     [SerializeField] private GameObject detailPanel;
     [SerializeField] private RectTransform panelRectTransform;
     [SerializeField] private CanvasGroup canvasGroup;
-
+    [SerializeField] private GameObject giftReactionPanel;
+    
     [Header("Content")]
     [SerializeField] private Image itemIcon;
     [SerializeField] private TextMeshProUGUI itemNameText;
@@ -122,6 +123,10 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
             canvasGroup.alpha = 0f;
 
         detailPanel.SetActive(false);
+
+        // Hide gift reaction
+        if (giftReactionPanel != null)
+            giftReactionPanel.SetActive(false);
     }
 
     public void SetPosition(Vector2 screenPosition)
