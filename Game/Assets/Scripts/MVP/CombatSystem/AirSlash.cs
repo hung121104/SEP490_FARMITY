@@ -17,9 +17,27 @@ public class AirSlash : SkillBase
     [SerializeField] private float projectileHitRadius = 0.5f;
     [SerializeField] private float attackAnimationDuration = 0.5f;
 
-    [Header("Combat References")]
-    [SerializeField] private LayerMask airSlashEnemyLayers;
-    [SerializeField] private GameObject airSlashDamagePopupPrefab;
+    #endregion
+
+    #region Private Fields
+
+    private EnemyCombat enemyCombat;
+
+    #endregion
+
+    #region Unity Lifecycle
+
+    private new void Start()
+    {
+        base.Start();
+        enemyCombat = FindObjectOfType<EnemyCombat>();
+        
+        // Ensure enemyLayers is set
+        if (enemyLayers == 0)
+        {
+            enemyLayers = LayerMask.GetMask("Enemy");
+        }
+    }
 
     #endregion
 
@@ -42,14 +60,23 @@ public class AirSlash : SkillBase
     {
         if (projectilePrefab == null)
         {
-            Debug.LogWarning("AirSlash: Projectile prefab not assigned!");
+            Debug.LogWarning("[AirSlash] Projectile prefab not assigned!");
             return;
         }
 
-        // Spawn from centerPoint - same origin as indicator
-        GameObject projectileGO = Instantiate(projectilePrefab, centerPoint.position, Quaternion.identity);
+        if (playerMovement == null)
+        {
+            Debug.LogWarning("[AirSlash] PlayerMovement not found!");
+            return;
+        }
 
-        float angle = Mathf.Atan2(targetDirection.y, targetDirection.x) * Mathf.Rad2Deg;
+        // Get direction from pointerController (current mouse direction)
+        Vector3 fireDirection = pointerController?.GetPointerDirection() ?? Vector3.right;
+
+        // Spawn from player position
+        GameObject projectileGO = Instantiate(projectilePrefab, playerMovement.transform.position, Quaternion.identity);
+
+        float angle = Mathf.Atan2(fireDirection.y, fireDirection.x) * Mathf.Rad2Deg;
         projectileGO.transform.rotation = Quaternion.Euler(0f, 0f, angle);
 
         AirSlashProjectile projectile = projectileGO.GetComponent<AirSlashProjectile>();
@@ -61,21 +88,24 @@ public class AirSlash : SkillBase
                 skillMultiplier
             );
 
+            // Get damage popup prefab from EnemyCombat
+            GameObject popupPrefab = enemyCombat?.damagePopupPrefab;
+
             projectile.Initialize(
-                targetDirection,
+                fireDirection,
                 projectileSpeed,
                 projectileRange,
                 damage,
                 statsManager.knockbackForce,
-                transform,
-                airSlashEnemyLayers,
-                airSlashDamagePopupPrefab,
+                playerMovement.transform,
+                enemyLayers,
+                popupPrefab,
                 projectileHitRadius
             );
         }
         else
         {
-            Debug.LogWarning("AirSlash: AirSlashProjectile component missing on prefab!");
+            Debug.LogWarning("[AirSlash] AirSlashProjectile component missing on prefab!");
         }
     }
 

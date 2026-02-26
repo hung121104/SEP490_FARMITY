@@ -188,6 +188,15 @@ public class PlayerAttackController : MonoBehaviour
         }
 
         GameObject vfxGO = Instantiate(vfxPrefab, spawnPos, rotation);
+
+        // Fix upside-down VFX when player is flipped (facing left)
+        if (direction.x < 0)
+        {
+            Vector3 scale = vfxGO.transform.localScale;
+            scale.y *= -1; // Flip Y scale
+            vfxGO.transform.localScale = scale;
+        }
+
         SlashHitbox hitbox = vfxGO.GetComponent<SlashHitbox>();
 
         if (hitbox != null)
