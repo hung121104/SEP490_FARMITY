@@ -28,6 +28,8 @@ public class SkillIndicatorController : MonoBehaviour
     [Header("Calibration - Cone")]
     [Tooltip("How wide is the cone sprite at Scale X = 1?")]
     [SerializeField] private float referenceConeWidthUnits = 100f;
+    [Tooltip("How far forward to offset cone from center point")]
+    [SerializeField] private float coneForwardOffset = 0.5f;
 
     [Header("Calibration - Circle")]
     [Tooltip("How many world units does the circle image cover at Scale = 1?")]
@@ -87,7 +89,7 @@ public class SkillIndicatorController : MonoBehaviour
                 break;
 
             case IndicatorType.Cone:
-                transform.position = centerPoint.position;
+                UpdateConePosition(); // Use offset position instead
                 UpdateRotationIndicator();
                 break;
 
@@ -173,6 +175,18 @@ public class SkillIndicatorController : MonoBehaviour
 
         // Circle follows mouse but clamped to max range
         transform.position = centerPoint.position + currentDirection * distance;
+    }
+
+    private void UpdateConePosition()
+    {
+        // Push cone forward toward mouse so it doesnt overlap character sprite
+        Vector3 direction = mouseWorldPosition - centerPoint.position;
+        direction.z = 0f;
+
+        if (direction.magnitude > 0.01f)
+            currentDirection = direction.normalized;
+
+        transform.position = centerPoint.position + currentDirection * coneForwardOffset;
     }
 
     #endregion

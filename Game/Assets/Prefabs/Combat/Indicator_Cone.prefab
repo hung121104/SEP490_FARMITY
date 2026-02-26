@@ -152,6 +152,7 @@ MonoBehaviour:
   referenceWorldUnitsY: 100
   fixedScaleX: 0.005
   referenceConeWidthUnits: 100
+  coneForwardOffset: 0.25
   referenceCircleUnits: 100
 --- !u!1 &3221474271395085712
 GameObject:
