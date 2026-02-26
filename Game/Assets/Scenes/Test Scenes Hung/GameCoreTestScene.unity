@@ -242,14 +242,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3d7eb191c7ce037469847506aa3466de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seedDataSO: {fileID: 11400000, guid: 0f83592f262e1e3429b0fd5b089d7b41, type: 2}
   plantingMode: 1
   playerTag: PlayerEntity
   plantingRange: 2
-  plantKey: 32
-  allowHoldToPlant: 1
-  plantRepeatInterval: 0.1
   playerCameraTag: MainCamera
+  previewAlpha: 0.5
+  previewSortingLayer: WalkInfront
+  previewSortingOrder: 10
   showDebugLogs: 0
 --- !u!1 &52024647
 GameObject:
@@ -5234,8 +5233,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   inventorySystem: {fileID: 1039417487}
   testItem:
-  - {fileID: 11400000, guid: e76735cfb2b6923468969d97f1f43586, type: 2}
-  - {fileID: 11400000, guid: b6639f42087a1e84e8fba283635f961d, type: 2}
+  - {fileID: 11400000, guid: 169dc3ad2b5a6874bb19f95d639fd568, type: 2}
+  - {fileID: 11400000, guid: 0f83592f262e1e3429b0fd5b089d7b41, type: 2}
   - {fileID: 11400000, guid: 9c3bdb08c68dc644bb7f1f6500c4c6d1, type: 2}
   addItemKey: 116
 --- !u!114 &1039417487
@@ -5941,7 +5940,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hotbarView: {fileID: 66693716}
-  cropPlowingView: {fileID: 1866735581}
   farmableGroundLayer:
     serializedVersion: 2
     m_Bits: 0
