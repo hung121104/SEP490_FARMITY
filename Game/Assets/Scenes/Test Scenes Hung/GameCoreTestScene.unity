@@ -249,6 +249,8 @@ MonoBehaviour:
   previewAlpha: 0.5
   previewSortingLayer: WalkInfront
   previewSortingOrder: 10
+  allowHoldToPlant: 1
+  plantRepeatInterval: 0.3
   showDebugLogs: 0
 --- !u!1 &52024647
 GameObject:
@@ -1557,6 +1559,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ecf607b6ebdc3764da467d55839a03fb, type: 2}
   craftingMainView: {fileID: 1597523240}
   cookingMainView: {fileID: 0}
+  craftingOpenButton: {fileID: 0}
+  craftingCloseButton: {fileID: 0}
+  cookingOpenButton: {fileID: 0}
+  cookingCloseButton: {fileID: 0}
+  craftingInventoryAdapter: {fileID: 0}
 --- !u!1 &314395995
 GameObject:
   m_ObjectHideFlags: 0
@@ -3290,8 +3297,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   detailPanel: {fileID: 2145145538}
-  recipeNameText: {fileID: 1739055543}
-  recipeDescriptionText: {fileID: 1097025016}
   resultItemIcon: {fileID: 749353343}
   resultItemNameText: {fileID: 1038085078}
   resultQuantityText: {fileID: 1422667899}
@@ -6963,6 +6968,7 @@ MonoBehaviour:
   detailPanel: {fileID: 595576917}
   panelRectTransform: {fileID: 1596810348}
   canvasGroup: {fileID: 595576918}
+  giftReactionPanel: {fileID: 0}
   itemIcon: {fileID: 595576916}
   itemNameText: {fileID: 595576915}
   itemDescriptionText: {fileID: 595576914}
@@ -7024,11 +7030,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mainPanel: {fileID: 3175644}
-  closeButton: {fileID: 1718040092}
   filterView: {fileID: 2142905891}
   recipeListView: {fileID: 1776215106}
   detailView: {fileID: 608957500}
-  notificationView: {fileID: 1549323878}
   titleText: {fileID: 250001094}
   defaultTitle: Crafting
 --- !u!1 &1633857965
@@ -8062,6 +8066,12 @@ MonoBehaviour:
   playerTag: PlayerEntity
   plowingRange: 2
   showDebugLogs: 0
+  allowMouseHoldToPlow: 1
+  mouseHoldRepeatInterval: 0.3
+  previewSprite: {fileID: 61452941, guid: bdbae52799fb46c43aa1e5d2e2c0252d, type: 3}
+  previewAlpha: 0.5
+  previewSortingLayer: WalkInfront
+  previewSortingOrder: 10
 --- !u!1 &1934862756
 GameObject:
   m_ObjectHideFlags: 0
@@ -8533,6 +8543,7 @@ MonoBehaviour:
   increaseButton: {fileID: 741557445}
   decreaseButton: {fileID: 2078425873}
   maxButton: {fileID: 1743896430}
+  minButton: {fileID: 0}
   minAmount: 1
   defaultAmount: 1
 --- !u!114 &2024614182

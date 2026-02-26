@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Corn
   m_EditorClassIdentifier: 
   itemName: Corn
-  itemID: Crop_Corn
+  itemID: corn
   icon: {fileID: -732356172534689064, guid: 7621cbce9a49a844a922c7b2adf4cc34, type: 3}
   description: 
   maxStack: 99
@@ -28,7 +28,7 @@ MonoBehaviour:
   isArtifact: 0
   isRareItem: 0
   itemCategory: 0
-  canBeCrafted: 1
-  canBeCooked: 1
+  canBeCrafted: 0
+  canBeCooked: 0
   craftingRecipe: {fileID: 0}
   cookingRecipe: {fileID: 0}
