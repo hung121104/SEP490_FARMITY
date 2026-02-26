@@ -3,8 +3,10 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections;
 
-public class PlayerHealth : MonoBehaviour
+public class PlayerHealthManager : MonoBehaviour
 {
+    [SerializeField] private Transform playerEntity; // Reference to PlayerEntity
+    
     public Slider healthBar;
     public Slider healthBarEase;
     public TextMeshProUGUI healthText;
@@ -15,6 +17,14 @@ public class PlayerHealth : MonoBehaviour
 
     private void Start()
     {
+        // Find PlayerEntity if not assigned
+        if (playerEntity == null)
+        {
+            playerEntity = transform.parent?.Find("PlayerEntity");
+            if (playerEntity == null)
+                playerEntity = FindObjectOfType<PlayerMovement>().transform;
+        }
+
         statsManager = StatsManager.Instance;
         if (statsManager == null)
         {
@@ -60,7 +70,6 @@ public class PlayerHealth : MonoBehaviour
 
     public void ChangeHealth(int amount)
     {
-        // Don't apply damage if invulnerable
         if (statsManager == null || (isInvulnerable && amount < 0))
             return;
 
@@ -75,7 +84,7 @@ public class PlayerHealth : MonoBehaviour
 
         if (statsManager.CurrentHealth <= 0)
         {
-            gameObject.SetActive(false);
+            playerEntity.gameObject.SetActive(false);
         }
     }
 
@@ -109,18 +118,11 @@ public class PlayerHealth : MonoBehaviour
 
     #region Invulnerability (iFrames)
 
-    /// <summary>
-    /// Make player invulnerable for a duration
-    /// </summary>
-    /// <param name="duration">Duration in seconds</param>
     public void SetInvulnerable(float duration)
     {
         StartCoroutine(InvulnerabilityCoroutine(duration));
     }
 
-    /// <summary>
-    /// Instantly enable/disable invulnerability
-    /// </summary>
     public void SetInvulnerable(bool invulnerable)
     {
         isInvulnerable = invulnerable;

@@ -51,11 +51,12 @@ public abstract class SkillBase : MonoBehaviour
     #region Protected Fields - Components
 
     protected PlayerMovement playerMovement;
-    protected PlayerHealth playerHealth;
+    protected PlayerHealthManager playerHealth;
     protected SpriteRenderer spriteRenderer;
     protected StatsManager statsManager;
     protected Camera mainCamera;
-    protected Transform centerPoint;  // ← add this
+    protected Transform centerPoint;
+    protected PlayerPointerController pointerController;
 
     #endregion
 
@@ -97,19 +98,61 @@ public abstract class SkillBase : MonoBehaviour
 
     private void InitializeBaseComponents()
     {
-        playerMovement = GetComponent<PlayerMovement>();
-        playerHealth = GetComponent<PlayerHealth>();
-        spriteRenderer = GetComponent<SpriteRenderer>();
-        anim = GetComponent<Animator>();
-        mainCamera = Camera.main;
+        // Find PlayerMovement first
+        PlayerMovement pm = FindObjectOfType<PlayerMovement>();
+        if (pm != null)
+        {
+            playerMovement = pm;
+        }
+        else
+        {
+            Debug.LogError($"[{GetType().Name}] PlayerMovement not found in scene!");
+            enabled = false;
+            return;
+        }
 
-        // Find CenterPoint
-        Transform found = transform.Find("CenterPoint");
-        centerPoint = found != null ? found : transform;
+        // Find PlayerHealthManager
+        playerHealth = FindObjectOfType<PlayerHealthManager>();
+        if (playerHealth == null)
+            Debug.LogWarning($"[{GetType().Name}] PlayerHealthManager not found!");
 
-        statsManager = StatsManager.Instance;
+        // Find StatsManager
+        if (statsManager == null)
+            statsManager = StatsManager.Instance;
         if (statsManager == null)
             statsManager = FindObjectOfType<StatsManager>();
+        if (statsManager == null)
+        {
+            Debug.LogError($"[{GetType().Name}] StatsManager not found!");
+            enabled = false;
+            return;
+        }
+
+        // Find Animator on Player
+        anim = pm.GetComponent<Animator>();
+        if (anim == null)
+            anim = FindObjectOfType<Animator>();
+
+        // Find PlayerPointerController
+        pointerController = FindObjectOfType<PlayerPointerController>();
+        if (pointerController == null)
+            Debug.LogWarning($"[{GetType().Name}] PlayerPointerController not found!");
+
+        // Set attackPoint to pointer position for compatibility
+        attackPoint = pointerController?.gameObject.transform;
+
+        // Set spriteRenderer from PlayerEntity
+        spriteRenderer = pm.GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null)
+            spriteRenderer = pm.GetComponentInChildren<SpriteRenderer>();
+
+        // Find CenterPoint
+        Transform found = pm.transform.Find("CenterPoint");
+        centerPoint = found != null ? found : pm.transform;
+
+        // Initialize main camera
+        if (mainCamera == null)
+            mainCamera = Camera.main;
 
         EnsureRollDisplay();
     }
@@ -123,7 +166,15 @@ public abstract class SkillBase : MonoBehaviour
         rollDisplayGO.transform.localPosition = Vector3.zero;
 
         rollDisplayInstance = rollDisplayGO.AddComponent<RollDisplayController>();
-        rollDisplayInstance.AttachTo(transform, DiceDisplayManager.Instance.GetRollDisplayOffset());
+        if (rollDisplayInstance != null && DiceDisplayManager.Instance != null)
+        {
+            // Pass playerMovement.transform instead of this.transform
+            // so dice always follows player head
+            rollDisplayInstance.AttachTo(
+                playerMovement.transform, 
+                DiceDisplayManager.Instance.GetRollDisplayOffset()
+            );
+        }
     }
 
     #endregion
@@ -214,7 +265,7 @@ public abstract class SkillBase : MonoBehaviour
         // === ROLL PHASE ===
         currentDiceRoll = DiceRoller.Roll(skillTier);
         ShowRollDisplay(currentDiceRoll);
-        EnablePlayerSystems();  // ← Allow movement during roll display
+        EnablePlayerSystems();
         yield return new WaitForSeconds(rollDisplayDuration);
 
         // === FIRST CONFIRMATION ===
@@ -225,7 +276,7 @@ public abstract class SkillBase : MonoBehaviour
 
         // === EXECUTE PHASE ===
         currentState = SkillState.Executing;
-        DisablePlayerSystems();  // ← Disable again before execution
+        DisablePlayerSystems();
         PlayAttackAnimation();
         yield return new WaitForSeconds(0.1f);
 
@@ -238,12 +289,11 @@ public abstract class SkillBase : MonoBehaviour
     {
         currentState = SkillState.WaitingConfirm;
         SkillIndicatorManager.Instance?.ShowIndicator(GetIndicatorData());
-        // Note: Player systems already enabled from roll phase
 
         while (currentState == SkillState.WaitingConfirm && isExecuting)
             yield return null;
 
-        DisablePlayerSystems();  // ← Disable before execution
+        DisablePlayerSystems();
         SkillIndicatorManager.Instance?.HideAll();
     }
 
@@ -354,12 +404,16 @@ public abstract class SkillBase : MonoBehaviour
 
     #endregion
 
+    #region Helper Methods
+
     protected int RollAndDisplay()
     {
         int roll = DiceRoller.Roll(skillTier);
         ShowRollDisplay(roll);
         return roll;
     }
+
+    #endregion
 
     #region Public API
 

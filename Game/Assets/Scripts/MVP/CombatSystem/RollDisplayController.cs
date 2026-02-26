@@ -12,7 +12,7 @@ public class RollDisplayController : MonoBehaviour
     {
         if (followTarget != null)
         {
-            // Update both this GameObject and the dice instance position
+            // Update position to follow player head
             Vector3 targetPosition = followTarget.position + followOffset;
             transform.position = targetPosition;
             
@@ -78,7 +78,7 @@ public class RollDisplayController : MonoBehaviour
             return;
         }
 
-        // Instantiate dice at the controller's position
+        // Instantiate dice at player head position (followTarget + offset)
         Vector3 spawnPosition = followTarget != null ? followTarget.position + followOffset : transform.position;
         currentDiceInstance = Instantiate(prefabToUse, spawnPosition, Quaternion.identity);
     }

@@ -23,7 +23,6 @@ public class PlayerPointerController : MonoBehaviour
     private Transform playerTransform;
     private Transform centerPoint;
     private SpriteRenderer playerSpriteRenderer;
-    private SkillBase skillBase;
     private Camera mainCamera;
     private Transform pointerTransform;
     private Vector3 currentDirection = Vector3.right;
@@ -60,7 +59,6 @@ public class PlayerPointerController : MonoBehaviour
         {
             playerTransform = playerObj.transform;
             playerSpriteRenderer = playerObj.GetComponent<SpriteRenderer>();
-            skillBase = playerObj.GetComponent<SkillBase>();
 
             Transform found = playerTransform.Find("CenterPoint");
             centerPoint = found != null ? found : playerTransform;
@@ -70,9 +68,6 @@ public class PlayerPointerController : MonoBehaviour
             Debug.LogWarning("PlayerPointerController: PlayerEntity tag not found!");
             return;
         }
-
-        if (skillBase == null)
-            Debug.LogWarning("PlayerPointerController: SkillBase not found on PlayerEntity!");
     }
 
     private void SpawnPointer()
@@ -86,10 +81,6 @@ public class PlayerPointerController : MonoBehaviour
         GameObject pointerGO = Instantiate(pointerPrefab, centerPoint.position, Quaternion.identity);
         pointerTransform = pointerGO.transform;
         pointerTransform.SetParent(centerPoint);
-
-        // Register pointer as attackPoint in SkillBase
-        if (skillBase != null)
-            skillBase.attackPoint = pointerTransform;
     }
 
     #endregion

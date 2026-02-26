@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 
 /// <summary>
 /// Double Strike skill - A two-hit dash attack.
@@ -15,6 +16,28 @@ public class DoubleStrike : SkillBase
     [SerializeField] private float movementDistance = 5f;
     [SerializeField] private int totalHits = 2;
     [SerializeField] private float attackAnimationDuration = 0.6f;
+
+    #endregion
+
+    #region Private Fields
+
+    private EnemyCombat enemyCombat;
+
+    #endregion
+
+    #region Unity Lifecycle
+
+    private new void Start()
+    {
+        base.Start();
+        enemyCombat = FindObjectOfType<EnemyCombat>();
+        
+        // Ensure enemyLayers is set
+        if (enemyLayers == 0)
+        {
+            enemyLayers = LayerMask.GetMask("Enemy");
+        }
+    }
 
     #endregion
 
@@ -82,6 +105,9 @@ public class DoubleStrike : SkillBase
 
     private IEnumerator DashAndDamage(int diceRoll, HashSet<Collider2D> hitEnemies)
     {
+        // Get dash direction from SkillBase's pointerController
+        Vector3 dashDirection = pointerController?.GetPointerDirection() ?? Vector3.right;
+        
         // Clear player velocity before dashing
         if (playerMovement != null)
         {
@@ -90,23 +116,26 @@ public class DoubleStrike : SkillBase
                 rb.linearVelocity = Vector2.zero;
         }
 
-        Vector3 targetPosition = transform.position + (targetDirection * movementDistance);
+        // Move the PLAYER in pointer direction
+        Transform playerTransform = playerMovement.transform;
+        Vector3 targetPosition = playerTransform.position + (dashDirection * movementDistance);
         float moveSpeed = movementDistance / 0.3f;
 
-        while (Vector3.Distance(transform.position, targetPosition) > 0.01f)
+        while (Vector3.Distance(playerTransform.position, targetPosition) > 0.01f)
         {
-            transform.position = Vector3.MoveTowards(
-                transform.position,
+            playerTransform.position = Vector3.MoveTowards(
+                playerTransform.position,
                 targetPosition,
                 moveSpeed * Time.deltaTime
             );
 
-            DamageEnemiesAlongPath(hitEnemies, diceRoll);
+            // Check for enemies ALONG the entire dash path
+            DamageEnemiesAlongPath(hitEnemies, diceRoll, playerTransform.position);
 
             yield return null;
         }
 
-        transform.position = targetPosition;
+        playerTransform.position = targetPosition;
 
         // Clear velocity again after dash completes
         if (playerMovement != null)
@@ -119,15 +148,19 @@ public class DoubleStrike : SkillBase
         yield return new WaitForSeconds(attackAnimationDuration);
     }
 
-    private void DamageEnemiesAlongPath(HashSet<Collider2D> alreadyHit, int diceRoll)
+    private void DamageEnemiesAlongPath(HashSet<Collider2D> alreadyHit, int diceRoll, Vector3 currentPos)
     {
-        if (statsManager == null) return;
+        if (statsManager == null || playerMovement == null) return;
+
+        float damageRadius = statsManager.attackRange;
 
         Collider2D[] enemies = Physics2D.OverlapCircleAll(
-            attackPoint.position,
-            statsManager.attackRange,
+            currentPos,
+            damageRadius,
             enemyLayers
         );
+
+        if (enemies.Length == 0) return;
 
         int damage = DamageCalculator.CalculateSkillDamage(
             diceRoll,
@@ -152,18 +185,22 @@ public class DoubleStrike : SkillBase
 
         EnemyKnockback enemyKnockback = enemy.GetComponent<EnemyKnockback>();
         if (enemyKnockback != null)
-            enemyKnockback.Knockback(transform, statsManager.knockbackForce);
+            enemyKnockback.Knockback(playerMovement.transform, statsManager.knockbackForce);
 
         ShowDamagePopup(enemy.transform.position, damage);
     }
 
     private void ShowDamagePopup(Vector3 position, int damage)
     {
-        if (damagePopupPrefab == null) return;
+        GameObject popupPrefab = enemyCombat?.damagePopupPrefab;
+        if (popupPrefab == null) return;
 
         Vector3 spawnPos = position + Vector3.up * 0.8f;
-        GameObject popup = Instantiate(damagePopupPrefab, spawnPos, Quaternion.identity);
-        popup.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = damage.ToString();
+        GameObject popup = Instantiate(popupPrefab, spawnPos, Quaternion.identity);
+        
+        TextMeshProUGUI damageText = popup.GetComponentInChildren<TextMeshProUGUI>();
+        if (damageText != null)
+            damageText.text = damage.ToString();
     }
 
     #endregion
