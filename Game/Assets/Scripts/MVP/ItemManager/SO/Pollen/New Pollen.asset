@@ -9,23 +9,28 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e5418e11170261846831d605fc54981a, type: 3}
-  m_Name: TomatoSeed
+  m_Script: {fileID: 11500000, guid: 9584fd549984b1c40bb566c49a68c3a8, type: 3}
+  m_Name: New Pollen
   m_EditorClassIdentifier: 
-  itemName: Tomato Seed
-  itemID: tomato_seed
-  icon: {fileID: 6395214293025444372, guid: 7621cbce9a49a844a922c7b2adf4cc34, type: 3}
+  itemName: 
+  itemID: 
+  icon: {fileID: 0}
   description: 
   maxStack: 99
   isStackable: 1
   quality: 0
-  basePrice: 200
-  buyPrice: 200
-  canBeSold: 0
-  canBeBought: 1
+  basePrice: 1
+  buyPrice: 0
+  canBeSold: 1
+  canBeBought: 0
   npcPreferences: []
   isQuestItem: 0
   isArtifact: 0
   isRareItem: 0
   itemCategory: 0
-  CropDataSo: {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
+  sourcePlant: {fileID: 0}
+  crossResults:
+  - targetPlant: {fileID: 0}
+    resultPlant: {fileID: 0}
+  pollinationSuccessChance: 0.5
+  viabilityDays: 3

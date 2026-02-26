@@ -16,7 +16,10 @@ public class CropChunkData : BaseChunkData
         public int TotalAge;            // 4 bytes - days since planting
         public int WorldX;              // 4 bytes - ABSOLUTE WORLD X
         public int WorldY;              // 4 bytes - ABSOLUTE WORLD Y
-        public byte PollenHarvestCount; // 1 byte - pollen collections this flowering stage (resets on stage change)
+        public byte PollenHarvestCount; // 1 byte - pollen collections this flowering stage
+        public bool IsWatered;          // 1 byte - watered this day
+        public bool IsFertilized;       // 1 byte - fertilizer applied
+        public bool IsPollinated;       // 1 byte - hybrid already applied, prevents double cross
     }
     
     // Dictionary key is world position: WorldX * 100000 + WorldY
@@ -80,17 +83,15 @@ public class CropChunkData : BaseChunkData
             tile.CropStage = 0;
             tile.TotalAge = 0;
             tile.PollenHarvestCount = 0;
-            
-            // If tile is no longer tilled either, remove it completely
+            tile.IsWatered    = false;
+            tile.IsFertilized = false;
+            tile.IsPollinated = false;
+
             if (!tile.IsTilled)
-            {
                 tiles.Remove(key);
-            }
             else
-            {
                 tiles[key] = tile;
-            }
-            
+
             IsDirty = true;
             return true;
         }
@@ -172,6 +173,96 @@ public class CropChunkData : BaseChunkData
     {
         long key = GetKey(worldX, worldY);
         return tiles.TryGetValue(key, out TileData tile) && tile.HasCrop;
+    }
+
+    // ── Watering ───────────────────────────────────────────────────────────
+
+    public bool WaterTile(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileData tile) || !tile.IsTilled) return false;
+        tile.IsWatered = true;
+        tiles[key] = tile;
+        IsDirty = true;
+        return true;
+    }
+
+    public bool UnwaterTile(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileData tile)) return false;
+        tile.IsWatered = false;
+        tiles[key] = tile;
+        IsDirty = true;
+        return true;
+    }
+
+    public bool IsWateredAt(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        return tiles.TryGetValue(key, out TileData tile) && tile.IsWatered;
+    }
+
+    // ── Fertilizer ────────────────────────────────────────────────────────
+
+    public bool FertilizeTile(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileData tile) || !tile.IsTilled) return false;
+        tile.IsFertilized = true;
+        tiles[key] = tile;
+        IsDirty = true;
+        return true;
+    }
+
+    public bool UnfertilizeTile(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileData tile)) return false;
+        tile.IsFertilized = false;
+        tiles[key] = tile;
+        IsDirty = true;
+        return true;
+    }
+
+    public bool IsFertilizedAt(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        return tiles.TryGetValue(key, out TileData tile) && tile.IsFertilized;
+    }
+
+    // ── Pollination ─────────────────────────────────────────────────────
+
+    public bool SetPollinated(int worldX, int worldY, bool value)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileData tile)) return false;
+        tile.IsPollinated = value;
+        tiles[key] = tile;
+        IsDirty = true;
+        return true;
+    }
+
+    public bool IsPollinatedAt(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        return tiles.TryGetValue(key, out TileData tile) && tile.IsPollinated;
+    }
+
+    /// <summary>
+    /// Changes the PlantId of an existing crop (used by crossbreeding to morph receiver → hybrid).
+    /// Also resets CropStage to the hybrid's first unique stage (pollenStage) and marks pollinated.
+    /// </summary>
+    public bool SetCropPlantId(int worldX, int worldY, string newPlantId, byte startStage)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileData tile) || !tile.HasCrop) return false;
+        tile.PlantId      = newPlantId;
+        tile.CropStage    = startStage;
+        tile.IsPollinated = true;
+        tiles[key] = tile;
+        IsDirty = true;
+        return true;
     }
     
     public bool TryGetCrop(int worldX, int worldY, out TileData crop)
@@ -332,7 +423,10 @@ public class CropChunkData : BaseChunkData
             bytes.AddRange(BitConverter.GetBytes(tile.TotalAge));         // 4
             bytes.AddRange(BitConverter.GetBytes(tile.WorldX));           // 4
             bytes.AddRange(BitConverter.GetBytes(tile.WorldY));           // 4
-            bytes.Add(tile.PollenHarvestCount);                           // 1 (new)
+            bytes.Add(tile.PollenHarvestCount);                           // 1
+            bytes.Add((byte)(tile.IsWatered    ? 1 : 0));                // 1
+            bytes.Add((byte)(tile.IsFertilized ? 1 : 0));                // 1
+            bytes.Add((byte)(tile.IsPollinated ? 1 : 0));                // 1
         }
 
         return bytes.ToArray();
@@ -373,8 +467,11 @@ public class CropChunkData : BaseChunkData
             tile.TotalAge  = BitConverter.ToInt32(data, offset); offset += 4;
             tile.WorldX    = BitConverter.ToInt32(data, offset); offset += 4;
             tile.WorldY    = BitConverter.ToInt32(data, offset); offset += 4;
-            // PollenHarvestCount added in v2 — graceful fallback for old save data
+            // Graceful fallback for saves that predate these fields
             tile.PollenHarvestCount = offset < data.Length ? data[offset++] : (byte)0;
+            tile.IsWatered          = offset < data.Length ? data[offset++] == 1 : false;
+            tile.IsFertilized       = offset < data.Length ? data[offset++] == 1 : false;
+            tile.IsPollinated       = offset < data.Length ? data[offset++] == 1 : false;
 
             tiles[GetKey(tile.WorldX, tile.WorldY)] = tile;
         }
@@ -390,7 +487,10 @@ public class CropChunkData : BaseChunkData
         {
             int plantIdLen = string.IsNullOrEmpty(tile.PlantId)
                 ? 0 : System.Text.Encoding.UTF8.GetByteCount(tile.PlantId);
-            size += 2 + 1 + plantIdLen + 1 + 4 + 4 + 4 + 1; // IsTilled+HasCrop + PlantIdLen + PlantId + CropStage + TotalAge + WorldX + WorldY + PollenHarvestCount
+            size += 2 + 1 + plantIdLen + 1 + 4 + 4 + 4 + 1 + 1 + 1 + 1;
+            // IsTilled+HasCrop(2)+PlantIdLen(1)+PlantId(N)+CropStage(1)
+            // +TotalAge(4)+WorldX(4)+WorldY(4)+PollenHarvestCount(1)
+            // +IsWatered(1)+IsFertilized(1)+IsPollinated(1)
         }
         return size;
     }

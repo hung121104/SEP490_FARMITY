@@ -71,11 +71,18 @@ public class ItemUsageController : MonoBehaviour
                     presenter.ConsumeCurrentItem(1);
                 break;
 
+            case ItemType.Pollen:
+                // UsePollen fires UseToolService.OnPollenRequested → CropBreedingView handles it
+                if (itemUsagePresenter.UsePollen(item, targetPosition))
+                    presenter.ConsumeCurrentItem(1);
+                break;
+
             default:
                 Debug.LogWarning("No handler for item type: " + item.GetItemType());
                 break;
         }
     }
+
 
     private void OnDestroy()
     {

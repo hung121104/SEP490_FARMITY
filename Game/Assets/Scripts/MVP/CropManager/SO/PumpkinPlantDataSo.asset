@@ -20,18 +20,19 @@ MonoBehaviour:
     age: 0
   - stageNum: 1
     stageSprite: {fileID: -7493073933449792820, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
-    age: 1
+    age: 2
   - stageNum: 2
     stageSprite: {fileID: -5967672503603263023, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
-    age: 2
+    age: 3
   - stageNum: 3
     stageSprite: {fileID: 4753408381409157624, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
-    age: 3
+    age: 5
   - stageNum: 4
     stageSprite: {fileID: -8963360674610236421, guid: 98502410465351e4b94ca97fd6dcf786, type: 3}
-    age: 4
+    age: 7
   HarvestedItem: {fileID: 11400000, guid: 4c3ae79185f20c145a7b58859ac6ab8f, type: 2}
   canProducePollen: 1
   pollenStage: 3
   PollenItem: {fileID: 11400000, guid: a8a9b27bbb8422e409aacf0aea2a37ca, type: 2}
+  maxPollenHarvestsPerStage: 1
   GrowingSeason: 0

@@ -9,26 +9,23 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9584fd549984b1c40bb566c49a68c3a8, type: 3}
-  m_Name: TomatoPollen
+  m_Script: {fileID: 11500000, guid: e5418e11170261846831d605fc54981a, type: 3}
+  m_Name: strawberrySeedSO
   m_EditorClassIdentifier: 
-  itemName: Tomato Pollen
-  itemID: tomato_pollen
-  icon: {fileID: 6099581493293703690, guid: baf9bf2e3ed5b6b439ad703be78e6c67, type: 3}
+  itemName: Strawberry  Seed
+  itemID: strawberry_seed
+  icon: {fileID: -6338023803479276477, guid: 7621cbce9a49a844a922c7b2adf4cc34, type: 3}
   description: 
   maxStack: 99
   isStackable: 1
   quality: 0
-  basePrice: 1
-  buyPrice: 0
+  basePrice: 200
+  buyPrice: 200
   canBeSold: 0
-  canBeBought: 0
+  canBeBought: 1
   npcPreferences: []
   isQuestItem: 0
   isArtifact: 0
   isRareItem: 0
   itemCategory: 0
-  sourcePlant: {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
-  compatibleTargets: []
-  pollinationSuccessChance: 0.5
-  viabilityDays: 3
+  CropDataSo: {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}

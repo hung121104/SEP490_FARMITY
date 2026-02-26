@@ -615,6 +615,52 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 91174717}
   m_CullTransparentMesh: 1
+--- !u!1 &99337823
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 99337824}
+  - component: {fileID: 99337825}
+  m_Layer: 0
+  m_Name: CropBreedingManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &99337824
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 99337823}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 525205932}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &99337825
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 99337823}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7013e52e2693b4dbe5eed265343617, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  interactionRadius: 2
+  playerTag: PlayerEntity
 --- !u!1 &113894229
 GameObject:
   m_ObjectHideFlags: 0
@@ -2321,6 +2367,7 @@ Transform:
   - {fileID: 642568624}
   - {fileID: 36946697}
   - {fileID: 1866735580}
+  - {fileID: 99337824}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &525205933
@@ -8198,6 +8245,7 @@ MonoBehaviour:
   plantDatabase:
   - {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
   - {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
+  - {fileID: 11400000, guid: e5397b9e9718b75448382a647a641346, type: 2}
   enableGrowth: 1
   growthSpeedMultiplier: 1
   cropVisualsParent: {fileID: 0}
@@ -8454,6 +8502,7 @@ MonoBehaviour:
   plantDatabase:
   - {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
   - {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
+  - {fileID: 11400000, guid: e5397b9e9718b75448382a647a641346, type: 2}
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   tilledTilemapName: TillableTilemap
   showDebugLogs: 0

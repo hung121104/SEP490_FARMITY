@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e8d1fe37b738e1d4b8593ba545858269, type: 3}
-  m_Name: TomatoPlantDataSO
+  m_Name: StrawberryPlantDataSO
   m_EditorClassIdentifier: 
-  PlantId: tomato_plant
-  PlantName: Tomato
+  PlantId: strawberry_plant
+  PlantName: Strawberry
   GrowthStages:
   - stageNum: 0
     stageSprite: {fileID: -3030608088069509471, guid: 19c53eccda044c84a83c286a3c8f5f58, type: 3}
@@ -30,7 +30,7 @@ MonoBehaviour:
   - stageNum: 4
     stageSprite: {fileID: 6984442412936397737, guid: 19c53eccda044c84a83c286a3c8f5f58, type: 3}
     age: 4
-  HarvestedItem: {fileID: 11400000, guid: 40a6bdb45d4f3bd449dd7577105d13d1, type: 2}
+  HarvestedItem: {fileID: 11400000, guid: bae5bf8dd2f3e8340be7495ec211fa4f, type: 2}
   canProducePollen: 1
   pollenStage: 3
   PollenItem: {fileID: 11400000, guid: aa0dd70852d55624bbb77192e060dacf, type: 2}
