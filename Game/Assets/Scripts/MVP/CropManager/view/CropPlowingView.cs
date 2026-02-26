@@ -43,6 +43,10 @@ public class CropPlowingView : MonoBehaviour
     private float holdTimer = 0f;
     private float _mouseHoldTimer = 0f;
     private SpriteRenderer _previewSR;
+    private Vector3 _lastMouseWorldPos;  // raw mouse pos before tile snap — used for anim direction
+
+    /// <summary>Fired when a tile is successfully plowed. Carries the plow direction (cardinal Vector2).</summary>
+    public static event System.Action<Vector2> OnPlowAnimationRequested;
     
     private void Start()
     {
@@ -183,6 +187,7 @@ public class CropPlowingView : MonoBehaviour
                     ? Camera.main.ScreenToWorldPoint(Input.mousePosition)
                     : Vector3.zero;
                 mouseWorldPos.z = 0f;
+                _lastMouseWorldPos = mouseWorldPos;  // store before snap
 
                 Vector2Int dummy = new Vector2Int(int.MinValue, int.MinValue);
                 Vector3 snappedTile = CropTileSelector.GetDirectionalTile(
@@ -223,7 +228,6 @@ public class CropPlowingView : MonoBehaviour
         
         if (targetTilePos != Vector3.zero)
         {
-            // Tell the presenter to handle the plow action
             presenter.HandlePlowAction(targetTilePos);
         }
     }
@@ -243,6 +247,8 @@ public class CropPlowingView : MonoBehaviour
 
         Vector3 playerPos = playerTransform.position;
         Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mouseWorldPos.z = 0f;
+        _lastMouseWorldPos = mouseWorldPos;  // store before snap
 
         Vector3 result = CropTileSelector.GetDirectionalTile(
             playerPos,
@@ -259,13 +265,21 @@ public class CropPlowingView : MonoBehaviour
     /// <summary>
     /// Called when plowing is successful
     /// </summary>
-    public void OnPlowSuccess(Vector3Int tilePosition)
+    public void OnPlowSuccess(Vector3Int tilePosition, Vector3 worldPosition)
     {
         Debug.Log($"Successfully plowed tile at {tilePosition}");
-        // You can add visual/audio feedback here
-        // PlayPlowSound();
-        // SpawnPlowParticles(tilePosition);
+
+        // Only left/right animations — use the X sign of player→mouse direction
+        Vector2 dir = Vector2.zero;
+        if (playerTransform != null && _lastMouseWorldPos != Vector3.zero)
+        {
+            float rawX = _lastMouseWorldPos.x - playerTransform.position.x;
+            dir = new Vector2(Mathf.Sign(rawX), 0f);
+        }
+        Debug.Log($"[CropPlowingView] Plowing direction: {dir}");
+        OnPlowAnimationRequested?.Invoke(dir);
     }
+
     
     /// <summary>
     /// Called when plowing fails
@@ -297,6 +311,8 @@ public class CropPlowingView : MonoBehaviour
     private void HandleHoeUseRequested(ToolDataSO tool, Vector3 mouseWorldPos)
     {
         if (presenter == null || playerTransform == null) return;
+
+        _lastMouseWorldPos = mouseWorldPos;  // store before snap
 
         Vector2Int dummy = new Vector2Int(int.MinValue, int.MinValue);
         Vector3 snappedTile = CropTileSelector.GetDirectionalTile(

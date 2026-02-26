@@ -39,9 +39,10 @@ public class CropPlowingPresenter
         bool success = cropPlowingService.PlowTile(tilePosition, worldPosition);
 
         if (success)
-            view.OnPlowSuccess(tilePosition);
+            view.OnPlowSuccess(tilePosition, worldPosition);
         else
             view.OnPlowFailed(tilePosition);
+
     }
 
     
