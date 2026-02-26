@@ -19,7 +19,7 @@ MonoBehaviour:
     AppIdVoice: 
     AppVersion: 
     UseNameServer: 1
-    FixedRegion: 
+    FixedRegion: hk
     Server: 
     Port: 0
     ProxyServer: 
@@ -49,6 +49,7 @@ MonoBehaviour:
   - RPC_RequestFetch
   - RPC_PlayerEntered
   - RPC_PlayerExited
+  - RPC_TriggerPlow
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

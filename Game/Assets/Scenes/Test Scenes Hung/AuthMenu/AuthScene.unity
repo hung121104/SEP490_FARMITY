@@ -666,6 +666,54 @@ CanvasGroup:
   m_CorrespondingSourceObject: {fileID: 518815539379534006, guid: 20400726ec8e8ae47a2559c85338dc4b, type: 3}
   m_PrefabInstance: {fileID: 1305493968}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2097249564
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2097249566}
+  - component: {fileID: 2097249565}
+  m_Layer: 0
+  m_Name: CursorManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2097249565
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2097249564}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f60220da25b6d94e8015f793123a1e8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cursorSprite: {fileID: 21300000, guid: 8be983ce3e7ce804c88e8febd1894207, type: 3}
+  hotspotOffset: {x: 0, y: 0}
+  cursorScale: 3
+  hideSystemCursor: 1
+--- !u!4 &2097249566
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2097249564}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -108.02498, y: 82.21545, z: 31.759388}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2101468138
 GameObject:
   m_ObjectHideFlags: 0
@@ -880,3 +928,4 @@ SceneRoots:
   - {fileID: 155655475}
   - {fileID: 362392241}
   - {fileID: 2101468140}
+  - {fileID: 2097249566}

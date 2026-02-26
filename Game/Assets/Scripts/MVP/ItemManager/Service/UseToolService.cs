@@ -23,6 +23,9 @@ public class UseToolService : IUseToolService
     /// <summary>Fired when the Fishing Rod is used.</summary>
     public static event Action<ToolDataSO, Vector3> OnFishingRodRequested;
 
+    /// <summary>Fired when a Pollen item is used. CropBreedingView subscribes.</summary>
+    public static event Action<PollenDataSO, Vector3> OnPollenRequested;
+
     // ── IUseToolService implementation ────────────────────────────────────
 
     public bool UseHoe(ToolDataSO item, Vector3 pos)
@@ -57,6 +60,13 @@ public class UseToolService : IUseToolService
     {
         Debug.Log("[UseToolService] UseFishingRod at: " + pos);
         OnFishingRodRequested?.Invoke(item, pos);
+        return true;
+    }
+
+    public bool UsePollen(PollenDataSO pollen, Vector3 pos)
+    {
+        Debug.Log("[UseToolService] UsePollen at: " + pos);
+        OnPollenRequested?.Invoke(pollen, pos);
         return true;
     }
 

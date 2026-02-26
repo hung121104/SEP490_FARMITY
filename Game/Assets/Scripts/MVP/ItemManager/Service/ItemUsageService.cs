@@ -48,6 +48,19 @@ public class ItemUsageService : IItemUsageService
         return true;
     }
 
+    public bool UsePollen(ItemDataSO item, Vector3 pos)
+    {
+        if (item is not PollenDataSO pollen)
+        {
+            Debug.LogWarning("[ItemUsageService] UsePollen: item is not PollenDataSO");
+            return false;
+        }
+        if (useToolService is UseToolService uts)
+            return uts.UsePollen(pollen, pos);
+        Debug.LogWarning("[ItemUsageService] UsePollen: UseToolService not available");
+        return false;
+    }
+
     private bool LogUnknownTool(ToolDataSO toolData)
     {
         Debug.LogWarning("[ItemUsageService] Unknown ToolType: " + toolData.toolType);

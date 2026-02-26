@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ccfb8729cda2fb45980f91e40f0fcde, type: 3}
+  m_Name: PumberryPlantDataSO
+  m_EditorClassIdentifier: 
+  PlantId: pumberry_plant
+  PlantName: pumberry
+  GrowthStages:
+  - stageNum: 0
+    stageSprite: {fileID: -3527876879021525145, guid: 19c53eccda044c84a83c286a3c8f5f58, type: 3}
+    age: 0
+  - stageNum: 1
+    stageSprite: {fileID: -1927889906097043966, guid: 19c53eccda044c84a83c286a3c8f5f58, type: 3}
+    age: 2
+  - stageNum: 2
+    stageSprite: {fileID: 5004531278555049960, guid: 19c53eccda044c84a83c286a3c8f5f58, type: 3}
+    age: 3
+  - stageNum: 3
+    stageSprite: {fileID: -5395861003456798081, guid: 19c53eccda044c84a83c286a3c8f5f58, type: 3}
+    age: 5
+  - stageNum: 4
+    stageSprite: {fileID: -6800931340347744238, guid: 19c53eccda044c84a83c286a3c8f5f58, type: 3}
+    age: 7
+  HarvestedItem: {fileID: 11400000, guid: b36e1be0eb3dc0549a446d229b773bc6, type: 2}
+  canProducePollen: 0
+  pollenStage: 3
+  PollenItem: {fileID: 0}
+  maxPollenHarvestsPerStage: 1
+  GrowingSeason: 0
+  receiverPlant: {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
+  pollenPlant: {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
+  hybridFlowerSprite: {fileID: 2069992328310058220, guid: 19c53eccda044c84a83c286a3c8f5f58, type: 3}
+  hybridMatureSprite: {fileID: -862800679913824809, guid: 19c53eccda044c84a83c286a3c8f5f58, type: 3}
+  dropSeeds: 0
