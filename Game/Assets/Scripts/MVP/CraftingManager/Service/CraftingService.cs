@@ -116,15 +116,9 @@ public class CraftingService : ICraftingService
 
     #region Recipe Management
 
-    public void LoadRecipes(RecipeDataSO[] recipeDataArray)
+    public void LoadRecipes(IEnumerable<RecipeData> recipeDataList)
     {
-        if (recipeDataArray == null || recipeDataArray.Length == 0)
-        {
-            Debug.LogWarning("[CraftingService] No recipes to load");
-            return;
-        }
-
-        foreach (var recipeData in recipeDataArray)
+        foreach (var recipeData in recipeDataList)
         {
             if (recipeData != null && recipeData.IsValid())
             {
@@ -132,7 +126,8 @@ public class CraftingService : ICraftingService
             }
         }
 
-        Debug.Log($"[CraftingService] Loaded {recipeDataArray.Length} recipes");
+        Debug.Log($"[CraftingService] Loaded {model.GetAllRecipes().Count} recipes.");
+
     }
 
     public void UnlockRecipe(string recipeID)

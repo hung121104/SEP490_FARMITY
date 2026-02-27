@@ -1,29 +1,27 @@
-using UnityEngine;
-
 public class RecipeModel
 {
-    private RecipeDataSO recipeData;
+    private RecipeData recipeData;
     public bool isUnlocked { get; private set; }
 
-    public RecipeDataSO RecipeData => recipeData;
+    public RecipeData RecipeData => recipeData;
     public string RecipeID      => recipeData.recipeID;
     public string RecipeName    => recipeData.recipeName;
     public string Description   => recipeData.description;
 
     // Recipe Classification
-    public RecipeType       RecipeType => recipeData.recipeType;
-    public bool             IsCrafting => recipeData.recipeType == RecipeType.Crafting;
-    public bool             IsCooking  => recipeData.recipeType == RecipeType.Cooking;
+    public RecipeType       RecipeType => recipeData.RecipeType;
+    public bool             IsCrafting => recipeData.RecipeType == RecipeType.Crafting;
+    public bool             IsCooking  => recipeData.RecipeType == RecipeType.Cooking;
 
-    /// <summary>Item ID from the catalog. Resolve via ItemCatalogService.GetItemData(ResultItemId).</summary>
-    public string           ResultItemId  => recipeData.resultItemId;
+    /// <summary>itemID of the result item. Resolve via ItemCatalogService.GetItemData(ResultItemId).</summary>
+    public string           ResultItemId   => recipeData.resultItemId;
     public int              ResultQuantity => recipeData.resultQuantity;
-    public Quality          ResultQuality  => recipeData.resultQuality;
+    public Quality          ResultQuality  => recipeData.ResultQualityEnum;
 
-    public ItemIngredient[] Ingredients => recipeData.ingredients;
-    public CraftingCategory Category    => recipeData.category;
+    public System.Collections.Generic.List<RecipeIngredient> Ingredients => recipeData.ingredients;
+    public CraftingCategory Category   => recipeData.Category;
 
-    public RecipeModel(RecipeDataSO data)
+    public RecipeModel(RecipeData data)
     {
         recipeData = data;
         isUnlocked = data.isUnlockedByDefault;
@@ -34,4 +32,3 @@ public class RecipeModel
 
     public bool IsValid() => recipeData != null && recipeData.IsValid();
 }
-

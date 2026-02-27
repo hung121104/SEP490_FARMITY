@@ -165,7 +165,7 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
         // Clear existing ingredient slots
         ClearIngredients();
 
-        if (recipe.Ingredients == null || recipe.Ingredients.Length == 0)
+        if (recipe.Ingredients == null || recipe.Ingredients.Count == 0)
         {
             Debug.LogWarning($"[CraftingDetailView] Recipe {recipe.RecipeName} has no ingredients");
             return;
@@ -178,7 +178,7 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
         }
     }
 
-    private void CreateIngredientSlot(ItemIngredient ingredient, Dictionary<string, int> missingIngredients)
+    private void CreateIngredientSlot(RecipeIngredient ingredient, Dictionary<string, int> missingIngredients)
     {
         if (ingredientSlotPrefab == null || ingredientsContainer == null)
         {
@@ -243,7 +243,7 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
         currentCraftAmount = amount;
 
         // Update ingredient quantities
-        for (int i = 0; i < ingredientSlots.Count && i < currentRecipe.Ingredients.Length; i++)
+        for (int i = 0; i < ingredientSlots.Count && i < currentRecipe.Ingredients.Count; i++)
         {
             var ingredient = currentRecipe.Ingredients[i];
             int displayQuantity = ingredient.quantity * currentCraftAmount;

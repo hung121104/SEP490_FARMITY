@@ -347,7 +347,7 @@ public class CookingPresenter
 
     private int CalculateMaxCraftableAmount(RecipeModel recipe, Dictionary<string, int> missingIngredients)
     {
-        if (recipe == null || recipe.Ingredients == null || recipe.Ingredients.Length == 0)
+        if (recipe == null || recipe.Ingredients == null || recipe.Ingredients.Count == 0)
             return 0;
 
         if (missingIngredients != null && missingIngredients.Count > 0)
