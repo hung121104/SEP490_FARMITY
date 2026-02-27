@@ -172,6 +172,17 @@ public class EnemyAI : MonoBehaviour
 
     private Transform FindLocalPlayerTransform()
     {
+        // Try "Player" tag first (multiplayer spawn)
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go.transform;
+            }
+        }
+
+        // Fallback to "PlayerEntity" tag (test scenes)
         foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
         {
             PhotonView pv = go.GetComponent<PhotonView>();
@@ -180,6 +191,7 @@ public class EnemyAI : MonoBehaviour
                 return go.transform;
             }
         }
+
         return null;
     }
 

@@ -1,12 +1,14 @@
 using UnityEngine;
 using UnityEngine.UI;
 using Photon.Pun;
+using System.Collections;
 
 /// <summary>
 /// Controls a single indicator canvas.
 /// Sits on Indicator_Arrow/Cone/Circle GameObject.
 /// Gets told what to do by SkillIndicatorManager.
 /// Works with multiplayer - finds local player only.
+/// Waits for player to spawn before initializing.
 /// </summary>
 public class SkillIndicatorController : MonoBehaviour
 {
@@ -37,7 +39,6 @@ public class SkillIndicatorController : MonoBehaviour
     [Tooltip("How many world units does the circle image cover at Scale = 1?")]
     [SerializeField] private float referenceCircleUnits = 100f;
 
-    // Runtime state
     private IndicatorType indicatorType;
     private Transform playerTransform;
     private Transform centerPoint;
@@ -47,39 +48,23 @@ public class SkillIndicatorController : MonoBehaviour
     private float currentRange = 3f;
     private float currentRadius = 1f;
     private bool isVisible = false;
+    private bool isInitialized = false;
 
     #region Unity Lifecycle
 
     private void Awake()
     {
-        mainCamera = Camera.main;
-
-        // Find local player using Photon
-        GameObject playerObj = FindLocalPlayerEntity();
-        if (playerObj != null)
-        {
-            playerTransform = playerObj.transform;
-
-            Transform found = playerTransform.Find("CenterPoint");
-            if (found != null)
-                centerPoint = found;
-            else
-            {
-                Debug.LogWarning("SkillIndicatorController: CenterPoint not found! Using player root instead.");
-                centerPoint = playerTransform;
-            }
-        }
-        else
-        {
-            Debug.LogWarning("SkillIndicatorController: Local PlayerEntity not found!");
-        }
-
         Hide();
+    }
+
+    private void Start()
+    {
+        StartCoroutine(DelayedInitialize());
     }
 
     private void Update()
     {
-        if (!isVisible || centerPoint == null)
+        if (!isInitialized || !isVisible || centerPoint == null)
             return;
 
         UpdateMouseWorldPosition();
@@ -106,16 +91,51 @@ public class SkillIndicatorController : MonoBehaviour
 
     #region Initialization
 
+    private IEnumerator DelayedInitialize()
+    {
+        yield return new WaitForSeconds(0.5f);
+        InitializeComponents();
+    }
+
+    private void InitializeComponents()
+    {
+        mainCamera = Camera.main;
+        if (mainCamera == null)
+            mainCamera = FindObjectOfType<Camera>();
+
+        GameObject playerObj = FindLocalPlayerEntity();
+        if (playerObj == null)
+        {
+            isInitialized = false;
+            return;
+        }
+
+        playerTransform = playerObj.transform;
+
+        Transform found = playerTransform.Find("CenterPoint");
+        centerPoint = found != null ? found : playerTransform;
+
+        isInitialized = true;
+    }
+
     private GameObject FindLocalPlayerEntity()
     {
+        // Try "Player" tag first (multiplayer spawn)
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+                return go;
+        }
+
+        // Fallback to "PlayerEntity" tag (test scenes)
         foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
         {
             PhotonView pv = go.GetComponent<PhotonView>();
             if (pv != null && pv.IsMine)
-            {
                 return go;
-            }
         }
+
         return null;
     }
 
@@ -152,10 +172,10 @@ public class SkillIndicatorController : MonoBehaviour
     private void UpdateMouseWorldPosition()
     {
         if (mainCamera == null)
-        {
             mainCamera = Camera.main;
+
+        if (mainCamera == null)
             return;
-        }
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         Plane plane = new Plane(Vector3.forward, centerPoint.position);
@@ -210,7 +230,8 @@ public class SkillIndicatorController : MonoBehaviour
 
     private void ApplyArrowScale(float range)
     {
-        if (imageRectTransform == null) return;
+        if (imageRectTransform == null) 
+            return;
 
         float scaleY = range / referenceWorldUnitsY;
         imageRectTransform.localScale = new Vector3(fixedScaleX, scaleY, 1f);
@@ -218,7 +239,8 @@ public class SkillIndicatorController : MonoBehaviour
 
     private void ApplyConeScale(float range, float angle)
     {
-        if (imageRectTransform == null) return;
+        if (imageRectTransform == null) 
+            return;
 
         float scaleY = range / referenceWorldUnitsY;
 
@@ -231,7 +253,8 @@ public class SkillIndicatorController : MonoBehaviour
 
     private void ApplyCircleScale(float radius)
     {
-        if (imageRectTransform == null) return;
+        if (imageRectTransform == null) 
+            return;
 
         float scale = (radius * 2f) / referenceCircleUnits;
         imageRectTransform.localScale = new Vector3(scale, scale, 1f);

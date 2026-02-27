@@ -20,6 +20,17 @@ public class EnemyCombat : MonoBehaviour
 
     private PlayerHealthManager FindLocalPlayerHealthManager()
     {
+        // Try "Player" tag first (multiplayer spawn)
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go.GetComponent<PlayerHealthManager>();
+            }
+        }
+
+        // Fallback to "PlayerEntity" tag (test scenes)
         foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
         {
             PhotonView pv = go.GetComponent<PhotonView>();
@@ -28,11 +39,23 @@ public class EnemyCombat : MonoBehaviour
                 return go.GetComponent<PlayerHealthManager>();
             }
         }
+
         return null;
     }
 
     private PlayerKnockbackManager FindLocalPlayerKnockbackManager()
     {
+        // Try "Player" tag first (multiplayer spawn)
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go.GetComponent<PlayerKnockbackManager>();
+            }
+        }
+
+        // Fallback to "PlayerEntity" tag (test scenes)
         foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
         {
             PhotonView pv = go.GetComponent<PhotonView>();
@@ -41,6 +64,7 @@ public class EnemyCombat : MonoBehaviour
                 return go.GetComponent<PlayerKnockbackManager>();
             }
         }
+
         return null;
     }
 
