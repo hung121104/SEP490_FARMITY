@@ -9,6 +9,7 @@ public class GiftPresenter
     private readonly InventoryView inventoryView;
     private readonly NPCDialogueView dialogueView;
     private readonly NPCRelationshipModel relationshipModel;
+    private readonly NPCDialogueModel dialogueModel;
     public Action OnRequestCloseInventory;  
     private ItemModel selectedItem;
     private bool isWaitingForConfirm;
@@ -21,13 +22,15 @@ public class GiftPresenter
         IInventoryService inventoryService,
         InventoryView inventoryView,
         NPCDialogueView dialogueView,
-        NPCRelationshipModel relationshipModel)
+        NPCRelationshipModel relationshipModel,
+        NPCDialogueModel dialogueModel)
     {
         this.giftService = giftService;
         this.inventoryService = inventoryService;
         this.inventoryView = inventoryView;
         this.dialogueView = dialogueView;
         this.relationshipModel = relationshipModel;
+        this.dialogueModel = dialogueModel;
     }
 
     // ===============================
@@ -165,7 +168,10 @@ public class GiftPresenter
         node.dialogueText = message;
         node.options = null;
 
-        dialogueView.ShowNode("NPC", node, null);
+        dialogueView.ShowNode(
+        dialogueModel.npcName,
+        node,
+        dialogueModel.avatar);
 
         waitingForClose = true;
     }
