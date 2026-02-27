@@ -6,33 +6,52 @@ using Photon.Pun;
 
 public class PlayerHealthManager : MonoBehaviour
 {
-    [SerializeField] private Transform playerEntity;
-    
     public Slider healthBar;
     public Slider healthBarEase;
     public TextMeshProUGUI healthText;
 
+    private Transform playerEntity;
     private float targetHealthValue;
     private StatsManager statsManager;
     private bool isInvulnerable = false;
+    private bool isInitialized = false;
 
     private void Start()
     {
-        // Find local player using Photon
-        if (playerEntity == null)
+        StartCoroutine(DelayedInitialize());
+    }
+
+    private void Update()
+    {
+        if (!isInitialized || healthBarEase == null || statsManager == null)
+            return;
+
+        healthBarEase.value = Mathf.Lerp(
+            healthBarEase.value,
+            targetHealthValue,
+            statsManager.easeSpeed * Time.deltaTime
+        );
+
+        UpdateHealthText();
+    }
+
+    private IEnumerator DelayedInitialize()
+    {
+        yield return new WaitForSeconds(0.5f);
+        InitializeComponents();
+    }
+
+    private void InitializeComponents()
+    {
+        GameObject playerObj = FindLocalPlayerEntity();
+        if (playerObj == null)
         {
-            GameObject playerObj = FindLocalPlayerEntity();
-            if (playerObj != null)
-            {
-                playerEntity = playerObj.transform;
-            }
-            else
-            {
-                Debug.LogWarning("PlayerHealthManager: Local PlayerEntity not found!");
-                enabled = false;
-                return;
-            }
+            Debug.LogError("[PlayerHealthManager] Local player not found!");
+            enabled = false;
+            return;
         }
+
+        playerEntity = playerObj.transform;
 
         statsManager = StatsManager.Instance;
         if (statsManager == null)
@@ -40,6 +59,7 @@ public class PlayerHealthManager : MonoBehaviour
             statsManager = FindObjectOfType<StatsManager>();
             if (statsManager == null)
             {
+                Debug.LogError("[PlayerHealthManager] StatsManager not found!");
                 enabled = false;
                 return;
             }
@@ -61,32 +81,27 @@ public class PlayerHealthManager : MonoBehaviour
         }
 
         targetHealthValue = statsManager.CurrentHealth;
-    }
-
-    private void Update()
-    {
-        if (healthBarEase != null)
-        {
-            healthBarEase.value = Mathf.Lerp(
-                healthBarEase.value,
-                targetHealthValue,
-                statsManager.easeSpeed * Time.deltaTime
-            );
-        }
-
-        UpdateHealthText();
+        isInitialized = true;
     }
 
     private GameObject FindLocalPlayerEntity()
     {
+        // Try "Player" tag first (multiplayer spawn)
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+                return go;
+        }
+
+        // Fallback to "PlayerEntity" tag (test scenes)
         foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
         {
             PhotonView pv = go.GetComponent<PhotonView>();
             if (pv != null && pv.IsMine)
-            {
                 return go;
-            }
         }
+
         return null;
     }
 
@@ -98,9 +113,7 @@ public class PlayerHealthManager : MonoBehaviour
         statsManager.CurrentHealth += amount;
 
         if (healthBar != null)
-        {
             healthBar.value = statsManager.CurrentHealth;
-        }
 
         targetHealthValue = statsManager.CurrentHealth;
 
@@ -112,6 +125,9 @@ public class PlayerHealthManager : MonoBehaviour
 
     public void RefreshHealthBar()
     {
+        if (statsManager == null)
+            return;
+
         int maxHealth = statsManager.GetMaxHealth();
 
         if (healthBar != null)
@@ -132,13 +148,11 @@ public class PlayerHealthManager : MonoBehaviour
 
     private void UpdateHealthText()
     {
-        if (healthText != null)
-        {
+        if (healthText != null && statsManager != null)
             healthText.text = statsManager.CurrentHealth.ToString();
-        }
     }
 
-    #region Invulnerability (iFrames)
+    #region Invulnerability
 
     public void SetInvulnerable(float duration)
     {
