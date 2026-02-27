@@ -1,4 +1,5 @@
 using UnityEngine;
+using Photon.Pun;
 
 public class EnemyAI : MonoBehaviour
 {
@@ -81,9 +82,8 @@ public class EnemyAI : MonoBehaviour
         if (spriteRenderer == null)
             spriteRenderer = GetComponent<SpriteRenderer>();
 
-        GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
-        if (playerObj != null)
-            player = playerObj.transform;
+        // Find local player using Photon
+        player = FindLocalPlayerTransform();
 
         startPosition = transform.position;
         GenerateNewWanderTarget();
@@ -164,6 +164,23 @@ public class EnemyAI : MonoBehaviour
                 rb.linearVelocity = Vector2.Lerp(rb.linearVelocity, Vector2.zero, Time.fixedDeltaTime * 10f);
                 break;
         }
+    }
+
+    #endregion
+
+    #region Player Detection
+
+    private Transform FindLocalPlayerTransform()
+    {
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go.transform;
+            }
+        }
+        return null;
     }
 
     #endregion

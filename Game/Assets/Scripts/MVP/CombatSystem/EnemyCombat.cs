@@ -1,20 +1,47 @@
 using UnityEngine;
 using TMPro;
+using Photon.Pun;
 
 public class EnemyCombat : MonoBehaviour
 {
     public int damageAmount = 1;
     public float knockbackForce = 30f;
-    public GameObject damagePopupPrefab;  // ← Already public, good!
+    public GameObject damagePopupPrefab;
 
     private PlayerHealthManager playerHealthManager;
     private PlayerKnockbackManager playerKnockback;
 
     private void Start()
     {
-        // Cache references
-        playerHealthManager = FindObjectOfType<PlayerHealthManager>();
-        playerKnockback = FindObjectOfType<PlayerKnockbackManager>();
+        // Find local player's managers only (Photon multiplayer support)
+        playerHealthManager = FindLocalPlayerHealthManager();
+        playerKnockback = FindLocalPlayerKnockbackManager();
+    }
+
+    private PlayerHealthManager FindLocalPlayerHealthManager()
+    {
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go.GetComponent<PlayerHealthManager>();
+            }
+        }
+        return null;
+    }
+
+    private PlayerKnockbackManager FindLocalPlayerKnockbackManager()
+    {
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go.GetComponent<PlayerKnockbackManager>();
+            }
+        }
+        return null;
     }
 
     private void OnCollisionEnter2D(Collision2D collision)

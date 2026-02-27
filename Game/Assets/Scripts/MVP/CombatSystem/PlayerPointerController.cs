@@ -1,99 +1,113 @@
 using UnityEngine;
+using Photon.Pun;
+using System.Collections;
 
 /// <summary>
 /// Controls the attack direction pointer that orbits around the player.
-/// Sits on a separate GameObject inside CombatSystem.
-/// Replaces attackPoint as the hitbox position for normal attack.
-/// Flips player sprite based on mouse direction.
+/// Waits for player to spawn before initializing (multiplayer compatible).
 /// </summary>
 public class PlayerPointerController : MonoBehaviour
 {
-    #region Serialized Fields
-
     [Header("References")]
     [SerializeField] private GameObject pointerPrefab;
 
     [Header("Settings")]
     [SerializeField] private float orbitRadius = 1.5f;
-
-    #endregion
-
-    #region Private Fields
+    [SerializeField] private float initializationDelay = 0.5f;
 
     private Transform playerTransform;
     private Transform centerPoint;
     private SpriteRenderer playerSpriteRenderer;
     private Camera mainCamera;
     private Transform pointerTransform;
+    private SpriteRenderer pointerSpriteRenderer;
     private Vector3 currentDirection = Vector3.right;
-
-    #endregion
-
-    #region Unity Lifecycle
+    private bool isInitialized = false;
 
     private void Start()
     {
-        InitializeComponents();
-        SpawnPointer();
+        StartCoroutine(DelayedInitialize());
     }
 
     private void Update()
     {
-        if (playerTransform == null) return;
+        if (!isInitialized || playerTransform == null) return;
 
         UpdateMouseDirection();
         UpdatePointerPosition();
         UpdatePlayerFlip();
     }
 
-    #endregion
-
-    #region Initialization
+    private IEnumerator DelayedInitialize()
+    {
+        yield return new WaitForSeconds(initializationDelay);
+        InitializeComponents();
+        SpawnPointer();
+    }
 
     private void InitializeComponents()
     {
         mainCamera = Camera.main;
+        if (mainCamera == null)
+            mainCamera = FindObjectOfType<Camera>();
 
-        GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
-        if (playerObj != null)
-        {
-            playerTransform = playerObj.transform;
-            playerSpriteRenderer = playerObj.GetComponent<SpriteRenderer>();
-
-            Transform found = playerTransform.Find("CenterPoint");
-            centerPoint = found != null ? found : playerTransform;
-        }
-        else
-        {
-            Debug.LogWarning("PlayerPointerController: PlayerEntity tag not found!");
+        GameObject playerObj = FindLocalPlayerEntity();
+        if (playerObj == null)
             return;
+
+        playerTransform = playerObj.transform;
+        playerSpriteRenderer = playerObj.GetComponent<SpriteRenderer>();
+
+        Transform found = playerTransform.Find("CenterPoint");
+        centerPoint = found != null ? found : playerTransform;
+    }
+
+    private GameObject FindLocalPlayerEntity()
+    {
+        // Try "Player" tag first (multiplayer spawn)
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+                return go;
         }
+
+        // Fallback to "PlayerEntity" tag (test scenes)
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+                return go;
+        }
+
+        return null;
     }
 
     private void SpawnPointer()
     {
-        if (pointerPrefab == null)
-        {
-            Debug.LogWarning("PlayerPointerController: Pointer prefab not assigned!");
+        if (pointerPrefab == null || centerPoint == null)
             return;
-        }
 
         GameObject pointerGO = Instantiate(pointerPrefab, centerPoint.position, Quaternion.identity);
         pointerTransform = pointerGO.transform;
         pointerTransform.SetParent(centerPoint);
+        pointerTransform.localPosition = Vector3.zero;
+
+        // Get SpriteRenderer from child (prefab structure: Parent -> Child with sprite)
+        pointerSpriteRenderer = pointerGO.GetComponentInChildren<SpriteRenderer>();
+        if (pointerSpriteRenderer != null)
+        {
+            pointerSpriteRenderer.enabled = true;
+            pointerSpriteRenderer.sortingOrder = 100;
+        }
+
+        isInitialized = true;
     }
-
-    #endregion
-
-    #region Mouse Direction
 
     private void UpdateMouseDirection()
     {
         if (mainCamera == null)
-        {
-            mainCamera = Camera.main;
             return;
-        }
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         Plane plane = new Plane(Vector3.forward, centerPoint.position);
@@ -109,13 +123,10 @@ public class PlayerPointerController : MonoBehaviour
         }
     }
 
-    #endregion
-
-    #region Pointer And Flip
-
     private void UpdatePointerPosition()
     {
-        if (pointerTransform == null) return;
+        if (pointerTransform == null) 
+            return;
 
         pointerTransform.localPosition = currentDirection * orbitRadius;
 
@@ -125,18 +136,13 @@ public class PlayerPointerController : MonoBehaviour
 
     private void UpdatePlayerFlip()
     {
-        if (playerSpriteRenderer == null) return;
+        if (playerSpriteRenderer == null) 
+            return;
 
         playerSpriteRenderer.flipX = currentDirection.x < 0;
     }
 
-    #endregion
-
-    #region Public API
-
     public Vector3 GetPointerDirection() => currentDirection;
     public Vector3 GetPointerPosition() => pointerTransform != null ? pointerTransform.position : Vector3.zero;
     public float GetOrbitRadius() => orbitRadius;
-
-    #endregion
 }

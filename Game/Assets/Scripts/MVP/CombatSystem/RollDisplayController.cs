@@ -12,11 +12,9 @@ public class RollDisplayController : MonoBehaviour
     {
         if (followTarget != null)
         {
-            // Update position to follow player head
             Vector3 targetPosition = followTarget.position + followOffset;
             transform.position = targetPosition;
             
-            // Also update the dice instance directly (for world-space canvas)
             if (currentDiceInstance != null)
             {
                 currentDiceInstance.transform.position = targetPosition;
@@ -51,7 +49,6 @@ public class RollDisplayController : MonoBehaviour
         float elapsed = 0f;
         int sides = (int)tier;
 
-        // Rapidly cycle through numbers during animation
         while (elapsed < duration)
         {
             int tempValue = Random.Range(1, sides + 1);
@@ -61,7 +58,6 @@ public class RollDisplayController : MonoBehaviour
             yield return null;
         }
 
-        // Show final value
         UpdateDiceDisplay(finalValue);
         rollRoutine = null;
     }
@@ -78,7 +74,6 @@ public class RollDisplayController : MonoBehaviour
             return;
         }
 
-        // Instantiate dice at player head position (followTarget + offset)
         Vector3 spawnPosition = followTarget != null ? followTarget.position + followOffset : transform.position;
         currentDiceInstance = Instantiate(prefabToUse, spawnPosition, Quaternion.identity);
     }

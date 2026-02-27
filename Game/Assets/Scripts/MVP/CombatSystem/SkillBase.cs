@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using Photon.Pun;
 
 /// <summary>
 /// Base class for all skills.
@@ -98,15 +99,15 @@ public abstract class SkillBase : MonoBehaviour
 
     private void InitializeBaseComponents()
     {
-        // Find PlayerMovement first
-        PlayerMovement pm = FindObjectOfType<PlayerMovement>();
+        // Find local player using Photon
+        PlayerMovement pm = FindLocalPlayerMovement();
         if (pm != null)
         {
             playerMovement = pm;
         }
         else
         {
-            Debug.LogError($"[{GetType().Name}] PlayerMovement not found in scene!");
+            Debug.LogError($"[{GetType().Name}] Local PlayerMovement not found!");
             enabled = false;
             return;
         }
@@ -157,6 +158,19 @@ public abstract class SkillBase : MonoBehaviour
         EnsureRollDisplay();
     }
 
+    private PlayerMovement FindLocalPlayerMovement()
+    {
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go.GetComponent<PlayerMovement>();
+            }
+        }
+        return null;
+    }
+
     private void EnsureRollDisplay()
     {
         if (rollDisplayInstance != null) return;
@@ -168,8 +182,6 @@ public abstract class SkillBase : MonoBehaviour
         rollDisplayInstance = rollDisplayGO.AddComponent<RollDisplayController>();
         if (rollDisplayInstance != null && DiceDisplayManager.Instance != null)
         {
-            // Pass playerMovement.transform instead of this.transform
-            // so dice always follows player head
             rollDisplayInstance.AttachTo(
                 playerMovement.transform, 
                 DiceDisplayManager.Instance.GetRollDisplayOffset()

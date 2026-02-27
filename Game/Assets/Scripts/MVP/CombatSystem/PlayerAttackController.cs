@@ -1,9 +1,10 @@
 using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
 /// Handles normal attack input, combo chain and slash VFX spawning.
 /// Sits on PlayerAttacker GameObject inside CombatSystem.
-/// Replaces PlayerCombat attack logic completely.
+/// Works with multiplayer - only processes input for local player.
 /// </summary>
 public class PlayerAttackController : MonoBehaviour
 {
@@ -73,7 +74,8 @@ public class PlayerAttackController : MonoBehaviour
 
     private void InitializeComponents()
     {
-        GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
+        // Find local player using Photon
+        GameObject playerObj = FindLocalPlayerEntity();
         if (playerObj != null)
         {
             playerTransform = playerObj.transform;
@@ -93,7 +95,7 @@ public class PlayerAttackController : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("PlayerAttackController: PlayerEntity tag not found!");
+            Debug.LogWarning("PlayerAttackController: Local PlayerEntity not found!");
             return;
         }
 
@@ -104,6 +106,19 @@ public class PlayerAttackController : MonoBehaviour
         statsManager = StatsManager.Instance;
         if (statsManager == null)
             statsManager = FindObjectOfType<StatsManager>();
+    }
+
+    private GameObject FindLocalPlayerEntity()
+    {
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go;
+            }
+        }
+        return null;
     }
 
     #endregion
@@ -161,8 +176,6 @@ public class PlayerAttackController : MonoBehaviour
     {
         if (playerAnimator == null) return;
 
-        // Use existing isAttacking for now
-        // Replace with proper triggers when animations are ready
         playerAnimator.SetBool("isAttacking", true);
     }
 
@@ -195,7 +208,7 @@ public class PlayerAttackController : MonoBehaviour
         if (direction.x < 0)
         {
             Vector3 scale = vfxGO.transform.localScale;
-            scale.y *= -1; // Flip Y scale
+            scale.y *= -1;
             vfxGO.transform.localScale = scale;
         }
 

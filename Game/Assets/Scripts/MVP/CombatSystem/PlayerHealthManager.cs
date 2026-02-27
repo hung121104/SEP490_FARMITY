@@ -2,10 +2,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using Photon.Pun;
 
 public class PlayerHealthManager : MonoBehaviour
 {
-    [SerializeField] private Transform playerEntity; // Reference to PlayerEntity
+    [SerializeField] private Transform playerEntity;
     
     public Slider healthBar;
     public Slider healthBarEase;
@@ -17,12 +18,20 @@ public class PlayerHealthManager : MonoBehaviour
 
     private void Start()
     {
-        // Find PlayerEntity if not assigned
+        // Find local player using Photon
         if (playerEntity == null)
         {
-            playerEntity = transform.parent?.Find("PlayerEntity");
-            if (playerEntity == null)
-                playerEntity = FindObjectOfType<PlayerMovement>().transform;
+            GameObject playerObj = FindLocalPlayerEntity();
+            if (playerObj != null)
+            {
+                playerEntity = playerObj.transform;
+            }
+            else
+            {
+                Debug.LogWarning("PlayerHealthManager: Local PlayerEntity not found!");
+                enabled = false;
+                return;
+            }
         }
 
         statsManager = StatsManager.Instance;
@@ -66,6 +75,19 @@ public class PlayerHealthManager : MonoBehaviour
         }
 
         UpdateHealthText();
+    }
+
+    private GameObject FindLocalPlayerEntity()
+    {
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go;
+            }
+        }
+        return null;
     }
 
     public void ChangeHealth(int amount)

@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Photon.Pun;
 
 /// <summary>
 /// Controls a single indicator canvas.
 /// Sits on Indicator_Arrow/Cone/Circle GameObject.
 /// Gets told what to do by SkillIndicatorManager.
+/// Works with multiplayer - finds local player only.
 /// </summary>
 public class SkillIndicatorController : MonoBehaviour
 {
@@ -52,7 +54,8 @@ public class SkillIndicatorController : MonoBehaviour
     {
         mainCamera = Camera.main;
 
-        GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
+        // Find local player using Photon
+        GameObject playerObj = FindLocalPlayerEntity();
         if (playerObj != null)
         {
             playerTransform = playerObj.transform;
@@ -68,7 +71,7 @@ public class SkillIndicatorController : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("SkillIndicatorController: PlayerEntity tag not found!");
+            Debug.LogWarning("SkillIndicatorController: Local PlayerEntity not found!");
         }
 
         Hide();
@@ -89,7 +92,7 @@ public class SkillIndicatorController : MonoBehaviour
                 break;
 
             case IndicatorType.Cone:
-                UpdateConePosition(); // Use offset position instead
+                UpdateConePosition();
                 UpdateRotationIndicator();
                 break;
 
@@ -97,6 +100,23 @@ public class SkillIndicatorController : MonoBehaviour
                 UpdateCircleIndicator();
                 break;
         }
+    }
+
+    #endregion
+
+    #region Initialization
+
+    private GameObject FindLocalPlayerEntity()
+    {
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go;
+            }
+        }
+        return null;
     }
 
     #endregion
@@ -150,7 +170,6 @@ public class SkillIndicatorController : MonoBehaviour
 
     private void UpdateRotationIndicator()
     {
-        // Used by both Arrow and Cone - both rotate toward mouse
         Vector3 direction = mouseWorldPosition - centerPoint.position;
         direction.z = 0f;
 
@@ -159,7 +178,6 @@ public class SkillIndicatorController : MonoBehaviour
 
         currentDirection = direction.normalized;
 
-        // Sprite points UP so -90 degree offset
         float angle = Mathf.Atan2(currentDirection.y, currentDirection.x) * Mathf.Rad2Deg - 90f;
         indicatorCanvas.transform.rotation = Quaternion.Euler(0f, 0f, angle);
     }
@@ -169,17 +187,14 @@ public class SkillIndicatorController : MonoBehaviour
         Vector3 direction = mouseWorldPosition - centerPoint.position;
         direction.z = 0f;
 
-        // Clamp to max range from center
         float distance = Mathf.Clamp(direction.magnitude, 0f, currentRange);
         currentDirection = direction.magnitude > 0.01f ? direction.normalized : Vector3.right;
 
-        // Circle follows mouse but clamped to max range
         transform.position = centerPoint.position + currentDirection * distance;
     }
 
     private void UpdateConePosition()
     {
-        // Push cone forward toward mouse so it doesnt overlap character sprite
         Vector3 direction = mouseWorldPosition - centerPoint.position;
         direction.z = 0f;
 
@@ -205,11 +220,8 @@ public class SkillIndicatorController : MonoBehaviour
     {
         if (imageRectTransform == null) return;
 
-        // Scale Y = length of cone (range)
         float scaleY = range / referenceWorldUnitsY;
 
-        // Scale X = width of cone based on angle
-        // Wider angle = wider cone
         float halfAngleRad = angle * 0.5f * Mathf.Deg2Rad;
         float coneWidth = 2f * range * Mathf.Tan(halfAngleRad);
         float scaleX = coneWidth / referenceConeWidthUnits;
@@ -221,7 +233,6 @@ public class SkillIndicatorController : MonoBehaviour
     {
         if (imageRectTransform == null) return;
 
-        // Scale both X and Y equally for circle
         float scale = (radius * 2f) / referenceCircleUnits;
         imageRectTransform.localScale = new Vector3(scale, scale, 1f);
     }
@@ -249,7 +260,7 @@ public class SkillIndicatorController : MonoBehaviour
     #region Public API
 
     public Vector3 GetAimedDirection() => currentDirection;
-    public Vector3 GetAimedPosition() => transform.position; // Circle = its own pos, Arrow/Cone = centerPoint + direction * range
+    public Vector3 GetAimedPosition() => transform.position;
     public float GetAimedDistance() => currentRange;
 
     #endregion

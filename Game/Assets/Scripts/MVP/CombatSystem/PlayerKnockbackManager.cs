@@ -1,9 +1,10 @@
 using UnityEngine;
 using System.Collections;
+using Photon.Pun;
 
 public class PlayerKnockbackManager : MonoBehaviour
 {
-    [SerializeField] private Transform playerEntity; // Reference to PlayerEntity
+    [SerializeField] private Transform playerEntity;
 
     private Rigidbody2D rb;
     private SpriteRenderer spriteRenderer;
@@ -25,11 +26,20 @@ public class PlayerKnockbackManager : MonoBehaviour
 
     private void Start()
     {
+        // Find local player using Photon
         if (playerEntity == null)
         {
-            playerEntity = transform.parent?.Find("PlayerEntity");
-            if (playerEntity == null)
-                playerEntity = FindObjectOfType<PlayerMovement>().transform;
+            GameObject playerObj = FindLocalPlayerEntity();
+            if (playerObj != null)
+            {
+                playerEntity = playerObj.transform;
+            }
+            else
+            {
+                Debug.LogWarning("PlayerKnockbackManager: Local PlayerEntity not found!");
+                enabled = false;
+                return;
+            }
         }
 
         rb = playerEntity.GetComponent<Rigidbody2D>();
@@ -41,6 +51,19 @@ public class PlayerKnockbackManager : MonoBehaviour
         {
             originalColor = spriteRenderer.color;
         }
+    }
+
+    private GameObject FindLocalPlayerEntity()
+    {
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                return go;
+            }
+        }
+        return null;
     }
 
     public void Knockback(Transform enemyTransform, float knockbackForce)
