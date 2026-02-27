@@ -41,11 +41,11 @@ public abstract class SkillBase : MonoBehaviour
     [SerializeField] protected float rollDisplayDuration = 0.4f;
 
     [Header("Combat References - Base")]
-    [HideInInspector] public Transform attackPoint;
-    [HideInInspector] public LayerMask enemyLayers;
-    [HideInInspector] public GameObject damagePopupPrefab;
-    [HideInInspector] public Animator anim;
-    [HideInInspector] public bool blockAttackDamage = false;
+    [SerializeField] protected Transform attackPoint;
+    [SerializeField] public LayerMask enemyLayers;
+    [System.NonSerialized] public GameObject damagePopupPrefab;
+    [SerializeField] public Animator anim;
+    [SerializeField] protected bool blockAttackDamage = false;
 
     #endregion
 

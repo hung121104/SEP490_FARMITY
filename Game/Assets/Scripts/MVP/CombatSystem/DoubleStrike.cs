@@ -19,12 +19,6 @@ public class DoubleStrike : SkillBase
 
     #endregion
 
-    #region Private Fields
-
-    private GameObject damagePopupPrefab;
-
-    #endregion
-
     #region Private Helper Class
 
     private class DiceRollData

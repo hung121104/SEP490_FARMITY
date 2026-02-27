@@ -19,12 +19,6 @@ public class AirSlash : SkillBase
 
     #endregion
 
-    #region Private Fields
-
-    private GameObject damagePopupPrefab;
-
-    #endregion
-
     #region Unity Lifecycle
 
     private new void Start()
