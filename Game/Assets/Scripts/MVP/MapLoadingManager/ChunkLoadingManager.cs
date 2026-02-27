@@ -370,8 +370,8 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                     continue;
                 }
                 
-                // Validate stage is within bounds
-                if (tile.CropStage >= plantData.GrowthStages.Count)
+                // Validate stage is within bounds (for normal plants)
+                if (plantData is not HybridPlantDataSO && tile.CropStage >= plantData.GrowthStages.Count)
                 {
                     if (showDebugLogs)
                         Debug.LogWarning($"[ChunkLoading] Invalid crop stage {tile.CropStage} for {plantData.PlantName} at ({tile.WorldX}, {tile.WorldY})");
@@ -383,12 +383,21 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 visual.transform.position = new Vector3(tile.WorldX, tile.WorldY+0.062f, 0);
                 
                 // Add sprite renderer with correct stage sprite
-                Sprite stageSprite = plantData.GrowthStages[tile.CropStage].stageSprite;
+                Sprite stageSprite = null;
+                if (plantData is HybridPlantDataSO hybridData)
+                {
+                    stageSprite = hybridData.GetHybridStageSprite(tile.CropStage);
+                }
+                else if (tile.CropStage < plantData.GrowthStages.Count)
+                {
+                    stageSprite = plantData.GrowthStages[tile.CropStage].stageSprite;
+                }
+
                 if (stageSprite == null)
                 {
                     if (showDebugLogs)
                         Debug.LogWarning($"[ChunkLoading] '{plantData.PlantName}' stage {tile.CropStage} has a null stageSprite — " +
-                                         "assign a sprite in PlantDataSO.GrowthStages.");
+                                         "assign a sprite in PlantDataSO.GrowthStages (or the Hybrid receiver).");
                     Destroy(visual);
                     continue;
                 }
@@ -399,6 +408,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 sr.sortingOrder = 1;
                 
                 visuals.Add(visual);
+
             }
         }
         

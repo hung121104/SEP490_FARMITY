@@ -27,6 +27,12 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     public string previewSortingLayer = "WalkInfront";
     public int    previewSortingOrder = 10;
 
+    [Header("Hold to Plant")]
+    [Tooltip("Hold left-click to keep planting at intervals.")]
+    public bool allowHoldToPlant = true;
+    [Tooltip("Seconds between each automatic plant while holding left-click.")]
+    public float plantRepeatInterval = 0.3f;
+
     [Header("Debug")]
     public bool showDebugLogs = true;
 
@@ -43,6 +49,9 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
 
     // Tile preview
     private SpriteRenderer _previewSR;
+
+    // Hold-to-plant state
+    private float _holdTimer = 0f;
 
     // MVP
     private CropPlantingPresenter presenter;
@@ -107,6 +116,29 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
         _currentSeed = hotbarView?.GetCurrentItem()?.ItemData as SeedDataSO;
 
         UpdatePlantingPreview();
+        HandleHoldToPlant();
+    }
+
+    private void HandleHoldToPlant()
+    {
+        if (!allowHoldToPlant || _currentSeed == null || cropPlantingService == null) return;
+
+        if (Input.GetMouseButton(0))
+        {
+            _holdTimer -= Time.deltaTime;
+            if (_holdTimer <= 0f)
+            {
+                _holdTimer = plantRepeatInterval;
+                bool planted = TryPlantFromItemUse();
+                if (planted)
+                    hotbarView?.GetPresenter()?.ConsumeCurrentItem(1);
+            }
+        }
+        else
+        {
+            // Reset so the first frame of hold plants immediately
+            _holdTimer = 0f;
+        }
     }
 
     // ── Seed-use event handler ─────────────────────────────────────────────
