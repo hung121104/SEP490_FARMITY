@@ -230,15 +230,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3d7eb191c7ce037469847506aa3466de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seedDataSO: {fileID: 11400000, guid: 0f83592f262e1e3429b0fd5b089d7b41, type: 2}
   plantingMode: 1
   playerTag: PlayerEntity
   plantingRange: 2
-  plantKey: 32
+  playerCameraTag: MainCamera
+  previewAlpha: 0.5
+  previewSortingLayer: WalkInfront
+  previewSortingOrder: 10
   allowHoldToPlant: 1
   plantRepeatInterval: 0.1
-  playerCameraTag: MainCamera
-  cropPrefab: {fileID: 9165000289063299726, guid: bb78198dacabce642a87ec5356ebdb4b, type: 3}
   showDebugLogs: 0
 --- !u!1 &40180002
 GameObject:
@@ -1037,7 +1037,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hotbarView: {fileID: 932868514}
-  cropPlowingView: {fileID: 1866735581}
   farmableGroundLayer:
     serializedVersion: 2
     m_Bits: 0
@@ -1578,8 +1577,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mainPanel: {fileID: 949427371}
-  closeButton: {fileID: 87412849}
-  openButton: {fileID: 1097432805}
   filterView: {fileID: 1821204439}
   recipeListView: {fileID: 1364049334}
   detailView: {fileID: 1081361753}
@@ -3853,6 +3850,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ecf607b6ebdc3764da467d55839a03fb, type: 2}
   craftingMainView: {fileID: 319423872}
   cookingMainView: {fileID: 0}
+  craftingOpenButton: {fileID: 0}
+  craftingCloseButton: {fileID: 0}
+  cookingOpenButton: {fileID: 0}
+  cookingCloseButton: {fileID: 0}
+  craftingInventoryAdapter: {fileID: 0}
+  cookingInventoryAdapter: {fileID: 0}
 --- !u!1 &761236214
 GameObject:
   m_ObjectHideFlags: 0
@@ -8263,6 +8266,13 @@ MonoBehaviour:
   playerTag: PlayerEntity
   plowingRange: 2
   showDebugLogs: 0
+  allowMouseHoldToPlow: 1
+  mouseHoldRepeatInterval: 0.3
+  showPlowPreview: 1
+  previewSprite: {fileID: 0}
+  previewAlpha: 0.5
+  previewSortingLayer: WalkInfront
+  previewSortingOrder: 10
 --- !u!1 &1896651620
 GameObject:
   m_ObjectHideFlags: 0

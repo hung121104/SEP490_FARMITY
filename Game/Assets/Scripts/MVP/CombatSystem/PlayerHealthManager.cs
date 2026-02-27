@@ -2,25 +2,64 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using Photon.Pun;
 
-public class PlayerHealth : MonoBehaviour
+public class PlayerHealthManager : MonoBehaviour
 {
     public Slider healthBar;
     public Slider healthBarEase;
     public TextMeshProUGUI healthText;
 
+    private Transform playerEntity;
     private float targetHealthValue;
     private StatsManager statsManager;
     private bool isInvulnerable = false;
+    private bool isInitialized = false;
 
     private void Start()
     {
+        StartCoroutine(DelayedInitialize());
+    }
+
+    private void Update()
+    {
+        if (!isInitialized || healthBarEase == null || statsManager == null)
+            return;
+
+        healthBarEase.value = Mathf.Lerp(
+            healthBarEase.value,
+            targetHealthValue,
+            statsManager.easeSpeed * Time.deltaTime
+        );
+
+        UpdateHealthText();
+    }
+
+    private IEnumerator DelayedInitialize()
+    {
+        yield return new WaitForSeconds(0.5f);
+        InitializeComponents();
+    }
+
+    private void InitializeComponents()
+    {
+        GameObject playerObj = FindLocalPlayerEntity();
+        if (playerObj == null)
+        {
+            Debug.LogError("[PlayerHealthManager] Local player not found!");
+            enabled = false;
+            return;
+        }
+
+        playerEntity = playerObj.transform;
+
         statsManager = StatsManager.Instance;
         if (statsManager == null)
         {
             statsManager = FindObjectOfType<StatsManager>();
             if (statsManager == null)
             {
+                Debug.LogError("[PlayerHealthManager] StatsManager not found!");
                 enabled = false;
                 return;
             }
@@ -42,45 +81,53 @@ public class PlayerHealth : MonoBehaviour
         }
 
         targetHealthValue = statsManager.CurrentHealth;
+        isInitialized = true;
     }
 
-    private void Update()
+    private GameObject FindLocalPlayerEntity()
     {
-        if (healthBarEase != null)
+        // Try "Player" tag first (multiplayer spawn)
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
         {
-            healthBarEase.value = Mathf.Lerp(
-                healthBarEase.value,
-                targetHealthValue,
-                statsManager.easeSpeed * Time.deltaTime
-            );
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+                return go;
         }
 
-        UpdateHealthText();
+        // Fallback to "PlayerEntity" tag (test scenes)
+        foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+                return go;
+        }
+
+        return null;
     }
 
     public void ChangeHealth(int amount)
     {
-        // Don't apply damage if invulnerable
         if (statsManager == null || (isInvulnerable && amount < 0))
             return;
 
         statsManager.CurrentHealth += amount;
 
         if (healthBar != null)
-        {
             healthBar.value = statsManager.CurrentHealth;
-        }
 
         targetHealthValue = statsManager.CurrentHealth;
 
         if (statsManager.CurrentHealth <= 0)
         {
-            gameObject.SetActive(false);
+            playerEntity.gameObject.SetActive(false);
         }
     }
 
     public void RefreshHealthBar()
     {
+        if (statsManager == null)
+            return;
+
         int maxHealth = statsManager.GetMaxHealth();
 
         if (healthBar != null)
@@ -101,26 +148,17 @@ public class PlayerHealth : MonoBehaviour
 
     private void UpdateHealthText()
     {
-        if (healthText != null)
-        {
+        if (healthText != null && statsManager != null)
             healthText.text = statsManager.CurrentHealth.ToString();
-        }
     }
 
-    #region Invulnerability (iFrames)
+    #region Invulnerability
 
-    /// <summary>
-    /// Make player invulnerable for a duration
-    /// </summary>
-    /// <param name="duration">Duration in seconds</param>
     public void SetInvulnerable(float duration)
     {
         StartCoroutine(InvulnerabilityCoroutine(duration));
     }
 
-    /// <summary>
-    /// Instantly enable/disable invulnerability
-    /// </summary>
     public void SetInvulnerable(bool invulnerable)
     {
         isInvulnerable = invulnerable;
