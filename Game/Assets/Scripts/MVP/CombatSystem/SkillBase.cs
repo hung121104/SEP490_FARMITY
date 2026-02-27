@@ -183,6 +183,8 @@ public abstract class SkillBase : MonoBehaviour
 
     private void CheckSkillInput()
     {
+        if (!CombatModeManager.Instance.IsCombatModeActive) return;
+        
         if (Input.GetKeyDown(skillKey) && CanTriggerSkill())
             TriggerSkill();
     }
@@ -190,6 +192,7 @@ public abstract class SkillBase : MonoBehaviour
     private void HandleStateInput()
     {
         if (currentState != SkillState.WaitingConfirm) return;
+        if (!CombatModeManager.Instance.IsCombatModeActive) return;
 
         if (Input.GetKeyDown(confirmKey))
             ConfirmSkill();

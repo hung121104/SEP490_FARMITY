@@ -129,6 +129,8 @@ public class PlayerAttackController : MonoBehaviour
 
     private void CheckAttackInput()
     {
+        if (!CombatModeManager.Instance.IsCombatModeActive) return;
+        
         if (Input.GetMouseButtonDown(0) && CanAttack())
             ExecuteAttack();
     }
