@@ -183,7 +183,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     public PlantDataSO GetPlantData(string plantId)          => growthService?.GetPlantData(plantId);
     public bool IsCropReadyToHarvest(int wx, int wy)         => growthService?.IsCropReadyToHarvest(wx, wy) ?? false;
     public bool IsCropAtPollenStage(int wx, int wy)          => growthService?.IsCropAtPollenStage(wx, wy) ?? false;
-    public PollenDataSO GetPollenItem(int wx, int wy)        => growthService?.GetPollenItem(wx, wy);
+    public PollenData GetPollenItem(int wx, int wy)             => growthService?.GetPollenItem(wx, wy);
 
     /// <summary>Debug-only: immediately advance the crop one stage.</summary>
     public void ForceGrowCrop(int worldX, int worldY)        => growthService?.ForceGrowCrop(worldX, worldY);

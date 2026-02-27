@@ -3,10 +3,9 @@ using UnityEngine;
 
 public interface IItemUsageService
 {
-    public Boolean UseTool(ItemDataSO item, Vector3 pos);
-    public (bool,int) UseSeed(ItemDataSO item, Vector3 pos);
-    public (bool,int) UseConsumable(ItemDataSO item, Vector3 pos);
-    public Boolean UseWeapon(ItemDataSO item, Vector3 pos);
-    public bool UsePollen(ItemDataSO item, Vector3 pos);
+    bool      UseTool(ItemData item, Vector3 pos);
+    (bool,int) UseSeed(ItemData item, Vector3 pos);
+    (bool,int) UseConsumable(ItemData item, Vector3 pos);
+    bool      UseWeapon(ItemData item, Vector3 pos);
+    bool      UsePollen(ItemData item, Vector3 pos);
 }
-

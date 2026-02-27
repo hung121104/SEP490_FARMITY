@@ -30,5 +30,5 @@ public interface ICraftingService
     List<RecipeModel> GetCraftableRecipes(IInventoryService inventory);
 
     // Ingredient Check
-    Dictionary<ItemDataSO, int> GetMissingIngredients(string recipeID, IInventoryService inventory);
+    Dictionary<string, int> GetMissingIngredients(string recipeID, IInventoryService inventory);
 }

@@ -16,13 +16,13 @@ MonoBehaviour:
   recipeName: Cake
   description: 
   recipeType: 1
-  resultItem: {fileID: 11400000, guid: 4c3ae79185f20c145a7b58859ac6ab8f, type: 2}
+  resultItemId: 
   resultQuantity: 3
   resultQuality: 0
   ingredients:
-  - item: {fileID: 11400000, guid: b6639f42087a1e84e8fba283635f961d, type: 2}
+  - itemId: 
     quantity: 5
-  - item: {fileID: 11400000, guid: e76735cfb2b6923468969d97f1f43586, type: 2}
+  - itemId: 
     quantity: 5
   isUnlockedByDefault: 1
   category: 2

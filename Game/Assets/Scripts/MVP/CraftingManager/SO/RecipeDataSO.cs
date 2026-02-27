@@ -13,7 +13,8 @@ public class RecipeDataSO : ScriptableObject
     public RecipeType recipeType = RecipeType.Crafting;
 
     [Header("Result")]
-    public ItemDataSO resultItem;
+    [Tooltip("itemID from the item catalog.")]
+    public string resultItemId;
     public int resultQuantity = 1;
     public Quality resultQuality = Quality.Normal;
 
@@ -31,13 +32,13 @@ public class RecipeDataSO : ScriptableObject
     /// </summary>
     public bool IsValid()
     {
-        if (resultItem == null) return false;
+        if (string.IsNullOrEmpty(resultItemId)) return false;
         if (resultQuantity <= 0) return false;
         if (ingredients == null || ingredients.Length == 0) return false;
 
         foreach (var ingredient in ingredients)
         {
-            if (ingredient.item == null || ingredient.quantity <= 0)
+            if (string.IsNullOrEmpty(ingredient.itemId) || ingredient.quantity <= 0)
                 return false;
         }
 

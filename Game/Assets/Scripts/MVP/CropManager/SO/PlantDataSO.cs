@@ -17,8 +17,8 @@ public class PlantDataSO : ScriptableObject
     public List<GrowthStage> GrowthStages = new List<GrowthStage>();
 
     [Header("Harvest Info")]
-    [Tooltip("The item prefab to spawn when the plant is harvested.")]
-    public ItemDataSO HarvestedItem;
+    [Tooltip("itemID from the catalog of the item given when this plant is harvested.")]
+    public string harvestedItemId;
 
     [Header("Pollen / Crossbreeding")]
     [Tooltip("Whether this plant produces pollen at the flowering stage (for the crossbreeding system).")]
@@ -27,8 +27,8 @@ public class PlantDataSO : ScriptableObject
     [Tooltip("The growth stage index at which pollen can be collected. Defaults to 3 (flowering).")]
     public int pollenStage = 3;
 
-    [Tooltip("The pollen item given to the player when they collect pollen from this plant.")]
-    public PollenDataSO PollenItem;
+    [Tooltip("itemID of the pollen item given when pollen is collected from this plant.")]
+    public string pollenItemId;
 
     [Tooltip("How many times the player can collect pollen from this plant per flowering stage. 0 = unlimited.")]
     [Min(0)]

@@ -16,13 +16,13 @@ MonoBehaviour:
   recipeName: Hoe
   description: Hahahaha
   recipeType: 0
-  resultItem: {fileID: 11400000, guid: 9c3bdb08c68dc644bb7f1f6500c4c6d1, type: 2}
+  resultItemId: 
   resultQuantity: 1
   resultQuality: 0
   ingredients:
-  - item: {fileID: 11400000, guid: e76735cfb2b6923468969d97f1f43586, type: 2}
-    quantity: 2
-  - item: {fileID: 11400000, guid: b6639f42087a1e84e8fba283635f961d, type: 2}
-    quantity: 3
+  - itemId: TESTITEM1
+    quantity: 1
+  - itemId: TESTITEM1
+    quantity: 1
   isUnlockedByDefault: 1
   category: 1

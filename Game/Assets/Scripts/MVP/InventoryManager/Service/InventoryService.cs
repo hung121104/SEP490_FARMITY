@@ -21,7 +21,18 @@ public class InventoryService : IInventoryService
 
     #region Add Operations
 
-    public bool AddItem(ItemDataSO itemData, int quantity = 1, Quality quality = Quality.Normal)
+    public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal)
+    {
+        var data = ItemCatalogService.Instance?.GetItemData(itemId);
+        if (data == null)
+        {
+            Debug.LogWarning($"[InventoryService] Item '{itemId}' not found in catalog.");
+            return false;
+        }
+        return AddItem(data, quantity, quality);
+    }
+
+    public bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal)
     {
         if (itemData == null || quantity <= 0)
             return false;
@@ -29,14 +40,14 @@ public class InventoryService : IInventoryService
         int remainingQuantity = quantity;
 
         // If stackable, try to add to existing stacks first
-        if (itemData.IsStackable)
+        if (itemData.isStackable)
         {
             var existingSlots = model.GetSlotsWithItem(itemData.itemID, quality);
 
             foreach (int slotIndex in existingSlots)
             {
                 var existingItem = model.GetItemAtSlot(slotIndex);
-                int canAdd = Mathf.Min(remainingQuantity, itemData.MaxStack - existingItem.Quantity);
+                int canAdd = Mathf.Min(remainingQuantity, itemData.maxStack - existingItem.Quantity);
 
                 if (canAdd > 0)
                 {
@@ -57,10 +68,10 @@ public class InventoryService : IInventoryService
         {
             int emptySlot = model.FindEmptySlot();
             if (emptySlot == -1)
-                return false; // No space
+                return false;
 
-            int stackSize = itemData.IsStackable
-                ? Mathf.Min(remainingQuantity, itemData.MaxStack)
+            int stackSize = itemData.isStackable
+                ? Mathf.Min(remainingQuantity, itemData.maxStack)
                 : 1;
 
             var newItem = new ItemModel(itemData, quality, stackSize, emptySlot);

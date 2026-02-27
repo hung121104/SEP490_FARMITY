@@ -61,7 +61,7 @@ public class CropGrowthService : ICropGrowthService
             return false;
 
         PlantDataSO plant = GetPlantData(tileData.PlantId);
-        if (plant == null || !plant.canProducePollen || plant.PollenItem == null)
+        if (plant == null || !plant.canProducePollen || string.IsNullOrEmpty(plant.pollenItemId))
             return false;
 
         if (tileData.CropStage != plant.pollenStage) return false;
@@ -74,14 +74,18 @@ public class CropGrowthService : ICropGrowthService
         return true;
     }
 
-    public PollenDataSO GetPollenItem(int worldX, int worldY)
+    public PollenData GetPollenItem(int worldX, int worldY)
     {
         if (worldData == null) return null;
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
             return null;
 
-        return GetPlantData(tileData.PlantId)?.PollenItem;
+        // TODO: Look up PollenData from ItemCatalogService once PlantData refactor is done
+        // var plant = GetPlantData(tileData.PlantId);
+        // if (plant == null || string.IsNullOrEmpty(plant.pollenItemId)) return null;
+        // return ItemCatalogService.Instance?.GetItemData<PollenData>(plant.pollenItemId);
+        return null;
     }
 
     // ── ICropGrowthService : growth mutations ─────────────────────────────

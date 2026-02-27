@@ -329,8 +329,8 @@ public class CraftingSystemManager : MonoBehaviour
         var firstRecipe = allRecipes[0];
         foreach (var ingredient in firstRecipe.ingredients)
         {
-            inventoryService.AddItem(ingredient.item, ingredient.quantity * 10);
-            Debug.Log($"Added {ingredient.item.itemName} x{ingredient.quantity * 10}");
+            inventoryService.AddItem(ingredient.itemId, ingredient.quantity * 10);
+            Debug.Log($"Added {ingredient.itemId} x{ingredient.quantity * 10}");
         }
     }
 

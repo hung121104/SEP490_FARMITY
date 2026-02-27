@@ -9,7 +9,7 @@ public interface IRecipeDetailView
     event Action<int> OnAmountChanged;
 
     // Display methods
-    void ShowRecipeDetail(RecipeModel recipe, bool canCraft, Dictionary<ItemDataSO, int> missingIngredients, int maxCraftableAmount);
+    void ShowRecipeDetail(RecipeModel recipe, bool canCraft, Dictionary<string, int> missingIngredients, int maxCraftableAmount);
     void HideRecipeDetail();
     void UpdateCraftButton(bool canCraft);
     void SetCraftAmount(int amount);

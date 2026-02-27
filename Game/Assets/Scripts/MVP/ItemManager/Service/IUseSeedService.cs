@@ -2,5 +2,5 @@ using UnityEngine;
 
 public interface IUseSeedService
 {
-    (bool, int) UseSeed(ItemDataSO item, Vector3 pos);
+    (bool, int) UseSeed(ItemData item, Vector3 pos);
 }

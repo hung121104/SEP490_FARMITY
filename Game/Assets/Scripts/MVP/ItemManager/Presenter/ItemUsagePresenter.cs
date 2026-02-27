@@ -10,34 +10,35 @@ public class ItemUsagePresenter
         this.service = service;
     }
 
-    public bool UseTool(ItemDataSO item, Vector3 pos)
+    public bool UseTool(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsage] use tool");
         service.UseTool(item, pos);
         return true;
     }
 
-    public (bool, int) UseSeed(ItemDataSO item, Vector3 pos)
+    public (bool, int) UseSeed(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsage] use Seed");
         return service.UseSeed(item, pos);
     }
 
-    public (bool, int) UseConsumable(ItemDataSO item, Vector3 pos)
+    public (bool, int) UseConsumable(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsage] use Consumable");
         return service.UseConsumable(item, pos);
     }
 
-    public bool UseWeapon(ItemDataSO item, Vector3 pos)
+    public bool UseWeapon(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsage] UseWeapon");
         return service.UseWeapon(item, pos);
     }
 
-    public bool UsePollen(ItemDataSO item, Vector3 pos)
+    public bool UsePollen(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsage] UsePollen");
         return service.UsePollen(item, pos);
     }
 }
+

@@ -220,7 +220,7 @@ public class CraftingPresenter
             if (missingIngredients.Count > 0)
             {
                 string missingText = "Missing: " + string.Join(", ",
-                    missingIngredients.Select(kvp => $"{kvp.Key.itemName} x{kvp.Value}"));
+                    missingIngredients.Select(kvp => $"{kvp.Key} x{kvp.Value}"));
                 notificationView?.ShowNotification(missingText, NotificationType.Warning);
             }
             else
@@ -352,21 +352,19 @@ public class CraftingPresenter
         }
     }
 
-    private int CalculateMaxCraftableAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
+    private int CalculateMaxCraftableAmount(RecipeModel recipe, Dictionary<string, int> missingIngredients)
     {
         if (recipe == null || recipe.Ingredients == null || recipe.Ingredients.Length == 0)
             return 0;
 
-        // If any ingredient is missing, can't craft
         if (missingIngredients != null && missingIngredients.Count > 0)
             return 0;
 
         int maxAmount = int.MaxValue;
 
-        // Calculate max based on each ingredient
         foreach (var ingredient in recipe.Ingredients)
         {
-            int availableAmount = inventoryService.GetItemCount(ingredient.item.itemID);
+            int availableAmount = inventoryService.GetItemCount(ingredient.itemId);
             int maxForThisIngredient = availableAmount / ingredient.quantity;
             maxAmount = Mathf.Min(maxAmount, maxForThisIngredient);
         }

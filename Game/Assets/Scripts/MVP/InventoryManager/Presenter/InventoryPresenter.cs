@@ -424,7 +424,12 @@ public class InventoryPresenter
 
     #region Public API for external systems
 
-    public bool TryAddItem(ItemDataSO itemData, int quantity = 1, Quality quality = Quality.Normal)
+    public bool TryAddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal)
+    {
+        return service.AddItem(itemId, quantity, quality);
+    }
+
+    public bool TryAddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal)
     {
         return service.AddItem(itemData, quantity, quality);
     }
