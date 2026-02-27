@@ -54,7 +54,7 @@ public class CropHarvestingService : ICropHarvestingService
         Vector3 snappedPos = new Vector3(worldX, worldY, 0);
 
         // Resolve the harvested item BEFORE removing crop data
-        if (worldData.TryGetCropAtWorldPosition(snappedPos, out CropChunkData.TileData tileData)
+        if (worldData.TryGetCropAtWorldPosition(snappedPos, out UnifiedChunkData.CropTileData tileData)
             && cropManagerView != null
             && !string.IsNullOrEmpty(tileData.PlantId))
         {

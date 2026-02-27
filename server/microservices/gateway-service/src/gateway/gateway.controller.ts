@@ -13,6 +13,7 @@ import { UploadSignatureDto } from './dto/upload-signature.dto';
 import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
 import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
 import { UpdateWorldDto } from './dto/update-world.dto';
+import { HttpStatus } from '@nestjs/common';
 
 @Controller()
 export class GatewayController {
@@ -21,6 +22,26 @@ export class GatewayController {
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
     @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
   ) {}
+
+  /** Extract a well-formed HttpException from an RPC error payload */
+  private rpcError(err: any): HttpException {
+    const payload = err?.message ?? err;
+    let status = 500;
+    let message = 'Internal server error';
+    if (typeof payload === 'string') {
+      try {
+        const parsed = JSON.parse(payload);
+        status = parsed.status || status;
+        message = parsed.message || parsed.error || payload;
+      } catch {
+        message = payload;
+      }
+    } else if (payload && typeof payload === 'object') {
+      status = payload.status || payload.statusCode || payload.code || status;
+      message = payload.message || payload.error || JSON.stringify(payload);
+    }
+    return new HttpException(message, status);
+  }
 
   @Post('player-data/world')
   async createWorld(@Body() body: any, @Req() req: Request) {
@@ -162,31 +183,48 @@ export class GatewayController {
 
   @Post('auth/register')
   async register(@Body() createAccountDto: CreateAccountDto) {
-    return this.authClient.send('register', createAccountDto);
+    try {
+      return await firstValueFrom(this.authClient.send('register', createAccountDto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/login-ingame')
   async login(@Body() loginDto: any) {
-    return this.authClient.send('login-ingame', loginDto);
+    try {
+      return await firstValueFrom(this.authClient.send('login-ingame', loginDto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/register-admin')
   async registerAdmin(@Body() createAdminDto: any) {
-    return this.authClient.send('register-admin', createAdminDto);
+    try {
+      return await firstValueFrom(this.authClient.send('register-admin', createAdminDto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/login-admin')
   async loginAdmin(@Body() loginDto: any, @Res({ passthrough: true }) res: Response) {
-    const result = await firstValueFrom(this.authClient.send('login-admin', loginDto));
-    const token = result?.access_token;
-    if (!token) throw new UnauthorizedException('Login failed');
-    res.cookie('access_token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 1000,
-    });
-    return { userId: result.userId, username: result.username, access_token: token };
+    try {
+      const result = await firstValueFrom(this.authClient.send('login-admin', loginDto));
+      const token = result?.access_token;
+      if (!token) throw new HttpException('Login failed', 401);
+      res.cookie('access_token', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 1000,
+      });
+      return { userId: result.userId, username: result.username, access_token: token };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
   }
 
   @Get('auth/admin-check')
@@ -301,11 +339,19 @@ export class GatewayController {
 
   @Post('auth/admin-reset/request')
   async adminResetRequest(@Body() dto: RequestAdminResetDto) {
-    return this.authClient.send('admin-reset-request', dto);
+    try {
+      return await firstValueFrom(this.authClient.send('admin-reset-request', dto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/admin-reset/confirm')
   async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
-    return this.authClient.send('admin-reset-confirm', dto);
+    try {
+      return await firstValueFrom(this.authClient.send('admin-reset-confirm', dto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 }

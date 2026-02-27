@@ -43,6 +43,7 @@ public class WorldDataManagerEditor : Editor
         EditorGUILayout.LabelField($"Chunks with Crops: {stats.ChunksWithCrops}");
         EditorGUILayout.LabelField($"Total Crops: {stats.TotalCrops}", EditorStyles.boldLabel);
         EditorGUILayout.LabelField($"Total Tilled Tiles: {stats.TotalTilledTiles}", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField($"Total Structures: {stats.TotalStructures}", EditorStyles.boldLabel);
         EditorGUILayout.LabelField($"Memory Usage: {stats.MemoryUsageMB:F3} MB");
 
         EditorGUILayout.Space(5);
@@ -124,7 +125,7 @@ public class WorldDataManagerEditor : Editor
                 foreach (var chunkPair in section)
                 {
                     Vector2Int chunkPos = chunkPair.Key;
-                    CropChunkData chunk = chunkPair.Value;
+                    UnifiedChunkData chunk = chunkPair.Value;
                     int totalTiles = chunk.tiles.Count;
                     
                     // Count tile states
@@ -133,11 +134,11 @@ public class WorldDataManagerEditor : Editor
                     int tilledOnly = 0;
                     int emptyTiles = 0;
                     
-                    foreach (var tile in chunk.tiles.Values)
+                    foreach (var slot in chunk.tiles.Values)
                     {
-                        if (tile.HasCrop && tile.IsTilled) cropsWithTilled++;
-                        else if (tile.HasCrop) cropsOnly++;
-                        else if (tile.IsTilled) tilledOnly++;
+                        if (slot.HasCrop && slot.IsTilled) cropsWithTilled++;
+                        else if (slot.HasCrop) cropsOnly++;
+                        else if (slot.IsTilled) tilledOnly++;
                         else emptyTiles++;
                     }
 
@@ -195,14 +196,20 @@ public class WorldDataManagerEditor : Editor
                             if (tile.HasCrop && tile.IsTilled)
                             {
                                 icon = "🌱";
-                                state = $"Crop (Stage {tile.CropStage})";
+                                state = $"Crop (Stage {tile.Crop.CropStage})";
                                 textColor = new Color(0.4f, 1f, 0.4f);
                             }
                             else if (tile.HasCrop)
                             {
                                 icon = "🌿";
-                                state = $"Crop Only (Stage {tile.CropStage})";
+                                state = $"Crop Only (Stage {tile.Crop.CropStage})";
                                 textColor = new Color(0.6f, 1f, 0.6f);
+                            }
+                            else if (tile.HasStructure)
+                            {
+                                icon = "🏠";
+                                state = $"Structure: {tile.Structure.StructureId}";
+                                textColor = new Color(0.8f, 0.8f, 1f);
                             }
                             else if (tile.IsTilled)
                             {
@@ -223,7 +230,7 @@ public class WorldDataManagerEditor : Editor
                             
                             if (tile.HasCrop)
                             {
-                                EditorGUILayout.LabelField($"ID: {tile.PlantId}", GUILayout.Width(70));
+                                EditorGUILayout.LabelField($"ID: {tile.Crop.PlantId}", GUILayout.Width(70));
                             }
                             else
                             {
@@ -237,8 +244,9 @@ public class WorldDataManagerEditor : Editor
                             {
                                 Vector3 worldPos = new Vector3(tile.WorldX, tile.WorldY, 0);
                                 SceneView.lastActiveSceneView.LookAt(worldPos);
-                                Debug.Log($"Tile at ({tile.WorldX}, {tile.WorldY}) - Tilled: {tile.IsTilled}, HasCrop: {tile.HasCrop}" + 
-                                         (tile.HasCrop ? $", PlantId: {tile.PlantId}, Stage: {tile.CropStage}" : ""));
+                                Debug.Log($"Tile at ({tile.WorldX}, {tile.WorldY}) - Tilled: {tile.IsTilled}, HasCrop: {tile.HasCrop}, HasStructure: {tile.HasStructure}" + 
+                                         (tile.HasCrop ? $", PlantId: {tile.Crop.PlantId}, Stage: {tile.Crop.CropStage}" : "") +
+                                         (tile.HasStructure ? $", StructureId: {tile.Structure.StructureId}" : ""));
                             }
                             
                             EditorGUILayout.EndHorizontal();

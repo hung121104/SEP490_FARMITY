@@ -66,7 +66,7 @@ public class CropPollenService : ICropPollenService
 
         // Read back the new count so we can broadcast the authoritative value
         byte newCount = 0;
-        if (worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+        if (worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
             newCount = tileData.PollenHarvestCount;
 
         // Broadcast to other clients

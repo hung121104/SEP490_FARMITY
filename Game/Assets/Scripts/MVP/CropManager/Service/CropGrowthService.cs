@@ -46,7 +46,7 @@ public class CropGrowthService : ICropGrowthService
     {
         if (worldData == null) return false;
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        if (!worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+        if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
             return false;
 
         PlantDataSO plant = GetPlantData(tileData.PlantId);
@@ -57,7 +57,7 @@ public class CropGrowthService : ICropGrowthService
     {
         if (worldData == null) return false;
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        if (!worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+        if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
             return false;
 
         PlantDataSO plant = GetPlantData(tileData.PlantId);
@@ -78,7 +78,7 @@ public class CropGrowthService : ICropGrowthService
     {
         if (worldData == null) return null;
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        if (!worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+        if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
             return null;
 
         return GetPlantData(tileData.PlantId)?.PollenItem;
@@ -103,16 +103,14 @@ public class CropGrowthService : ICropGrowthService
 
             foreach (var chunkPair in section)
             {
-                CropChunkData chunk = chunkPair.Value;
+                UnifiedChunkData chunk = chunkPair.Value;
 
                 foreach (var tile in chunk.GetAllCrops())
                 {
-                    if (!tile.HasCrop) continue;
-
                     Vector3 worldPos = new Vector3(tile.WorldX, tile.WorldY, 0);
                     worldData.IncrementCropAge(worldPos);
 
-                    if (!worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+                    if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
                         continue;
 
                     PlantDataSO plant = GetPlantData(tileData.PlantId);
@@ -154,7 +152,7 @@ public class CropGrowthService : ICropGrowthService
         if (worldData == null) return;
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        if (!worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+        if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
         {
             Debug.LogWarning($"[CropGrowthService] No crop at ({worldX},{worldY}) to force grow.");
             return;

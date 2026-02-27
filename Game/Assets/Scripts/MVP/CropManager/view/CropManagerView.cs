@@ -114,7 +114,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         // Fallback: update sprite directly
         PlantDataSO plant = growthService.GetPlantData(
             WorldDataManager.Instance.TryGetCropAtWorldPosition(new Vector3(worldX, worldY, 0),
-                out CropChunkData.TileData td) ? td.PlantId : null);
+                out UnifiedChunkData.CropTileData td) ? td.PlantId : null);
 
         if (plant == null || newStage >= plant.GrowthStages.Count) return;
 
@@ -193,7 +193,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     {
         if (WorldDataManager.Instance == null) return 0f;
         if (!WorldDataManager.Instance.TryGetCropAtWorldPosition(
-                new Vector3(worldX, worldY, 0), out CropChunkData.TileData td)) return 0f;
+                new Vector3(worldX, worldY, 0), out UnifiedChunkData.CropTileData td)) return 0f;
         PlantDataSO plant = growthService?.GetPlantData(td.PlantId);
         if (plant == null || plant.GrowthStages.Count == 0) return 0f;
         return (float)td.CropStage / (plant.GrowthStages.Count - 1);
