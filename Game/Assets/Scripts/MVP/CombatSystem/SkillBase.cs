@@ -7,6 +7,9 @@ using Photon.Pun;
 /// Handles global flow: Charge -> Roll -> Confirm/Cancel -> Execute
 /// Also holds shared combat references previously in PlayerCombat.
 /// Each skill only overrides GetIndicatorData() and OnExecute()
+/// 
+/// NOTE: Animation is now handled via spawned VFX prefabs instead of animator parameters.
+/// See comments marked with "TODO: SPAWN_VFX" for where to add sword swing animations.
 /// </summary>
 public abstract class SkillBase : MonoBehaviour
 {
@@ -236,8 +239,9 @@ public abstract class SkillBase : MonoBehaviour
                 targetDirection = direction.normalized;
         }
 
-        if (spriteRenderer != null)
-            spriteRenderer.flipX = targetDirection.x < 0;
+        // TODO: SPAWN_VFX - Replace sprite flip with sword swing direction indicator VFX
+        // if (spriteRenderer != null)
+        //     spriteRenderer.flipX = targetDirection.x < 0;
     }
 
     #endregion
@@ -359,30 +363,30 @@ public abstract class SkillBase : MonoBehaviour
 
     private void PlayChargeAnimation()
     {
-        if (anim == null) return;
-
-        anim.SetBool("isWalking", false);
-        anim.SetBool("isAttacking", false);
-        anim.SetBool("isSkillCharging", true);
-        anim.SetBool("isSkillAttacking", false);
+        // TODO: SPAWN_VFX - Spawn charge VFX prefab instead
+        // if (anim == null) return;
+        // anim.SetBool("isWalking", false);
+        // anim.SetBool("isAttacking", false);
+        // anim.SetBool("isSkillCharging", true);
+        // anim.SetBool("isSkillAttacking", false);
     }
 
     private void PlayAttackAnimation()
     {
-        if (anim == null) return;
-
-        anim.SetBool("isSkillCharging", false);
-        anim.SetBool("isAttacking", false);
-        anim.SetBool("isSkillAttacking", true);
+        // TODO: SPAWN_VFX - Spawn skill attack sword swing VFX prefab instead
+        // if (anim == null) return;
+        // anim.SetBool("isSkillCharging", false);
+        // anim.SetBool("isAttacking", false);
+        // anim.SetBool("isSkillAttacking", true);
     }
 
     private void StopSkillAnimation()
     {
-        if (anim == null) return;
-
-        anim.SetBool("isSkillCharging", false);
-        anim.SetBool("isSkillAttacking", false);
-        anim.SetBool("isAttacking", false);
+        // TODO: SPAWN_VFX - Destroy/hide spawned VFX when skill ends
+        // if (anim == null) return;
+        // anim.SetBool("isSkillCharging", false);
+        // anim.SetBool("isSkillAttacking", false);
+        // anim.SetBool("isAttacking", false);
     }
 
     #endregion

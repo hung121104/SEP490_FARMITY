@@ -5,6 +5,9 @@ using Photon.Pun;
 /// Handles normal attack input, combo chain and slash VFX spawning.
 /// Sits on PlayerAttacker GameObject inside CombatSystem.
 /// Works with multiplayer - only processes input for local player.
+/// 
+/// NOTE: Animation is now handled via spawned VFX prefabs instead of animator parameters.
+/// See comments marked with "TODO: SPAWN_VFX" for where to add sword swing animations.
 /// </summary>
 public class PlayerAttackController : MonoBehaviour
 {
@@ -42,9 +45,9 @@ public class PlayerAttackController : MonoBehaviour
 
     private Transform playerTransform;
     private Transform centerPoint;
-    private Animator playerAnimator;
     private StatsManager statsManager;
     private PlayerPointerController pointerController;
+    private WeaponAnimationController weaponAnimationController;
     private SkillBase skillBase;
 
     private int currentComboStep = 0;
@@ -79,7 +82,6 @@ public class PlayerAttackController : MonoBehaviour
         if (playerObj != null)
         {
             playerTransform = playerObj.transform;
-            playerAnimator = playerObj.GetComponent<Animator>();
 
             Transform found = playerTransform.Find("CenterPoint");
             centerPoint = found != null ? found : playerTransform;
@@ -90,7 +92,6 @@ public class PlayerAttackController : MonoBehaviour
             {
                 skillBase.damagePopupPrefab = damagePopupPrefab;
                 skillBase.enemyLayers = enemyLayers;
-                skillBase.anim = playerAnimator;
             }
         }
         else
@@ -102,6 +103,10 @@ public class PlayerAttackController : MonoBehaviour
         pointerController = FindObjectOfType<PlayerPointerController>();
         if (pointerController == null)
             Debug.LogWarning("PlayerAttackController: PlayerPointerController not found!");
+
+        weaponAnimationController = FindObjectOfType<WeaponAnimationController>();
+        if (weaponAnimationController == null)
+            Debug.LogWarning("PlayerAttackController: WeaponAnimationController not found!");
 
         statsManager = StatsManager.Instance;
         if (statsManager == null)
@@ -166,18 +171,21 @@ public class PlayerAttackController : MonoBehaviour
         attackCooldownTimer = statsManager.cooldownTime;
         comboResetTimer = comboResetTime;
 
-        PlayAttackAnimation();
+        // TODO: SPAWN_VFX - Spawn attack animation sword swing VFX prefab instead
+        // PlayAttackAnimation();
+        
+        // Trigger weapon animation
+        if (weaponAnimationController != null)
+            weaponAnimationController.PlayAttackAnimation();
+        
         SpawnSlashVFX(currentComboStep);
 
         currentComboStep = (currentComboStep + 1) % TOTAL_COMBO_STEPS;
     }
 
-    private void PlayAttackAnimation()
-    {
-        if (playerAnimator == null) return;
+    #endregion
 
-        playerAnimator.SetBool("isAttacking", true);
-    }
+    #region VFX Spawning
 
     private void SpawnSlashVFX(int comboStep)
     {
@@ -204,7 +212,7 @@ public class PlayerAttackController : MonoBehaviour
 
         GameObject vfxGO = Instantiate(vfxPrefab, spawnPos, rotation);
 
-        // Fix upside-down VFX when player is flipped (facing left)
+        // Fix upside-down VFX when player is facing left
         if (direction.x < 0)
         {
             Vector3 scale = vfxGO.transform.localScale;

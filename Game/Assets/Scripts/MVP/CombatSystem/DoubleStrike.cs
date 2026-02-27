@@ -7,6 +7,9 @@ using TMPro;
 /// Double Strike skill - A two-hit dash attack.
 /// Inherits global flow from SkillBase.
 /// Each hit has its own charge, roll, confirm and dash.
+/// 
+/// NOTE: Animation is now handled via spawned VFX prefabs instead of animator parameters.
+/// See comments marked with "TODO: SPAWN_VFX" for where to add sword swing animations.
 /// </summary>
 public class DoubleStrike : SkillBase
 {
@@ -92,7 +95,9 @@ public class DoubleStrike : SkillBase
 
     private IEnumerator PrepareNextHit(DiceRollData rollData)
     {
-        PlayNextHitCharge();
+        // TODO: SPAWN_VFX - Spawn charge animation sword swing VFX prefab instead
+        // PlayNextHitCharge();
+        
         yield return new WaitForSeconds(chargeDuration);
 
         int newRoll = RollAndDisplay();
@@ -104,26 +109,10 @@ public class DoubleStrike : SkillBase
         if (!IsExecuting)
             yield break;
 
-        PlayNextHitAttack();
+        // TODO: SPAWN_VFX - Spawn attack animation sword swing VFX prefab instead
+        // PlayNextHitAttack();
+        
         yield return new WaitForSeconds(0.1f);
-    }
-
-    private void PlayNextHitCharge()
-    {
-        if (anim == null) 
-            return;
-
-        anim.SetBool("isAttacking", false);
-        anim.SetBool("isSkillCharging", true);
-    }
-
-    private void PlayNextHitAttack()
-    {
-        if (anim == null) 
-            return;
-
-        anim.SetBool("isSkillCharging", false);
-        anim.SetBool("isAttacking", true);
     }
 
     #endregion
