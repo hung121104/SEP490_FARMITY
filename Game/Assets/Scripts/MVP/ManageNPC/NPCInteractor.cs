@@ -145,7 +145,8 @@
             inventoryService,
             inventoryView,
             dialogueView,
-            relationshipModel
+            relationshipModel,
+            dialogueModel   
         );
 
         giftPresenter.OnGiftFinished += ExitGiftMode;
