@@ -372,7 +372,8 @@ public abstract class SkillBase : MonoBehaviour
         if (anim == null) return;
 
         anim.SetBool("isSkillCharging", false);
-        anim.SetBool("isAttacking", true);
+        anim.SetBool("isAttacking", false);
+        anim.SetBool("isSkillAttacking", true);
     }
 
     private void StopSkillAnimation()

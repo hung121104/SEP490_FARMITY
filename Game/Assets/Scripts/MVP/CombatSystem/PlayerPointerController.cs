@@ -5,6 +5,7 @@ using System.Collections;
 /// <summary>
 /// Controls the attack direction pointer that orbits around the player.
 /// Waits for player to spawn before initializing (multiplayer compatible).
+/// Direction control is handled by animator InputX parameter based on mouse position.
 /// </summary>
 public class PlayerPointerController : MonoBehaviour
 {
@@ -17,7 +18,6 @@ public class PlayerPointerController : MonoBehaviour
 
     private Transform playerTransform;
     private Transform centerPoint;
-    private SpriteRenderer playerSpriteRenderer;
     private Camera mainCamera;
     private Transform pointerTransform;
     private SpriteRenderer pointerSpriteRenderer;
@@ -35,7 +35,6 @@ public class PlayerPointerController : MonoBehaviour
 
         UpdateMouseDirection();
         UpdatePointerPosition();
-        UpdatePlayerFlip();
     }
 
     private IEnumerator DelayedInitialize()
@@ -56,7 +55,6 @@ public class PlayerPointerController : MonoBehaviour
             return;
 
         playerTransform = playerObj.transform;
-        playerSpriteRenderer = playerObj.GetComponent<SpriteRenderer>();
 
         Transform found = playerTransform.Find("CenterPoint");
         centerPoint = found != null ? found : playerTransform;
@@ -132,14 +130,6 @@ public class PlayerPointerController : MonoBehaviour
 
         float angle = Mathf.Atan2(currentDirection.y, currentDirection.x) * Mathf.Rad2Deg;
         pointerTransform.rotation = Quaternion.Euler(0f, 0f, angle);
-    }
-
-    private void UpdatePlayerFlip()
-    {
-        if (playerSpriteRenderer == null) 
-            return;
-
-        playerSpriteRenderer.flipX = currentDirection.x < 0;
     }
 
     public Vector3 GetPointerDirection() => currentDirection;

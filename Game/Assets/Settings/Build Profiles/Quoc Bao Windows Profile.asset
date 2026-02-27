@@ -25,8 +25,6 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Quoc Bao/GameCoreTestScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Quoc Bao/LoadingScene.unity
-  - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Quoc Bao/LobbyScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Quoc Bao/MainMenuScene.unity
