@@ -6,38 +6,24 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
 {
     [Header("Main Panel")]
     [SerializeField] private GameObject mainPanel;
-    [SerializeField] private Button closeButton;
 
     [Header("Sub-Views")]
     [SerializeField] private CookingFilterView filterView;
     [SerializeField] private CookingRecipeListView recipeListView;
     [SerializeField] private CookingDetailView detailView;
 
-    [Header("Notification")]
-    [SerializeField] private CraftingNotificationView notificationView;
-
     [Header("Title")]
     [SerializeField] private TMPro.TextMeshProUGUI titleText;
     [SerializeField] private string defaultTitle = "Cooking";
-
-    [Header("Cooking-specific UI (Optional)")]
-    [SerializeField] private Image headerIcon;
-    [SerializeField] private Sprite cookingHeaderIcon;
-
-    // Events
-    public event Action OnCloseRequested;
 
     // Properties
     public IRecipeListView RecipeListView => recipeListView;
     public IRecipeDetailView RecipeDetailView => detailView;
     public IFilterView FilterView => filterView;
-    public ICraftingNotification NotificationView => notificationView;
 
     private void Awake()
     {
-        SetupButtons();
         ValidateReferences();
-        SetupCookingVisuals();
 
         // Set title
         if (titleText != null)
@@ -46,11 +32,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
         }
 
         Hide();
-    }
-
-    private void SetupButtons()
-    {
-        closeButton?.onClick.AddListener(HandleCloseButtonClicked);
     }
 
     private void ValidateReferences()
@@ -63,18 +44,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
 
         if (detailView == null)
             Debug.LogWarning("[CookingMainView] DetailView reference is missing");
-
-        if (notificationView == null)
-            Debug.LogWarning("[CookingMainView] NotificationView reference is missing");
-    }
-
-    private void SetupCookingVisuals()
-    {
-        // Set cooking-specific visuals if available
-        if (headerIcon != null && cookingHeaderIcon != null)
-        {
-            headerIcon.sprite = cookingHeaderIcon;
-        }
     }
 
     #region ICookingMainView Implementation
@@ -104,21 +73,7 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
 
     public void SetInteractable(bool interactable)
     {
-        if (closeButton != null)
-        {
-            closeButton.interactable = interactable;
-        }
-
         filterView?.SetInteractable(interactable);
-    }
-
-    #endregion
-
-    #region Event Handlers
-
-    private void HandleCloseButtonClicked()
-    {
-        OnCloseRequested?.Invoke();
     }
 
     #endregion
@@ -142,15 +97,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
     public bool IsVisible()
     {
         return mainPanel != null && mainPanel.activeSelf;
-    }
-
-    #endregion
-
-    #region Cleanup
-
-    private void OnDestroy()
-    {
-        closeButton?.onClick.RemoveAllListeners();
     }
 
     #endregion

@@ -9,9 +9,6 @@ public class CookingDataSO : ItemDataSO
     public float bufferDuration = 0f;
     public StatModifier[] statModifiers;
 
-    [Header("Cooking Recipe")]
-    public RecipeDataSO cookingRecipe;    
-
     public override ItemType GetItemType() => ItemType.Cooking;
     public ItemCategory GetItemCategory() => ItemCategory.Cooking;
 }

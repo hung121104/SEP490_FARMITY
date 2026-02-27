@@ -11,9 +11,9 @@ public static class WorldDataManagerCropExtensions
     /// <summary>
     /// Plant crop at world position
     /// </summary>
-    public static bool PlantCropAtWorldPosition(this WorldDataManager manager, Vector3 worldPos, ushort cropTypeID)
+    public static bool PlantCropAtWorldPosition(this WorldDataManager manager, Vector3 worldPos, string plantId)
     {
-        return manager.CropData?.PlantCropAtWorldPosition(worldPos, cropTypeID) ?? false;
+        return manager.CropData?.PlantCropAtWorldPosition(worldPos, plantId) ?? false;
     }
     
     /// <summary>
@@ -58,12 +58,19 @@ public static class WorldDataManagerCropExtensions
         return manager.CropData?.UpdateCropAge(worldPos, newAge) ?? false;
     }
     
-    /// <summary>
-    /// Increment crop age by 1 day
-    /// </summary>
+    /// <summary>Increment crop age by 1 day</summary>
     public static bool IncrementCropAge(this WorldDataManager manager, Vector3 worldPos)
     {
         return manager.CropData?.IncrementCropAge(worldPos) ?? false;
+    }
+
+    /// <summary>
+    /// Increments the pollen harvest count for the crop at worldPos by 1.
+    /// Should be called after each successful pollen collection.
+    /// </summary>
+    public static bool IncrementPollenHarvestCount(this WorldDataManager manager, Vector3 worldPos)
+    {
+        return manager.CropData?.IncrementPollenHarvestCount(worldPos) ?? false;
     }
     
     /// <summary>
@@ -106,17 +113,31 @@ public static class WorldDataManagerCropExtensions
         return manager.CropData?.GetSection(sectionId);
     }
     
-    /// <summary>
-    /// Get crop chunk at world position
-    /// </summary>
+    /// <summary>Get crop chunk at world position</summary>
     public static CropChunkData GetChunkAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
     {
         if (manager.CropData == null) return null;
-        
         int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
         if (sectionId == -1) return null;
-        
         Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
         return manager.CropData.GetChunk(sectionId, chunkPos);
     }
+
+    /// <summary>
+    /// Morph an existing crop's PlantId to a new one (crossbreeding).
+    /// Resets stage to <paramref name="startStage"/> and marks the tile as pollinated.
+    /// </summary>
+    public static bool SetCropPlantId(this WorldDataManager manager, Vector3 worldPos,
+                                      string newPlantId, byte startStage)
+        => manager.CropData?.SetCropPlantId(worldPos, newPlantId, startStage) ?? false;
+
+    /// <summary>Mark or clear the pollinated flag on a crop tile.</summary>
+    public static bool SetPollinatedAtWorldPosition(this WorldDataManager manager,
+                                                    Vector3 worldPos, bool value)
+        => manager.CropData?.SetPollinatedAtWorldPosition(worldPos, value) ?? false;
+
+    /// <summary>True if the crop tile at worldPos has been cross-pollinated.</summary>
+    public static bool IsPollinatedAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.IsPollinatedAtWorldPosition(worldPos) ?? false;
 }
+

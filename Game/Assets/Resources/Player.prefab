@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 6439735673752065427}
   - component: {fileID: 6766265118399746853}
   - component: {fileID: 1375510690067751689}
+  - component: {fileID: 4355793510568147862}
   m_Layer: 3
   m_Name: PlayerEntity
   m_TagString: PlayerEntity
@@ -306,6 +307,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   globalPosition: {x: 0, y: 0, z: 0}
+--- !u!114 &4355793510568147862
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1083092175523969477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23b42c9116660794b8c64841f335d2ac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  paramIsWalking: isWalking
+  paramInputX: InputX
+  paramInputY: InputY
+  paramLastInputX: LastInputX
+  paramLastInputY: LastInputY
+  triggerPlow: Plow
+  triggerPlant: Plant
+  paramActionX: ActionX
+  plowLockDuration: 0.5
+  MoveDirection: {x: 0, y: 0}
+  LastDirection: {x: 0, y: 0}
 --- !u!1 &1202695650498789555
 GameObject:
   m_ObjectHideFlags: 0
@@ -844,7 +868,7 @@ Transform:
   m_GameObject: {fileID: 8033348030200942857}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.06, y: -0.3, z: 0}
+  m_LocalPosition: {x: 0.06, y: -0.15, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,6 +10,7 @@ public class RecipeAmountInput : MonoBehaviour
     [SerializeField] private Button increaseButton;
     [SerializeField] private Button decreaseButton;
     [SerializeField] private Button maxButton;
+    [SerializeField] private Button minButton;
 
     [Header("Settings")]
     [SerializeField] private int minAmount = 1;
@@ -35,6 +36,7 @@ public class RecipeAmountInput : MonoBehaviour
         increaseButton?.onClick.AddListener(IncreaseAmount);
         decreaseButton?.onClick.AddListener(DecreaseAmount);
         maxButton?.onClick.AddListener(SetToMaxAmount);
+        minButton?.onClick.AddListener(SetToMinAmount);
 
         amountInputField?.onEndEdit.AddListener(OnInputFieldChanged);
         amountInputField?.onValueChanged.AddListener(OnInputFieldValueChanged);
@@ -91,6 +93,11 @@ public class RecipeAmountInput : MonoBehaviour
         SetAmount(maxPossibleAmount);
     }
 
+    private void SetToMinAmount()
+    {
+        SetAmount(minAmount);
+    }
+
     private void OnInputFieldChanged(string value)
     {
         if (int.TryParse(value, out int amount))
@@ -137,6 +144,11 @@ public class RecipeAmountInput : MonoBehaviour
         {
             maxButton.interactable = (currentAmount < maxPossibleAmount);
         }
+
+        if (minButton != null)
+        {
+            minButton.interactable = (currentAmount > minAmount);
+        }
     }
 
     private void OnDestroy()
@@ -144,6 +156,7 @@ public class RecipeAmountInput : MonoBehaviour
         increaseButton?.onClick.RemoveAllListeners();
         decreaseButton?.onClick.RemoveAllListeners();
         maxButton?.onClick.RemoveAllListeners();
+        minButton?.onClick.RemoveAllListeners(); 
         amountInputField?.onEndEdit.RemoveAllListeners();
         amountInputField?.onValueChanged.RemoveAllListeners();
     }

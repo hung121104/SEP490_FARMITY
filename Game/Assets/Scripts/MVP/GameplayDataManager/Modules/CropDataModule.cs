@@ -61,7 +61,7 @@ public class CropDataModule : IWorldDataModule
     /// <summary>
     /// Plant crop at ABSOLUTE WORLD POSITION (X, Y)
     /// </summary>
-    public bool PlantCropAtWorldPosition(Vector3 worldPos, ushort cropTypeID)
+    public bool PlantCropAtWorldPosition(Vector3 worldPos, string plantId)
     {
         Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
         int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
@@ -86,12 +86,12 @@ public class CropDataModule : IWorldDataModule
         int worldX = Mathf.FloorToInt(worldPos.x);
         int worldY = Mathf.FloorToInt(worldPos.y);
         
-        bool success = chunk.PlantCrop(cropTypeID, worldX, worldY);
+        bool success = chunk.PlantCrop(plantId, worldX, worldY);
         
         if (success && showDebugLogs)
         {
             var config = manager.GetSectionConfig(sectionId);
-            Debug.Log($"✓ Planted crop type {cropTypeID} at world pos ({worldX}, {worldY}) " +
+            Debug.Log($"✓ Planted plant '{plantId}' at world pos ({worldX}, {worldY}) " +
                  $"[Chunk: ({chunkPos.x}, {chunkPos.y}), Section: {config?.SectionName}]");
         }
         
@@ -284,6 +284,21 @@ public class CropDataModule : IWorldDataModule
         return chunk.IncrementCropAge(worldX, worldY);
     }
     
+    /// <summary>Increments the pollen harvest count for the crop at world position by 1.</summary>
+    public bool IncrementPollenHarvestCount(Vector3 worldPos)
+    {
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+
+        Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+        CropChunkData chunk = GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+
+        int worldX = Mathf.FloorToInt(worldPos.x);
+        int worldY = Mathf.FloorToInt(worldPos.y);
+        return chunk.IncrementPollenHarvestCount(worldX, worldY);
+    }
+    
     /// <summary>
     /// Get a specific chunk
     /// </summary>
@@ -371,4 +386,44 @@ public class CropDataModule : IWorldDataModule
         
         return stats;
     }
+
+    // ── Crossbreeding helpers ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Morphs an existing crop's PlantId to a hybrid (crossbreeding).
+    /// Resets CropStage to <paramref name="startStage"/> and marks IsPollinated.
+    /// </summary>
+    public bool SetCropPlantId(Vector3 worldPos, string newPlantId, byte startStage)
+    {
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+        CropChunkData chunk = GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+        int wx = Mathf.FloorToInt(worldPos.x);
+        int wy = Mathf.FloorToInt(worldPos.y);
+        bool ok = chunk.SetCropPlantId(wx, wy, newPlantId, startStage);
+        if (ok && showDebugLogs)
+            Debug.Log($"[CropDataModule] ✓ Crossbred crop at ({wx},{wy}) → '{newPlantId}' stage {startStage}");
+        return ok;
+    }
+
+    public bool SetPollinatedAtWorldPosition(Vector3 worldPos, bool value)
+    {
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        CropChunkData chunk = GetChunk(sectionId, manager.WorldToChunkCoords(worldPos));
+        if (chunk == null) return false;
+        return chunk.SetPollinated(Mathf.FloorToInt(worldPos.x), Mathf.FloorToInt(worldPos.y), value);
+    }
+
+    public bool IsPollinatedAtWorldPosition(Vector3 worldPos)
+    {
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        CropChunkData chunk = GetChunk(sectionId, manager.WorldToChunkCoords(worldPos));
+        if (chunk == null) return false;
+        return chunk.IsPollinatedAt(Mathf.FloorToInt(worldPos.x), Mathf.FloorToInt(worldPos.y));
+    }
 }
+
