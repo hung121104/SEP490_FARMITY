@@ -199,9 +199,39 @@ public abstract class SkillBase : MonoBehaviour
     private void CheckSkillInput()
     {
         if (!CombatModeManager.Instance.IsCombatModeActive) return;
+
+        // Get slot index from SkillManager
+        int slotIndex = GetSlotIndex();
+        if (slotIndex == -1) return;
+
+        KeyCode assignedKey = GetKeyForSlot(slotIndex);
         
-        if (Input.GetKeyDown(skillKey) && CanTriggerSkill())
-            TriggerSkill();
+        if (Input.GetKeyDown(assignedKey) && CanTriggerSkillLocal())
+            TriggerSkillLocal();
+    }
+
+    private int GetSlotIndex()
+    {
+        if (SkillManager.Instance == null) return -1;
+
+        for (int i = 0; i < SkillManager.Instance.GetSkillCount(); i++)
+        {
+            if (SkillManager.Instance.GetSkill(i) == this)
+                return i;
+        }
+        return -1;
+    }
+
+    private KeyCode GetKeyForSlot(int slotIndex)
+    {
+        switch (slotIndex)
+        {
+            case 0: return KeyCode.Alpha1;
+            case 1: return KeyCode.Alpha2;
+            case 2: return KeyCode.Alpha3;
+            case 3: return KeyCode.Alpha4;
+            default: return KeyCode.None;
+        }
     }
 
     private void HandleStateInput()
@@ -254,7 +284,7 @@ public abstract class SkillBase : MonoBehaviour
             skillTimer -= Time.deltaTime;
     }
 
-    private bool CanTriggerSkill()
+    private bool CanTriggerSkillLocal()
     {
         return !isExecuting
             && currentState == SkillState.Idle
@@ -265,7 +295,7 @@ public abstract class SkillBase : MonoBehaviour
 
     #region Skill Flow
 
-    private void TriggerSkill()
+    private void TriggerSkillLocal()
     {
         isExecuting = true;
         skillTimer = skillCooldown;
