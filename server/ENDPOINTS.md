@@ -330,3 +330,81 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Response: deleted world document `{ "_id": "string", "worldName": "string", "ownerId": "string" }` or `null`.
     - Notes: The gateway provides a verified `ownerId` (extracted from the JWT) and the microservice enforces that the sender's `ownerId` matches the world's `ownerId` before deleting.
     - Response: deleted world document `{ "_id": "string", "worldName": "string", "ownerId": "string", "day": number, "month": number, "year": number, "hour": number, "minute": number, "gold": number }` or `null`.
+
+## Game Data – Items
+
+> Managed by `admin-service` → `game-data/item` module. The schema is a flat document that stores base fields for all items plus optional subtype-specific fields discriminated by `itemType` (see `backend_catalog_api_instructions.md` for the full type matrix).
+
+### HTTP Endpoints (via gateway)
+
+- **POST** `/game-data/items/create`: Create a new item definition (admin only).
+  - Content-Type: `multipart/form-data`
+  - Fields:
+    - `icon` *(file, required)* — the item icon image (max 5 MB). Uploaded to Cloudinary **internally** by the gateway; `iconUrl` is set automatically.
+    - All other `CreateItemDto` fields as form-data text fields (see Base Fields table below).
+  - Response: Saved item document including `_id` and `iconUrl` (Cloudinary `secure_url`).
+  - Note: Returns `409 Conflict` if an item with the same `itemID` already exists.
+
+---
+
+- **GET** `/game-data/items/catalog`: Return the full item catalog in Unity-client format.
+  - Response: `{ "items": [ ...itemObjects ] }`
+  - Note: This is the endpoint consumed by `ItemCatalogService.cs` in the Unity client.
+
+- **GET** `/game-data/items/all`: Return a flat array of all item documents.
+  - Response: `[ ...itemObjects ]`
+
+- **GET** `/game-data/items/by-item-id/:itemID`: Find one item by game-side string ID (e.g. `tool_hoe_basic`).
+  - Path param: `itemID` — snake_case string identifier.
+  - Response: Item document or `null`.
+
+- **GET** `/game-data/items/:id`: Find one item by MongoDB `_id`.
+  - Path param: `id` — MongoDB ObjectId string.
+  - Response: Item document or `null`.
+
+- **DELETE** `/game-data/items/:id`: Delete an item by MongoDB `_id` (admin only).
+  - Path param: `id` — MongoDB ObjectId string.
+  - Response: Deleted item document.
+  - Note: Returns `404` if the item is not found.
+
+
+### Base Fields (required for ALL itemTypes)
+
+| Field | Type | Notes |
+|---|---|---|
+| `itemID` | string | Unique game-side identifier, e.g. `"tool_hoe_basic"` |
+| `itemName` | string | Display name |
+| `description` | string | Flavour text |
+| `iconUrl` | string | Cloudinary/CDN URL of the item sprite |
+| `itemType` | int | Discriminator — see table below |
+| `itemCategory` | int | 0=Farming, 1=Mining, 2=Fishing, 3=Cooking… |
+| `maxStack` | int | Set to `1` for tools/weapons |
+| `isStackable` | bool | `false` for tools/weapons |
+| `basePrice` | int | Base sell value |
+| `buyPrice` | int | Store buy price (`0` = cannot be bought) |
+| `canBeSold` | bool | |
+| `canBeBought` | bool | |
+| `isQuestItem` | bool | |
+| `isArtifact` | bool | |
+| `isRareItem` | bool | |
+| `npcPreferenceNames` | string[] | Optional |
+| `npcPreferenceReactions` | int[] | Optional (-2 to 2, maps 1-to-1 with names) |
+
+### `itemType` Discriminator & Extra Fields
+
+| `itemType` | Name | Extra fields required |
+|---|---|---|
+| `0` | Tool | `toolType`, `toolLevel`, `toolPower`, `toolMaterial` |
+| `1` | Seed | _(none)_ |
+| `2` | Crop | _(none)_ |
+| `3` | Pollen | `pollinationSuccessChance`, `viabilityDays` |
+| `4` | Consumable | `energyRestore`, `healthRestore`, `bufferDuration` |
+| `5` | Material | _(none)_ |
+| `6` | Weapon | `damage`, `critChance`, `attackSpeed`, `weaponMaterial` |
+| `7` | Fish | `difficulty`, `fishingSeasons[]`, `isLegendary` |
+| `8` | Cooking | `energyRestore`, `healthRestore`, `bufferDuration` |
+| `9` | Forage | `foragingSeasons[]`, `energyRestore` |
+| `10` | Resource | `isOre`, `requiresSmelting`, `smeltedResultId` |
+| `11` | Gift | `isUniversalLike`, `isUniversalLove` |
+| `12` | Quest | `relatedQuestID`, `autoConsume` |
+

@@ -1,5 +1,6 @@
-import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req, HttpException, Put } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req, HttpException, Put, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { firstValueFrom } from 'rxjs';
 import { Response, Request } from 'express';
@@ -13,6 +14,8 @@ import { UploadSignatureDto } from './dto/upload-signature.dto';
 import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
 import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
 import { UpdateWorldDto } from './dto/update-world.dto';
+import { CreateItemDto } from './dto/create-item.dto';
+import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 
 @Controller()
@@ -21,6 +24,7 @@ export class GatewayController {
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
     @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
+    private readonly cloudinaryService: GatewayCloudinaryService,
   ) {}
 
   /** Extract a well-formed HttpException from an RPC error payload */
@@ -350,6 +354,96 @@ export class GatewayController {
   async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
     try {
       return await firstValueFrom(this.authClient.send('admin-reset-confirm', dto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Items ────────────────────────────────────────────────────────
+
+  /** POST /game-data/items/create — accepts multipart/form-data with an icon file
+   *  + item JSON fields. Uploads the icon to Cloudinary internally, then
+   *  creates the item in admin-service (admin only). */
+  @Post('game-data/items/create')
+  @UseInterceptors(FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  async createItem(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file) throw new BadRequestException('An icon file is required (field name: "icon")');
+    try {
+      // Upload icon to Cloudinary internally — no separate endpoint needed
+      const iconUrl = await this.cloudinaryService.uploadFile(file, body.folder || 'item-icons');
+
+      // Parse numeric/boolean fields that arrive as strings from form-data
+      const dto: CreateItemDto = {
+        ...body,
+        iconUrl,
+        itemType: Number(body.itemType),
+        itemCategory: Number(body.itemCategory),
+        maxStack: Number(body.maxStack),
+        basePrice: Number(body.basePrice ?? 0),
+        buyPrice: Number(body.buyPrice ?? 0),
+        isStackable: body.isStackable === 'true' || body.isStackable === true,
+        canBeSold: body.canBeSold !== 'false' && body.canBeSold !== false,
+        canBeBought: body.canBeBought === 'true' || body.canBeBought === true,
+        isQuestItem: body.isQuestItem === 'true' || body.isQuestItem === true,
+        isArtifact: body.isArtifact === 'true' || body.isArtifact === true,
+        isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
+      };
+
+      return await firstValueFrom(this.adminClient.send('create-item', dto));
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/items/catalog — full catalog { items: [...] } for Unity client */
+  @Get('game-data/items/catalog')
+  async getItemCatalog() {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-item-catalog', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/items/all — flat array of all items */
+  @Get('game-data/items/all')
+  async getAllItems() {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-all-items', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/items/by-item-id/:itemID — find by game-side itemID string */
+  @Get('game-data/items/by-item-id/:itemID')
+  async getItemByItemId(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-item-by-item-id', itemID));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/items/:id — find by MongoDB _id */
+  @Get('game-data/items/:id')
+  async getItemById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-item-by-id', id));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/items/:id — delete by MongoDB _id (admin) */
+  @Delete('game-data/items/:id')
+  async deleteItem(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('delete-item', id));
     } catch (err) {
       throw this.rpcError(err);
     }

@@ -182,7 +182,10 @@ public class ItemCatalogService : MonoBehaviour
         }
 
         var tex    = DownloadHandlerTexture.GetContent(req);
-        var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+        
+        // Pixel art settings: crisp filtering and 16 pixels per unit
+        tex.filterMode = FilterMode.Point;
+        var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 16f);
         _spriteCache[itemId] = sprite;
         Debug.Log($"[ItemCatalogService] Icon ready for '{itemId}'.");
     }
