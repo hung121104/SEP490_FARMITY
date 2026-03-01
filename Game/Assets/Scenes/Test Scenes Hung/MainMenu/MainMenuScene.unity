@@ -330,7 +330,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   catalogJsonAsset: {fileID: 4900000, guid: e9ec6f0ed1310c945a5fa758a7e3c8fb, type: 3}
-  catalogApiUrl: 
+  catalogApiUrl: https://localhost:3000/game-data/items/catalog
 --- !u!4 &583594017
 Transform:
   m_ObjectHideFlags: 0

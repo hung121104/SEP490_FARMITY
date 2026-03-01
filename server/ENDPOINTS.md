@@ -392,19 +392,22 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 
 ### `itemType` Discriminator & Extra Fields
 
-| `itemType` | Name | Extra fields required |
-|---|---|---|
-| `0` | Tool | `toolType`, `toolLevel`, `toolPower`, `toolMaterial` |
-| `1` | Seed | _(none)_ |
-| `2` | Crop | _(none)_ |
-| `3` | Pollen | `pollinationSuccessChance`, `viabilityDays` |
-| `4` | Consumable | `energyRestore`, `healthRestore`, `bufferDuration` |
-| `5` | Material | _(none)_ |
-| `6` | Weapon | `damage`, `critChance`, `attackSpeed`, `weaponMaterial` |
-| `7` | Fish | `difficulty`, `fishingSeasons[]`, `isLegendary` |
-| `8` | Cooking | `energyRestore`, `healthRestore`, `bufferDuration` |
-| `9` | Forage | `foragingSeasons[]`, `energyRestore` |
-| `10` | Resource | `isOre`, `requiresSmelting`, `smeltedResultId` |
-| `11` | Gift | `isUniversalLike`, `isUniversalLove` |
-| `12` | Quest | `relatedQuestID`, `autoConsume` |
+Depending on the `itemType` integer, specific extra fields must be included in the form-data request.
+
+| `itemType` | Name | Required Extra Fields | Type & Notes |
+|---|---|---|---|
+| `0` | Tool | `toolType`<br>`toolLevel`<br>`toolPower`<br>`toolMaterial` | int: 0=Hoe, 1=WateringCan, 2=Pickaxe, 3=Axe, 4=FishingRod<br>int: e.g. 1<br>int: e.g. 1<br>int: 0=Basic, 1=Copper, 2=Steel, 3=Gold, 4=Diamond |
+| `1` | Seed | _(none)_ | |
+| `2` | Crop | _(none)_ | |
+| `3` | Pollen | `pollinationSuccessChance`<br>`viabilityDays` | float: e.g. 0.5<br>int: e.g. 3 |
+| `4` | Consumable | `energyRestore`<br>`healthRestore`<br>`bufferDuration` | int: stamina restored<br>int: health restored<br>float: buffer time |
+| `5` | Material | _(none)_ | |
+| `6` | Weapon | `damage`<br>`critChance`<br>`attackSpeed`<br>`weaponMaterial` | int: e.g. 10<br>int: e.g. 5<br>float: e.g. 1.0<br>int: 0=Basic, 1=Copper, 2=Steel, 3=Gold, 4=Diamond |
+| `7` | Fish | `difficulty`<br>`fishingSeasons`<br>`isLegendary` | int: e.g. 1<br>int[]: 0=Sunny, 1=Rainy (e.g. `[0,1]`)<br>bool: default `false` |
+| `8` | Cooking | `energyRestore`<br>`healthRestore`<br>`bufferDuration` | int<br>int<br>float |
+| `9` | Forage | `foragingSeasons`<br>`energyRestore` | int[]: 0=Sunny, 1=Rainy (e.g. `[0,1]`)<br>int: (default `5`) |
+| `10` | Resource | `isOre`<br>`requiresSmelting`<br>`smeltedResultId` | bool: default `false`<br>bool: default `false`<br>string: ID of smelt output (default `""`) |
+| `11` | Gift | `isUniversalLike`<br>`isUniversalLove` | bool: default `false`<br>bool: default `false` |
+| `12` | Quest | `relatedQuestID`<br>`autoConsume` | string: e.g. `"quest_goblins_01"`<br>bool: default `false` |
+
 
