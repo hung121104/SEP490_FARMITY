@@ -1467,9 +1467,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Padding:
-    m_Left: 0
+    m_Left: 20
     m_Right: 0
-    m_Top: 0
+    m_Top: 20
     m_Bottom: 0
   m_ChildAlignment: 0
   m_Spacing: 0
@@ -2539,6 +2539,8 @@ MonoBehaviour:
   pages:
   - {fileID: 1338056071}
   - {fileID: 661287720}
+  craftingSystemManager: {fileID: 0}
+  craftingTabIndex: 2
 --- !u!222 &582960461
 CanvasRenderer:
   m_ObjectHideFlags: 0
