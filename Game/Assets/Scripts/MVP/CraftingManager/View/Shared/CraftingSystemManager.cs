@@ -308,20 +308,6 @@ public class CraftingSystemManager : MonoBehaviour
         craftingInInventoryAdapter?.OnClose();
     }
 
-    public void ActiveCraftingInInventory() 
-    {
-        if (isCraftingInInventoryActive)
-        {
-            OpenCraftingInInventory();
-            isCraftingInInventoryActive = false;
-        }
-        else 
-        {
-            CloseCraftingInInventory();
-            isCraftingInInventoryActive = true;
-        }
-    }
-
     /// <summary>
     /// Unlock a recipe by ID
     /// </summary>
