@@ -85,7 +85,7 @@ public class CropPollenHarvestingView : MonoBehaviourPun
 
     // ── View callbacks (called by Presenter) ──────────────────────────────
 
-    public void OnPollenCollected(Vector3 tilePos, PollenDataSO pollen)
+    public void OnPollenCollected(Vector3 tilePos, PollenData pollen)
     {
         Debug.Log($"[CropPollenHarvestingView] Collected '{pollen.itemName}' from ({tilePos.x:F0},{tilePos.y:F0}).");
         // Add sound / particle here later

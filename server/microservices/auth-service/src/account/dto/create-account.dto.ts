@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export class CreateAccountDto {
   @IsString()
@@ -12,9 +12,5 @@ export class CreateAccountDto {
   @IsEmail()
   email: string;
 
-  @IsOptional()
-  gameSettings?: {
-    audio?: boolean;
-    keyBinds?: Record<string, string>;
-  };
+
 }

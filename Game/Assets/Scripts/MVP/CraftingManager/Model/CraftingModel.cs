@@ -15,17 +15,17 @@ public class CraftingModel
 
     #region Recipe Management
 
-    internal void AddRecipe(RecipeDataSO recipeData)
+    internal void AddRecipe(RecipeData recipeData)
     {
         if (recipeData == null || !recipeData.IsValid())
         {
-            UnityEngine.Debug.LogWarning($"[CraftingModel] Invalid recipe data");
+            Debug.LogWarning("[CraftingModel] Invalid recipe data");
             return;
         }
 
         if (recipes.ContainsKey(recipeData.recipeID))
         {
-            UnityEngine.Debug.LogWarning($"[CraftingModel] Recipe {recipeData.recipeID} already exists");
+            Debug.LogWarning($"[CraftingModel] Recipe '{recipeData.recipeID}' already exists — skipping.");
             return;
         }
 
@@ -63,9 +63,6 @@ public class CraftingModel
             .ToList();
     }
 
-    /// <summary>
-    /// Get recipes by type (Crafting or Cooking)
-    /// </summary>
     public List<RecipeModel> GetRecipesByType(RecipeType type)
     {
         return recipes.Values
@@ -73,17 +70,11 @@ public class CraftingModel
             .ToList();
     }
 
-    /// <summary>
-    /// Get only crafting recipes
-    /// </summary>
     public List<RecipeModel> GetCraftingRecipes()
     {
         return GetRecipesByType(RecipeType.Crafting);
     }
 
-    /// <summary>
-    /// Get only cooking recipes
-    /// </summary>
     public List<RecipeModel> GetCookingRecipes()
     {
         return GetRecipesByType(RecipeType.Cooking);

@@ -6,14 +6,15 @@ public class GiftDatabaseSO : ScriptableObject
 {
     public List<GiftDataSO> gifts;
 
-    public GiftDataSO GetGiftData(ItemDataSO itemData)
+    public GiftDataSO GetGiftData(string itemId)
     {
         foreach (var gift in gifts)
         {
-            if (gift.itemData == itemData)
+            if (gift.itemId == itemId)
                 return gift;
         }
-
         return null;
     }
+
+    public GiftDataSO GetGiftData(ItemData item) => GetGiftData(item?.itemID);
 }

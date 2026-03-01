@@ -21,9 +21,6 @@ public class CraftingSystemManager : MonoBehaviour
     [SerializeField] private CraftingInventoryAdapter cookingInventoryAdapter;
     [SerializeField] private CraftingInventoryAdapter craftingInInventoryAdapter;
 
-    [Header("Recipe Data")]
-    [SerializeField] private RecipeDataSO[] allRecipes;
-
     // Core components
     private CraftingModel craftingModel;
     private ICraftingService craftingService;
@@ -85,15 +82,24 @@ public class CraftingSystemManager : MonoBehaviour
         // 3. Initialize Crafting Service
         craftingService = new CraftingService(craftingModel);
 
-        // 4. Load recipes
-        if (allRecipes != null && allRecipes.Length > 0)
+        // 4. Load recipes from the catalog service (JSON)
+        var catalogService = RecipeCatalogService.Instance;
+        if (catalogService == null)
         {
-            craftingService.LoadRecipes(allRecipes);
-            Debug.Log($"[CraftingSystemManager] Loaded {allRecipes.Length} recipes");
+            Debug.LogError("[CraftingSystemManager] RecipeCatalogService not found in scene! Add it as a GameObject.");
         }
         else
         {
-            Debug.LogWarning("[CraftingSystemManager] No recipes assigned!");
+            var recipes = catalogService.GetAllRecipes();
+            if (recipes.Count > 0)
+            {
+                craftingService.LoadRecipes(recipes);
+                Debug.Log($"[CraftingSystemManager] Loaded {recipes.Count} recipes from catalog.");
+            }
+            else
+            {
+                Debug.LogWarning("[CraftingSystemManager] Recipe catalog is empty!");
+            }
         }
 
         // 5. Initialize Crafting Presenter
@@ -388,18 +394,23 @@ public class CraftingSystemManager : MonoBehaviour
     [ContextMenu("Test Add Test Items to Inventory")]
     private void TestAddItemsToInventory()
     {
-        if (inventoryService == null || allRecipes == null || allRecipes.Length == 0)
+        if (inventoryService == null)
         {
-            Debug.LogWarning("Cannot add test items - service or recipes not available");
+            Debug.LogWarning("Cannot add test items — inventory service not available.");
             return;
         }
 
-        // Add ingredients from first recipe
-        var firstRecipe = allRecipes[0];
-        foreach (var ingredient in firstRecipe.ingredients)
+        var catalog = RecipeCatalogService.Instance;
+        if (catalog == null) { Debug.LogWarning("RecipeCatalogService not found."); return; }
+
+        // Add all ingredients for every recipe so we can test crafting immediately
+        foreach (var recipe in catalog.GetAllRecipes())
         {
-            inventoryService.AddItem(ingredient.item, ingredient.quantity * 10);
-            Debug.Log($"Added {ingredient.item.itemName} x{ingredient.quantity * 10}");
+            foreach (var ingredient in recipe.ingredients)
+            {
+                inventoryService.AddItem(ingredient.itemId, ingredient.quantity * 10);
+                Debug.Log($"Added {ingredient.itemId} x{ingredient.quantity * 10}");
+            }
         }
     }
 

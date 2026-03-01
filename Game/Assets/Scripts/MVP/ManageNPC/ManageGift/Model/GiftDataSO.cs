@@ -4,7 +4,8 @@ using UnityEngine;
 public class GiftDataSO : ScriptableObject
 {
     [Header("Linked Item")]
-    public ItemDataSO itemData;
+    [Tooltip("itemID from the item catalog.")]
+    public string itemId;
 
     [Header("Gift Settings")]
     public int affectionValue = 5;

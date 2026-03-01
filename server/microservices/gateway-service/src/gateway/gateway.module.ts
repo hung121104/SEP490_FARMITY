@@ -3,6 +3,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { GatewayController } from './gateway.controller';
 import { AuthorizationMiddleware } from './authorization.middleware';
 import { AuthenticationMiddleware } from './authentication.middleware';
+import { GatewayCloudinaryService } from './cloudinary.service';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { AuthenticationMiddleware } from './authentication.middleware';
     ]),
   ],
   controllers: [GatewayController],
+  providers: [GatewayCloudinaryService],
 })
 export class GatewayModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -48,6 +50,8 @@ export class GatewayModule implements NestModule {
         { path: 'media/create', method: RequestMethod.POST },
         { path: 'media/update/:id', method: RequestMethod.POST },
         { path: 'media/delete/:id', method: RequestMethod.DELETE },
+        { path: 'game-data/items/create', method: RequestMethod.POST },
+        { path: 'game-data/items/:id', method: RequestMethod.DELETE },
       );
 
     // enforce admin only on admin routes
@@ -66,6 +70,8 @@ export class GatewayModule implements NestModule {
         { path: 'media/create', method: RequestMethod.POST },
         { path: 'media/update/:id', method: RequestMethod.POST },
         { path: 'media/delete/:id', method: RequestMethod.DELETE },
+        { path: 'game-data/items/create', method: RequestMethod.POST },
+        { path: 'game-data/items/:id', method: RequestMethod.DELETE },
       );
   }
 }

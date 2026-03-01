@@ -32,9 +32,10 @@ public class RecipeSlotUI : MonoBehaviour
     {
         recipe = recipeModel;
 
-        if (recipe.ResultItem != null)
+        Sprite resultIcon = ItemCatalogService.Instance?.GetCachedSprite(recipe.ResultItemId);
+        if (resultIcon != null && itemIcon != null)
         {
-            itemIcon.sprite = recipe.ResultItem.icon;
+            itemIcon.sprite = resultIcon;
         }
 
         // Show locked state if not unlocked
