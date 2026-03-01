@@ -1,20 +1,20 @@
 {
     "recipes": [
         {
-            "recipeID": "craft_test_sword",
-            "recipeName": "Test Sword",
-            "description": "A test sword crafted from basic materials.",
+            "recipeID": "iron_hoe",
+            "recipeName": "Iron Hoe",
+            "description": "Strong hoe.",
             "recipeType": 0,
-            "resultItemId": "TESTITEM3",
+            "resultItemId": "iron_hoe",
             "resultQuantity": 1,
             "resultQuality": 0,
             "ingredients": [
                 {
-                    "itemId": "TESTITEM1",
+                    "itemId": "copper_hoe",
                     "quantity": 3
                 },
                 {
-                    "itemId": "TESTITEM2",
+                    "itemId": "gold_hoe",
                     "quantity": 2
                 }
             ],
@@ -22,109 +22,46 @@
             "category": 0
         },
         {
-            "recipeID": "craft_gold_ring",
-            "recipeName": "Gold Ring",
-            "description": "A ring fashioned from gold ore.",
+            "recipeID": "copper_hoe",
+            "recipeName": "Copper Hoe",
+            "description": "Strong hoe.",
             "recipeType": 0,
-            "resultItemId": "TESTITEM4",
-            "resultQuantity": 1,
-            "resultQuality": 1,
-            "ingredients": [
-                {
-                    "itemId": "resource_gold",
-                    "quantity": 2
-                },
-                {
-                    "itemId": "TESTITEM5",
-                    "quantity": 1
-                }
-            ],
-            "isUnlockedByDefault": true,
-            "category": 0
-        },
-        {
-            "recipeID": "craft_iron_helmet",
-            "recipeName": "Iron Helmet",
-            "description": "A sturdy helmet made from iron ore.",
-            "recipeType": 0,
-            "resultItemId": "TESTITEM6",
+            "resultItemId": "copper_hoe",
             "resultQuantity": 1,
             "resultQuality": 0,
             "ingredients": [
                 {
-                    "itemId": "resource_iron",
-                    "quantity": 4
-                },
-                {
-                    "itemId": "TESTITEM7",
-                    "quantity": 2
-                }
-            ],
-            "isUnlockedByDefault": true,
-            "category": 0
-        },
-        {
-            "recipeID": "cook_veggie_soup",
-            "recipeName": "Veggie Soup",
-            "description": "A hearty soup made from fresh vegetables.",
-            "recipeType": 1,
-            "resultItemId": "TESTITEM8",
-            "resultQuantity": 1,
-            "resultQuality": 0,
-            "ingredients": [
-                {
-                    "itemId": "TESTITEM9",
-                    "quantity": 2
-                },
-                {
-                    "itemId": "TESTITEM10",
-                    "quantity": 1
-                }
-            ],
-            "isUnlockedByDefault": true,
-            "category": 1
-        },
-        {
-            "recipeID": "cook_mushroom_stew",
-            "recipeName": "Mushroom Stew",
-            "description": "Rich stew made from wild mushrooms.",
-            "recipeType": 1,
-            "resultItemId": "TESTITEM11",
-            "resultQuantity": 2,
-            "resultQuality": 0,
-            "ingredients": [
-                {
-                    "itemId": "TESTITEM12",
+                    "itemId": "iron_hoe",
                     "quantity": 3
                 },
                 {
-                    "itemId": "TESTITEM13",
-                    "quantity": 1
+                    "itemId": "gold_hoe",
+                    "quantity": 2
                 }
             ],
             "isUnlockedByDefault": true,
-            "category": 1
+            "category": 0
         },
         {
-            "recipeID": "cook_berry_jam",
-            "recipeName": "Berry Jam",
-            "description": "Sweet jam from wild berries.",
-            "recipeType": 1,
-            "resultItemId": "TESTITEM14",
-            "resultQuantity": 2,
-            "resultQuality": 1,
+            "recipeID": "gold_hoe",
+            "recipeName": "Gold Hoe",
+            "description": "Strong hoe.",
+            "recipeType": 0,
+            "resultItemId": "gold_hoe",
+            "resultQuantity": 1,
+            "resultQuality": 0,
             "ingredients": [
                 {
-                    "itemId": "TESTITEM15",
-                    "quantity": 4
+                    "itemId": "copper_hoe",
+                    "quantity": 3
                 },
                 {
-                    "itemId": "TESTITEM16",
-                    "quantity": 1
+                    "itemId": "iron_hoe",
+                    "quantity": 2
                 }
             ],
             "isUnlockedByDefault": true,
-            "category": 1
+            "category": 0
         }
     ]
 }

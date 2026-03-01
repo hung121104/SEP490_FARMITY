@@ -21,9 +21,6 @@ public class CraftingSystemManager : MonoBehaviour
     [SerializeField] private CraftingInventoryAdapter cookingInventoryAdapter;
     [SerializeField] private CraftingInventoryAdapter craftingInInventoryAdapter;
 
-    [Header("Recipe Data")]
-    [SerializeField] private RecipeDataSO[] allRecipes;
-
     // Core components
     private CraftingModel craftingModel;
     private ICraftingService craftingService;
