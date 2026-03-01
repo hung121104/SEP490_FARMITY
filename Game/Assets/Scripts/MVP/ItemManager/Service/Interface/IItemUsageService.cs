@@ -7,4 +7,6 @@ public interface IItemUsageService
     public (bool,int) UseSeed(ItemDataSO item, Vector3 pos);
     public (bool,int) UseConsumable(ItemDataSO item, Vector3 pos);
     public Boolean UseWeapon(ItemDataSO item, Vector3 pos);
+    public bool UsePollen(ItemDataSO item, Vector3 pos);
 }
+

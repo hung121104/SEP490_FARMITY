@@ -34,4 +34,10 @@ public class ItemUsagePresenter
         Debug.Log("[ItemUsage] UseWeapon");
         return service.UseWeapon(item, pos);
     }
+
+    public bool UsePollen(ItemDataSO item, Vector3 pos)
+    {
+        Debug.Log("[ItemUsage] UsePollen");
+        return service.UsePollen(item, pos);
+    }
 }

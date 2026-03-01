@@ -1,21 +1,31 @@
+using System;
 using UnityEngine;
 
 /// <summary>
-/// ScriptableObject representing a pollen item collected from a flowering crop (growth stage 3).
-/// Used as the core ingredient in the crossbreeding system.
+/// Pollen item collected from a flowering crop.
+/// Defines which crops it can pollinate and what hybrid results from each cross.
 /// </summary>
 [CreateAssetMenu(fileName = "New Pollen", menuName = "Scriptable Objects/Items/Pollen")]
 public class PollenDataSO : ItemDataSO
 {
     [Header("Source Plant")]
-    [Tooltip("The plant this pollen came from. Used by the crossbreeding system to determine compatible crosses.")]
+    [Tooltip("The plant this pollen came from.")]
     public PlantDataSO sourcePlant;
 
     [Header("Crossbreeding")]
-    [Tooltip("Which plants this pollen can successfully pollinate.")]
-    public PlantDataSO[] compatibleTargets;
+    [Tooltip("Each entry maps a receiver plant to the hybrid it produces.")]
+    public CrossResult[] crossResults;
 
-    [Tooltip("Base probability (0-1) that pollination produces a hybrid seed.")]
+    [Serializable]
+    public struct CrossResult
+    {
+        [Tooltip("The receiver crop must be this species (and at flowering stage).")]
+        public PlantDataSO     targetPlant;
+        [Tooltip("The hybrid PlantDataSO to morph the receiver into on success.")]
+        public HybridPlantDataSO resultPlant;
+    }
+
+    [Tooltip("Base probability (0–1) that pollination produces a hybrid.")]
     [Range(0f, 1f)]
     public float pollinationSuccessChance = 0.5f;
 

@@ -249,6 +249,8 @@ MonoBehaviour:
   previewAlpha: 0.5
   previewSortingLayer: WalkInfront
   previewSortingOrder: 10
+  allowHoldToPlant: 1
+  plantRepeatInterval: 0.2
   showDebugLogs: 0
 --- !u!1 &52024647
 GameObject:
@@ -613,6 +615,52 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 91174717}
   m_CullTransparentMesh: 1
+--- !u!1 &99337823
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 99337824}
+  - component: {fileID: 99337825}
+  m_Layer: 0
+  m_Name: CropBreedingManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &99337824
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 99337823}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 525205932}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &99337825
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 99337823}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c7013e52e2693b4dbe5eed265343617, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  interactionRadius: 2
+  playerTag: PlayerEntity
 --- !u!1 &113894229
 GameObject:
   m_ObjectHideFlags: 0
@@ -1557,6 +1605,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ecf607b6ebdc3764da467d55839a03fb, type: 2}
   craftingMainView: {fileID: 1597523240}
   cookingMainView: {fileID: 0}
+  craftingOpenButton: {fileID: 0}
+  craftingCloseButton: {fileID: 0}
+  cookingOpenButton: {fileID: 0}
+  cookingCloseButton: {fileID: 0}
+  craftingInventoryAdapter: {fileID: 0}
 --- !u!1 &314395995
 GameObject:
   m_ObjectHideFlags: 0
@@ -2314,6 +2367,7 @@ Transform:
   - {fileID: 642568624}
   - {fileID: 36946697}
   - {fileID: 1866735580}
+  - {fileID: 99337824}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &525205933
@@ -3290,8 +3344,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   detailPanel: {fileID: 2145145538}
-  recipeNameText: {fileID: 1739055543}
-  recipeDescriptionText: {fileID: 1097025016}
   resultItemIcon: {fileID: 749353343}
   resultItemNameText: {fileID: 1038085078}
   resultQuantityText: {fileID: 1422667899}
@@ -6897,20 +6949,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36ff871ddbd0e5b4bb6ed42046adc753, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  notificationPanel: {fileID: 314395995}
-  messageText: {fileID: 1633857967}
-  backgroundImage: {fileID: 1015165056}
-  iconImage: {fileID: 0}
-  displayDuration: 2
-  autoHide: 1
-  infoColor: {r: 0.2, g: 0.6, b: 1, a: 1}
-  successColor: {r: 0.2, g: 0.8, b: 0.2, a: 1}
-  warningColor: {r: 1, g: 0.8, b: 0.2, a: 1}
-  errorColor: {r: 1, g: 0.3, b: 0.3, a: 1}
-  infoIcon: {fileID: 0}
-  successIcon: {fileID: 0}
-  warningIcon: {fileID: 0}
-  errorIcon: {fileID: 0}
 --- !u!1 &1596810347
 GameObject:
   m_ObjectHideFlags: 0
@@ -6963,6 +7001,7 @@ MonoBehaviour:
   detailPanel: {fileID: 595576917}
   panelRectTransform: {fileID: 1596810348}
   canvasGroup: {fileID: 595576918}
+  giftReactionPanel: {fileID: 0}
   itemIcon: {fileID: 595576916}
   itemNameText: {fileID: 595576915}
   itemDescriptionText: {fileID: 595576914}
@@ -7024,11 +7063,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mainPanel: {fileID: 3175644}
-  closeButton: {fileID: 1718040092}
   filterView: {fileID: 2142905891}
   recipeListView: {fileID: 1776215106}
   detailView: {fileID: 608957500}
-  notificationView: {fileID: 1549323878}
   titleText: {fileID: 250001094}
   defaultTitle: Crafting
 --- !u!1 &1633857965
@@ -8058,10 +8095,17 @@ MonoBehaviour:
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   plowingKey: 0
   allowHoldToPlow: 1
-  plowRepeatInterval: 0.1
+  plowRepeatInterval: 0.5
   playerTag: PlayerEntity
   plowingRange: 2
   showDebugLogs: 0
+  allowMouseHoldToPlow: 1
+  mouseHoldRepeatInterval: 0.4
+  showPlowPreview: 1
+  previewSprite: {fileID: 61452941, guid: bdbae52799fb46c43aa1e5d2e2c0252d, type: 3}
+  previewAlpha: 0.5
+  previewSortingLayer: WalkInfront
+  previewSortingOrder: 10
 --- !u!1 &1934862756
 GameObject:
   m_ObjectHideFlags: 0
@@ -8201,6 +8245,7 @@ MonoBehaviour:
   plantDatabase:
   - {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
   - {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
+  - {fileID: 11400000, guid: e5397b9e9718b75448382a647a641346, type: 2}
   enableGrowth: 1
   growthSpeedMultiplier: 1
   cropVisualsParent: {fileID: 0}
@@ -8457,6 +8502,7 @@ MonoBehaviour:
   plantDatabase:
   - {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
   - {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
+  - {fileID: 11400000, guid: e5397b9e9718b75448382a647a641346, type: 2}
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   tilledTilemapName: TillableTilemap
   showDebugLogs: 0
@@ -8533,6 +8579,7 @@ MonoBehaviour:
   increaseButton: {fileID: 741557445}
   decreaseButton: {fileID: 2078425873}
   maxButton: {fileID: 1743896430}
+  minButton: {fileID: 0}
   minAmount: 1
   defaultAmount: 1
 --- !u!114 &2024614182
