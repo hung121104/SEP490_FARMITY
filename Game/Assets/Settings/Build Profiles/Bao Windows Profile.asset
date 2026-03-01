@@ -17,24 +17,36 @@ MonoBehaviour:
   m_Subtarget: 2
   m_PlatformId: 4e3c793746204150860bf175a9a41a05
   m_PlatformBuildProfile:
-    rid: 7872060821547253760
+    rid: 8414043636993359952
   m_OverrideGlobalSceneList: 1
   m_Scenes:
-  - m_enabled: 0
-    m_path: Assets/Scenes/Test Scenes Bao/AuthScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/LoadingScene.unity
+    m_path: Assets/Scenes/Test Scenes Hung/AuthMenu/AuthScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/LobbyScene.unity
+    m_path: Assets/Scenes/Test Scenes Hung/LoadingScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/GameCoreTestScene.unity
+    m_path: Assets/Scenes/Test Scenes Hung/LoadGameScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/LobbyScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/MapLoaderTestScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/GameCoreTestScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/MainMenu/MainMenuScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/MainMenu/CreateWorldScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/MainMenu/PlayerWorldListScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Hung/MainMenu/OnlineWorldListScene.unity
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []
   references:
     version: 2
     RefIds:
-    - rid: 7872060821547253760
+    - rid: 8414043636993359952
       type: {class: WindowsPlatformSettings, ns: UnityEditor.WindowsStandalone, asm: UnityEditor.WindowsStandalone.Extensions}
       data:
         m_Development: 0
