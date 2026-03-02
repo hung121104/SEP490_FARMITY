@@ -29,25 +29,13 @@ public class CraftingService : ICraftingService
         // Check all ingredients
         foreach (var ingredient in recipe.Ingredients)
         {
-            // Validate ingredient
-            if (ingredient == null)
+            if (ingredient == null || string.IsNullOrEmpty(ingredient.itemId))
             {
-                Debug.LogWarning($"[CraftingService] Recipe {recipeID} has null ingredient");
+                Debug.LogWarning($"[CraftingService] Recipe {recipeID} has null ingredient or empty itemId");
                 continue;
             }
 
-            if (ingredient.item == null)
-            {
-                Debug.LogWarning($"[CraftingService] Recipe {recipeID} has ingredient with null item");
-                continue;
-            }
-
-            if (string.IsNullOrEmpty(ingredient.item.itemID))
-            {
-                Debug.LogWarning($"[CraftingService] Recipe {recipeID} has ingredient with null itemID");
-                continue;
-            }
-            if (!inventory.HasItem(ingredient.item.itemID, ingredient.quantity))
+            if (!inventory.HasItem(ingredient.itemId, ingredient.quantity))
                 return false;
         }
 
@@ -78,9 +66,10 @@ public class CraftingService : ICraftingService
         foreach (var ingredient in recipe.Ingredients)
         {
             int requiredAmount = ingredient.quantity * amount;
-            if (!inventory.HasItem(ingredient.item.itemID, requiredAmount))
+            if (!inventory.HasItem(ingredient.itemId, requiredAmount))
             {
-                OnCraftFailed?.Invoke($"Not enough {ingredient.item.itemName}");
+                var ingData = ItemCatalogService.Instance?.GetItemData(ingredient.itemId);
+                OnCraftFailed?.Invoke($"Not enough {ingData?.itemName ?? ingredient.itemId}");
                 return false;
             }
         }
@@ -96,11 +85,12 @@ public class CraftingService : ICraftingService
         foreach (var ingredient in recipe.Ingredients)
         {
             int removeAmount = ingredient.quantity * amount;
-            bool removed = inventory.RemoveItem(ingredient.item.itemID, removeAmount);
+            bool removed = inventory.RemoveItem(ingredient.itemId, removeAmount);
 
             if (!removed)
             {
-                Debug.LogError($"[CraftingService] Failed to remove ingredient: {ingredient.item.itemName}");
+                var ingData = ItemCatalogService.Instance?.GetItemData(ingredient.itemId);
+                Debug.LogError($"[CraftingService] Failed to remove ingredient: {ingData?.itemName ?? ingredient.itemId}");
                 OnCraftFailed?.Invoke("Crafting failed - ingredient removal error");
                 return false;
             }
@@ -108,7 +98,7 @@ public class CraftingService : ICraftingService
 
         // Add result item
         int resultAmount = recipe.ResultQuantity * amount;
-        bool added = inventory.AddItem(recipe.ResultItem, resultAmount, recipe.ResultQuality);
+        bool added = inventory.AddItem(recipe.ResultItemId, resultAmount, recipe.ResultQuality);
 
         if (!added)
         {
@@ -126,15 +116,9 @@ public class CraftingService : ICraftingService
 
     #region Recipe Management
 
-    public void LoadRecipes(RecipeDataSO[] recipeDataArray)
+    public void LoadRecipes(IEnumerable<RecipeData> recipeDataList)
     {
-        if (recipeDataArray == null || recipeDataArray.Length == 0)
-        {
-            Debug.LogWarning("[CraftingService] No recipes to load");
-            return;
-        }
-
-        foreach (var recipeData in recipeDataArray)
+        foreach (var recipeData in recipeDataList)
         {
             if (recipeData != null && recipeData.IsValid())
             {
@@ -142,7 +126,8 @@ public class CraftingService : ICraftingService
             }
         }
 
-        Debug.Log($"[CraftingService] Loaded {recipeDataArray.Length} recipes");
+        Debug.Log($"[CraftingService] Loaded {model.GetAllRecipes().Count} recipes.");
+
     }
 
     public void UnlockRecipe(string recipeID)
@@ -223,22 +208,20 @@ public class CraftingService : ICraftingService
             .ToList();
     }
 
-    public Dictionary<ItemDataSO, int> GetMissingIngredients(string recipeID, IInventoryService inventory)
+    public Dictionary<string, int> GetMissingIngredients(string recipeID, IInventoryService inventory)
     {
         var recipe = model.GetRecipe(recipeID);
-        var missing = new Dictionary<ItemDataSO, int>();
+        var missing = new Dictionary<string, int>();
 
         if (recipe == null) return missing;
 
         foreach (var ingredient in recipe.Ingredients)
         {
-            int have = inventory.GetItemCount(ingredient.item.itemID);
+            int have = inventory.GetItemCount(ingredient.itemId);
             int need = ingredient.quantity;
 
             if (have < need)
-            {
-                missing[ingredient.item] = need - have;
-            }
+                missing[ingredient.itemId] = need - have;
         }
 
         return missing;

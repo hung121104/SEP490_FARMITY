@@ -4,10 +4,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BlogModule } from './blog/blog.module';
 import { NewsModule } from './news/news.module';
 import { MediaModule } from './media/media.module';
+import { CloudinaryModule } from './shared/cloudinary/cloudinary.module';
+import { ItemModule } from './game-data/item/item.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -15,9 +17,12 @@ import { MediaModule } from './media/media.module';
       }),
       inject: [ConfigService],
     }),
+    CloudinaryModule,
     BlogModule,
     NewsModule,
     MediaModule,
+    ItemModule,
   ],
 })
 export class AppModule {}
+

@@ -30,7 +30,7 @@ public class CropHarvestingPresenter
             return;
         }
 
-        bool success = service.TryHarvest(worldPos, out ItemDataSO harvestedItem);
+        bool success = service.TryHarvest(worldPos, out ItemData harvestedItem);
 
         if (success)
             view.OnHarvestSuccess(worldPos, harvestedItem);
@@ -69,7 +69,7 @@ public class CropHarvestingPresenter
             return;
         }
 
-        bool success = service.TryCollectPollen(worldPos, out PollenDataSO pollenItem);
+        bool success = service.TryCollectPollen(worldPos, out PollenData pollenItem);
 
         if (success)
             view.OnPollenCollectSuccess(worldPos, pollenItem);

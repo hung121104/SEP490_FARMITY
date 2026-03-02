@@ -146,7 +146,7 @@ public class CropPlowingView : MonoBehaviour
         }
 
         // Show only when a Hoe is the active hotbar item
-        var currentItem = hotbarView?.GetCurrentItem()?.ItemData as ToolDataSO;
+        var currentItem = hotbarView?.GetCurrentItem()?.ItemData as ToolData;
         if (currentItem == null || currentItem.toolType != ToolType.Hoe)
         {
             _previewSR.enabled = false;
@@ -174,7 +174,7 @@ public class CropPlowingView : MonoBehaviour
         if (!allowMouseHoldToPlow || presenter == null || playerTransform == null) return;
 
         // Only active when a Hoe is equipped
-        var currentItem = hotbarView?.GetCurrentItem()?.ItemData as ToolDataSO;
+        var currentItem = hotbarView?.GetCurrentItem()?.ItemData as ToolData;
         if (currentItem == null || currentItem.toolType != ToolType.Hoe) return;
 
         if (Input.GetMouseButton(0))
@@ -308,7 +308,7 @@ public class CropPlowingView : MonoBehaviour
     /// Received from UseToolService.OnHoeRequested.
     /// Plows the directional tile at the given mouse world position.
     /// </summary>
-    private void HandleHoeUseRequested(ToolDataSO tool, Vector3 mouseWorldPos)
+    private void HandleHoeUseRequested(ToolData tool, Vector3 mouseWorldPos)
     {
         if (presenter == null || playerTransform == null) return;
 

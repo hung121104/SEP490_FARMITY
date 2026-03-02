@@ -20,12 +20,12 @@ MonoBehaviour:
     rid: 7438234838893854791
   m_OverrideGlobalSceneList: 1
   m_Scenes:
-  - m_enabled: 1
+  - m_enabled: 0
     m_path: Assets/Scenes/Test Scenes Nhan/AuthScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Nhan/GameCoreTestScene.unity
-  - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Nhan/LoadingScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Nhan/GameCoreTestScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Nhan/LobbyScene.unity
   - m_enabled: 1

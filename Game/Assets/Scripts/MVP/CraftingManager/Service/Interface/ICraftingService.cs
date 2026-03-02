@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 public interface ICraftingService
 {
@@ -14,7 +13,7 @@ public interface ICraftingService
     bool CraftRecipe(string recipeID, IInventoryService inventory, int amount = 1);
 
     // Recipe Management
-    void LoadRecipes(RecipeDataSO[] recipeDataArray);
+    void LoadRecipes(IEnumerable<RecipeData> recipeDataList);
     void UnlockRecipe(string recipeID);
     void LockRecipe(string recipeID);
     bool IsRecipeUnlocked(string recipeID);
@@ -30,5 +29,5 @@ public interface ICraftingService
     List<RecipeModel> GetCraftableRecipes(IInventoryService inventory);
 
     // Ingredient Check
-    Dictionary<ItemDataSO, int> GetMissingIngredients(string recipeID, IInventoryService inventory);
+    Dictionary<string, int> GetMissingIngredients(string recipeID, IInventoryService inventory);
 }

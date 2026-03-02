@@ -1,9 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// Global manager on PlayerEntity.
+/// Global manager inside CombatSystem.
 /// Any skill calls ShowIndicator() with SkillIndicatorData.
 /// Only one indicator active at a time.
+/// Spawns indicator prefabs at runtime - no dependency on PlayerEntity.
 /// </summary>
 public class SkillIndicatorManager : MonoBehaviour
 {
@@ -13,15 +14,18 @@ public class SkillIndicatorManager : MonoBehaviour
     {
         None,
         Arrow,
-        Cone,    // For later
-        Circle   // For later
+        Cone,
+        Circle
     }
 
-    [Header("Indicator References - Assign in Inspector")]
-    [SerializeField] private SkillIndicatorController arrowIndicator;
-    // [SerializeField] private SkillIndicatorController coneIndicator;   // For later
-    // [SerializeField] private SkillIndicatorController circleIndicator; // For later
+    [Header("Indicator Prefabs - Assign in Inspector")]
+    [SerializeField] private GameObject arrowIndicatorPrefab;
+    [SerializeField] private GameObject coneIndicatorPrefab;
+    [SerializeField] private GameObject circleIndicatorPrefab;
 
+    private SkillIndicatorController arrowIndicator;
+    private SkillIndicatorController coneIndicator;
+    private SkillIndicatorController circleIndicator;
     private IndicatorType currentType = IndicatorType.None;
     private SkillIndicatorController activeIndicator = null;
 
@@ -35,18 +39,58 @@ public class SkillIndicatorManager : MonoBehaviour
             return;
         }
         Instance = this;
+    }
 
+    private void Start()
+    {
+        SpawnIndicators();
         HideAll();
+    }
+
+    #endregion
+
+    #region Initialization
+
+    private void SpawnIndicators()
+    {
+        // Arrow
+        if (arrowIndicatorPrefab != null)
+        {
+            GameObject arrowGO = Instantiate(arrowIndicatorPrefab, transform);
+            arrowIndicator = arrowGO.GetComponent<SkillIndicatorController>();
+            if (arrowIndicator == null)
+                Debug.LogWarning("SkillIndicatorManager: SkillIndicatorController missing on Arrow prefab!");
+        }
+        else
+            Debug.LogWarning("SkillIndicatorManager: Arrow indicator prefab not assigned!");
+
+        // Cone
+        if (coneIndicatorPrefab != null)
+        {
+            GameObject coneGO = Instantiate(coneIndicatorPrefab, transform);
+            coneIndicator = coneGO.GetComponent<SkillIndicatorController>();
+            if (coneIndicator == null)
+                Debug.LogWarning("SkillIndicatorManager: SkillIndicatorController missing on Cone prefab!");
+        }
+        else
+            Debug.LogWarning("SkillIndicatorManager: Cone indicator prefab not assigned!");
+
+        // Circle
+        if (circleIndicatorPrefab != null)
+        {
+            GameObject circleGO = Instantiate(circleIndicatorPrefab, transform);
+            circleIndicator = circleGO.GetComponent<SkillIndicatorController>();
+            if (circleIndicator == null)
+                Debug.LogWarning("SkillIndicatorManager: SkillIndicatorController missing on Circle prefab!");
+        }
+        else
+            Debug.LogWarning("SkillIndicatorManager: Circle indicator prefab not assigned!");
     }
 
     #endregion
 
     #region Public API
 
-    /// <summary>
-    /// Call this from any skill to show indicator.
-    /// Pass SkillIndicatorData with all needed values.
-    /// </summary>
     public void ShowIndicator(SkillIndicatorData data)
     {
         HideAll();
@@ -62,48 +106,55 @@ public class SkillIndicatorManager : MonoBehaviour
                     activeIndicator = arrowIndicator;
                 }
                 else
-                    Debug.LogWarning("SkillIndicatorManager: Arrow indicator not assigned!");
+                    Debug.LogWarning("SkillIndicatorManager: Arrow indicator not found!");
                 break;
 
-            // Cone and Circle - coming later
+            case IndicatorType.Cone:
+                if (coneIndicator != null)
+                {
+                    coneIndicator.SetupCone(data.coneRange, data.coneAngle);
+                    coneIndicator.Show();
+                    activeIndicator = coneIndicator;
+                }
+                else
+                    Debug.LogWarning("SkillIndicatorManager: Cone indicator not found!");
+                break;
+
+            case IndicatorType.Circle:
+                if (circleIndicator != null)
+                {
+                    circleIndicator.SetupCircle(data.circleRadius, data.circleMaxRange);
+                    circleIndicator.Show();
+                    activeIndicator = circleIndicator;
+                }
+                else
+                    Debug.LogWarning("SkillIndicatorManager: Circle indicator not found!");
+                break;
         }
     }
 
-    /// <summary>
-    /// Hide all indicators.
-    /// Call when skill confirms, cancels or ends.
-    /// </summary>
     public void HideAll()
     {
         arrowIndicator?.Hide();
-        // coneIndicator?.Hide();
-        // circleIndicator?.Hide();
+        coneIndicator?.Hide();
+        circleIndicator?.Hide();
 
         activeIndicator = null;
         currentType = IndicatorType.None;
     }
 
-    /// <summary>
-    /// Get aimed direction from active indicator
-    /// </summary>
     public Vector3 GetAimedDirection()
     {
         if (activeIndicator == null) return Vector3.right;
         return activeIndicator.GetAimedDirection();
     }
 
-    /// <summary>
-    /// Get exact aimed world position from active indicator
-    /// </summary>
     public Vector3 GetAimedPosition()
     {
-        if (activeIndicator == null) return transform.position;
+        if (activeIndicator == null) return Vector3.zero;
         return activeIndicator.GetAimedPosition();
     }
 
-    /// <summary>
-    /// Get aimed distance from active indicator
-    /// </summary>
     public float GetAimedDistance()
     {
         if (activeIndicator == null) return 0f;

@@ -211,23 +211,37 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             
             foreach (var chunkPair in section)
             {
-                CropChunkData chunk = chunkPair.Value;
+                UnifiedChunkData chunk = chunkPair.Value;
                 if (chunk.GetCropCount() == 0 && chunk.GetTilledCount() == 0) continue; // Skip empty chunks
 
+                var allSlots = chunk.GetAllTiles();
+                var entries  = new SyncTileEntry[allSlots.Count];
+                for (int ei = 0; ei < allSlots.Count; ei++)
+                {
+                    var slot = allSlots[ei];
+                    entries[ei] = new SyncTileEntry
+                    {
+                        WorldX   = slot.WorldX,
+                        WorldY   = slot.WorldY,
+                        IsTilled = slot.IsTilled,
+                        HasCrop  = slot.HasCrop,
+                        Crop     = slot.Crop
+                    };
+                }
                 ChunkSyncData syncData = new ChunkSyncData
                 {
-                    ChunkX = chunk.ChunkX,
-                    ChunkY = chunk.ChunkY,
+                    ChunkX    = chunk.ChunkX,
+                    ChunkY    = chunk.ChunkY,
                     SectionId = chunk.SectionId,
-                    Crops = chunk.GetAllTiles().ToArray()
+                    Tiles     = entries
                 };
-                
+
                 allChunkData.Add(syncData);
             }
         }
         
         if (showDebugLogs)
-            Debug.Log($"[ChunkSync] Sending {allChunkData.Count} chunks with crops to player {targetPlayerActorNumber}");
+            Debug.Log($"[ChunkSync] Sending {allChunkData.Count} chunks with data to player {targetPlayerActorNumber}");
         
         // Send in batches
         int totalBatches = Mathf.CeilToInt((float)allChunkData.Count / chunksPerBatch);
@@ -300,7 +314,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         foreach (var chunkData in batch)
         {
             Vector2Int chunkPos = new Vector2Int(chunkData.ChunkX, chunkData.ChunkY);
-            CropChunkData chunk = manager.GetChunk(chunkData.SectionId, chunkPos);
+            UnifiedChunkData chunk = manager.GetChunk(chunkData.SectionId, chunkPos);
             
             if (chunk == null)
             {
@@ -311,28 +325,19 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             // Clear existing data and load synced tiles (tilled and crops)
             chunk.Clear();
 
-            foreach (var tile in chunkData.Crops)
+            foreach (var entry in chunkData.Tiles)
             {
-                // Apply tilled status first
-                if (tile.IsTilled)
-                {
-                    chunk.TillTile(tile.WorldX, tile.WorldY);
-                }
+                if (entry.IsTilled)
+                    chunk.TillTile(entry.WorldX, entry.WorldY);
 
-                // If there's a crop, plant it (chunk.PlantCrop requires tile to be tilled)
-                if (tile.HasCrop)
+                if (entry.HasCrop)
                 {
-                    chunk.PlantCrop(tile.PlantId, tile.WorldX, tile.WorldY);
-                    if (tile.CropStage > 0)
-                    {
-                        chunk.UpdateCropStage(tile.WorldX, tile.WorldY, tile.CropStage);
-                    }
-                    // Restore pollen harvest count (UpdateCropStage resets it, so set after)
-                    if (tile.PollenHarvestCount > 0)
-                    {
-                        for (byte i = 0; i < tile.PollenHarvestCount; i++)
-                            chunk.IncrementPollenHarvestCount(tile.WorldX, tile.WorldY);
-                    }
+                    chunk.PlantCrop(entry.Crop.PlantId, entry.WorldX, entry.WorldY);
+                    if (entry.Crop.CropStage > 0)
+                        chunk.UpdateCropStage(entry.WorldX, entry.WorldY, entry.Crop.CropStage);
+                    // Restore pollen count (UpdateCropStage resets it, so do this after)
+                    for (byte p = 0; p < entry.Crop.PollenHarvestCount; p++)
+                        chunk.IncrementPollenHarvestCount(entry.WorldX, entry.WorldY);
                 }
             }
 
@@ -632,7 +637,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
 
         // Set the tile's count to the authoritative value via the chunk directly
-        CropChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(worldPos);
+        UnifiedChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(worldPos);
         if (chunk != null)
         {
             chunk.ResetPollenHarvestCount(worldX, worldY);
@@ -674,44 +679,65 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         public int ChunkX;
         public int ChunkY;
         public int SectionId;
-        public CropChunkData.TileData[] Crops;
+        // Each entry carries positional/flag data + crop sub-data for the wire format
+        public SyncTileEntry[] Tiles;
+    }
+
+    /// <summary>
+    /// Lightweight wire-format entry. Carries WorldX/WorldY/flags alongside crop data
+    /// so the receiver can reconstruct the full TileSlot.
+    /// CropTileData is kept clean without positional fields.
+    /// </summary>
+    private struct SyncTileEntry
+    {
+        public int  WorldX;
+        public int  WorldY;
+        public bool IsTilled;
+        public bool HasCrop;
+        public UnifiedChunkData.CropTileData Crop;
     }
     
+    // Wire format per tile entry:
+    //   WorldX(4) WorldY(4) flags(1) [if HasCrop: PlantIdLen(1) PlantId(N) Stage(1) TotalAge(4) PollenCount(1)]
+    // flags: bit0=IsTilled, bit1=HasCrop
     private byte[] SerializeBatch(ChunkSyncData[] batch)
     {
-        // Variable-length tiles (PlantId is a string): use List<byte>
-        // Per tile: IsTilled(1) + HasCrop(1) + PlantIdLen(1) + PlantId(N) + CropStage(1) + WorldX(4) + WorldY(4)
         var bytes = new System.Collections.Generic.List<byte>();
 
-        int totalCrops = 0;
-        foreach (var chunk in batch) totalCrops += chunk.Crops.Length;
+        int totalEntries = 0;
+        foreach (var chunk in batch) totalEntries += chunk.Tiles.Length;
 
-        // Header
-        bytes.AddRange(System.BitConverter.GetBytes(batch.Length)); // 4
-        bytes.AddRange(System.BitConverter.GetBytes(totalCrops));   // 4
+        bytes.AddRange(System.BitConverter.GetBytes(batch.Length));   // 4 chunk count
+        bytes.AddRange(System.BitConverter.GetBytes(totalEntries));   // 4 total entries (informational)
 
         foreach (var chunk in batch)
         {
-            bytes.AddRange(System.BitConverter.GetBytes(chunk.ChunkX));        // 4
-            bytes.AddRange(System.BitConverter.GetBytes(chunk.ChunkY));        // 4
-            bytes.AddRange(System.BitConverter.GetBytes(chunk.SectionId));     // 4
-            bytes.AddRange(System.BitConverter.GetBytes(chunk.Crops.Length));  // 4
+            bytes.AddRange(System.BitConverter.GetBytes(chunk.ChunkX));
+            bytes.AddRange(System.BitConverter.GetBytes(chunk.ChunkY));
+            bytes.AddRange(System.BitConverter.GetBytes(chunk.SectionId));
+            bytes.AddRange(System.BitConverter.GetBytes(chunk.Tiles.Length));
 
-            foreach (var tile in chunk.Crops)
+            foreach (var entry in chunk.Tiles)
             {
-                bytes.Add((byte)(tile.IsTilled ? 1 : 0)); // 1
-                bytes.Add((byte)(tile.HasCrop  ? 1 : 0)); // 1
+                bytes.AddRange(System.BitConverter.GetBytes(entry.WorldX));  // 4
+                bytes.AddRange(System.BitConverter.GetBytes(entry.WorldY));  // 4
 
-                byte[] plantIdBytes = string.IsNullOrEmpty(tile.PlantId)
-                    ? System.Array.Empty<byte>()
-                    : System.Text.Encoding.UTF8.GetBytes(tile.PlantId);
-                bytes.Add((byte)plantIdBytes.Length);      // 1
-                bytes.AddRange(plantIdBytes);              // N
+                byte flags = 0;
+                if (entry.IsTilled) flags |= 1;
+                if (entry.HasCrop)  flags |= 2;
+                bytes.Add(flags);                                            // 1
 
-                bytes.Add(tile.CropStage);                                            // 1
-                bytes.AddRange(System.BitConverter.GetBytes(tile.WorldX));            // 4
-                bytes.AddRange(System.BitConverter.GetBytes(tile.WorldY));            // 4
-                bytes.Add(tile.PollenHarvestCount);                                   // 1
+                if (entry.HasCrop)
+                {
+                    byte[] plantIdBytes = string.IsNullOrEmpty(entry.Crop.PlantId)
+                        ? System.Array.Empty<byte>()
+                        : System.Text.Encoding.UTF8.GetBytes(entry.Crop.PlantId);
+                    bytes.Add((byte)plantIdBytes.Length);                    // 1
+                    bytes.AddRange(plantIdBytes);                            // N
+                    bytes.Add(entry.Crop.CropStage);                        // 1
+                    bytes.AddRange(System.BitConverter.GetBytes(entry.Crop.TotalAge)); // 4
+                    bytes.Add(entry.Crop.PollenHarvestCount);               // 1
+                }
             }
         }
 
@@ -721,41 +747,43 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private ChunkSyncData[] DeserializeBatch(byte[] data)
     {
         int offset = 0;
-
-        int chunkCount = System.BitConverter.ToInt32(data, offset); offset += 4;
-        int totalCrops = System.BitConverter.ToInt32(data, offset); offset += 4;
+        int chunkCount  = System.BitConverter.ToInt32(data, offset); offset += 4;
+        int totalEntries = System.BitConverter.ToInt32(data, offset); offset += 4;
 
         ChunkSyncData[] batch = new ChunkSyncData[chunkCount];
 
         for (int i = 0; i < chunkCount; i++)
         {
             ChunkSyncData chunk = new ChunkSyncData();
-            chunk.ChunkX   = System.BitConverter.ToInt32(data, offset); offset += 4;
-            chunk.ChunkY   = System.BitConverter.ToInt32(data, offset); offset += 4;
+            chunk.ChunkX    = System.BitConverter.ToInt32(data, offset); offset += 4;
+            chunk.ChunkY    = System.BitConverter.ToInt32(data, offset); offset += 4;
             chunk.SectionId = System.BitConverter.ToInt32(data, offset); offset += 4;
-            int cropCount  = System.BitConverter.ToInt32(data, offset); offset += 4;
+            int entryCount  = System.BitConverter.ToInt32(data, offset); offset += 4;
 
-            chunk.Crops = new CropChunkData.TileData[cropCount];
+            chunk.Tiles = new SyncTileEntry[entryCount];
 
-            for (int j = 0; j < cropCount; j++)
+            for (int j = 0; j < entryCount; j++)
             {
-                CropChunkData.TileData tile = new CropChunkData.TileData();
+                SyncTileEntry entry = new SyncTileEntry();
+                entry.WorldX = System.BitConverter.ToInt32(data, offset); offset += 4;
+                entry.WorldY = System.BitConverter.ToInt32(data, offset); offset += 4;
 
-                tile.IsTilled = data[offset] == 1; offset += 1;
-                tile.HasCrop  = data[offset] == 1; offset += 1;
+                byte flags   = data[offset++];
+                entry.IsTilled = (flags & 1) != 0;
+                entry.HasCrop  = (flags & 2) != 0;
 
-                int plantIdLen = data[offset++];
-                tile.PlantId = plantIdLen > 0
-                    ? System.Text.Encoding.UTF8.GetString(data, offset, plantIdLen)
-                    : string.Empty;
-                offset += plantIdLen;
+                if (entry.HasCrop)
+                {
+                    int plantIdLen = data[offset++];
+                    entry.Crop.PlantId = plantIdLen > 0
+                        ? System.Text.Encoding.UTF8.GetString(data, offset, plantIdLen) : string.Empty;
+                    offset += plantIdLen;
+                    entry.Crop.CropStage          = data[offset++];
+                    entry.Crop.TotalAge           = System.BitConverter.ToInt32(data, offset); offset += 4;
+                    entry.Crop.PollenHarvestCount = offset < data.Length ? data[offset++] : (byte)0;
+                }
 
-                tile.CropStage = data[offset++];
-                tile.WorldX    = System.BitConverter.ToInt32(data, offset); offset += 4;
-                tile.WorldY    = System.BitConverter.ToInt32(data, offset); offset += 4;
-                tile.PollenHarvestCount = offset < data.Length ? data[offset++] : (byte)0;
-
-                chunk.Crops[j] = tile;
+                chunk.Tiles[j] = entry;
             }
 
             batch[i] = chunk;

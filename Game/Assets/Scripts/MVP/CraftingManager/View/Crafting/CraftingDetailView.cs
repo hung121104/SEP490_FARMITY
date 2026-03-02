@@ -35,7 +35,7 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
     // State
     private RecipeModel currentRecipe;
     private bool canCraft;
-    private Dictionary<ItemDataSO, int> currentMissingIngredients;
+    private Dictionary<string, int> currentMissingIngredients;
     private List<IngredientSlotUI> ingredientSlots = new List<IngredientSlotUI>();
     private int currentCraftAmount = 1;
 
@@ -59,7 +59,7 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
 
     #region IRecipeDetailView Implementation
 
-    public void ShowRecipeDetail(RecipeModel recipe, bool canCraft, Dictionary<ItemDataSO, int> missingIngredients, int maxCraftableAmount)
+    public void ShowRecipeDetail(RecipeModel recipe, bool canCraft, Dictionary<string, int> missingIngredients, int maxCraftableAmount)
     {
         if (recipe == null)
         {
@@ -69,7 +69,7 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
 
         currentRecipe = recipe;
         this.canCraft = canCraft;
-        currentMissingIngredients = missingIngredients ?? new Dictionary<ItemDataSO, int>();
+        currentMissingIngredients = missingIngredients ?? new Dictionary<string, int>();
         currentCraftAmount = 1; // Reset to 1 when showing new recipe
 
         // Show panel
@@ -138,12 +138,14 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
     {
         if (resultItemIcon != null)
         {
-            resultItemIcon.sprite = recipe.ResultItem.icon;
+            Sprite icon = ItemCatalogService.Instance?.GetCachedSprite(recipe.ResultItemId);
+            if (icon != null) resultItemIcon.sprite = icon;
         }
 
         if (resultItemNameText != null)
         {
-            resultItemNameText.text = recipe.ResultItem.itemName;
+            var resultData = ItemCatalogService.Instance?.GetItemData(recipe.ResultItemId);
+            resultItemNameText.text = resultData?.itemName ?? recipe.ResultItemId;
         }
 
         UpdateResultQuantity();
@@ -158,12 +160,12 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
         }
     }
 
-    private void DisplayIngredients(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
+    private void DisplayIngredients(RecipeModel recipe, Dictionary<string, int> missingIngredients)
     {
         // Clear existing ingredient slots
         ClearIngredients();
 
-        if (recipe.Ingredients == null || recipe.Ingredients.Length == 0)
+        if (recipe.Ingredients == null || recipe.Ingredients.Count == 0)
         {
             Debug.LogWarning($"[CraftingDetailView] Recipe {recipe.RecipeName} has no ingredients");
             return;
@@ -176,11 +178,19 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
         }
     }
 
-    private void CreateIngredientSlot(ItemIngredient ingredient, Dictionary<ItemDataSO, int> missingIngredients)
+    private void CreateIngredientSlot(RecipeIngredient ingredient, Dictionary<string, int> missingIngredients)
     {
         if (ingredientSlotPrefab == null || ingredientsContainer == null)
         {
             Debug.LogError("[CraftingDetailView] Missing ingredient prefab or container");
+            return;
+        }
+
+        // Resolve ItemData from catalog
+        ItemData itemData = ItemCatalogService.Instance?.GetItemData(ingredient.itemId);
+        if (itemData == null)
+        {
+            Debug.LogWarning($"[CraftingDetailView] Could not resolve ItemData for id '{ingredient.itemId}'");
             return;
         }
 
@@ -189,12 +199,12 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
 
         if (slotUI != null)
         {
-            int missingAmount = missingIngredients.ContainsKey(ingredient.item)
-                ? missingIngredients[ingredient.item]
+            int missingAmount = missingIngredients != null && missingIngredients.ContainsKey(ingredient.itemId)
+                ? missingIngredients[ingredient.itemId]
                 : 0;
 
             int displayQuantity = ingredient.quantity * currentCraftAmount;
-            slotUI.Initialize(ingredient.item, displayQuantity, missingAmount);
+            slotUI.Initialize(itemData, displayQuantity, missingAmount);
             ingredientSlots.Add(slotUI);
         }
     }
@@ -233,16 +243,18 @@ public class CraftingDetailView : MonoBehaviour, IRecipeDetailView
         currentCraftAmount = amount;
 
         // Update ingredient quantities
-        for (int i = 0; i < ingredientSlots.Count && i < currentRecipe.Ingredients.Length; i++)
+        for (int i = 0; i < ingredientSlots.Count && i < currentRecipe.Ingredients.Count; i++)
         {
             var ingredient = currentRecipe.Ingredients[i];
             int displayQuantity = ingredient.quantity * currentCraftAmount;
             
-            int missingAmount = currentMissingIngredients != null && currentMissingIngredients.ContainsKey(ingredient.item)
-                ? currentMissingIngredients[ingredient.item]
+            int missingAmount = currentMissingIngredients != null && currentMissingIngredients.ContainsKey(ingredient.itemId)
+                ? currentMissingIngredients[ingredient.itemId]
                 : 0;
 
-            ingredientSlots[i].Initialize(ingredient.item, displayQuantity, missingAmount);
+            ItemData itemData = ItemCatalogService.Instance?.GetItemData(ingredient.itemId);
+            if (itemData != null)
+                ingredientSlots[i].Initialize(itemData, displayQuantity, missingAmount);
         }
 
         // Update result quantity

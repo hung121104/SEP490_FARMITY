@@ -58,6 +58,7 @@ public class WorldDataManager : MonoBehaviour
     // Data modules
     private Dictionary<string, IWorldDataModule> modules = new Dictionary<string, IWorldDataModule>();
     private CropDataModule cropModule;
+    private StructureDataModule structureModule;
     
     // Quick lookup: chunkPosition -> sectionId
     private Dictionary<Vector2Int, int> chunkToSectionMap = new Dictionary<Vector2Int, int>();
@@ -97,7 +98,8 @@ public class WorldDataManager : MonoBehaviour
     }
 
     // Public access to modules
-    public CropDataModule CropData => cropModule;
+    public CropDataModule      CropData      => cropModule;
+    public StructureDataModule StructureData => structureModule;
     
     private void Awake()
     {
@@ -168,19 +170,20 @@ public class WorldDataManager : MonoBehaviour
     
     private void InitializeModules()
     {
-        // Initialize Crop Module
+        // Crop Module
         cropModule = new CropDataModule();
         cropModule.Initialize(this);
         modules[cropModule.ModuleName] = cropModule;
-        
-        // Future modules can be added here:
+
+        // Structure Module
+        structureModule = new StructureDataModule();
+        structureModule.Initialize(this);
+        modules[structureModule.ModuleName] = structureModule;
+
+        // Future modules:
         // inventoryModule = new InventoryDataModule();
         // inventoryModule.Initialize(this);
         // modules[inventoryModule.ModuleName] = inventoryModule;
-        
-        // structureModule = new StructureDataModule();
-        // structureModule.Initialize(this);
-        // modules[structureModule.ModuleName] = structureModule;
     }
     
     #region Core Coordinate Utilities
@@ -278,16 +281,19 @@ public class WorldDataManager : MonoBehaviour
     {
         WorldDataStats stats = new WorldDataStats();
         stats.TotalSections = sectionConfigs.Count;
-        stats.TotalChunks = chunkToSectionMap.Count;
+        stats.TotalChunks   = chunkToSectionMap.Count;
         stats.MemoryUsageMB = GetMemoryUsageMB();
-        
-        // Get crop-specific stats
+
         var cropStats = cropModule.GetStats();
-        stats.LoadedChunks = (int)cropStats["LoadedChunks"];
-        stats.TotalCrops = (int)cropStats["TotalCrops"];
+        stats.LoadedChunks    = (int)cropStats["LoadedChunks"];
+        stats.TotalCrops      = (int)cropStats["TotalCrops"];
         stats.TotalTilledTiles = (int)cropStats["TotalTilledTiles"];
-        stats.ChunksWithCrops = (int)cropStats["ChunksWithCrops"];
-        
+        stats.ChunksWithCrops  = (int)cropStats["ChunksWithCrops"];
+
+        var structStats = structureModule.GetStats();
+        stats.TotalStructures      = (int)structStats["TotalStructures"];
+        stats.ChunksWithStructures = (int)structStats["ChunksWithStructures"];
+
         return stats;
     }
     
@@ -377,11 +383,15 @@ public class WorldDataManager : MonoBehaviour
 [System.Serializable]
 public struct WorldDataStats
 {
-    public int TotalSections;
-    public int TotalChunks;
-    public int LoadedChunks;
-    public int ChunksWithCrops;
-    public int TotalCrops;
-    public int TotalTilledTiles;
+    public int   TotalSections;
+    public int   TotalChunks;
+    public int   LoadedChunks;
+    // Crop
+    public int   ChunksWithCrops;
+    public int   TotalCrops;
+    public int   TotalTilledTiles;
+    // Structure
+    public int   TotalStructures;
+    public int   ChunksWithStructures;
     public float MemoryUsageMB;
 }

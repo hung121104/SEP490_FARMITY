@@ -12810,8 +12810,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   unloadTriggerCollider: {fileID: 6151747945410431613}
-  playerChecker: {fileID: 7987010989099986562}
-  zOffset: {x: 0, y: 0, z: 1}
   prefab: {fileID: 372591978817517267}
 --- !u!1 &4081112733952798786
 GameObject:

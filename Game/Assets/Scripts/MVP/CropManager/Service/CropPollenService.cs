@@ -34,17 +34,17 @@ public class CropPollenService : ICropPollenService
         return cropManagerView != null && cropManagerView.IsCropAtPollenStage(wx, wy);
     }
 
-    public PollenDataSO TryCollectPollen(Vector3 worldPos)
+    public PollenData TryCollectPollen(Vector3 worldPos)
     {
         int wx = Mathf.FloorToInt(worldPos.x);
         int wy = Mathf.FloorToInt(worldPos.y);
 
         if (cropManagerView == null) return null;
 
-        PollenDataSO pollen = cropManagerView.GetPollenItem(wx, wy);
+        PollenData pollen = cropManagerView.GetPollenItem(wx, wy);
         if (pollen == null)
         {
-            Debug.LogWarning($"[CropPollenService] No PollenDataSO found for crop at ({wx},{wy}).");
+            Debug.LogWarning($"[CropPollenService] No PollenData found for crop at ({wx},{wy}).");
             return null;
         }
 
@@ -54,22 +54,19 @@ public class CropPollenService : ICropPollenService
             return null;
         }
 
-        bool added = inventoryGameView.AddItem(pollen, 1);
+        bool added = inventoryGameView.AddItem(pollen.itemID, 1);
         if (!added)
         {
             Debug.LogWarning($"[CropPollenService] Inventory full — could not add '{pollen.itemName}'.");
             return null;
         }
 
-        // Persist the harvest count locally
         worldData.IncrementPollenHarvestCount(worldPos);
 
-        // Read back the new count so we can broadcast the authoritative value
         byte newCount = 0;
-        if (worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+        if (worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
             newCount = tileData.PollenHarvestCount;
 
-        // Broadcast to other clients
         if (PhotonNetwork.IsConnected && syncManager != null)
             syncManager.BroadcastPollenHarvested(wx, wy, newCount);
 

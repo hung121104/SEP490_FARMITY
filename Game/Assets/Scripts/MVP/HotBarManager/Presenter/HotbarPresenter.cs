@@ -7,7 +7,7 @@ public class HotbarPresenter
     private readonly HotbarView view;
     private readonly IInventoryService inventoryService;
 
-    public event Action<ItemDataSO, Vector3, int> OnItemUsed;
+    public event Action<ItemData, Vector3, int> OnItemUsed;
 
     public HotbarPresenter(HotbarModel model, HotbarView view, IInventoryService inventoryService)
     {

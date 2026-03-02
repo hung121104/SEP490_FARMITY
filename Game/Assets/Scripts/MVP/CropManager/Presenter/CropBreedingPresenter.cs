@@ -15,7 +15,7 @@ public class CropBreedingPresenter
         this.service = service;
     }
 
-    public void HandleApplyPollen(PollenDataSO pollen, Vector3 targetWorldPos)
+    public void HandleApplyPollen(PollenData pollen, Vector3 targetWorldPos)
     {
         if (!service.CanApplyPollen(pollen, targetWorldPos))
         {
@@ -30,3 +30,4 @@ public class CropBreedingPresenter
             view.OnBreedingFailed(targetWorldPos);
     }
 }
+

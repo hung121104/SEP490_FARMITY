@@ -1,0 +1,67 @@
+{
+    "recipes": [
+        {
+            "recipeID": "iron_hoe",
+            "recipeName": "Iron Hoe",
+            "description": "Strong hoe.",
+            "recipeType": 0,
+            "resultItemId": "iron_hoe",
+            "resultQuantity": 1,
+            "resultQuality": 0,
+            "ingredients": [
+                {
+                    "itemId": "copper_hoe",
+                    "quantity": 3
+                },
+                {
+                    "itemId": "gold_hoe",
+                    "quantity": 2
+                }
+            ],
+            "isUnlockedByDefault": true,
+            "category": 0
+        },
+        {
+            "recipeID": "copper_hoe",
+            "recipeName": "Copper Hoe",
+            "description": "Strong hoe.",
+            "recipeType": 0,
+            "resultItemId": "copper_hoe",
+            "resultQuantity": 1,
+            "resultQuality": 0,
+            "ingredients": [
+                {
+                    "itemId": "iron_hoe",
+                    "quantity": 3
+                },
+                {
+                    "itemId": "gold_hoe",
+                    "quantity": 2
+                }
+            ],
+            "isUnlockedByDefault": true,
+            "category": 0
+        },
+        {
+            "recipeID": "gold_hoe",
+            "recipeName": "Gold Hoe",
+            "description": "Strong hoe.",
+            "recipeType": 0,
+            "resultItemId": "gold_hoe",
+            "resultQuantity": 1,
+            "resultQuality": 0,
+            "ingredients": [
+                {
+                    "itemId": "copper_hoe",
+                    "quantity": 3
+                },
+                {
+                    "itemId": "iron_hoe",
+                    "quantity": 2
+                }
+            ],
+            "isUnlockedByDefault": true,
+            "category": 0
+        }
+    ]
+}
