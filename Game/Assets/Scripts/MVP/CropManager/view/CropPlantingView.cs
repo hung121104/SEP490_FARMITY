@@ -42,10 +42,9 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     private HotbarView hotbarView;
 
     // current seed derived from hotbar; null when no seed selected
-    private SeedDataSO _currentSeed;
-    public string CurrentPlantId => (_currentSeed != null && _currentSeed.CropDataSo != null)
-        ? _currentSeed.CropDataSo.PlantId
-        : string.Empty;
+    private SeedData _currentSeed;
+    // TODO: Reconnect CurrentPlantId when SeedData.plantId is wired (requires PlantData refactor)
+    public string CurrentPlantId => string.Empty;
 
     // Tile preview
     private SpriteRenderer _previewSR;
@@ -113,7 +112,7 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
         }
 
         // Derive current seed from hotbar each frame
-        _currentSeed = hotbarView?.GetCurrentItem()?.ItemData as SeedDataSO;
+        _currentSeed = hotbarView?.GetCurrentItem()?.ItemData as SeedData;
 
         UpdatePlantingPreview();
         HandleHoldToPlant();
@@ -147,10 +146,12 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     /// Received from ItemUsageController.OnSeedUseRequested (event — no direct coupling).
     /// Plants at the current directional tile and consumes one seed only on success.
     /// </summary>
-    private void HandleSeedUseRequested(SeedDataSO seed)
+    private void HandleSeedUseRequested(string itemId)
     {
-        // Accept any seed, not just the one currently previewed
-        _currentSeed = seed;
+        // Resolve SeedData from catalog — accept any seed, not just the one currently previewed
+        var seedData = ItemCatalogService.Instance?.GetItemData<SeedData>(itemId);
+        if (seedData != null)
+            _currentSeed = seedData;
 
         bool planted = TryPlantFromItemUse();
         if (planted)
@@ -185,9 +186,8 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     {
         if (_previewSR == null) return;
 
-        Sprite seedSprite = (_currentSeed?.CropDataSo?.GrowthStages?.Count > 0)
-            ? _currentSeed.CropDataSo.GrowthStages[0].stageSprite
-            : null;
+        // TODO: Restore preview sprite when SeedData.plantId / CropDataSo link is wired
+        Sprite seedSprite = null;
 
         if (seedSprite == null || targetCamera == null || playerTransform == null)
         {

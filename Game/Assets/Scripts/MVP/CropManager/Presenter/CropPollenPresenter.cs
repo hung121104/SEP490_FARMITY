@@ -25,7 +25,7 @@ public class CropPollenPresenter
             return;
         }
 
-        PollenDataSO pollen = service.TryCollectPollen(worldPos);
+        PollenData pollen = service.TryCollectPollen(worldPos);
 
         if (pollen != null)
             view.OnPollenCollected(worldPos, pollen);

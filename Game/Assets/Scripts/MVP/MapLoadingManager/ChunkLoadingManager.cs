@@ -238,7 +238,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     {
         // Check if chunk exists in any section
         int sectionId = -1;
-        CropChunkData chunk = null;
+        UnifiedChunkData chunk = null;
         
         foreach (var config in WorldDataManager.Instance.sectionConfigs)
         {
@@ -316,7 +316,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     /// <summary>
     /// Spawn visual GameObjects for all crops and tilled tiles in a chunk
     /// </summary>
-    private void SpawnChunkVisuals(Vector2Int chunkPos, CropChunkData chunk)
+    private void SpawnChunkVisuals(Vector2Int chunkPos, UnifiedChunkData chunk)
     {
         if (plantDatabase == null || plantDatabase.Length == 0)
         {
@@ -362,19 +362,19 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             if (tile.HasCrop)
             {
                 // Get plant data for this crop type
-                PlantDataSO plantData = GetPlantData(tile.PlantId);
+                PlantDataSO plantData = GetPlantData(tile.Crop.PlantId);
                 if (plantData == null)
                 {
                     if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] No plant data found for plant id '{tile.PlantId}' at ({tile.WorldX}, {tile.WorldY})");
+                        Debug.LogWarning($"[ChunkLoading] No plant data found for plant id '{tile.Crop.PlantId}' at ({tile.WorldX}, {tile.WorldY})");
                     continue;
                 }
                 
                 // Validate stage is within bounds (for normal plants)
-                if (plantData is not HybridPlantDataSO && tile.CropStage >= plantData.GrowthStages.Count)
+                if (plantData is not HybridPlantDataSO && tile.Crop.CropStage >= plantData.GrowthStages.Count)
                 {
                     if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] Invalid crop stage {tile.CropStage} for {plantData.PlantName} at ({tile.WorldX}, {tile.WorldY})");
+                        Debug.LogWarning($"[ChunkLoading] Invalid crop stage {tile.Crop.CropStage} for {plantData.PlantName} at ({tile.WorldX}, {tile.WorldY})");
                     continue;
                 }
                 
@@ -386,17 +386,17 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 Sprite stageSprite = null;
                 if (plantData is HybridPlantDataSO hybridData)
                 {
-                    stageSprite = hybridData.GetHybridStageSprite(tile.CropStage);
+                    stageSprite = hybridData.GetHybridStageSprite(tile.Crop.CropStage);
                 }
-                else if (tile.CropStage < plantData.GrowthStages.Count)
+                else if (tile.Crop.CropStage < plantData.GrowthStages.Count)
                 {
-                    stageSprite = plantData.GrowthStages[tile.CropStage].stageSprite;
+                    stageSprite = plantData.GrowthStages[tile.Crop.CropStage].stageSprite;
                 }
 
                 if (stageSprite == null)
                 {
                     if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] '{plantData.PlantName}' stage {tile.CropStage} has a null stageSprite — " +
+                        Debug.LogWarning($"[ChunkLoading] '{plantData.PlantName}' stage {tile.Crop.CropStage} has a null stageSprite — " +
                                          "assign a sprite in PlantDataSO.GrowthStages (or the Hybrid receiver).");
                     Destroy(visual);
                     continue;
@@ -527,7 +527,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             
             if (config.ContainsChunk(chunkPos))
             {
-                CropChunkData chunk = WorldDataManager.Instance.GetChunk(config.SectionId, chunkPos);
+                UnifiedChunkData chunk = WorldDataManager.Instance.GetChunk(config.SectionId, chunkPos);
                 if (chunk != null)
                 {
                     SpawnChunkVisuals(chunkPos, chunk);
@@ -556,7 +556,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
 
             if (config.ContainsChunk(chunkPos))
             {
-                CropChunkData chunk = WorldDataManager.Instance.GetChunk(config.SectionId, chunkPos);
+                UnifiedChunkData chunk = WorldDataManager.Instance.GetChunk(config.SectionId, chunkPos);
                 if (chunk != null)
                 {
                     LoadChunk(chunkPos);

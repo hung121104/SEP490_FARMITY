@@ -35,12 +35,13 @@ public class CropBreedingView : MonoBehaviourPun
     void Start()      => FindLocalPlayer();
     void Update()     { if (playerTransform == null) FindLocalPlayer(); }
 
-    void OnEnable()   => UseToolService.OnPollenRequested += HandlePollenUseRequested;
-    void OnDisable()  => UseToolService.OnPollenRequested -= HandlePollenUseRequested;
+    // TODO: Reconnect when UseToolService.OnPollenRequested is re-enabled (PlantData refactor)
+    // void OnEnable()  => UseToolService.OnPollenRequested += HandlePollenUseRequested;
+    // void OnDisable() => UseToolService.OnPollenRequested -= HandlePollenUseRequested;
 
     // ── Event handler ─────────────────────────────────────────────────────
 
-    private void HandlePollenUseRequested(PollenDataSO pollen, Vector3 mouseWorldPos)
+    private void HandlePollenUseRequested(PollenData pollen, Vector3 mouseWorldPos)
     {
         if (playerTransform == null || pollen == null) return;
 

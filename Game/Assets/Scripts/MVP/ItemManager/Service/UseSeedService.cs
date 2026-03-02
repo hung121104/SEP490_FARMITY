@@ -4,24 +4,30 @@ using System;
 /// <summary>
 /// Dispatches seed-use requests as a static event.
 /// CropPlantingView subscribes to handle planting + item consumption.
+///
+/// Note: The {SeedData → PlantData} link is deferred until PlantDataSO is refactored.
+/// This service fires the event with an itemId string instead. CropPlantingView
+/// must adapt its subscription once PlantData migration is complete.
 /// </summary>
 public class UseSeedService : IUseSeedService
 {
     /// <summary>Fired when a Seed is used. CropPlantingView subscribes.</summary>
-    public static event Action<SeedDataSO> OnSeedRequested;
+    // TODO: Update event type to SeedData once CropPlantingView is refactored
+    public static event Action<string> OnSeedRequested;
 
-    public (bool, int) UseSeed(ItemDataSO item, Vector3 pos)
+    public (bool, int) UseSeed(ItemData item, Vector3 pos)
     {
-        Debug.Log("[UseSeedService] UseSeed: " + item + " at: " + pos);
+        Debug.Log("[UseSeedService] UseSeed: " + item.itemID + " at: " + pos);
 
-        if (item is not SeedDataSO seed)
+        if (item is not SeedData seed)
         {
-            Debug.LogWarning("[UseSeedService] Item is not a SeedDataSO.");
+            Debug.LogWarning("[UseSeedService] Item is not SeedData.");
             return (false, 0);
         }
 
-        OnSeedRequested?.Invoke(seed);
-        // Consumption is handled by CropPlantingView after a successful plant
+        // TODO: Reconnect to PlantData lookup when PlantDataSO is refactored
+        // var plantData = PlantCatalogService.Instance?.GetPlantData(seed.plantId);
+        OnSeedRequested?.Invoke(seed.itemID);
         return (false, 0);
     }
 }

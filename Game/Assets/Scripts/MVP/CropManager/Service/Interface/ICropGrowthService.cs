@@ -24,7 +24,7 @@ public interface ICropGrowthService
     bool IsCropAtPollenStage(int worldX, int worldY);
 
     /// <summary>Returns the <see cref="PollenDataSO"/> for the crop at (worldX, worldY), or null.</summary>
-    PollenDataSO GetPollenItem(int worldX, int worldY);
+    PollenData GetPollenItem(int worldX, int worldY);
 
     // ── Growth mutations ──────────────────────────────────────────────────
 

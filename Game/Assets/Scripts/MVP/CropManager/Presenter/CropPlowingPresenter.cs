@@ -26,23 +26,13 @@ public class CropPlowingPresenter
             return;
         }
 
-        // No crop — proceed with normal plow
-        Tilemap anyTilemap = Object.FindAnyObjectByType<Tilemap>();
-        if (anyTilemap == null)
-        {
-            Debug.LogError("No tilemap found in scene!");
-            return;
-        }
-
-        Vector3Int tilePosition = anyTilemap.WorldToCell(worldPosition);
-
-        bool success = cropPlowingService.PlowTile(tilePosition, worldPosition);
+        // PlowTile finds the correct Tilemap internally from the world position
+        bool success = cropPlowingService.PlowTile(Vector3Int.zero, worldPosition);
 
         if (success)
-            view.OnPlowSuccess(tilePosition, worldPosition);
+            view.OnPlowSuccess(Vector3Int.zero, worldPosition);
         else
-            view.OnPlowFailed(tilePosition);
-
+            view.OnPlowFailed(Vector3Int.zero);
     }
 
     

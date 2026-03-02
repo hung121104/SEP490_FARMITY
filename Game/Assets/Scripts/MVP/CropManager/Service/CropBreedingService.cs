@@ -23,68 +23,35 @@ public class CropBreedingService : ICropBreedingService
 
     // ── ICropBreedingService ──────────────────────────────────────────────
 
-    public bool CanApplyPollen(PollenDataSO pollen, Vector3 targetWorldPos)
+    public bool CanApplyPollen(PollenData pollen, Vector3 targetWorldPos)
     {
-        if (pollen == null || pollen.crossResults == null) return false;
+        if (pollen == null) return false;
+        // TODO: Reconnect crossResults check when PollenData.crossResults is wired (requires PlantData refactor)
+        // if (pollen.crossResults == null) return false;
         if (!worldData.TryGetCropAtWorldPosition(targetWorldPos, out var tile)) return false;
         if (tile.IsPollinated) return false;
 
         PlantDataSO targetPlant = GetPlant(tile.PlantId);
         if (targetPlant == null) return false;
-        if (targetPlant == pollen.sourcePlant) return false;         // same species
-        if (tile.CropStage != targetPlant.pollenStage) return false; // must be flowering
+        // TODO: if (targetPlant == pollen.sourcePlant) return false; — deferred
+        if (tile.CropStage != targetPlant.pollenStage) return false;
 
-        return FindCrossResult(pollen, targetPlant, out _);
+        // TODO: return FindCrossResult(pollen, targetPlant, out _);
+        Debug.LogWarning("[CropBreedingService] CanApplyPollen: crossResult check deferred until PlantData is refactored.");
+        return false;
     }
 
-    public bool TryApplyPollen(PollenDataSO pollen, Vector3 targetWorldPos)
+    public bool TryApplyPollen(PollenData pollen, Vector3 targetWorldPos)
     {
-        if (!worldData.TryGetCropAtWorldPosition(targetWorldPos, out var tile)) return false;
-
-        PlantDataSO targetPlant = GetPlant(tile.PlantId);
-        if (targetPlant == null) return false;
-        if (!FindCrossResult(pollen, targetPlant, out var cross)) return false;
-
-        // Roll success chance
-        if (Random.value > pollen.pollinationSuccessChance) return false;
-
-        // The hybrid starts at its first unique stage (pollenStage = flowering)
-        byte hybridStartStage = (byte)cross.resultPlant.pollenStage;
-
-        // Mutate the tile
-        bool ok = worldData.SetCropPlantId(targetWorldPos, cross.resultPlant.PlantId, hybridStartStage);
-        if (!ok) return false;
-
-        // Broadcast
-        int wx = Mathf.FloorToInt(targetWorldPos.x);
-        int wy = Mathf.FloorToInt(targetWorldPos.y);
-        if (PhotonNetwork.IsConnected && syncManager != null)
-            syncManager.BroadcastCropCrossbred(wx, wy, cross.resultPlant.PlantId, hybridStartStage);
-
-        // Refresh local visuals
-        RefreshChunk(targetWorldPos);
-
-        Debug.Log($"[CropBreedingService] ✓ Crossbred ({wx},{wy}): {targetPlant.PlantName} + " +
-                  $"{pollen.sourcePlant?.PlantName} → {cross.resultPlant.PlantName}");
-        return true;
+        // TODO: Reconnect this when PollenData.crossResults and PlantData are fully wired
+        Debug.LogWarning("[CropBreedingService] TryApplyPollen: deferred until PlantData refactor.");
+        return false;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
-    private static bool FindCrossResult(PollenDataSO pollen, PlantDataSO target,
-                                        out PollenDataSO.CrossResult result)
-    {
-        result = default;
-        foreach (var r in pollen.crossResults)
-        {
-            if (r.targetPlant == target && r.resultPlant != null)
-            {
-                result = r;
-                return true;
-            }
-        }
-        return false;
-    }
+    // TODO: Restore FindCrossResult when PollenData.crossResults is wired
+    // private static bool FindCrossResult(PollenData pollen, PlantDataSO target, out PollenData.CrossResult result) { ... }
 
     private PlantDataSO GetPlant(string plantId)
     {

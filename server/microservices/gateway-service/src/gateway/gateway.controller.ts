@@ -1,5 +1,6 @@
-import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req, HttpException, Put } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req, HttpException, Put, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { firstValueFrom } from 'rxjs';
 import { Response, Request } from 'express';
@@ -13,6 +14,9 @@ import { UploadSignatureDto } from './dto/upload-signature.dto';
 import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
 import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
 import { UpdateWorldDto } from './dto/update-world.dto';
+import { CreateItemDto } from './dto/create-item.dto';
+import { GatewayCloudinaryService } from './cloudinary.service';
+import { HttpStatus } from '@nestjs/common';
 
 @Controller()
 export class GatewayController {
@@ -20,7 +24,28 @@ export class GatewayController {
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
     @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
+    private readonly cloudinaryService: GatewayCloudinaryService,
   ) {}
+
+  /** Extract a well-formed HttpException from an RPC error payload */
+  private rpcError(err: any): HttpException {
+    const payload = err?.message ?? err;
+    let status = 500;
+    let message = 'Internal server error';
+    if (typeof payload === 'string') {
+      try {
+        const parsed = JSON.parse(payload);
+        status = parsed.status || status;
+        message = parsed.message || parsed.error || payload;
+      } catch {
+        message = payload;
+      }
+    } else if (payload && typeof payload === 'object') {
+      status = payload.status || payload.statusCode || payload.code || status;
+      message = payload.message || payload.error || JSON.stringify(payload);
+    }
+    return new HttpException(message, status);
+  }
 
   @Post('player-data/world')
   async createWorld(@Body() body: any, @Req() req: Request) {
@@ -162,31 +187,48 @@ export class GatewayController {
 
   @Post('auth/register')
   async register(@Body() createAccountDto: CreateAccountDto) {
-    return this.authClient.send('register', createAccountDto);
+    try {
+      return await firstValueFrom(this.authClient.send('register', createAccountDto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/login-ingame')
   async login(@Body() loginDto: any) {
-    return this.authClient.send('login-ingame', loginDto);
+    try {
+      return await firstValueFrom(this.authClient.send('login-ingame', loginDto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/register-admin')
   async registerAdmin(@Body() createAdminDto: any) {
-    return this.authClient.send('register-admin', createAdminDto);
+    try {
+      return await firstValueFrom(this.authClient.send('register-admin', createAdminDto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/login-admin')
   async loginAdmin(@Body() loginDto: any, @Res({ passthrough: true }) res: Response) {
-    const result = await firstValueFrom(this.authClient.send('login-admin', loginDto));
-    const token = result?.access_token;
-    if (!token) throw new UnauthorizedException('Login failed');
-    res.cookie('access_token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 1000,
-    });
-    return { userId: result.userId, username: result.username, access_token: token };
+    try {
+      const result = await firstValueFrom(this.authClient.send('login-admin', loginDto));
+      const token = result?.access_token;
+      if (!token) throw new HttpException('Login failed', 401);
+      res.cookie('access_token', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 1000,
+      });
+      return { userId: result.userId, username: result.username, access_token: token };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
   }
 
   @Get('auth/admin-check')
@@ -301,11 +343,109 @@ export class GatewayController {
 
   @Post('auth/admin-reset/request')
   async adminResetRequest(@Body() dto: RequestAdminResetDto) {
-    return this.authClient.send('admin-reset-request', dto);
+    try {
+      return await firstValueFrom(this.authClient.send('admin-reset-request', dto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/admin-reset/confirm')
   async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
-    return this.authClient.send('admin-reset-confirm', dto);
+    try {
+      return await firstValueFrom(this.authClient.send('admin-reset-confirm', dto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Items ────────────────────────────────────────────────────────
+
+  /** POST /game-data/items/create — accepts multipart/form-data with an icon file
+   *  + item JSON fields. Uploads the icon to Cloudinary internally, then
+   *  creates the item in admin-service (admin only). */
+  @Post('game-data/items/create')
+  @UseInterceptors(FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  async createItem(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file) throw new BadRequestException('An icon file is required (field name: "icon")');
+    try {
+      // Upload icon to Cloudinary internally — no separate endpoint needed
+      const iconUrl = await this.cloudinaryService.uploadFile(file, body.folder || 'item-icons');
+
+      // Parse numeric/boolean fields that arrive as strings from form-data
+      const dto: CreateItemDto = {
+        ...body,
+        iconUrl,
+        itemType: Number(body.itemType),
+        itemCategory: Number(body.itemCategory),
+        maxStack: Number(body.maxStack),
+        basePrice: Number(body.basePrice ?? 0),
+        buyPrice: Number(body.buyPrice ?? 0),
+        isStackable: body.isStackable === 'true' || body.isStackable === true,
+        canBeSold: body.canBeSold !== 'false' && body.canBeSold !== false,
+        canBeBought: body.canBeBought === 'true' || body.canBeBought === true,
+        isQuestItem: body.isQuestItem === 'true' || body.isQuestItem === true,
+        isArtifact: body.isArtifact === 'true' || body.isArtifact === true,
+        isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
+      };
+
+      return await firstValueFrom(this.adminClient.send('create-item', dto));
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/items/catalog — full catalog { items: [...] } for Unity client */
+  @Get('game-data/items/catalog')
+  async getItemCatalog() {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-item-catalog', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/items/all — flat array of all items */
+  @Get('game-data/items/all')
+  async getAllItems() {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-all-items', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/items/by-item-id/:itemID — find by game-side itemID string */
+  @Get('game-data/items/by-item-id/:itemID')
+  async getItemByItemId(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-item-by-item-id', itemID));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/items/:id — find by MongoDB _id */
+  @Get('game-data/items/:id')
+  async getItemById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-item-by-id', id));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/items/:id — delete by MongoDB _id (admin) */
+  @Delete('game-data/items/:id')
+  async deleteItem(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('delete-item', id));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 }

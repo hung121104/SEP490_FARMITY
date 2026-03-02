@@ -44,7 +44,7 @@ public class StatsManager : MonoBehaviour
     private int _currentHealth;
     private int _maxHealth;
 
-    private PlayerHealth playerHealth;
+    private PlayerHealthManager playerHealth;
 
     #region Initialization
 
@@ -63,8 +63,8 @@ public class StatsManager : MonoBehaviour
     {
         tempStrength = strength;
         tempVitality = vitality;
-        
-        playerHealth = FindObjectOfType<PlayerHealth>();
+
+        playerHealth = FindObjectOfType<PlayerHealthManager>();
         
         if (statsPanel != null)
             statsPanel.SetActive(false);

@@ -1,0 +1,173 @@
+# Item Catalog Backend API Instructions
+
+This document provides detailed instructions for building a backend endpoint that supplies the Item Catalog for the Farmity game. 
+
+**Goal**: Create an endpoint (e.g., `GET /items` or `GET /api/catalog`) that returns a fully populated JSON array containing all diverse item definitions. The Unity client parses this JSON and dynamically deserializes each entry into specific C# subclasses based on an `itemType` discriminator field.
+
+---
+
+## 1. Response Structure
+
+The Unity client (specifically [ItemCatalogResponse.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/ItemCatalogResponse.cs) and [ItemCatalogService.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Service/ItemCatalogService.cs)) expects a root JSON object containing a property named `"items"`, which holds an array of all item objects.
+
+```json
+{
+  "items": [
+    { /* item object 1 */ },
+    { /* item object 2 */ }
+  ]
+}
+```
+
+---
+
+## 2. Base Properties (Common for ALL items)
+
+Every single item object in the array **must** include the following properties from the base [ItemData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/ItemData.cs) class.
+
+| JSON Key | Target Type | Default / Example | Notes |
+| :--- | :--- | :--- | :--- |
+| `itemID` | string | `"resource_gold"` | Unique identifier. Use concise snake_case strings. |
+| `itemName` | string | `"Gold Ore"` | Display name in the UI. |
+| `description` | string | `"A shiny chunk of gold ore..."` | Descriptive text. |
+| `iconUrl` | string | `"https://cdn..."` | CDN URL for the item's sprite. Downloaded dynamically at runtime. |
+| `itemType` | integer | `10` | **CRITICAL DISCRIMINATOR.** Determines which C# subclass to instantiate (see Section 3). |
+| `itemCategory` | integer | `1` | E.g. 0=Farming, 1=Mining, 2=Fishing, 3=Cooking... |
+| `maxStack` | integer | `99` | Max stack size. **Set to `1` for tools/weapons.** |
+| `isStackable` | boolean | `true` | **Set to `false` for tools/weapons.** |
+| `basePrice` | integer | `100` | Base sell value before quality multipliers. |
+| `buyPrice` | integer | `150` | How much players pay to buy it. `0` if it cannot be bought. |
+| `canBeSold` | boolean | `true` | Typically `true` (except for quest items). |
+| `canBeBought` | boolean | `false` | Set `true` if it's available in stores. |
+| `isQuestItem` | boolean | `false` | Flags if it's tied to a quest. |
+| `isArtifact` | boolean | `false` | Flags if it's an artifact. |
+| `isRareItem` | boolean | `false` | Flags if it's a rare drop. |
+| `npcPreferenceNames` | string[] | `[]` | Optional. Names of NPCs with specific preferences. |
+| `npcPreferenceReactions` | integer[] | `[]` | Optional. Reaction integers mapping to `npcPreferenceNames`. (-2 to 2) |
+
+---
+
+## 3. The `itemType` Discriminator & Subclass Fields
+
+The integer value of `itemType` dictates how the client reads the object. 
+If `itemType` matches one of the properties below, **the JSON object must also include the specific fields listed for that type.**
+
+> [!IMPORTANT]  
+> If an item missing its required subtype properties is sent, it will deserialize successfully, but its specific properties will be empty/default, causing logic bugs.
+
+### `itemType: 0` - Tool // Maps to [ToolData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/ToolData.cs)
+Tools must not be stackable (`isStackable: false`, `maxStack: 1`).
+*   `toolType` (int): 0=Hoe, 1=WateringCan, 2=Pickaxe, 3=Axe, 4=FishingRod
+*   `toolLevel` (int): e.g. 1
+*   `toolPower` (int): e.g. 1
+*   `toolMaterial` (int): 0=Basic, 1=Copper, 2=Steel, 3=Gold, 4=Diamond
+
+### `itemType: 1` - Seed // Maps to [SeedData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/SeedData.cs)
+*   No additional properties required yet.
+
+### `itemType: 2` - Crop // Maps to [CropData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/CropData.cs)
+*   No additional properties required.
+
+### `itemType: 3` - Pollen // Maps to [PollenData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/PollenData.cs)
+*   `pollinationSuccessChance` (float): e.g., `0.5`
+*   `viabilityDays` (int): e.g., `3`
+
+### `itemType: 4` - Consumable // Maps to [ConsumableData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/ConsumableData.cs)
+*   `energyRestore` (int): Amount of stamina restored. e.g., `10`
+*   `healthRestore` (int): Amount of health restored. e.g., `0`
+*   `bufferDuration` (float): Buffer time. e.g., `0.0`
+
+### `itemType: 5` - Material // Maps to [MaterialData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/MaterialData.cs)
+*   No additional properties required.
+
+### `itemType: 6` - Weapon // Maps to [WeaponData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/WeaponData.cs)
+Weapons must not be stackable (`isStackable: false`, `maxStack: 1`).
+*   `damage` (int): e.g., `10`
+*   `critChance` (int): e.g., `5`
+*   `attackSpeed` (float): e.g., `1.0`
+*   `weaponMaterial` (int): 0=Basic, 1=Copper, 2=Steel, 3=Gold, 4=Diamond
+
+### `itemType: 7` - Fish // Maps to [FishData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/FishData.cs)
+*   `difficulty` (int): e.g., `1`
+*   `fishingSeasons` (integer array): Seasons fish is available. 0=Sunny, 1=Rainy. e.g. `[0, 1]`
+*   `isLegendary` (boolean): Default `false`
+
+### `itemType: 8` - Cooking // Maps to [CookingData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/CookingData.cs)
+*   `energyRestore` (int): Stamina restored.
+*   `healthRestore` (int): Health restored.
+*   `bufferDuration` (float): Buffer duration.
+
+### `itemType: 9` - Forage // Maps to [ForageData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/ForageData.cs)
+*   `foragingSeasons` (integer array): Seasons it can be found. 0=Sunny, 1=Rainy. e.g. `[0, 1]`
+*   `energyRestore` (int): Stamina restored. Default `5`
+
+### `itemType: 10` - Resource // Maps to [ResourceData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/ResourceData.cs)
+*   `isOre` (boolean): Default `false`
+*   `requiresSmelting` (boolean): Default `false`
+*   `smeltedResultId` (string): ID of smelt output. Default `""`
+
+### `itemType: 11` - Gift // Maps to [GiftItemData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/GiftItemData.cs)
+*   `isUniversalLike` (boolean): Default `false`
+*   `isUniversalLove` (boolean): Default `false`
+
+### `itemType: 12` - Quest // Maps to [QuestItemData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/QuestItemData.cs)
+Quest items must not be sellable (`canBeSold: false`).
+*   `relatedQuestID` (string): e.g., `"quest_goblins_01"`
+*   `autoConsume` (boolean): Default `false`
+
+---
+
+## 4. Example JSON Response
+
+Here is a brief example showing a Tool object and a Forage object correctly formatted together.
+
+```json
+{
+  "items": [
+    {
+      "itemID": "tool_hoe_basic",
+      "itemName": "Basic Hoe",
+      "description": "Used to till dirt.",
+      "iconUrl": "https://cdn.example.com/hoe.png",
+      "itemType": 0,
+      "itemCategory": 0,
+      "maxStack": 1,
+      "isStackable": false,
+      "basePrice": 0,
+      "buyPrice": 500,
+      "canBeSold": false,
+      "canBeBought": true,
+      "isQuestItem": false,
+      "isArtifact": false,
+      "isRareItem": false,
+      "npcPreferenceNames": [],
+      "npcPreferenceReactions": [],
+      "toolType": 0,
+      "toolLevel": 1,
+      "toolPower": 1,
+      "toolMaterial": 0
+    },
+    {
+      "itemID": "forage_wild_berry",
+      "itemName": "Wild Berry",
+      "description": "A sweet berry found in the woods.",
+      "iconUrl": "https://cdn.example.com/berry.png",
+      "itemType": 9,
+      "itemCategory": 6,
+      "maxStack": 99,
+      "isStackable": true,
+      "basePrice": 15,
+      "buyPrice": 0,
+      "canBeSold": true,
+      "canBeBought": false,
+      "isQuestItem": false,
+      "isArtifact": false,
+      "isRareItem": false,
+      "npcPreferenceNames": [],
+      "npcPreferenceReactions": [],
+      "foragingSeasons": [0, 1],
+      "energyRestore": 10
+    }
+  ]
+}
+```

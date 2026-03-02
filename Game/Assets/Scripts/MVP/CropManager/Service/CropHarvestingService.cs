@@ -44,7 +44,7 @@ public class CropHarvestingService : ICropHarvestingService
         return cropManagerView.IsCropReadyToHarvest(wx, wy);
     }
 
-    public bool TryHarvest(Vector3 worldPos, out ItemDataSO harvestedItem)
+    public bool TryHarvest(Vector3 worldPos, out ItemData harvestedItem)
     {
         harvestedItem = null;
         if (worldData == null) return false;
@@ -54,15 +54,15 @@ public class CropHarvestingService : ICropHarvestingService
         Vector3 snappedPos = new Vector3(worldX, worldY, 0);
 
         // Resolve the harvested item BEFORE removing crop data
-        if (worldData.TryGetCropAtWorldPosition(snappedPos, out CropChunkData.TileData tileData)
+        if (worldData.TryGetCropAtWorldPosition(snappedPos, out UnifiedChunkData.CropTileData tileData)
             && cropManagerView != null
             && !string.IsNullOrEmpty(tileData.PlantId))
         {
             PlantDataSO plantData = cropManagerView.GetPlantData(tileData.PlantId);
-            if (plantData != null)
-                harvestedItem = plantData.HarvestedItem;
+            if (plantData != null && !string.IsNullOrEmpty(plantData.harvestedItemId))
+                harvestedItem = ItemCatalogService.Instance?.GetItemData(plantData.harvestedItemId);
             else
-                Debug.LogWarning($"[CropHarvestingService] No PlantDataSO for plantId '{tileData.PlantId}'.");
+                Debug.LogWarning($"[CropHarvestingService] No harvestedItemId for plantId '{tileData.PlantId}'.");
         }
 
         // Remove crop from world data
@@ -73,13 +73,9 @@ public class CropHarvestingService : ICropHarvestingService
             return false;
         }
 
-        // Unregister from visual manager
         cropManagerView?.UnregisterCrop(worldX, worldY);
-
-        // Broadcast to other clients
         syncManager?.BroadcastCropRemoved(worldX, worldY);
 
-        // Refresh visuals
         if (loadingManager != null)
         {
             Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(snappedPos);
@@ -91,7 +87,7 @@ public class CropHarvestingService : ICropHarvestingService
         {
             if (inventoryGameView != null)
             {
-                bool added = inventoryGameView.AddItem(harvestedItem, 1);
+                bool added = inventoryGameView.AddItem(harvestedItem.itemID, 1);
                 if (!added)
                     Debug.LogWarning($"[CropHarvestingService] Inventory full — could not add '{harvestedItem.itemName}'.");
                 else
@@ -100,7 +96,7 @@ public class CropHarvestingService : ICropHarvestingService
         }
         else
         {
-            Debug.LogWarning($"[CropHarvestingService] Crop at ({worldX},{worldY}) has no HarvestedItem in PlantDataSO.");
+            Debug.LogWarning($"[CropHarvestingService] Crop at ({worldX},{worldY}) has no harvestedItemId.");
         }
 
         return true;
@@ -137,7 +133,7 @@ public class CropHarvestingService : ICropHarvestingService
     public bool IsReadyToCollectPollen(Vector3 worldPos)
         => pollenService != null && pollenService.CanCollectPollen(worldPos);
 
-    public bool TryCollectPollen(Vector3 worldPos, out PollenDataSO pollenItem)
+    public bool TryCollectPollen(Vector3 worldPos, out PollenData pollenItem)
     {
         pollenItem = null;
         if (pollenService == null) return false;
