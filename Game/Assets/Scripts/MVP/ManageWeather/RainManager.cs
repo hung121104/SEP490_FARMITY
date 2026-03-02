@@ -37,12 +37,7 @@ public class RainManager : MonoBehaviour
     private void Update()
     {
         if (!isRaining)
-        {
-            Debug.Log("Not raining");
             return;
-        }
-
-        Debug.Log("Raining. Initialized = " + initialized);
 
         if (!initialized)
         {
