@@ -6,13 +6,16 @@ public class WeatherView : MonoBehaviourPunCallbacks
 {
     [Header("Input")]
     [SerializeField] private KeyCode toggleForecastKey = KeyCode.F;
-
+    [Header("Weather Settings")]
+    [SerializeField] private SeasonManagerView seasonManager;
     [Header("Weather Settings")]
     [Range(0f, 1f)]
     [SerializeField] private float rainChance = 0.5f;
 
     [Header("Effects")]
     [SerializeField] private GameObject rainEffect;
+    [SerializeField] private float rainySeasonRainChance = 0.7f;
+    [SerializeField] private float sunnySeasonRainChance = 0.3f;
 
     [Header("References")]
     [SerializeField] private TimeManagerView timeManager;
@@ -29,11 +32,17 @@ public class WeatherView : MonoBehaviourPunCallbacks
         presenter = new WeatherPresenter(service, this);
         forecastPresenter = new WeatherForecastPresenter(service, forecastView);
 
-        WeatherService.OnWeatherChanged += DisplayWeather;
+        presenter.OnWeatherChanged += DisplayWeather;
     }
 
     private void Start()
     {
+        if (seasonManager != null)
+        {
+            ApplySeasonRainChance(seasonManager.CurrentSeason);
+            seasonManager.OnSeasonChanged += OnSeasonChanged;
+        }
+
         presenter.Initialize(rainChance);
 
         if (timeManager != null)
@@ -59,7 +68,7 @@ public class WeatherView : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        presenter.RefreshView();
+        
         forecastPresenter.Refresh();
     }
 
@@ -71,6 +80,26 @@ public class WeatherView : MonoBehaviourPunCallbacks
 
     private void OnDestroy()
     {
-        WeatherService.OnWeatherChanged -= DisplayWeather;
+        presenter.OnWeatherChanged -= DisplayWeather;
+    }
+    private void OnSeasonChanged(Season newSeason)
+    {
+        rainChance = newSeason == Season.Rainy
+            ? rainySeasonRainChance
+            : sunnySeasonRainChance;
+
+        presenter.SetRainChance(rainChance);
+
+        Debug.Log("Rain chance updated to: " + rainChance);
+    }
+
+    private void ApplySeasonRainChance(Season season)
+    {
+        if (season == Season.Rainy)
+            rainChance = rainySeasonRainChance;
+        else
+            rainChance = sunnySeasonRainChance;
+
+        Debug.Log($"Rain chance set to: {rainChance}");
     }
 }

@@ -3,7 +3,7 @@ using ExitGames.Client.Photon;
 
 public class WeatherService : IWeatherService
 {
-    public static event System.Action<WeatherType> OnWeatherChanged;
+    public  event System.Action<WeatherType> OnWeatherChanged;
     private const string PROP_TODAY = "weather_today";
     private const string PROP_TOMORROW = "weather_tomorrow";
 
@@ -24,12 +24,15 @@ public class WeatherService : IWeatherService
 
         var props = PhotonNetwork.CurrentRoom.CustomProperties;
 
+        
         if (!props.ContainsKey(PROP_TODAY))
         {
             if (PhotonNetwork.IsMasterClient)
             {
-                model.GenerateTomorrow();
+                model.GenerateTomorrow();   
                 model.ShiftDay();
+
+                model.GenerateTomorrow();   
 
                 Hashtable newProps = new Hashtable
             {
@@ -38,10 +41,13 @@ public class WeatherService : IWeatherService
             };
 
                 PhotonNetwork.CurrentRoom.SetCustomProperties(newProps);
+
+                OnWeatherChanged?.Invoke(model.TodayWeather);
             }
         }
         else
         {
+           
             LoadFromRoom();
             OnWeatherChanged?.Invoke(model.TodayWeather);
         }
@@ -61,8 +67,8 @@ public class WeatherService : IWeatherService
         if (!PhotonNetwork.IsMasterClient)
             return;
 
-        model.ShiftDay();        
-        model.GenerateTomorrow(); 
+        model.ShiftDay();
+        model.GenerateTomorrow();
 
         Hashtable props = new Hashtable
     {
@@ -71,6 +77,9 @@ public class WeatherService : IWeatherService
     };
 
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+
+       
+        OnWeatherChanged?.Invoke(model.TodayWeather);
     }
 
 
@@ -91,7 +100,10 @@ public class WeatherService : IWeatherService
             model.SetTomorrow((WeatherType)(int)props[PROP_TOMORROW]);
         }
     }
-
+    public void SetRainChance(float chance)
+    {
+        model.SetRainChance(chance);
+    }
 
     public void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
