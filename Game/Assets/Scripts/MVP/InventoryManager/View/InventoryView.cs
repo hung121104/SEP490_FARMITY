@@ -362,4 +362,24 @@ public class InventoryView : MonoBehaviour, IInventoryView
     {
         OnSlotClicked?.Invoke(slotIndex);
     }
+
+    /// <summary>
+    /// Check if a screen position is inside the inventory panel RectTransform.
+    /// Used to detect when a drag ends outside the inventory (drop to world).
+    /// </summary>
+    public bool IsScreenPositionInsideInventory(Vector2 screenPosition)
+    {
+        if (inventoryPanel == null) return false;
+
+        RectTransform rect = inventoryPanel.GetComponent<RectTransform>();
+        if (rect == null) return false;
+
+        // Check against the inventory panel's rect, using the parent canvas camera if needed
+        Canvas canvas = inventoryPanel.GetComponentInParent<Canvas>();
+        Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            ? canvas.worldCamera
+            : null;
+
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, screenPosition, cam);
+    }
 }

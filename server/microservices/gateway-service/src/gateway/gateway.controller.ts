@@ -1,4 +1,22 @@
-import { Controller, Post, Body, Get, Query, Inject, Headers, UnauthorizedException, Res, Param, Delete, Req, HttpException, Put, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Query,
+  Inject,
+  Headers,
+  UnauthorizedException,
+  Res,
+  Param,
+  Delete,
+  Req,
+  HttpException,
+  Put,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+} from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateAccountDto } from './dto/create-account.dto';
@@ -54,7 +72,13 @@ export class GatewayController {
     if (!ownerId) throw new UnauthorizedException('Missing owner');
     // forward optional _id for update, otherwise create
     try {
-      return await firstValueFrom(this.playerDataClient.send('create-world', { _id: body._id, worldName: body.worldName, ownerId }));
+      return await firstValueFrom(
+        this.playerDataClient.send('create-world', {
+          _id: body._id,
+          worldName: body.worldName,
+          ownerId,
+        }),
+      );
     } catch (err) {
       const payload = err?.message ?? err;
       let status = 500;
@@ -80,7 +104,9 @@ export class GatewayController {
     try {
       const ownerIdRaw = req['user']?.sub;
       const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
-      return await firstValueFrom(this.playerDataClient.send('get-world', { _id, ownerId }));
+      return await firstValueFrom(
+        this.playerDataClient.send('get-world', { _id, ownerId }),
+      );
     } catch (err) {
       const payload = err?.message ?? err;
       let status = 500;
@@ -136,7 +162,9 @@ export class GatewayController {
     const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
     try {
-      return await firstValueFrom(this.playerDataClient.send('delete-world', { _id, ownerId }));
+      return await firstValueFrom(
+        this.playerDataClient.send('delete-world', { _id, ownerId }),
+      );
     } catch (err) {
       const payload = err?.message ?? err;
       let status = 500;
@@ -158,13 +186,18 @@ export class GatewayController {
   }
 
   @Get('player-data/worlds')
-  async getWorldsByOwner(@Req() req: Request, @Query('ownerId') ownerIdQuery?: string) {
+  async getWorldsByOwner(
+    @Req() req: Request,
+    @Query('ownerId') ownerIdQuery?: string,
+  ) {
     const user = req['user'];
     let ownerId = user?.sub ? String(user.sub) : undefined;
     if (ownerIdQuery && user?.isAdmin) ownerId = String(ownerIdQuery);
     if (!ownerId) throw new UnauthorizedException('Missing owner');
     try {
-      return await firstValueFrom(this.playerDataClient.send('get-worlds-by-owner', { ownerId }));
+      return await firstValueFrom(
+        this.playerDataClient.send('get-worlds-by-owner', { ownerId }),
+      );
     } catch (err) {
       const payload = err?.message ?? err;
       let status = 500;
@@ -188,7 +221,9 @@ export class GatewayController {
   @Post('auth/register')
   async register(@Body() createAccountDto: CreateAccountDto) {
     try {
-      return await firstValueFrom(this.authClient.send('register', createAccountDto));
+      return await firstValueFrom(
+        this.authClient.send('register', createAccountDto),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -197,7 +232,9 @@ export class GatewayController {
   @Post('auth/login-ingame')
   async login(@Body() loginDto: any) {
     try {
-      return await firstValueFrom(this.authClient.send('login-ingame', loginDto));
+      return await firstValueFrom(
+        this.authClient.send('login-ingame', loginDto),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -206,16 +243,23 @@ export class GatewayController {
   @Post('auth/register-admin')
   async registerAdmin(@Body() createAdminDto: any) {
     try {
-      return await firstValueFrom(this.authClient.send('register-admin', createAdminDto));
+      return await firstValueFrom(
+        this.authClient.send('register-admin', createAdminDto),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }
   }
 
   @Post('auth/login-admin')
-  async loginAdmin(@Body() loginDto: any, @Res({ passthrough: true }) res: Response) {
+  async loginAdmin(
+    @Body() loginDto: any,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     try {
-      const result = await firstValueFrom(this.authClient.send('login-admin', loginDto));
+      const result = await firstValueFrom(
+        this.authClient.send('login-admin', loginDto),
+      );
       const token = result?.access_token;
       if (!token) throw new HttpException('Login failed', 401);
       res.cookie('access_token', token, {
@@ -224,7 +268,11 @@ export class GatewayController {
         sameSite: 'lax',
         maxAge: 60 * 60 * 1000,
       });
-      return { userId: result.userId, username: result.username, access_token: token };
+      return {
+        userId: result.userId,
+        username: result.username,
+        access_token: token,
+      };
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -243,16 +291,22 @@ export class GatewayController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const tokenFromHeader = authHeader?.split(' ')[1];
-    const cookies = (cookieHeader || '').split(';').reduce<Record<string, string>>((acc, c) => {
-      const [k, v] = c.split('=').map(s => s?.trim());
-      if (k && v) acc[k] = decodeURIComponent(v);
-      return acc;
-    }, {});
+    const cookies = (cookieHeader || '')
+      .split(';')
+      .reduce<Record<string, string>>((acc, c) => {
+        const [k, v] = c.split('=').map((s) => s?.trim());
+        if (k && v) acc[k] = decodeURIComponent(v);
+        return acc;
+      }, {});
     const token = tokenFromHeader ?? cookies['access_token'];
     if (token) {
       await firstValueFrom(this.authClient.send('logout', token));
     }
-    res.clearCookie('access_token', { httpOnly: true, secure: true, sameSite: 'lax' });
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+    });
     return { ok: true };
   }
 
@@ -272,7 +326,10 @@ export class GatewayController {
   }
 
   @Post('blog/update/:id')
-  async updateBlog(@Param('id') id: string, @Body() updateBlogDto: UpdateBlogDto) {
+  async updateBlog(
+    @Param('id') id: string,
+    @Body() updateBlogDto: UpdateBlogDto,
+  ) {
     return this.adminClient.send('update-blog', { id, updateBlogDto });
   }
 
@@ -302,7 +359,10 @@ export class GatewayController {
   }
 
   @Post('news/update/:id')
-  async updateNews(@Param('id') id: string, @Body() updateNewsDto: UpdateNewsDto) {
+  async updateNews(
+    @Param('id') id: string,
+    @Body() updateNewsDto: UpdateNewsDto,
+  ) {
     return this.adminClient.send('update-news', { id, updateNewsDto });
   }
 
@@ -332,7 +392,10 @@ export class GatewayController {
   }
 
   @Post('media/update/:id')
-  async updateMedia(@Param('id') id: string, @Body() updateMediaDto: UpdateMediaDto) {
+  async updateMedia(
+    @Param('id') id: string,
+    @Body() updateMediaDto: UpdateMediaDto,
+  ) {
     return this.adminClient.send('update-media', { id, updateMediaDto });
   }
 
@@ -344,7 +407,9 @@ export class GatewayController {
   @Post('auth/admin-reset/request')
   async adminResetRequest(@Body() dto: RequestAdminResetDto) {
     try {
-      return await firstValueFrom(this.authClient.send('admin-reset-request', dto));
+      return await firstValueFrom(
+        this.authClient.send('admin-reset-request', dto),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -353,7 +418,9 @@ export class GatewayController {
   @Post('auth/admin-reset/confirm')
   async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
     try {
-      return await firstValueFrom(this.authClient.send('admin-reset-confirm', dto));
+      return await firstValueFrom(
+        this.authClient.send('admin-reset-confirm', dto),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -365,15 +432,23 @@ export class GatewayController {
    *  + item JSON fields. Uploads the icon to Cloudinary internally, then
    *  creates the item in admin-service (admin only). */
   @Post('game-data/items/create')
-  @UseInterceptors(FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
   async createItem(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: any,
   ) {
-    if (!file) throw new BadRequestException('An icon file is required (field name: "icon")');
+    if (!file)
+      throw new BadRequestException(
+        'An icon file is required (field name: "icon")',
+      );
     try {
       // Upload icon to Cloudinary internally — no separate endpoint needed
-      const iconUrl = await this.cloudinaryService.uploadFile(file, body.folder || 'item-icons');
+      const iconUrl = await this.cloudinaryService.uploadFile(
+        file,
+        body.folder || 'item-icons',
+      );
 
       // Parse numeric/boolean fields that arrive as strings from form-data
       const dto: CreateItemDto = {
@@ -403,7 +478,9 @@ export class GatewayController {
   @Get('game-data/items/catalog')
   async getItemCatalog() {
     try {
-      return await firstValueFrom(this.adminClient.send('get-item-catalog', {}));
+      return await firstValueFrom(
+        this.adminClient.send('get-item-catalog', {}),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -423,7 +500,9 @@ export class GatewayController {
   @Get('game-data/items/by-item-id/:itemID')
   async getItemByItemId(@Param('itemID') itemID: string) {
     try {
-      return await firstValueFrom(this.adminClient.send('get-item-by-item-id', itemID));
+      return await firstValueFrom(
+        this.adminClient.send('get-item-by-item-id', itemID),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -444,6 +523,61 @@ export class GatewayController {
   async deleteItem(@Param('id') id: string) {
     try {
       return await firstValueFrom(this.adminClient.send('delete-item', id));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Dropped Items ───────────────────────────────────────────────────────────
+
+  /** POST /player-data/dropped-items — persist a new dropped item (auth required) */
+  @Post('player-data/dropped-items')
+  async createDroppedItem(@Body() body: any, @Req() req: Request) {
+    const ownerId = req['user']?.sub ? String(req['user'].sub) : undefined;
+    if (!ownerId) throw new UnauthorizedException('Missing owner');
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('create-dropped-item', body),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /player-data/dropped-items/:dropId — remove a picked-up/despawned item (auth required) */
+  @Delete('player-data/dropped-items/:dropId')
+  async deleteDroppedItem(
+    @Param('dropId') dropId: string,
+    @Req() req: Request,
+  ) {
+    const ownerId = req['user']?.sub ? String(req['user'].sub) : undefined;
+    if (!ownerId) throw new UnauthorizedException('Missing owner');
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('delete-dropped-item', { dropId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /player-data/dropped-items?roomName=X&chunkX=Y&chunkY=Z — query items (auth required) */
+  @Get('player-data/dropped-items')
+  async getDroppedItems(
+    @Query('roomName') roomName: string,
+    @Query('chunkX') chunkX: string,
+    @Query('chunkY') chunkY: string,
+    @Req() req: Request,
+  ) {
+    const ownerId = req['user']?.sub ? String(req['user'].sub) : undefined;
+    if (!ownerId) throw new UnauthorizedException('Missing owner');
+    try {
+      const payload: Record<string, any> = { roomName };
+      if (chunkX !== undefined) payload.chunkX = Number(chunkX);
+      if (chunkY !== undefined) payload.chunkY = Number(chunkY);
+      return await firstValueFrom(
+        this.playerDataClient.send('get-dropped-items', payload),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }

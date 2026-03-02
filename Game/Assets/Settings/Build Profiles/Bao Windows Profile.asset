@@ -21,25 +21,25 @@ MonoBehaviour:
   m_OverrideGlobalSceneList: 1
   m_Scenes:
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/AuthMenu/AuthScene.unity
+    m_path: Assets/Scenes/Test Scenes Bao/AuthMenu/AuthScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/LoadingScene.unity
+    m_path: Assets/Scenes/Test Scenes Bao/LoadingScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/LoadGameScene.unity
+    m_path: Assets/Scenes/Test Scenes Bao/LoadGameScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/LobbyScene.unity
+    m_path: Assets/Scenes/Test Scenes Bao/LobbyScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/MapLoaderTestScene.unity
+    m_path: Assets/Scenes/Test Scenes Bao/MapLoaderTestScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/GameCoreTestScene.unity
+    m_path: Assets/Scenes/Test Scenes Bao/GameCoreTestScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/MainMenu/MainMenuScene.unity
+    m_path: Assets/Scenes/Test Scenes Bao/MainMenu/MainMenuScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/MainMenu/CreateWorldScene.unity
+    m_path: Assets/Scenes/Test Scenes Bao/MainMenu/CreateWorldScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/MainMenu/PlayerWorldListScene.unity
+    m_path: Assets/Scenes/Test Scenes Bao/MainMenu/PlayerWorldListScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/MainMenu/OnlineWorldListScene.unity
+    m_path: Assets/Scenes/Test Scenes Bao/MainMenu/OnlineWorldListScene.unity
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []
