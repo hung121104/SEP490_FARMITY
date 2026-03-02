@@ -15,7 +15,6 @@ public class CraftingFilterView : MonoBehaviour, IFilterView
         CraftingCategory.General,
         CraftingCategory.Tools,
         CraftingCategory.Materials,
-        CraftingCategory.Equipment,
         CraftingCategory.Furniture
     };
 

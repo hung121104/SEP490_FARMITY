@@ -103,7 +103,6 @@ public class CategoryButtonUI : MonoBehaviour
             CraftingCategory.Food => "Food",
             CraftingCategory.Materials => "Materials",
             CraftingCategory.Furniture => "Furniture",
-            CraftingCategory.Equipment => "Equipment",
             _ => category.ToString()
         };
     }

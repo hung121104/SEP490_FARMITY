@@ -270,7 +270,6 @@ public class CraftingPresenter
             CraftingCategory.General,
             CraftingCategory.Tools,
             CraftingCategory.Materials,
-            CraftingCategory.Equipment,
             CraftingCategory.Furniture
         };
 
