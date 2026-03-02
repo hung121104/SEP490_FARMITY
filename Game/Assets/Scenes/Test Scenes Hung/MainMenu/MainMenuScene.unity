@@ -829,7 +829,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   catalogJsonAsset: {fileID: 4900000, guid: 1639acfd79ea12d40a94d5be5d10ecff, type: 3}
-  catalogApiUrl: 
+  catalogApiUrl: https://localhost:3000/game-data/plants/catalog
 --- !u!4 &1527857675
 Transform:
   m_ObjectHideFlags: 0

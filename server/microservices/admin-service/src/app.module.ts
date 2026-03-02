@@ -6,6 +6,7 @@ import { NewsModule } from './news/news.module';
 import { MediaModule } from './media/media.module';
 import { CloudinaryModule } from './shared/cloudinary/cloudinary.module';
 import { ItemModule } from './game-data/item/item.module';
+import { PlantModule } from './game-data/plant/plant.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ItemModule } from './game-data/item/item.module';
     NewsModule,
     MediaModule,
     ItemModule,
+    PlantModule,
   ],
 })
 export class AppModule {}
