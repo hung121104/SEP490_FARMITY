@@ -19,10 +19,12 @@ public class WeatherModel
 
     public void GenerateTomorrow()                        
     {
+        Debug.Log("GenerateTomorrow - rainChance = " + rainChance);
         tomorrowWeather =
             (Random.value < rainChance)
             ? WeatherType.Rain
             : WeatherType.Sunny;
+        Debug.Log("Generated Tomorrow Weather = " + tomorrowWeather);
     }
     public void ShiftDay()                                 
     {
