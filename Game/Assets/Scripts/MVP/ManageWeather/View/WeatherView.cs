@@ -16,7 +16,7 @@ public class WeatherView : MonoBehaviourPunCallbacks
     [SerializeField] private GameObject rainEffect;
     [SerializeField] private float rainySeasonRainChance = 0.7f;
     [SerializeField] private float sunnySeasonRainChance = 0.3f;
-
+    [SerializeField] private RainManager rainManager;
     [Header("References")]
     [SerializeField] private TimeManagerView timeManager;
     [SerializeField] private WeatherForecastView forecastView;
@@ -58,6 +58,7 @@ public class WeatherView : MonoBehaviourPunCallbacks
             if (forecastView != null)
                 forecastView.Toggle();
         }
+
     }
 
     public override void OnRoomPropertiesUpdate(Hashtable changedProps)
@@ -74,8 +75,12 @@ public class WeatherView : MonoBehaviourPunCallbacks
 
     public void DisplayWeather(WeatherType weather)
     {
-        if (rainEffect != null)
-            rainEffect.SetActive(weather == WeatherType.Rain);
+        bool shouldRain = weather == WeatherType.Rain;
+
+        if (rainManager != null)
+            rainManager.SetRainState(shouldRain);
+        Debug.Log("DisplayWeather called: " + weather);
+
     }
 
     private void OnDestroy()

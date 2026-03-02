@@ -19,8 +19,7 @@ public class WeatherPresenter
     public void Initialize(float rainChance)
     {
         service.Initialize(rainChance);
-        service.LoadFromRoom();
-            //RefreshView();
+       
     }
 
     public void OnNewDay()

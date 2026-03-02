@@ -1,5 +1,6 @@
 ﻿using Photon.Pun;
 using ExitGames.Client.Photon;
+using UnityEngine;
 
 public class WeatherService : IWeatherService
 {
@@ -80,6 +81,7 @@ public class WeatherService : IWeatherService
 
        
         OnWeatherChanged?.Invoke(model.TodayWeather);
+        Debug.Log("OnNewDay CALLED");
     }
 
 

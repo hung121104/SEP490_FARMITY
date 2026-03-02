@@ -24,6 +24,7 @@ public class RainManager : MonoBehaviour
 
     private bool initialized = false;
     private float baseCameraArea;
+    private bool isRaining = false;
 
     private void Start()
     {
@@ -35,7 +36,14 @@ public class RainManager : MonoBehaviour
 
     private void Update()
     {
-        
+        if (!isRaining)
+        {
+            Debug.Log("Not raining");
+            return;
+        }
+
+        Debug.Log("Raining. Initialized = " + initialized);
+
         if (!initialized)
         {
             GameObject p = GameObject.FindWithTag("PlayerEntity");
@@ -43,13 +51,12 @@ public class RainManager : MonoBehaviour
             {
                 player = p.transform;
                 currentCenter = player.position;
-                SpawnZone(currentCenter);
+                SpawnZone(currentCenter);   
                 initialized = true;
             }
             return;
         }
 
-        
         Vector2 playerPos = player.position;
         float distance = Vector2.Distance(playerPos, currentCenter);
 
@@ -100,6 +107,20 @@ public class RainManager : MonoBehaviour
             camHeight * 1.5f
         );
     }
+    public void SetRainState(bool state)
+    {
+        isRaining = state;
+
+        if (!isRaining)
+        {
+            foreach (var zone in activeZones)
+                Destroy(zone);
+
+            activeZones.Clear();
+
+            initialized = false;   
+        }
+    }
 
     private void AdjustEmissionToCamera(ParticleSystem ps)
     {
@@ -134,4 +155,5 @@ public class RainManager : MonoBehaviour
 
         Destroy(zone, 2f);
     }
+
 }
