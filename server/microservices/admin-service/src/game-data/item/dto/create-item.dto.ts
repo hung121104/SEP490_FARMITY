@@ -74,6 +74,13 @@ export class CreateItemDto {
   @IsInt({ each: true })
   npcPreferenceReactions?: number[];
 
+  // ── Seed (itemType: 1) ──────────────────────────────────────────────────────
+
+  /** Links this seed to its corresponding PlantData in PlantCatalogService */
+  @IsOptional()
+  @IsString()
+  plantId?: string;
+
   // ── Tool (itemType: 0) ─────────────────────────────────────────────────────
 
   @IsOptional()

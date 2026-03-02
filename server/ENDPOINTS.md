@@ -397,7 +397,7 @@ Depending on the `itemType` integer, specific extra fields must be included in t
 | `itemType` | Name | Required Extra Fields | Type & Notes |
 |---|---|---|---|
 | `0` | Tool | `toolType`<br>`toolLevel`<br>`toolPower`<br>`toolMaterial` | int: 0=Hoe, 1=WateringCan, 2=Pickaxe, 3=Axe, 4=FishingRod<br>int: e.g. 1<br>int: e.g. 1<br>int: 0=Basic, 1=Copper, 2=Steel, 3=Gold, 4=Diamond |
-| `1` | Seed | _(none)_ | |
+| `1` | Seed | `plantId` | string: ID of the `PlantData` entry in `PlantCatalogService` that this seed grows, e.g. `"plant_corn"` |
 | `2` | Crop | _(none)_ | |
 | `3` | Pollen | `pollinationSuccessChance`<br>`viabilityDays` | float: e.g. 0.5<br>int: e.g. 3 |
 | `4` | Consumable | `energyRestore`<br>`healthRestore`<br>`bufferDuration` | int: stamina restored<br>int: health restored<br>float: buffer time |

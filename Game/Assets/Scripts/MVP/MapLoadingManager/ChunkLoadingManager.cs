@@ -25,9 +25,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     [Tooltip("Show loaded chunks with crops")]
     public bool visualizeCrops = true;
     
-    [Header("Plant Data")]
-    [Tooltip("Array of all plant data ScriptableObjects indexed by CropTypeID")]
-    public PlantDataSO[] plantDatabase;
+    // Plant data is sourced from PlantCatalogService at runtime — no Inspector array needed.
     
     [Header("Tilled Tile Settings")]
     [Tooltip("TileBase to use for tilled tiles")]
@@ -103,6 +101,14 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     
     private IEnumerator FindLocalPlayer()
     {
+        // Wait for PlantCatalogService to finish loading sprites
+        while (PlantCatalogService.Instance == null || !PlantCatalogService.Instance.IsReady)
+        {
+            if (showDebugLogs)
+                Debug.Log("[ChunkLoading] Waiting for PlantCatalogService to be ready...");
+            yield return new WaitForSeconds(0.5f);
+        }
+
         // Wait for local player to spawn
         while (localPlayerTransform == null)
         {
@@ -318,10 +324,10 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     /// </summary>
     private void SpawnChunkVisuals(Vector2Int chunkPos, UnifiedChunkData chunk)
     {
-        if (plantDatabase == null || plantDatabase.Length == 0)
+        if (PlantCatalogService.Instance == null || !PlantCatalogService.Instance.IsReady)
         {
             if (showDebugLogs)
-                Debug.LogWarning("[ChunkLoading] PlantDatabase not assigned or empty!");
+                Debug.LogWarning("[ChunkLoading] PlantCatalogService is not ready yet — skipping visual spawn for chunk.");
             return;
         }
         
@@ -362,7 +368,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             if (tile.HasCrop)
             {
                 // Get plant data for this crop type
-                PlantDataSO plantData = GetPlantData(tile.Crop.PlantId);
+                PlantData plantData = GetPlantData(tile.Crop.PlantId);
                 if (plantData == null)
                 {
                     if (showDebugLogs)
@@ -371,33 +377,24 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 }
                 
                 // Validate stage is within bounds (for normal plants)
-                if (plantData is not HybridPlantDataSO && tile.Crop.CropStage >= plantData.GrowthStages.Count)
+                if (!plantData.isHybrid && tile.Crop.CropStage >= plantData.growthStages.Count)
                 {
                     if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] Invalid crop stage {tile.Crop.CropStage} for {plantData.PlantName} at ({tile.WorldX}, {tile.WorldY})");
+                        Debug.LogWarning($"[ChunkLoading] Invalid crop stage {tile.Crop.CropStage} for {plantData.plantName} at ({tile.WorldX}, {tile.WorldY})");
                     continue;
                 }
                 
                 // Create crop visual GameObject
-                GameObject visual = new GameObject($"Crop_{plantData.PlantName}_{tile.WorldX}_{tile.WorldY}");
+                GameObject visual = new GameObject($"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}");
                 visual.transform.position = new Vector3(tile.WorldX, tile.WorldY+0.062f, 0);
                 
-                // Add sprite renderer with correct stage sprite
-                Sprite stageSprite = null;
-                if (plantData is HybridPlantDataSO hybridData)
-                {
-                    stageSprite = hybridData.GetHybridStageSprite(tile.Crop.CropStage);
-                }
-                else if (tile.Crop.CropStage < plantData.GrowthStages.Count)
-                {
-                    stageSprite = plantData.GrowthStages[tile.Crop.CropStage].stageSprite;
-                }
+                // Get sprite from catalog (handles hybrid delegation internally)
+                Sprite stageSprite = PlantCatalogService.Instance?.GetStageSprite(tile.Crop.PlantId, tile.Crop.CropStage);
 
                 if (stageSprite == null)
                 {
                     if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] '{plantData.PlantName}' stage {tile.Crop.CropStage} has a null stageSprite — " +
-                                         "assign a sprite in PlantDataSO.GrowthStages (or the Hybrid receiver).");
+                        Debug.LogWarning($"[ChunkLoading] '{plantData.plantName}' stage {tile.Crop.CropStage} has a null sprite in PlantCatalogService.");
                     Destroy(visual);
                     continue;
                 }
@@ -422,25 +419,12 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     /// <summary>
     /// Get plant data by PlantId string
     /// </summary>
-    private PlantDataSO GetPlantData(string plantId)
+    private PlantData GetPlantData(string plantId)
     {
-        if (plantDatabase == null || string.IsNullOrEmpty(plantId)) return null;
-        foreach (var plant in plantDatabase)
-        {
-            if (plant != null && plant.PlantId == plantId) return plant;
-        }
-        // Plant not found — log what IS registered so the user can spot the mismatch
-        if (showDebugLogs)
-        {
-            var registered = new System.Text.StringBuilder();
-            if (plantDatabase != null)
-                foreach (var p in plantDatabase)
-                    if (p != null) registered.Append($"'{p.PlantId}' ");
-            Debug.LogWarning($"[ChunkLoading] PlantId '{plantId}' not found in plantDatabase. " +
-                             $"Registered ids: [{registered}]\n" +
-                             "→ Fix: add the PlantDataSO to ChunkLoadingManager.plantDatabase in the Inspector.");
-        }
-        return null;
+        PlantData plant = PlantCatalogService.Instance?.GetPlantData(plantId);
+        if (plant == null && showDebugLogs)
+            Debug.LogWarning($"[ChunkLoading] PlantId '{plantId}' not found in PlantCatalogService.");
+        return plant;
     }
     
     /// <summary>

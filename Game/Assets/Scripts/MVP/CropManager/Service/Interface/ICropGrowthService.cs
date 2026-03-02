@@ -9,8 +9,8 @@ public interface ICropGrowthService
 {
     // ── Plant-data lookup ─────────────────────────────────────────────────
 
-    /// <summary>Returns the PlantDataSO matching <paramref name="plantId"/>, or null.</summary>
-    PlantDataSO GetPlantData(string plantId);
+    /// <summary>Returns the PlantData matching <paramref name="plantId"/> from PlantCatalogService, or null.</summary>
+    PlantData GetPlantData(string plantId);
 
     // ── Domain-rule queries ───────────────────────────────────────────────
 

@@ -61,6 +61,12 @@ export class Item {
   @Prop({ type: [Number], default: [] })
   npcPreferenceReactions: number[];
 
+  // ── itemType: 1 – Seed ─────────────────────────────────────────────────────
+
+  /** Links this seed to its corresponding PlantData in PlantCatalogService */
+  @Prop()
+  plantId?: string;
+
   // ── itemType: 0 – Tool ─────────────────────────────────────────────────────
 
   @Prop()
