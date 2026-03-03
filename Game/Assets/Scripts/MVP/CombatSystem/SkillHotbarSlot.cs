@@ -40,7 +40,7 @@ public class SkillHotbarSlot : MonoBehaviour,
     [SerializeField] private Color dragColor = new Color(0.7f, 0.7f, 0.7f, 0.7f);
 
     [Header("Drag Settings")]
-    [SerializeField] private float unequipDistance = 300f;
+    [SerializeField] private float unequipDistance = 150f;
 
     #endregion
 
@@ -53,7 +53,8 @@ public class SkillHotbarSlot : MonoBehaviour,
     private Vector3 originalPosition;
     private RectTransform rectTransform;
     private CanvasGroup canvasGroup;
-    private SkillHotbarSlot dragSourceSlot = null;
+    private Transform hotbarParent;
+    private Vector3 dragStartPosition;
 
     #endregion
 
@@ -70,6 +71,7 @@ public class SkillHotbarSlot : MonoBehaviour,
     {
         rectTransform = GetComponent<RectTransform>();
         canvasGroup = GetComponent<CanvasGroup>();
+        hotbarParent = transform.parent;
         
         if (canvasGroup == null)
         {
@@ -203,6 +205,8 @@ public class SkillHotbarSlot : MonoBehaviour,
         }
 
         isDragging = true;
+        dragStartPosition = rectTransform.position;
+        
         Debug.Log($"[SkillHotbarSlot {slotIndex}] Begin drag: {equippedSkill.skillName}");
 
         // Store original position for potential revert
@@ -211,7 +215,7 @@ public class SkillHotbarSlot : MonoBehaviour,
         // Visual feedback
         if (canvasGroup != null)
         {
-            canvasGroup.alpha = 0.7f;
+            canvasGroup.alpha = 0.6f;
             canvasGroup.blocksRaycasts = false;
         }
 
@@ -239,13 +243,20 @@ public class SkillHotbarSlot : MonoBehaviour,
             return;
 
         isDragging = false;
-        Debug.Log($"[SkillHotbarSlot {slotIndex}] End drag: {equippedSkill.skillName}");
+        
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] End drag: {equippedSkill?.skillName ?? "null"}");
+
+        // ===== ALWAYS restore visuals first =====
+        RestoreVisuals();
 
         // Check if dragged far enough to unequip
-        if (IsOutsideUnequipDistance(eventData.position))
+        bool shouldUnequip = IsOutsideUnequipDistance(eventData.position, dragStartPosition);
+        
+        if (shouldUnequip)
         {
-            Debug.Log($"[SkillHotbarSlot {slotIndex}] Unequipping skill (dragged too far)");
+            Debug.Log($"[SkillHotbarSlot {slotIndex}] ✓ UNEQUIPPING skill (distance exceeded)");
             UnequipSkill();
+            RebuildLayout();
             return;
         }
 
@@ -253,19 +264,23 @@ public class SkillHotbarSlot : MonoBehaviour,
         if (rectTransform != null)
         {
             rectTransform.localPosition = originalPosition;
+            Debug.Log($"[SkillHotbarSlot {slotIndex}] Returned to position");
         }
 
-        // Restore visuals
-        RestoreVisuals();
+        RebuildLayout();
     }
 
-    private bool IsOutsideUnequipDistance(Vector3 dragEndPosition)
+    // ===== FIX 2: Correct distance calculation =====
+    private bool IsOutsideUnequipDistance(Vector3 dragEndPosition, Vector3 dragStartPosition)
     {
-        Vector3 slotScreenPos = RectTransformUtility.WorldToScreenPoint(null, rectTransform.position);
-        float distance = Vector3.Distance(slotScreenPos, dragEndPosition);
+        // Both positions should be in world space (from PointerEventData)
+        float distance = Vector3.Distance(dragStartPosition, dragEndPosition);
         
-        Debug.Log($"[SkillHotbarSlot {slotIndex}] Drag distance: {distance}, Unequip threshold: {unequipDistance}");
-        return distance > unequipDistance;
+        bool isOutside = distance > unequipDistance;
+        
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] Distance: {distance:F2} | Threshold: {unequipDistance} | Outside? {isOutside}");
+        
+        return isOutside;
     }
 
     #endregion
@@ -324,7 +339,7 @@ public class SkillHotbarSlot : MonoBehaviour,
         // Update UI
         UpdateDisplay();
 
-        Debug.Log($"[SkillHotbarSlot {slotIndex}] Equipped skill: {skillData.skillName}");
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] ✓ Equipped skill: {skillData.skillName}");
     }
 
     /// <summary>
@@ -332,6 +347,8 @@ public class SkillHotbarSlot : MonoBehaviour,
     /// </summary>
     public void UnequipSkill()
     {
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] Unequipping: {equippedSkill?.skillName ?? "empty"}");
+        
         equippedSkill = null;
         equippedSkillComponent = null;
 
@@ -341,26 +358,52 @@ public class SkillHotbarSlot : MonoBehaviour,
         }
 
         SetEmptyState();
-        Debug.Log($"[SkillHotbarSlot {slotIndex}] Skill unequipped");
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] ✓ Skill unequipped - slot now empty");
     }
 
     /// <summary>
     /// Swap skills between this slot and another slot.
+    /// Handles both equipped-to-equipped and equipped-to-empty swaps.
     /// </summary>
     private void SwapSkills(SkillHotbarSlot otherSlot)
     {
         if (otherSlot == null || otherSlot == this)
             return;
 
+        // ===== FIX 3: Proper swap that maintains references =====
+        
         // Store current skills
         SkillData thisSkill = this.equippedSkill;
         SkillData otherSkill = otherSlot.equippedSkill;
 
-        // Swap
-        this.EquipSkill(otherSkill);
-        otherSlot.EquipSkill(thisSkill);
+        Debug.Log($"[SkillHotbarSlot] SWAPPING: Slot{slotIndex} ({thisSkill?.skillName ?? "empty"}) <-> Slot{otherSlot.slotIndex} ({otherSkill?.skillName ?? "empty"})");
 
-        Debug.Log($"[SkillHotbarSlot] Swapped slot {slotIndex} <-> {otherSlot.slotIndex}");
+        // Update SkillManager first
+        if (SkillManager.Instance != null)
+        {
+            SkillManager.Instance.EquipSkill(slotIndex, otherSkill);
+            SkillManager.Instance.EquipSkill(otherSlot.slotIndex, thisSkill);
+        }
+
+        // Update local references for THIS slot
+        this.equippedSkill = otherSkill;
+        if (SkillManager.Instance != null)
+        {
+            this.equippedSkillComponent = SkillManager.Instance.GetSkill(slotIndex);
+        }
+
+        // Update local references for OTHER slot
+        otherSlot.equippedSkill = thisSkill;
+        if (SkillManager.Instance != null)
+        {
+            otherSlot.equippedSkillComponent = SkillManager.Instance.GetSkill(otherSlot.slotIndex);
+        }
+
+        // Refresh BOTH slot displays immediately
+        this.UpdateDisplay();
+        otherSlot.UpdateDisplay();
+
+        Debug.Log($"[SkillHotbarSlot] ✓ SWAP COMPLETE!");
     }
 
     #endregion
@@ -392,7 +435,7 @@ public class SkillHotbarSlot : MonoBehaviour,
             cooldownFillImage.fillAmount = 0f;
         }
 
-        Debug.Log($"[SkillHotbarSlot {slotIndex}] Display updated");
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] Display updated: {equippedSkill.skillName}");
     }
 
     private void SetEmptyState()
@@ -413,7 +456,14 @@ public class SkillHotbarSlot : MonoBehaviour,
             cooldownFillImage.fillAmount = 0f;
         }
 
-        Debug.Log($"[SkillHotbarSlot {slotIndex}] Set to empty state");
+        // Re-enable raycasts and ensure full opacity
+        if (canvasGroup != null)
+        {
+            canvasGroup.blocksRaycasts = true;
+            canvasGroup.alpha = 1f;  // <-- Add this
+        }
+
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] Set to EMPTY state (raycasts enabled)");
     }
 
     private void UpdateSlotBackground()
@@ -441,13 +491,23 @@ public class SkillHotbarSlot : MonoBehaviour,
         if (canvasGroup != null)
         {
             canvasGroup.alpha = 1f;
-            canvasGroup.blocksRaycasts = true;
+            canvasGroup.blocksRaycasts = true;  // <-- Add this line
         }
 
         // Restore background color based on state
         UpdateSlotBackground();
 
         Debug.Log($"[SkillHotbarSlot {slotIndex}] Visuals restored");
+    }
+
+    private void RebuildLayout()
+    {
+        // Force hotbar layout to rebuild after drag
+        if (hotbarParent != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(hotbarParent as RectTransform);
+            Debug.Log($"[SkillHotbarSlot {slotIndex}] Layout rebuilt");
+        }
     }
 
     #endregion
