@@ -13,14 +13,18 @@ export class GatewayCloudinaryService {
     });
   }
 
-  /** Upload a Multer file buffer to Cloudinary and return the secure_url */
+  /** Upload a Multer file buffer to Cloudinary and return the secure_url.
+   *  @param publicId  Optional. When provided, Cloudinary preserves this as the asset name
+   *                   (without extension), e.g. "cabbage_0". If omitted, Cloudinary auto-generates an ID.
+   */
   async uploadFile(
     file: Express.Multer.File,
     folder: string = 'item-icons',
+    publicId?: string,
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       cloudinary.uploader
-        .upload_stream({ folder }, (error, result) => {
+        .upload_stream({ folder, ...(publicId ? { public_id: publicId } : {}) }, (error, result) => {
           if (error || !result) {
             return reject(
               new InternalServerErrorException(

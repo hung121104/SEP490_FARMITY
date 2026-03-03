@@ -17,6 +17,9 @@ export class CreateItemDto {
   npcPreferenceNames?: string[];
   npcPreferenceReactions?: number[];
 
+  // Seed
+  plantId?: string;
+
   // Tool
   toolType?: number;
   toolLevel?: number;

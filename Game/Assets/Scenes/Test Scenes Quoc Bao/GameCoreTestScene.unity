@@ -1479,7 +1479,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a33b62c8d508e474cb1a4540ed7f7b3b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  timeManagerView: {fileID: 0}
+  timeManagerView: {fileID: 76351687}
   calendarView: {fileID: 2042913117}
 --- !u!1 &166900336
 GameObject:
@@ -2668,10 +2668,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inventorySystem: {fileID: 383136936}
-  testItem:
-  - {fileID: 11400000, guid: e76735cfb2b6923468969d97f1f43586, type: 2}
-  - {fileID: 11400000, guid: b6639f42087a1e84e8fba283635f961d, type: 2}
-  - {fileID: 11400000, guid: 9c3bdb08c68dc644bb7f1f6500c4c6d1, type: 2}
+  testItemIds:
+  - resource_gold
+  - resource_iron
+  quantityPerItem: 2
+  qualityOverride: 0
   addItemKey: 116
 --- !u!114 &383136936
 MonoBehaviour:
@@ -9128,7 +9129,7 @@ MonoBehaviour:
   gridView: {fileID: 1274122536}
   monthParent: {fileID: 907267211}
   monthCellPrefab: {fileID: 79563291071716711, guid: a021c25e12e41044abbe56785883e21f, type: 3}
-  timeManager: {fileID: 0}
+  timeManager: {fileID: 76351687}
 --- !u!4 &2042913118
 Transform:
   m_ObjectHideFlags: 0
@@ -9787,7 +9788,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hotbarView: {fileID: 8630201}
   inventoryGameView: {fileID: 383136936}
-  testItems: []
+  testItemIds: []
   addItemsOnStart: 1
   hotbarStartSlot: 27
   testItemQuality: 0
