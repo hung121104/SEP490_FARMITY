@@ -51,7 +51,8 @@ export class GatewayModule implements NestModule {
         { path: 'media/update/:id', method: RequestMethod.POST },
         { path: 'media/delete/:id', method: RequestMethod.DELETE },
         { path: 'game-data/items/create', method: RequestMethod.POST },
-        { path: 'game-data/items/:id', method: RequestMethod.DELETE },
+        { path: 'game-data/items/:itemID', method: RequestMethod.PUT },
+        { path: 'game-data/items/:itemID', method: RequestMethod.DELETE },
         { path: 'game-data/plants/create', method: RequestMethod.POST },
         { path: 'game-data/plants/:id', method: RequestMethod.DELETE },
       );
@@ -73,7 +74,8 @@ export class GatewayModule implements NestModule {
         { path: 'media/update/:id', method: RequestMethod.POST },
         { path: 'media/delete/:id', method: RequestMethod.DELETE },
         { path: 'game-data/items/create', method: RequestMethod.POST },
-        { path: 'game-data/items/:id', method: RequestMethod.DELETE },
+        { path: 'game-data/items/:itemID', method: RequestMethod.PUT },
+        { path: 'game-data/items/:itemID', method: RequestMethod.DELETE },
         { path: 'game-data/plants/create', method: RequestMethod.POST },
         { path: 'game-data/plants/:id', method: RequestMethod.DELETE },
       );

@@ -4526,7 +4526,6 @@ GameObject:
   m_Component:
   - component: {fileID: 310445851}
   - component: {fileID: 310445852}
-  - component: {fileID: 310445853}
   m_Layer: 0
   m_Name: CraftingManager
   m_TagString: Untagged
@@ -4571,19 +4570,6 @@ MonoBehaviour:
   craftingInventoryAdapter: {fileID: 95130090}
   cookingInventoryAdapter: {fileID: 379280175}
   craftingInInventoryAdapter: {fileID: 435592459}
---- !u!114 &310445853
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 310445850}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81893a07d6b661641ab5e18ba4c388c8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  catalogResourcePath: RecipeCatalog/mock_recipe_catalog
 --- !u!1 &314174206
 GameObject:
   m_ObjectHideFlags: 0
@@ -11740,7 +11726,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -133.99995, y: 168.00006}
+  m_AnchoredPosition: {x: -133.99994, y: 168.00002}
   m_SizeDelta: {x: 285, y: 336}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &812480459
@@ -12987,7 +12973,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 479262023}
   m_Direction: 0
   m_Value: 0
-  m_Size: 0.93772787
+  m_Size: 0.9401761
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -17996,7 +17982,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00036111334}
+  m_AnchoredPosition: {x: 0, y: 0.00001485037}
   m_SizeDelta: {x: 0, y: 628}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1240703307
@@ -25358,7 +25344,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1056705480}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9944219
+  m_Size: 0.99962807
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -27723,7 +27709,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 567473799}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9972109
+  m_Size: 0.99981415
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -28342,10 +28328,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   timeManager: {fileID: 76351687}
-  plantDatabase:
-  - {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
-  - {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
-  - {fileID: 11400000, guid: e5397b9e9718b75448382a647a641346, type: 2}
   enableGrowth: 1
   growthSpeedMultiplier: 1
   cropVisualsParent: {fileID: 0}
@@ -29265,10 +29247,6 @@ MonoBehaviour:
   updateInterval: 1
   unloadDelay: 5
   visualizeCrops: 1
-  plantDatabase:
-  - {fileID: 11400000, guid: cc3414773a0dd7248a0c03834dce74d6, type: 2}
-  - {fileID: 11400000, guid: c90a838470e587d4eaa48c6b854bdd7d, type: 2}
-  - {fileID: 11400000, guid: e5397b9e9718b75448382a647a641346, type: 2}
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   tilledTilemapName: TillableTilemap
   showDebugLogs: 0

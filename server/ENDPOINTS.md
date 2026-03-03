@@ -17,6 +17,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 3. [Game Data Management](#game-data-management)
    - [Items Catalog](#items-catalog)
    - [Plants Catalog](#plants-catalog)
+   - [Crafting Recipes](#crafting-recipes)
 4. [Player Data](#player-data)
    - [World Management](#world-management)
    - [Character Management](#character-management)
@@ -391,9 +392,17 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Path param: `id` - MongoDB ObjectId string
   - Response: Item document or `null`
 
-- **DELETE** `/game-data/items/:id`: Delete an item by MongoDB `_id` (admin only).
+- **PUT** `/game-data/items/:itemID`: Update an existing item by game-side `itemID` (admin only).
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
-  - Path param: `id` - MongoDB ObjectId string
+  - Content-Type: `multipart/form-data`
+  - Path param: `itemID` - game-side string identifier (e.g., `tool_hoe_basic`)
+  - Fields: Any subset of item fields as form-data text fields (all optional). Include an `icon` file to replace the icon (max 5 MB, re-uploaded to Cloudinary automatically).
+  - Response: Updated item document
+  - Note: Returns `404` if item not found
+
+- **DELETE** `/game-data/items/:itemID`: Delete an item by game-side `itemID` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `itemID` - game-side string identifier (e.g., `tool_hoe_basic`)
   - Response: Deleted item document
   - Note: Returns `404` if item not found
 
@@ -515,5 +524,75 @@ Depending on `itemType`, specific extra fields must be included:
 | `stageIconUrl` | string | **Auto-filled** by gateway — parsed from trailing index in sprite filename (e.g., `cabbage_2.png` → stage 2). Do not send manually. |
 
 ---
+
+### Crafting Recipes
+
+> Crafting recipe definitions consumed by the game client. Managed by `admin-service`.
+
+#### HTTP Endpoints
+
+- **POST** `/game-data/crafting-recipes/create`: Create a new crafting recipe (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Body (application/json):
+    ```json
+    {
+      "recipeID": "string",
+      "recipeName": "string",
+      "description": "string",
+      "recipeType": 0,
+      "category": 0,//int 0-general, 1-tool, 2-food, 3-materials, 4-furniture, 5-equipment
+      "resultItemId": "string",
+      "resultQuantity": 1,
+      "resultQuality": 0,
+      "ingredients": [
+        { "itemId": "string", "quantity": 1 }
+      ],
+      "isUnlockedByDefault": false
+    }
+    ```
+  - Response: Created recipe document (includes `_id` and all fields)
+  - Note: Returns `409 Conflict` if a recipe with the same `recipeID` already exists.
+
+- **GET** `/game-data/crafting-recipes/catalog`: Get full recipe catalog in Unity-client format.
+  - Response: `{ "recipes": [ ...recipeObjects ] }`
+
+- **GET** `/game-data/crafting-recipes/all`: Get flat array of all recipe documents.
+  - Response: `[ ...recipeObjects ]`
+
+- **GET** `/game-data/crafting-recipes/by-recipe-id/:recipeID`: Find recipe by game-side string ID.
+  - Path param: `recipeID` - Snake_case string identifier (e.g., `recipe_wooden_plank`)
+  - Response: Recipe document or `null`
+
+- **GET** `/game-data/crafting-recipes/:id`: Find recipe by MongoDB `_id`.
+  - Path param: `id` - MongoDB ObjectId string
+  - Response: Recipe document or `null`
+
+- **PUT** `/game-data/crafting-recipes/:recipeID`: Update an existing recipe by game-side `recipeID` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `recipeID` - game-side string identifier
+  - Body (application/json, all fields optional):
+    ```json
+    {
+      "recipeName": "string",
+      "description": "string",
+      "recipeType": 0,
+      "category": 0,
+      "resultItemId": "string",
+      "resultQuantity": 1,
+      "resultQuality": 0,
+      "ingredients": [
+        { "itemId": "string", "quantity": 1 }
+      ],
+      "isUnlockedByDefault": false
+    }
+    ```
+  - Response: Updated recipe document
+
+- **DELETE** `/game-data/crafting-recipes/:recipeID`: Delete a recipe by game-side `recipeID` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `recipeID` - game-side string identifier (e.g., `recipe_wooden_plank`)
+  - Response: Deleted recipe document
+  - Note: Returns `404` if recipe not found
+
 
 

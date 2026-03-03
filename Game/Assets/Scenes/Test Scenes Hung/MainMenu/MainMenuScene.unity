@@ -311,7 +311,7 @@ GameObject:
   - component: {fileID: 583594017}
   - component: {fileID: 583594016}
   m_Layer: 0
-  m_Name: ItemCatalogService
+  m_Name: ItemDataCatalog
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -614,6 +614,52 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 2481482551736426709, guid: 0c376ea63d9ca5643a2c0d7eedc7117b, type: 3}
   m_PrefabInstance: {fileID: 857246172}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1036632747
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1036632749}
+  - component: {fileID: 1036632748}
+  m_Layer: 0
+  m_Name: RecipeDataCatalog
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1036632748
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1036632747}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81893a07d6b661641ab5e18ba4c388c8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  catalogJsonAsset: {fileID: 4900000, guid: b5d902eb8d90f2d46bbe3d02886bbd35, type: 3}
+  catalogApiUrl: https://localhost:3000/game-data/crafting-recipes/catalog
+--- !u!4 &1036632749
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1036632747}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 849.4099, y: 509.60522, z: -38.268856}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1409171260
 GameObject:
   m_ObjectHideFlags: 0
@@ -1197,3 +1243,4 @@ SceneRoots:
   - {fileID: 187392708}
   - {fileID: 583594017}
   - {fileID: 1527857675}
+  - {fileID: 1036632749}

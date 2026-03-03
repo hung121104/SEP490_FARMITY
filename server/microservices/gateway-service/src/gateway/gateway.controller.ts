@@ -16,6 +16,9 @@ import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
 import { UpdateWorldDto } from './dto/update-world.dto';
 import { CreateItemDto } from './dto/create-item.dto';
 import { CreatePlantDto } from './dto/create-plant.dto';
+import { CreateCraftingRecipeDto } from './dto/create-crafting-recipe.dto';
+import { UpdateCraftingRecipeDto } from './dto/update-crafting-recipe.dto';
+import { UpdateItemDto } from './dto/update-item.dto';
 import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 
@@ -440,11 +443,48 @@ export class GatewayController {
     }
   }
 
-  /** DELETE /game-data/items/:id — delete by MongoDB _id (admin) */
-  @Delete('game-data/items/:id')
-  async deleteItem(@Param('id') id: string) {
+  /** PUT /game-data/items/:itemID — update item by game-side itemID.
+   *  Accepts multipart/form-data; include an "icon" file to replace the icon. */
+  @Put('game-data/items/:itemID')
+  @UseInterceptors(FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  async updateItem(
+    @Param('itemID') itemID: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
     try {
-      return await firstValueFrom(this.adminClient.send('delete-item', id));
+      const dto: UpdateItemDto = { ...body };
+
+      // If a new icon was uploaded, replace the iconUrl
+      if (file) {
+        dto.iconUrl = await this.cloudinaryService.uploadFile(file, body.folder || 'item-icons');
+      }
+
+      // Parse numeric / boolean fields that arrive as strings from form-data
+      if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
+      if (body.itemCategory !== undefined) dto.itemCategory = Number(body.itemCategory);
+      if (body.maxStack !== undefined) dto.maxStack = Number(body.maxStack);
+      if (body.basePrice !== undefined) dto.basePrice = Number(body.basePrice);
+      if (body.buyPrice !== undefined) dto.buyPrice = Number(body.buyPrice);
+      if (body.isStackable !== undefined) dto.isStackable = body.isStackable === 'true' || body.isStackable === true;
+      if (body.canBeSold !== undefined) dto.canBeSold = body.canBeSold !== 'false' && body.canBeSold !== false;
+      if (body.canBeBought !== undefined) dto.canBeBought = body.canBeBought === 'true' || body.canBeBought === true;
+      if (body.isQuestItem !== undefined) dto.isQuestItem = body.isQuestItem === 'true' || body.isQuestItem === true;
+      if (body.isArtifact !== undefined) dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
+      if (body.isRareItem !== undefined) dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
+
+      return await firstValueFrom(this.adminClient.send('update-item', { itemID, dto }));
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/items/:itemID — delete by game-side itemID (admin) */
+  @Delete('game-data/items/:itemID')
+  async deleteItem(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('delete-item', itemID));
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -603,6 +643,85 @@ export class GatewayController {
   async deletePlant(@Param('id') id: string) {
     try {
       return await firstValueFrom(this.adminClient.send('delete-plant', id));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Crafting Recipes ──────────────────────────────────────────────
+
+  /** POST /game-data/crafting-recipes/create — create a new crafting recipe */
+  @Post('game-data/crafting-recipes/create')
+  async createCraftingRecipe(@Body() body: CreateCraftingRecipeDto) {
+    try {
+      return await firstValueFrom(this.adminClient.send('create-crafting-recipe', body));
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/crafting-recipes/catalog — full catalog { recipes: [...] } for Unity client */
+  @Get('game-data/crafting-recipes/catalog')
+  async getCraftingRecipeCatalog() {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-crafting-recipe-catalog', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/crafting-recipes/all — flat array of all crafting recipes */
+  @Get('game-data/crafting-recipes/all')
+  async getAllCraftingRecipes() {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-all-crafting-recipes', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/crafting-recipes/by-recipe-id/:recipeID — find by game-side recipeID string */
+  @Get('game-data/crafting-recipes/by-recipe-id/:recipeID')
+  async getCraftingRecipeByRecipeId(@Param('recipeID') recipeID: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-crafting-recipe-by-recipe-id', recipeID));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/crafting-recipes/:id — find by MongoDB _id */
+  @Get('game-data/crafting-recipes/:id')
+  async getCraftingRecipeById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-crafting-recipe-by-id', id));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/crafting-recipes/:recipeID — update existing recipe by recipeID */
+  @Put('game-data/crafting-recipes/:recipeID')
+  async updateCraftingRecipe(
+    @Param('recipeID') recipeID: string,
+    @Body() body: UpdateCraftingRecipeDto,
+  ) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('update-crafting-recipe', { recipeID, dto: body }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/crafting-recipes/:recipeID — delete by game-side recipeID (admin) */
+  @Delete('game-data/crafting-recipes/:recipeID')
+  async deleteCraftingRecipe(@Param('recipeID') recipeID: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('delete-crafting-recipe', recipeID));
     } catch (err) {
       throw this.rpcError(err);
     }
