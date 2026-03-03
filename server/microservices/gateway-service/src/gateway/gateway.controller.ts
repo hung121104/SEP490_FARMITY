@@ -397,6 +397,17 @@ export class GatewayController {
         isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
       };
 
+      // crossResults arrives as a JSON string in multipart form-data
+      if (body.crossResults !== undefined) {
+        try {
+          dto.crossResults = typeof body.crossResults === 'string'
+            ? JSON.parse(body.crossResults)
+            : body.crossResults;
+        } catch {
+          throw new BadRequestException('crossResults must be a valid JSON array, e.g. [{"targetPlantId":"plant_corn","resultPlantId":"plant_hybrid_corn"}]');
+        }
+      }
+
       return await firstValueFrom(this.adminClient.send('create-item', dto));
     } catch (err) {
       if (err instanceof HttpException) throw err;
@@ -473,6 +484,16 @@ export class GatewayController {
       if (body.isQuestItem !== undefined) dto.isQuestItem = body.isQuestItem === 'true' || body.isQuestItem === true;
       if (body.isArtifact !== undefined) dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
       if (body.isRareItem !== undefined) dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
+
+      if (body.crossResults !== undefined) {
+        try {
+          dto.crossResults = typeof body.crossResults === 'string'
+            ? JSON.parse(body.crossResults)
+            : body.crossResults;
+        } catch {
+          throw new BadRequestException('crossResults must be a valid JSON array');
+        }
+      }
 
       return await firstValueFrom(this.adminClient.send('update-item', { itemID, dto }));
     } catch (err) {

@@ -415,7 +415,7 @@ Required for ALL item types:
 | `itemID` | string | Unique game-side identifier (e.g., `"iron_hoe"`) |
 | `itemName` | string | Display name |
 | `description` | string | Flavour text |
-| `iconUrl` | string | Cloudinary/CDN URL of item sprite (auto-set on upload) |
+| `icon` | file | Item sprite (auto-set on upload) |
 | `itemType` | int | Type discriminator (see [Item Type Fields](#itemtype-discriminator--extra-fields)) |
 | `itemCategory` | int | 0=Farming, 1=Mining, 2=Fishing, 3=Cooking, etc. |
 | `maxStack` | int | Maximum stack size (set to 1 for tools/weapons) |
@@ -439,7 +439,7 @@ Depending on `itemType`, specific extra fields must be included:
 | `0` | Tool | `toolType`<br>`toolLevel`<br>`toolPower`<br>`toolMaterial` | int: 0=Hoe, 1=WateringCan, 2=Pickaxe, 3=Axe, 4=FishingRod<br>int: Tool level (e.g., 1)<br>int: Tool power (e.g., 1)<br>int: 0=Basic, 1=Copper, 2=Steel, 3=Gold, 4=Diamond |
 | `1` | Seed | `plantId` | string: ID of `PlantData` entry this seed grows (e.g., `"plant_corn"`) |
 | `2` | Crop | *(none)* | |
-| `3` | Pollen | `pollinationSuccessChance`<br>`viabilityDays` | float: Chance of success (e.g., 0.5)<br>int: Days pollen remains viable (e.g., 3) |
+| `3` | Pollen | `sourcePlantId`<br>`pollinationSuccessChance`<br>`viabilityDays`<br>`crossResults` | string: `plantId` of the plant that produced this pollen (e.g., `"plant_corn"`)<br>float: Chance of pollination success (e.g., `0.5`)<br>int: Days the pollen remains viable (e.g., `3`)<br>array: Cross-breeding table — `[{ "targetPlantId": "string", "resultPlantId": "string" }]`. Each entry maps a receiver `plantId` to the hybrid `plantId` that spawns when this pollen is applied to it. Consumed by `PollenData.FindResultPlantId()` in the Unity client. |
 | `4` | Consumable | `energyRestore`<br>`healthRestore`<br>`bufferDuration` | int: Stamina restored<br>int: Health restored<br>float: Buff duration |
 | `5` | Material | *(none)* | |
 | `6` | Weapon | `damage`<br>`critChance`<br>`attackSpeed`<br>`weaponMaterial` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>float: Attack speed (e.g., 1.0)<br>int: 0=Basic, 1=Copper, 2=Steel, 3=Gold, 4=Diamond |
