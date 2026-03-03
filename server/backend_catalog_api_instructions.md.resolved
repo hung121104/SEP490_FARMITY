@@ -63,7 +63,7 @@ Tools must not be stackable (`isStackable: false`, `maxStack: 1`).
 *   `toolMaterial` (int): 0=Basic, 1=Copper, 2=Steel, 3=Gold, 4=Diamond
 
 ### `itemType: 1` - Seed // Maps to [SeedData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/SeedData.cs)
-*   No additional properties required yet.
+*   `plantId` (string): **Required.** The ID of the corresponding `PlantData` entry in `PlantCatalogService` that this seed will grow. e.g., `"plant_corn"`
 
 ### `itemType: 2` - Crop // Maps to [CropData.cs](file:///d:/tailieu/SEP490/New%20folder/sdaw/SEP490_FARMITY/Game/Assets/Scripts/MVP/ItemManager/Model/CropData.cs)
 *   No additional properties required.

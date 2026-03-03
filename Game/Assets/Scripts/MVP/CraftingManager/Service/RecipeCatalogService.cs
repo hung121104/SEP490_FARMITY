@@ -1,88 +1,178 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
-using Newtonsoft.Json;
 using UnityEngine;
+using UnityEngine.Networking;
+using Newtonsoft.Json;
 
 /// <summary>
-/// Singleton MonoBehaviour that loads recipe definitions from
-/// Resources/RecipeCatalog/mock_recipe_catalog.json at startup.
+/// Singleton MonoBehaviour — the client-side recipe catalog.
+/// Loads recipe data from a local JSON TextAsset (or a remote API endpoint),
+/// and provides typed recipe lookups.
+///
+/// Usage:
+///   1. Add to a persistent GameObject in your scene.
+///   2. Assign <see cref="catalogJsonAsset"/> in the Inspector (TextAsset from Resources/).
+///   3. Await <see cref="IsReady"/> == true before calling any Get methods.
+///   4. Use <see cref="GetRecipe"/> / <see cref="GetAllRecipes"/> to retrieve recipes.
+///
+/// Live server: set <see cref="catalogApiUrl"/> to your NestJS /recipes endpoint URL.
+///              When set it overrides the TextAsset.
 /// </summary>
 public class RecipeCatalogService : MonoBehaviour
 {
+    // ── Singleton ─────────────────────────────────────────────────────────────
     public static RecipeCatalogService Instance { get; private set; }
 
-    [Tooltip("Path inside Resources/ (no extension).")]
-    [SerializeField] private string catalogResourcePath = "RecipeCatalog/mock_recipe_catalog";
+    // ── Inspector ─────────────────────────────────────────────────────────────
+    [Header("Catalog Source")]
+    [Tooltip("Drag mock_recipe_catalog.json here for local testing.")]
+    [SerializeField] private TextAsset catalogJsonAsset;
 
-    private Dictionary<string, RecipeData> _catalog = new Dictionary<string, RecipeData>();
-    private bool _loaded;
+    [Tooltip("Live NestJS endpoint URL (e.g. https://api.farmity.com/recipes). Overrides TextAsset when set.")]
+    [SerializeField] private string catalogApiUrl = "";
 
-    // ── Lifecycle ────────────────────────────────────────────────────────────
+    // ── Internal State ────────────────────────────────────────────────────────
+    private readonly Dictionary<string, RecipeData> _catalog = new();
 
-    void Awake()
+    /// <summary>True once the catalog JSON is fully parsed and ready to query.</summary>
+    public bool IsReady { get; private set; }
+
+    // ── Unity Lifecycle ───────────────────────────────────────────────────────
+    private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        LoadFromResources();
+
+        if (!string.IsNullOrEmpty(catalogApiUrl))
+            StartCoroutine(LoadCatalogFromUrl(catalogApiUrl));
+        else if (catalogJsonAsset != null)
+            StartCoroutine(LoadCatalogFromJson(catalogJsonAsset));
+        else
+            Debug.LogWarning("[RecipeCatalogService] No catalog source assigned.");
     }
 
-    // ── Loading ──────────────────────────────────────────────────────────────
+    // ── Public API ────────────────────────────────────────────────────────────
 
-    private void LoadFromResources()
-    {
-        var asset = Resources.Load<TextAsset>(catalogResourcePath);
-        if (asset == null)
-        {
-            Debug.LogError($"[RecipeCatalogService] Could not find '{catalogResourcePath}' in Resources.");
-            return;
-        }
-
-        LoadFromJson(asset.text);
-    }
-
-    public void LoadFromJson(string json)
-    {
-        _catalog.Clear();
-        try
-        {
-            var response = JsonConvert.DeserializeObject<RecipeCatalogResponse>(json);
-            if (response?.recipes == null)
-            {
-                Debug.LogWarning("[RecipeCatalogService] JSON parsed but recipe list is null.");
-                return;
-            }
-
-            int loaded = 0;
-            foreach (var recipe in response.recipes)
-            {
-                if (recipe == null || !recipe.IsValid())
-                {
-                    Debug.LogWarning("[RecipeCatalogService] Skipping invalid recipe.");
-                    continue;
-                }
-                _catalog[recipe.recipeID] = recipe;
-                loaded++;
-            }
-
-            _loaded = true;
-            Debug.Log($"[RecipeCatalogService] Loaded {loaded} recipes.");
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[RecipeCatalogService] JSON parse error: {ex.Message}");
-        }
-    }
-
-    // ── Accessors ────────────────────────────────────────────────────────────
-
+    /// <summary>Returns the RecipeData for the given recipeID, or null if not found.</summary>
     public RecipeData GetRecipe(string recipeID)
-        => _catalog.TryGetValue(recipeID, out var r) ? r : null;
+    {
+        if (string.IsNullOrEmpty(recipeID)) return null;
+        _catalog.TryGetValue(recipeID, out var r);
+        return r;
+    }
 
+    /// <summary>Returns a copy of all loaded recipes.</summary>
     public List<RecipeData> GetAllRecipes()
         => new List<RecipeData>(_catalog.Values);
 
-    public bool IsLoaded => _loaded;
+    // ── Loading ───────────────────────────────────────────────────────────────
 
-    // ── Future: hot-reload from network ─────────────────────────────────────
-    // public IEnumerator FetchFromServer(string url) { ... }
+    /// <summary>Load catalog from a local Unity TextAsset (JSON in Resources/).</summary>
+    public IEnumerator LoadCatalogFromJson(TextAsset json)
+    {
+        IsReady = false;
+        _catalog.Clear();
+
+        if (json == null) { Debug.LogError("[RecipeCatalogService] TextAsset is null."); yield break; }
+
+        RecipeCatalogResponse response;
+        try
+        {
+            response = JsonConvert.DeserializeObject<RecipeCatalogResponse>(json.text);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[RecipeCatalogService] JSON parse error: {e.Message}");
+            yield break;
+        }
+
+        if (response?.recipes == null || response.recipes.Count == 0)
+        {
+            Debug.LogError("[RecipeCatalogService] Catalog parsed 0 recipes. Check JSON.");
+            yield break;
+        }
+
+        int loaded = 0;
+        foreach (var recipe in response.recipes)
+        {
+            if (recipe == null || !recipe.IsValid())
+            {
+                Debug.LogWarning("[RecipeCatalogService] Skipping invalid recipe.");
+                continue;
+            }
+            _catalog[recipe.recipeID] = recipe;
+            loaded++;
+        }
+
+        IsReady = true;
+        Debug.Log($"[RecipeCatalogService] Loaded {loaded} recipes from local JSON.");
+        yield break;
+    }
+
+    /// <summary>Load catalog from a remote URL (NestJS /recipes endpoint).
+    /// Falls back to <see cref="catalogJsonAsset"/> automatically if the request fails.</summary>
+    public IEnumerator LoadCatalogFromUrl(string url)
+    {
+        IsReady = false;
+        _catalog.Clear();
+
+        using var req = UnityWebRequest.Get(url);
+        yield return req.SendWebRequest();
+
+        if (req.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[RecipeCatalogService] Failed to fetch from {url}: {req.error}. Falling back to local mock.");
+            yield return FallbackToLocal();
+            yield break;
+        }
+
+        RecipeCatalogResponse response = null;
+        bool parseFailed = false;
+        try
+        {
+            response = JsonConvert.DeserializeObject<RecipeCatalogResponse>(req.downloadHandler.text);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[RecipeCatalogService] Remote JSON parse error: {e.Message}. Falling back to local mock.");
+            parseFailed = true;
+        }
+
+        if (parseFailed || response?.recipes == null)
+        {
+            if (!parseFailed)
+                Debug.LogWarning("[RecipeCatalogService] Remote catalog is empty. Falling back to local mock.");
+            yield return FallbackToLocal();
+            yield break;
+        }
+
+        int loaded = 0;
+        foreach (var recipe in response.recipes)
+        {
+            if (recipe == null || !recipe.IsValid())
+            {
+                Debug.LogWarning("[RecipeCatalogService] Skipping invalid recipe.");
+                continue;
+            }
+            _catalog[recipe.recipeID] = recipe;
+            loaded++;
+        }
+
+        IsReady = true;
+        Debug.Log($"[RecipeCatalogService] Fetched {loaded} recipes from {url}");
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────────────────
+
+    private IEnumerator FallbackToLocal()
+    {
+        if (catalogJsonAsset == null)
+        {
+            Debug.LogError("[RecipeCatalogService] No fallback asset assigned — catalog unavailable.");
+            yield break;
+        }
+        yield return LoadCatalogFromJson(catalogJsonAsset);
+    }
 }

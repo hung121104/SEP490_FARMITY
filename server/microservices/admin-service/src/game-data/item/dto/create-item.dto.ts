@@ -7,7 +7,19 @@ import {
   IsArray,
   IsNotEmpty,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CrossResultDto {
+  @IsString()
+  @IsNotEmpty()
+  targetPlantId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  resultPlantId: string;
+}
 
 export class CreateItemDto {
   // ── Base Properties ────────────────────────────────────────────────────────
@@ -74,6 +86,13 @@ export class CreateItemDto {
   @IsInt({ each: true })
   npcPreferenceReactions?: number[];
 
+  // ── Seed (itemType: 1) ──────────────────────────────────────────────────────
+
+  /** Links this seed to its corresponding PlantData in PlantCatalogService */
+  @IsOptional()
+  @IsString()
+  plantId?: string;
+
   // ── Tool (itemType: 0) ─────────────────────────────────────────────────────
 
   @IsOptional()
@@ -95,12 +114,22 @@ export class CreateItemDto {
   // ── Pollen (itemType: 3) ───────────────────────────────────────────────────
 
   @IsOptional()
+  @IsString()
+  sourcePlantId?: string;
+
+  @IsOptional()
   @IsNumber()
   pollinationSuccessChance?: number;
 
   @IsOptional()
   @IsInt()
   viabilityDays?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CrossResultDto)
+  crossResults?: CrossResultDto[];
 
   // ── Consumable (itemType: 4) / Cooking (itemType: 8) ──────────────────────
 

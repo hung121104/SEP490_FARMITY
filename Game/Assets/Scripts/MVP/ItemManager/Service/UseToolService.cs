@@ -14,9 +14,7 @@ public class UseToolService : IUseToolService
     public static event Action<ToolData, Vector3> OnPickaxeRequested;
     public static event Action<ToolData, Vector3> OnAxeRequested;
     public static event Action<ToolData, Vector3> OnFishingRodRequested;
-
-    // TODO: Reconnect pollen event when PlantDataSO is refactored
-    // public static event Action<PollenData, Vector3> OnPollenRequested;
+    public static event Action<PollenData, Vector3> OnPollenRequested;
 
     // ── IUseToolService implementation ────────────────────────────────────
     public bool UseHoe(ToolData item, Vector3 pos)
@@ -51,6 +49,13 @@ public class UseToolService : IUseToolService
     {
         Debug.Log("[UseToolService] UseFishingRod at: " + pos);
         OnFishingRodRequested?.Invoke(item, pos);
+        return true;
+    }
+
+    public bool UsePollen(PollenData pollen, Vector3 pos)
+    {
+        Debug.Log("[UseToolService] UsePollen at: " + pos);
+        OnPollenRequested?.Invoke(pollen, pos);
         return true;
     }
 }

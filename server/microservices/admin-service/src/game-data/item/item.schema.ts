@@ -61,6 +61,12 @@ export class Item {
   @Prop({ type: [Number], default: [] })
   npcPreferenceReactions: number[];
 
+  // ── itemType: 1 – Seed ─────────────────────────────────────────────────────
+
+  /** Links this seed to its corresponding PlantData in PlantCatalogService */
+  @Prop()
+  plantId?: string;
+
   // ── itemType: 0 – Tool ─────────────────────────────────────────────────────
 
   @Prop()
@@ -78,10 +84,25 @@ export class Item {
   // ── itemType: 3 – Pollen ───────────────────────────────────────────────────
 
   @Prop()
+  sourcePlantId?: string;
+
+  @Prop()
   pollinationSuccessChance?: number;
 
   @Prop()
   viabilityDays?: number;
+
+  /** Cross-breeding results: which target plant + pollen produces which result plant. */
+  @Prop({
+    type: [
+      {
+        targetPlantId: { type: String, required: true },
+        resultPlantId: { type: String, required: true },
+      },
+    ],
+    default: undefined,
+  })
+  crossResults?: { targetPlantId: string; resultPlantId: string }[];
 
   // ── itemType: 4 – Consumable / 8 – Cooking ────────────────────────────────
 

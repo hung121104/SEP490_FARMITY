@@ -19,7 +19,7 @@
                 }
             ],
             "isUnlockedByDefault": true,
-            "category": 0
+            "category": 1
         },
         {
             "recipeID": "copper_hoe",
@@ -40,7 +40,7 @@
                 }
             ],
             "isUnlockedByDefault": true,
-            "category": 0
+            "category": 1
         },
         {
             "recipeID": "gold_hoe",
@@ -61,7 +61,7 @@
                 }
             ],
             "isUnlockedByDefault": true,
-            "category": 0
+            "category": 1
         }
     ]
 }

@@ -17,6 +17,9 @@ export class CreateItemDto {
   npcPreferenceNames?: string[];
   npcPreferenceReactions?: number[];
 
+  // Seed
+  plantId?: string;
+
   // Tool
   toolType?: number;
   toolLevel?: number;
@@ -24,8 +27,10 @@ export class CreateItemDto {
   toolMaterial?: number;
 
   // Pollen
+  sourcePlantId?: string;
   pollinationSuccessChance?: number;
   viabilityDays?: number;
+  crossResults?: { targetPlantId: string; resultPlantId: string }[];
 
   // Consumable / Cooking
   energyRestore?: number;

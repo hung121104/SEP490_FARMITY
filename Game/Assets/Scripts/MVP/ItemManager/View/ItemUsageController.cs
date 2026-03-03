@@ -68,8 +68,19 @@ public class ItemUsageController : MonoBehaviour
                 break;
 
             case ItemType.Pollen:
-                if (itemUsagePresenter.UsePollen(item, targetPosition))
-                    presenter.ConsumeCurrentItem(1);
+                // Fire the pollen event. CropBreedingView will raise OnBreedingResult
+                // synchronously with true/false — consume only on success.
+                void OnResult(bool success)
+                {
+                    CropBreedingView.OnBreedingResult -= OnResult;
+                    if (success)
+                        presenter.ConsumeCurrentItem(1);
+                }
+                CropBreedingView.OnBreedingResult += OnResult;
+                bool eventFired = itemUsagePresenter.UsePollen(item, targetPosition);
+                // Guard: if the event was never fired (no CropBreedingView in scene), clean up
+                if (!eventFired)
+                    CropBreedingView.OnBreedingResult -= OnResult;
                 break;
 
             default:

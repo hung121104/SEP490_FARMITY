@@ -382,13 +382,19 @@ public class CraftingSystemManager : MonoBehaviour
     [ContextMenu("Test Open Crafting UI")]
     private void TestOpenCraftingUI()
     {
-        OpenCraftingUI();
+        if (craftingPresenter != null && craftingPresenter.IsUIOpen())
+            CloseCraftingUI();
+        else
+            OpenCraftingUI();
     }
 
     [ContextMenu("Test Open Cooking UI")]
     private void TestOpenCookingUI()
     {
-        OpenCookingUI();
+        if (cookingPresenter != null && cookingPresenter.IsUIOpen())
+            CloseCookingUI();
+        else
+            OpenCookingUI();
     }
 
     [ContextMenu("Test Add Test Items to Inventory")]
