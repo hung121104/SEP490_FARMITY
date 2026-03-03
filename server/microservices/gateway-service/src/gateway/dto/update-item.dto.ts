@@ -26,8 +26,10 @@ export class UpdateItemDto {
   toolMaterial?: number;
 
   // Pollen
+  sourcePlantId?: string;
   pollinationSuccessChance?: number;
   viabilityDays?: number;
+  crossResults?: { targetPlantId: string; resultPlantId: string }[];
 
   // Consumable / Cooking
   energyRestore?: number;

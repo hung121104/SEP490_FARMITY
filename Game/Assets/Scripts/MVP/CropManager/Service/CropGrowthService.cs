@@ -49,7 +49,15 @@ public class CropGrowthService : ICropGrowthService
             return false;
 
         PlantData plant = GetPlantData(tileData.PlantId);
-        return plant != null && tileData.CropStage >= plant.growthStages.Count - 1;
+        if (plant == null) return false;
+
+        // Hybrid plants: harvestable stage is pollenStage+1 (mature).
+        // Normal plants: harvestable stage is the last entry in growthStages.
+        int harvestStage = plant.isHybrid
+            ? plant.pollenStage + 1
+            : plant.growthStages.Count - 1;
+
+        return tileData.CropStage >= harvestStage;
     }
 
     public bool IsCropAtPollenStage(int worldX, int worldY)
@@ -115,10 +123,21 @@ public class CropGrowthService : ICropGrowthService
                         continue;
 
                     PlantData plant = GetPlantData(tileData.PlantId);
-                    if (plant == null || tileData.CropStage >= plant.growthStages.Count - 1) continue;
+                    if (plant == null) continue;
+
+                    // Hybrid: grows from pollenStage → pollenStage+1 (mature), then stops.
+                    // Normal: grows until last growthStages entry.
+                    int effectiveLastStage = plant.isHybrid
+                        ? plant.pollenStage + 1
+                        : plant.growthStages.Count - 1;
+
+                    if (tileData.CropStage >= effectiveLastStage) continue;
 
                     int nextStageIndex = tileData.CropStage + 1;
-                    int ageRequired    = Mathf.RoundToInt(plant.growthStages[nextStageIndex].age / speedMultiplier);
+                    // Hybrid mature step may not have a growthStages entry — default to 1 day.
+                    int ageRequired = (nextStageIndex < plant.growthStages.Count)
+                        ? Mathf.RoundToInt(plant.growthStages[nextStageIndex].age / speedMultiplier)
+                        : 1;
 
                     if (tileData.TotalAge < ageRequired) continue;
 
@@ -160,10 +179,18 @@ public class CropGrowthService : ICropGrowthService
         }
 
         PlantData plant = GetPlantData(tileData.PlantId);
-        if (plant == null || tileData.CropStage >= plant.growthStages.Count - 1) return;
+        if (plant == null) return;
+
+        int effectiveLastStage = plant.isHybrid
+            ? plant.pollenStage + 1
+            : plant.growthStages.Count - 1;
+
+        if (tileData.CropStage >= effectiveLastStage) return;
 
         byte newStage = (byte)(tileData.CropStage + 1);
-        int  newAge   = newStage < plant.growthStages.Count ? plant.growthStages[newStage].age : tileData.TotalAge;
+        int  newAge   = (newStage < plant.growthStages.Count)
+            ? plant.growthStages[newStage].age
+            : tileData.TotalAge + 1;
 
         worldData.UpdateCropStage(worldPos, newStage);
         worldData.UpdateCropAge(worldPos, newAge);
