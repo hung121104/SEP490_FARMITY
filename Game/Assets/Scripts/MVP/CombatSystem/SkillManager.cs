@@ -4,58 +4,45 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Manages all equipped skills.
-/// Now uses SkillDatabase to find skills by SkillData reference.
-/// Handles skill input (Alpha1-4) and triggers skills.
-/// Provides skill references for UI cooldown display.
+/// Links SkillData to SkillBase components in the scene.
+/// Provides equipped skill info to SkillHotbarUI.
+/// 
+/// Equipped skills start EMPTY - they are assigned via drag-drop
+/// from SkillManagementPanel to SkillHotbar.
 /// </summary>
 public class SkillManager : MonoBehaviour
 {
-    public static SkillManager Instance;
+    public static SkillManager Instance { get; private set; }
 
-    [Header("Equipped Skills - Now using SkillData")]
+    [Header("Equipped Skills - Start Empty, Assigned via Drag-Drop")]
     [SerializeField] private SkillData[] equippedSkillsData = new SkillData[4];
 
-    [Header("Input Keys")]
-    [SerializeField] private KeyCode[] skillKeys = new KeyCode[]
-    {
-        KeyCode.Alpha1,
-        KeyCode.Alpha2,
-        KeyCode.Alpha3,
-        KeyCode.Alpha4
-    };
-
     private SkillBase[] equippedSkillsComponents = new SkillBase[4];
+    private Dictionary<string, SkillBase> skillComponentsByName = new Dictionary<string, SkillBase>();
     private bool isInitialized = false;
 
-    #region Unity Lifecycle
+    #region Singleton
 
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
             return;
         }
 
-        // Delayed initialization - wait for SkillDatabase to awake
-        StartCoroutine(DelayedInitialization());
-    }
-
-    private void Update()
-    {
-        if (!isInitialized || !CombatModeManager.Instance.IsCombatModeActive)
-            return;
-
-        CheckSkillInput();
+        Instance = this;
     }
 
     #endregion
 
     #region Initialization
+
+    private void Start()
+    {
+        // Delayed initialization - wait for other systems to awake
+        StartCoroutine(DelayedInitialization());
+    }
 
     private IEnumerator DelayedInitialization()
     {
@@ -64,7 +51,8 @@ public class SkillManager : MonoBehaviour
         {
             if (SkillDatabase.Instance != null)
             {
-                LinkSkillsFromDatabase();
+                CacheAllSkillComponents();
+                LinkInitialSkills();
                 isInitialized = true;
                 Debug.Log("[SkillManager] Initialization complete!");
                 yield break;
@@ -72,20 +60,16 @@ public class SkillManager : MonoBehaviour
             yield return null;
         }
 
-        Debug.LogError("[SkillManager] Failed to find SkillDatabase after 50 frames!");
+        Debug.LogError("[SkillManager] Failed to initialize - SkillDatabase not found!");
     }
 
-    private void LinkSkillsFromDatabase()
+    /// <summary>
+    /// Cache all SkillBase components found in the scene for quick lookup.
+    /// </summary>
+    private void CacheAllSkillComponents()
     {
-        if (SkillDatabase.Instance == null)
-        {
-            Debug.LogError("[SkillManager] SkillDatabase not found!");
-            return;
-        }
+        skillComponentsByName.Clear();
 
-        Debug.Log("[SkillManager] ===== LINKING SKILLS =====");
-
-        // FIXED: Search in parent (CombatSystem) instead of SkillManager's children
         Transform combatSystemTransform = transform.parent;
         if (combatSystemTransform == null)
         {
@@ -94,81 +78,103 @@ public class SkillManager : MonoBehaviour
         }
 
         SkillBase[] allSkillComponents = combatSystemTransform.GetComponentsInChildren<SkillBase>(true);
-        Debug.Log($"[SkillManager] Found {allSkillComponents.Length} SkillBase components");
         
-        Dictionary<string, SkillBase> componentsByName = new Dictionary<string, SkillBase>();
-
         foreach (SkillBase skill in allSkillComponents)
         {
             string componentName = skill.GetType().Name;
-            componentsByName[componentName] = skill;
-            Debug.Log($"[SkillManager]   - Registered: {componentName} (GameObject: {skill.gameObject.name})");
+            skillComponentsByName[componentName] = skill;
+            Debug.Log($"[SkillManager] Cached skill component: {componentName}");
         }
 
-        // Link equipped skills
+        Debug.Log($"[SkillManager] Cached {skillComponentsByName.Count} skill components");
+    }
+
+    /// <summary>
+    /// Link any skills that were manually assigned in Inspector (if any).
+    /// Otherwise starts with all slots empty.
+    /// </summary>
+    private void LinkInitialSkills()
+    {
         for (int i = 0; i < equippedSkillsData.Length; i++)
         {
-            Debug.Log($"[SkillManager] === SLOT {i} ===");
-
-            if (equippedSkillsData[i] == null)
+            if (equippedSkillsData[i] != null)
             {
-                equippedSkillsComponents[i] = null;
-                Debug.Log($"[SkillManager] Slot {i} is EMPTY (no SkillData assigned)");
-                continue;
-            }
-
-            string linkedName = equippedSkillsData[i].linkedComponentName;
-            Debug.Log($"[SkillManager] SkillData: {equippedSkillsData[i].skillName}");
-            Debug.Log($"[SkillManager] Looking for component: '{linkedName}'");
-            
-            if (componentsByName.TryGetValue(linkedName, out var component))
-            {
-                equippedSkillsComponents[i] = component;
-                Debug.Log($"[SkillManager] ✓✓✓ LINKED {linkedName} to slot {i} ✓✓✓");
+                LinkSkillToSlot(i, equippedSkillsData[i]);
+                Debug.Log($"[SkillManager] Linked initial skill to slot {i}: {equippedSkillsData[i].skillName}");
             }
             else
             {
-                Debug.LogError($"[SkillManager] ✗✗✗ FAILED: Component '{linkedName}' not found in scene!");
-                Debug.LogError($"[SkillManager] Available components: {string.Join(", ", componentsByName.Keys)}");
                 equippedSkillsComponents[i] = null;
             }
         }
+    }
 
-        Debug.Log("[SkillManager] ===== LINKING COMPLETE =====");
+    /// <summary>
+    /// Link a SkillData to its SkillBase component.
+    /// </summary>
+    private void LinkSkillToSlot(int slotIndex, SkillData skillData)
+    {
+        if (skillData == null || slotIndex < 0 || slotIndex >= equippedSkillsComponents.Length)
+            return;
+
+        string linkedName = skillData.linkedComponentName;
+        
+        if (skillComponentsByName.TryGetValue(linkedName, out var component))
+        {
+            equippedSkillsComponents[slotIndex] = component;
+            Debug.Log($"[SkillManager] Linked {linkedName} to slot {slotIndex}");
+        }
+        else
+        {
+            Debug.LogError($"[SkillManager] Skill component '{linkedName}' not found!");
+            equippedSkillsComponents[slotIndex] = null;
+        }
     }
 
     #endregion
 
-    #region Input Handling
+    #region Skill Equipment (Called by SkillHotbarSlot on Drop)
 
-    private void CheckSkillInput()
+    /// <summary>
+    /// Equip a skill to a hotbar slot.
+    /// Called when user drags a skill from panel and drops on hotbar.
+    /// </summary>
+    public void EquipSkill(int slotIndex, SkillData skillData)
     {
-        for (int i = 0; i < skillKeys.Length; i++)
+        if (!isInitialized)
         {
-            if (Input.GetKeyDown(skillKeys[i]))
-            {
-                TryTriggerSkill(i);
-            }
-        }
-    }
-
-    private void TryTriggerSkill(int slotIndex)
-    {
-        SkillBase skill = GetSkill(slotIndex);
-        if (skill == null)
-        {
-            Debug.LogWarning($"[SkillManager] No skill equipped in slot {slotIndex}");
+            Debug.LogWarning("[SkillManager] Not yet initialized!");
             return;
         }
 
-        Debug.Log($"[SkillManager] Attempting to trigger skill in slot {slotIndex}");
-        // TODO: Call skill.StartSkillFlow() or similar
+        if (slotIndex < 0 || slotIndex >= equippedSkillsData.Length)
+        {
+            Debug.LogWarning($"[SkillManager] Invalid slot index: {slotIndex}");
+            return;
+        }
+
+        // Assign or clear
+        equippedSkillsData[slotIndex] = skillData;
+        
+        if (skillData != null)
+        {
+            LinkSkillToSlot(slotIndex, skillData);
+            Debug.Log($"[SkillManager] Equipped {skillData.skillName} to slot {slotIndex}");
+        }
+        else
+        {
+            equippedSkillsComponents[slotIndex] = null;
+            Debug.Log($"[SkillManager] Cleared slot {slotIndex}");
+        }
     }
 
     #endregion
 
-    #region Public API
+    #region Skill Queries
 
+    /// <summary>
+    /// Get the SkillBase component at a slot (for execution).
+    /// </summary>
     public SkillBase GetSkill(int index)
     {
         if (!isInitialized)
@@ -179,6 +185,9 @@ public class SkillManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// Get the SkillData at a slot (for UI display).
+    /// </summary>
     public SkillData GetSkillData(int index)
     {
         if (index >= 0 && index < equippedSkillsData.Length)
@@ -188,15 +197,7 @@ public class SkillManager : MonoBehaviour
 
     public int GetSkillCount() => equippedSkillsComponents.Length;
 
-    public void EquipSkill(int slotIndex, SkillData skillData)
-    {
-        if (slotIndex >= 0 && slotIndex < equippedSkillsData.Length)
-        {
-            equippedSkillsData[slotIndex] = skillData;
-            LinkSkillsFromDatabase(); // Re-link all skills
-            Debug.Log($"[SkillManager] Equipped {skillData?.skillName} to slot {slotIndex}");
-        }
-    }
+    public bool IsInitialized => isInitialized;
 
     #endregion
 }
