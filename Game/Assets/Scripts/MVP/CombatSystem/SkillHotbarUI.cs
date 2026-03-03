@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
 /// <summary>
 /// Manages the skill hotbar UI display.
@@ -63,11 +64,22 @@ public class SkillHotbarUI : MonoBehaviour
         InitializeArrays();
         SetupHotkeyLabels();
         SubscribeToCombatMode();
-        InitializeSkillIcons();
+        
+        // Wait for SkillManager to initialize before setting up icons
+        StartCoroutine(DelayedInitializeSkillIcons());
         
         // Start hidden
         if (skillHotbarCanvas != null)
             skillHotbarCanvas.SetActive(false);
+    }
+
+    private IEnumerator DelayedInitializeSkillIcons()
+    {
+        // Wait for SkillManager to be ready
+        yield return new WaitForSeconds(0.2f);
+        
+        InitializeSkillIcons();
+        Debug.Log("[SkillHotbarUI] Skill icons initialized");
     }
 
     private void Update()

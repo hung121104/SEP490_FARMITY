@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
@@ -24,6 +25,7 @@ public class SkillManager : MonoBehaviour
     };
 
     private SkillBase[] equippedSkillsComponents = new SkillBase[4];
+    private bool isInitialized = false;
 
     #region Unity Lifecycle
 
@@ -39,12 +41,13 @@ public class SkillManager : MonoBehaviour
             return;
         }
 
-        LinkSkillsFromDatabase();
+        // Delayed initialization - wait for SkillDatabase to awake
+        StartCoroutine(DelayedInitialization());
     }
 
     private void Update()
     {
-        if (!CombatModeManager.Instance.IsCombatModeActive)
+        if (!isInitialized || !CombatModeManager.Instance.IsCombatModeActive)
             return;
 
         CheckSkillInput();
@@ -54,6 +57,24 @@ public class SkillManager : MonoBehaviour
 
     #region Initialization
 
+    private IEnumerator DelayedInitialization()
+    {
+        // Wait until SkillDatabase is ready
+        for (int attempts = 0; attempts < 50; attempts++)
+        {
+            if (SkillDatabase.Instance != null)
+            {
+                LinkSkillsFromDatabase();
+                isInitialized = true;
+                Debug.Log("[SkillManager] Initialization complete!");
+                yield break;
+            }
+            yield return null;
+        }
+
+        Debug.LogError("[SkillManager] Failed to find SkillDatabase after 50 frames!");
+    }
+
     private void LinkSkillsFromDatabase()
     {
         if (SkillDatabase.Instance == null)
@@ -62,37 +83,58 @@ public class SkillManager : MonoBehaviour
             return;
         }
 
-        // Find skill components in CombatSystem children
-        SkillBase[] allSkillComponents = GetComponentsInChildren<SkillBase>(true);
+        Debug.Log("[SkillManager] ===== LINKING SKILLS =====");
+
+        // FIXED: Search in parent (CombatSystem) instead of SkillManager's children
+        Transform combatSystemTransform = transform.parent;
+        if (combatSystemTransform == null)
+        {
+            Debug.LogError("[SkillManager] SkillManager has no parent! Should be child of CombatSystem");
+            return;
+        }
+
+        SkillBase[] allSkillComponents = combatSystemTransform.GetComponentsInChildren<SkillBase>(true);
+        Debug.Log($"[SkillManager] Found {allSkillComponents.Length} SkillBase components");
+        
         Dictionary<string, SkillBase> componentsByName = new Dictionary<string, SkillBase>();
 
         foreach (SkillBase skill in allSkillComponents)
         {
-            componentsByName[skill.GetType().Name] = skill;
+            string componentName = skill.GetType().Name;
+            componentsByName[componentName] = skill;
+            Debug.Log($"[SkillManager]   - Registered: {componentName} (GameObject: {skill.gameObject.name})");
         }
 
         // Link equipped skills
         for (int i = 0; i < equippedSkillsData.Length; i++)
         {
+            Debug.Log($"[SkillManager] === SLOT {i} ===");
+
             if (equippedSkillsData[i] == null)
             {
                 equippedSkillsComponents[i] = null;
+                Debug.Log($"[SkillManager] Slot {i} is EMPTY (no SkillData assigned)");
                 continue;
             }
 
             string linkedName = equippedSkillsData[i].linkedComponentName;
+            Debug.Log($"[SkillManager] SkillData: {equippedSkillsData[i].skillName}");
+            Debug.Log($"[SkillManager] Looking for component: '{linkedName}'");
             
             if (componentsByName.TryGetValue(linkedName, out var component))
             {
                 equippedSkillsComponents[i] = component;
-                Debug.Log($"[SkillManager] Linked {linkedName} to slot {i}");
+                Debug.Log($"[SkillManager] ✓✓✓ LINKED {linkedName} to slot {i} ✓✓✓");
             }
             else
             {
-                Debug.LogWarning($"[SkillManager] Could not find skill component '{linkedName}'");
+                Debug.LogError($"[SkillManager] ✗✗✗ FAILED: Component '{linkedName}' not found in scene!");
+                Debug.LogError($"[SkillManager] Available components: {string.Join(", ", componentsByName.Keys)}");
                 equippedSkillsComponents[i] = null;
             }
         }
+
+        Debug.Log("[SkillManager] ===== LINKING COMPLETE =====");
     }
 
     #endregion
@@ -120,6 +162,7 @@ public class SkillManager : MonoBehaviour
         }
 
         Debug.Log($"[SkillManager] Attempting to trigger skill in slot {slotIndex}");
+        // TODO: Call skill.StartSkillFlow() or similar
     }
 
     #endregion
@@ -128,6 +171,9 @@ public class SkillManager : MonoBehaviour
 
     public SkillBase GetSkill(int index)
     {
+        if (!isInitialized)
+            return null;
+
         if (index >= 0 && index < equippedSkillsComponents.Length)
             return equippedSkillsComponents[index];
         return null;
