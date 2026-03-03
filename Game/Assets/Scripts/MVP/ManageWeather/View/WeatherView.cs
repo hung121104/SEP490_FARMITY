@@ -4,8 +4,7 @@ using ExitGames.Client.Photon;
 
 public class WeatherView : MonoBehaviourPunCallbacks
 {
-    [Header("Input")]
-    [SerializeField] private KeyCode toggleForecastKey = KeyCode.F;
+  
     [Header("Weather Settings")]
     [SerializeField] private SeasonManagerView seasonManager;
     [Header("Weather Settings")]
@@ -51,15 +50,7 @@ public class WeatherView : MonoBehaviourPunCallbacks
         forecastPresenter.Refresh();
     }
 
-    private void Update()
-    {
-        if (Input.GetKeyDown(toggleForecastKey))
-        {
-            if (forecastView != null)
-                forecastView.Toggle();
-        }
-
-    }
+   
 
     public override void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
