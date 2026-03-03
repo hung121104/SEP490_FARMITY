@@ -31,7 +31,7 @@ public class CropBreedingService : ICropBreedingService
         if (!worldData.TryGetCropAtWorldPosition(targetWorldPos, out var tile)) return false;
         if (tile.IsPollinated) return false;
 
-        PlantDataSO targetPlant = GetPlant(tile.PlantId);
+        PlantData targetPlant = GetPlant(tile.PlantId);
         if (targetPlant == null) return false;
         // TODO: if (targetPlant == pollen.sourcePlant) return false; — deferred
         if (tile.CropStage != targetPlant.pollenStage) return false;
@@ -53,12 +53,12 @@ public class CropBreedingService : ICropBreedingService
     // TODO: Restore FindCrossResult when PollenData.crossResults is wired
     // private static bool FindCrossResult(PollenData pollen, PlantDataSO target, out PollenData.CrossResult result) { ... }
 
-    private PlantDataSO GetPlant(string plantId)
+    private PlantData GetPlant(string plantId)
     {
-        if (cropManagerView != null && cropManagerView.GrowthService != null)
+        if (cropManagerView?.GrowthService != null)
             return cropManagerView.GrowthService.GetPlantData(plantId);
 
-        return Resources.Load<PlantDataSO>($"Plants/{plantId}");
+        return PlantCatalogService.Instance?.GetPlantData(plantId);
     }
 
     private void RefreshChunk(Vector3 worldPos)

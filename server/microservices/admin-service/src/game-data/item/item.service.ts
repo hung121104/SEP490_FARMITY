@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Item, ItemDocument } from './item.schema';
 import { CreateItemDto } from './dto/create-item.dto';
+import { UpdateItemDto } from './dto/update-item.dto';
 
 
 @Injectable()
@@ -39,9 +40,17 @@ export class ItemService {
     return this.itemModel.findOne({ itemID }).exec();
   }
 
-  async delete(id: string): Promise<Item | null> {
-    const item = await this.itemModel.findByIdAndDelete(id).exec();
-    if (!item) throw new NotFoundException(`Item with id "${id}" not found`);
+  async update(itemID: string, dto: UpdateItemDto): Promise<Item> {
+    const updated = await this.itemModel
+      .findOneAndUpdate({ itemID }, { $set: dto }, { new: true })
+      .exec();
+    if (!updated) throw new NotFoundException(`Item with itemID "${itemID}" not found`);
+    return updated;
+  }
+
+  async delete(itemID: string): Promise<Item | null> {
+    const item = await this.itemModel.findOneAndDelete({ itemID }).exec();
+    if (!item) throw new NotFoundException(`Item with itemID "${itemID}" not found`);
     return item;
   }
 }

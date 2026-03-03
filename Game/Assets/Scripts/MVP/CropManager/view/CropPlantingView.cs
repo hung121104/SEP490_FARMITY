@@ -43,8 +43,8 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
 
     // current seed derived from hotbar; null when no seed selected
     private SeedData _currentSeed;
-    // TODO: Reconnect CurrentPlantId when SeedData.plantId is wired (requires PlantData refactor)
-    public string CurrentPlantId => string.Empty;
+    /// <summary>The plantId from the active seed's PlantData. Empty if no seed selected or seed has no plantId.</summary>
+    public string CurrentPlantId => _currentSeed?.plantId ?? string.Empty;
 
     // Tile preview
     private SpriteRenderer _previewSR;
@@ -186,8 +186,15 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     {
         if (_previewSR == null) return;
 
-        // TODO: Restore preview sprite when SeedData.plantId / CropDataSo link is wired
+        // Resolve preview sprite: prefer plant stage-0, fall back to seed item icon
         Sprite seedSprite = null;
+        if (_currentSeed != null)
+        {
+            if (!string.IsNullOrEmpty(CurrentPlantId))
+                seedSprite = PlantCatalogService.Instance?.GetStageSprite(CurrentPlantId, 0);
+            if (seedSprite == null)
+                seedSprite = ItemCatalogService.Instance?.GetCachedSprite(_currentSeed.itemID);
+        }
 
         if (seedSprite == null || targetCamera == null || playerTransform == null)
         {

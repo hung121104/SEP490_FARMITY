@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using TMPro;
 using Photon.Pun;
@@ -18,6 +19,10 @@ public class EnemyCombat : MonoBehaviour
 
     [Header("Cooldown")]
     [SerializeField] private float damageThrottleTime = 0.5f;
+
+    [Header("Player Search")]
+    [SerializeField] private float playerSearchRetryInterval = 0.5f;
+    [SerializeField] private float playerSearchTimeout = 10f;
 
     #endregion
 
@@ -42,7 +47,7 @@ public class EnemyCombat : MonoBehaviour
 
     private void Awake()
     {
-        InitializeComponents();
+        StartCoroutine(InitializeWithRetry());
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -63,7 +68,7 @@ public class EnemyCombat : MonoBehaviour
 
     #region Initialization
 
-    private void InitializeComponents()
+    private IEnumerator InitializeWithRetry()
     {
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<Collider2D>();
@@ -72,13 +77,25 @@ public class EnemyCombat : MonoBehaviour
         if (col != null && col.isTrigger)
             col.isTrigger = false;
 
-        // Find local player
-        GameObject playerObj = FindLocalPlayerEntity();
-        if (playerObj == null)
+        // Retry finding local player until Photon spawns it
+        GameObject playerObj = null;
+        float elapsed = 0f;
+        while (playerObj == null)
         {
-            Debug.LogError($"[{GetType().Name}] Local player not found!");
-            enabled = false;
-            return;
+            playerObj = FindLocalPlayerEntity();
+            if (playerObj != null)
+                break;
+
+            elapsed += playerSearchRetryInterval;
+            if (elapsed >= playerSearchTimeout)
+            {
+                Debug.LogError($"[{GetType().Name}] Local player not found after {playerSearchTimeout}s – disabling.");
+                enabled = false;
+                yield break;
+            }
+
+            Debug.LogWarning($"[{GetType().Name}] Local player not found, retrying in {playerSearchRetryInterval}s…");
+            yield return new WaitForSeconds(playerSearchRetryInterval);
         }
 
         // Get global CombatSystem managers
@@ -89,7 +106,7 @@ public class EnemyCombat : MonoBehaviour
         {
             Debug.LogError($"[{GetType().Name}] PlayerHealthManager not found in scene!");
             enabled = false;
-            return;
+            yield break;
         }
 
         isInitialized = true;
