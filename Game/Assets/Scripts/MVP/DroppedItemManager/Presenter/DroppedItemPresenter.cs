@@ -1,133 +1,327 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
-/// Presenter for a single dropped item. 
-/// Manages the despawn timer, blink trigger, and forwards pickup requests
-/// to the DroppedItemManager.
+/// Presenter for the Dropped Item system following MVP pattern.
+/// Coordinates between DroppedItemManagerView (View) and DroppedItemManagerService (Service).
+/// 
+/// Responsibilities:
+///   - Route sync events (from DroppedItemSyncManager) to service + view
+///   - Route chunk events (from ChunkLoadingManager) to view
+///   - Handle drop/pickup request flow
+///   - Decide when to spawn/despawn visuals based on chunk state
+///   - Trigger inventory integration for local player pickups
 ///
-/// Lifecycle:
-///   1. Created by DroppedItemManager when spawning a visual.
-///   2. Calls view.ShowItem(data) immediately.
-///   3. Every frame checks remaining time; triggers blink at <=30s.
-///   4. When timer reaches 0, MasterClient broadcasts despawn event.
-///   5. Destroyed by DroppedItemManager on despawn or pickup.
+/// All Unity-specific operations (Instantiate, Destroy, FindObject) are in the View.
+/// All business logic (data creation, registry) is in the Service.
 /// </summary>
-public class DroppedItemPresenter : MonoBehaviour
+public class DroppedItemPresenter
 {
-    // ── Constants ─────────────────────────────────────────────────────────────
+    private readonly IDroppedItemService service;
+    private readonly DroppedItemSyncManager syncManager;
+    private readonly ChunkLoadingManager chunkLoadingManager;
+    private readonly bool showDebugLogs;
 
-    /// <summary>Seconds remaining when blink animation should start.</summary>
-    private const float BLINK_THRESHOLD_SECONDS = 30f;
+    // ── Events (View subscribes to these) ─────────────────────
 
-    // ── Runtime State ─────────────────────────────────────────────────────────
+    /// <summary>Request the View to spawn a visual for this dropped item.</summary>
+    public event Action<DroppedItemData> OnSpawnVisualRequested;
 
-    private DroppedItemData _data;
-    private IDroppedItemView _view;
-    private bool _blinkStarted;
-    private bool _despawnBroadcast;
+    /// <summary>Request the View to despawn the visual for this dropId.</summary>
+    public event Action<string> OnDespawnVisualRequested;
 
-    /// <summary>Drop ID this presenter manages.</summary>
-    public string DropId => _data?.dropId;
+    /// <summary>Request the View to add a picked-up item to the local player's inventory.</summary>
+    public event Action<DroppedItemData> OnAddToInventoryRequested;
 
-    // ── Initialization ────────────────────────────────────────────────────────
+    /// <summary>Request the View to clear all active visuals (used during rebuild).</summary>
+    public event Action OnClearAllVisualsRequested;
 
-    /// <summary>
-    /// Bind the presenter to a data model and a view.
-    /// Called once by DroppedItemManager right after instantiation.
-    /// </summary>
-    /// <param name="data">The dropped item data from service/sync.</param>
-    /// <param name="view">The IDroppedItemView on the same GameObject.</param>
-    public void Initialize(DroppedItemData data, IDroppedItemView view)
+    // ── Constructor ───────────────────────────────────────────
+
+    public DroppedItemPresenter(
+        IDroppedItemService service,
+        DroppedItemSyncManager syncManager,
+        ChunkLoadingManager chunkLoadingManager,
+        bool showDebugLogs = true)
     {
-        _data = data;
-        _view = view;
-        _blinkStarted = false;
-        _despawnBroadcast = false;
+        this.service = service;
+        this.syncManager = syncManager;
+        this.chunkLoadingManager = chunkLoadingManager;
+        this.showDebugLogs = showDebugLogs;
 
-        // Wire the view back-reference so it can call OnPickupRequested
-        if (view is DroppedItemView concreteView)
-        {
-            concreteView.Presenter = this;
-        }
-
-        // Show the visual immediately
-        _view.ShowItem(data);
+        if (service == null)
+            Debug.LogError("[DroppedItemPresenter] IDroppedItemService is null!");
     }
 
-    // ── Frame Update ──────────────────────────────────────────────────────────
+    // ── Event Subscriptions ───────────────────────────────────
 
-    private void Update()
+    /// <summary>Subscribe to DroppedItemSyncManager events.</summary>
+    public void SubscribeToSyncEvents()
     {
-        if (_data == null) return;
-
-        double remaining = _data.RemainingSeconds;
-
-        // Start blinking when <= threshold
-        if (!_blinkStarted && remaining <= BLINK_THRESHOLD_SECONDS && remaining > 0f)
+        if (syncManager != null)
         {
-            _blinkStarted = true;
-            _view.StartBlinking();
-        }
-
-        // Despawn when expired — only MasterClient broadcasts to avoid duplicate events
-        if (!_despawnBroadcast && _data.IsExpired)
-        {
-            _despawnBroadcast = true;
-
-            if (Photon.Pun.PhotonNetwork.IsMasterClient)
-            {
-                // Notify all clients to despawn this item
-                var syncManager = FindAnyObjectByType<DroppedItemSyncManager>();
-                if (syncManager != null)
-                {
-                    syncManager.BroadcastItemDespawn(_data.dropId);
-                }
-            }
-
-            // The actual destroy will be handled by DroppedItemManager 
-            // when it processes the despawn event from SyncManager.
-        }
-    }
-
-    // ── Pickup ────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Called by DroppedItemView when the local player presses the pickup key.
-    /// Delegates to DroppedItemManager which handles the Photon request flow.
-    /// </summary>
-    /// <param name="dropId">The unique drop ID to pick up.</param>
-    public void OnPickupRequested(string dropId)
-    {
-        if (_data == null) return;
-        if (_data.IsExpired)
-        {
-            Debug.Log($"[DroppedItemPresenter] Item '{dropId}' already expired, ignoring pickup.");
-            return;
-        }
-
-        // Forward to manager (Phase 6)
-        var manager = DroppedItemManager.Instance;
-        if (manager != null)
-        {
-            manager.RequestPickupItem(dropId);
+            syncManager.OnItemSpawned += HandleItemSpawned;
+            syncManager.OnItemRemoved += HandleItemRemoved;
+            syncManager.OnSyncBatchReceived += HandleSyncBatch;
         }
         else
         {
-            Debug.LogError("[DroppedItemPresenter] DroppedItemManager.Instance is null!");
+            Debug.LogError("[DroppedItemPresenter] DroppedItemSyncManager is null — cannot subscribe to sync events.");
         }
     }
 
-    // ── Cleanup ───────────────────────────────────────────────────────────────
-
-    /// <summary>Hide the view when this presenter is about to be destroyed.</summary>
-    public void Cleanup()
+    /// <summary>Unsubscribe from DroppedItemSyncManager events.</summary>
+    public void UnsubscribeFromSyncEvents()
     {
-        _view?.HideItem();
-        _data = null;
+        if (syncManager != null)
+        {
+            syncManager.OnItemSpawned -= HandleItemSpawned;
+            syncManager.OnItemRemoved -= HandleItemRemoved;
+            syncManager.OnSyncBatchReceived -= HandleSyncBatch;
+        }
     }
 
-    private void OnDestroy()
+    /// <summary>Subscribe to ChunkLoadingManager events for chunk-based visibility.</summary>
+    public void SubscribeToChunkEvents()
     {
-        Cleanup();
+        if (chunkLoadingManager != null)
+        {
+            chunkLoadingManager.OnChunkLoaded += HandleChunkLoaded;
+            chunkLoadingManager.OnChunkUnloaded += HandleChunkUnloaded;
+        }
+        else
+        {
+            Debug.LogWarning("[DroppedItemPresenter] ChunkLoadingManager not found — chunk visibility disabled.");
+        }
+    }
+
+    /// <summary>Unsubscribe from ChunkLoadingManager events.</summary>
+    public void UnsubscribeFromChunkEvents()
+    {
+        if (chunkLoadingManager != null)
+        {
+            chunkLoadingManager.OnChunkLoaded -= HandleChunkLoaded;
+            chunkLoadingManager.OnChunkUnloaded -= HandleChunkUnloaded;
+        }
+    }
+
+    // ── Public API (called by View) ───────────────────────────
+
+    /// <summary>
+    /// Handle a drop request from the inventory.
+    /// Creates DroppedItemData via service and sends through Photon sync.
+    /// </summary>
+    /// <param name="item">The ItemModel being dropped.</param>
+    /// <param name="playerPosition">Current world position of the local player.</param>
+    /// <param name="dropOffset">Offset applied to player position.</param>
+    public void RequestDropItem(ItemModel item, Vector3 playerPosition, Vector2 dropOffset)
+    {
+        if (item == null)
+        {
+            Debug.LogWarning("[DroppedItemPresenter] Cannot drop null item.");
+            return;
+        }
+
+        DroppedItemData data = service.CreateDroppedItemData(item, playerPosition, dropOffset);
+        if (data == null) return;
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemPresenter] Requesting drop: {data.itemName} at ({data.worldX:F1}, {data.worldY:F1})");
+
+        // Send through Photon — Master will assign dropId, persist, and broadcast
+        syncManager?.SendDropRequest(data);
+    }
+
+    /// <summary>
+    /// Handle a pickup request from DroppedItemView.
+    /// Sends pickup request through Photon sync for Master validation.
+    /// </summary>
+    /// <param name="dropId">The unique drop ID to pick up.</param>
+    public void RequestPickupItem(string dropId)
+    {
+        if (string.IsNullOrEmpty(dropId))
+        {
+            Debug.LogWarning("[DroppedItemPresenter] Cannot pick up item with null/empty dropId.");
+            return;
+        }
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemPresenter] Requesting pickup: {dropId}");
+
+        syncManager?.SendPickupRequest(dropId);
+    }
+
+    /// <summary>Check if a dropped item exists in the registry.</summary>
+    public bool HasDroppedItem(string dropId) => service.HasItem(dropId);
+
+    /// <summary>Get all dropped items currently in the registry.</summary>
+    public IReadOnlyCollection<DroppedItemData> GetAllDroppedItems()
+    {
+        return service.GetAllItems().AsReadOnly();
+    }
+
+    /// <summary>
+    /// Rebuild registry and visuals from a database snapshot.
+    /// Called when this client becomes the new Master (OnMasterClientSwitched).
+    /// </summary>
+    /// <param name="items">Items loaded from MongoDB.</param>
+    public void RebuildFromDatabase(DroppedItemData[] items)
+    {
+        // Clear all existing visuals and registry
+        OnClearAllVisualsRequested?.Invoke();
+        service.Clear();
+
+        int activeCount = 0;
+        foreach (var data in items)
+        {
+            if (data == null || data.IsExpired) continue;
+            service.RegisterItem(data);
+            activeCount++;
+
+            // Only spawn visual if the item's chunk is currently loaded
+            Vector2Int chunk = new Vector2Int(data.chunkX, data.chunkY);
+            if (IsChunkLoaded(chunk))
+            {
+                OnSpawnVisualRequested?.Invoke(data);
+            }
+        }
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemPresenter] Rebuilt from DB: {items.Length} total, {activeCount} active");
+    }
+
+    // ── Sync Event Handlers ───────────────────────────────────
+
+    /// <summary>
+    /// Called when Master confirms an item was dropped (event 121 ITEM_SPAWNED).
+    /// Registers in service and requests visual spawn if chunk is loaded.
+    /// </summary>
+    private void HandleItemSpawned(DroppedItemData data)
+    {
+        if (data == null) return;
+
+        // Register in service registry
+        service.RegisterItem(data);
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemPresenter] Item spawned: {data.itemName} ({data.dropId}) at ({data.worldX:F1}, {data.worldY:F1})");
+
+        // Spawn visual only if the chunk is currently loaded
+        Vector2Int chunk = new Vector2Int(data.chunkX, data.chunkY);
+        if (IsChunkLoaded(chunk))
+        {
+            OnSpawnVisualRequested?.Invoke(data);
+        }
+    }
+
+    /// <summary>
+    /// Called when Master confirms an item was removed (event 123 ITEM_REMOVED or 126 DESPAWN).
+    /// Removes from service, despawns visual, and triggers inventory add for local player.
+    /// </summary>
+    private void HandleItemRemoved(string dropId, int pickedByActorNumber)
+    {
+        // Get item data before removing (needed for inventory add)
+        DroppedItemData data = service.GetItem(dropId);
+
+        // Unregister from service
+        service.UnregisterItem(dropId);
+
+        // Despawn visual
+        OnDespawnVisualRequested?.Invoke(dropId);
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemPresenter] Item removed: {dropId}, pickedBy: {pickedByActorNumber}");
+
+        // If this local player picked it up, add to inventory
+        if (pickedByActorNumber == PhotonNetwork.LocalPlayer.ActorNumber && data != null)
+        {
+            OnAddToInventoryRequested?.Invoke(data);
+        }
+    }
+
+    /// <summary>
+    /// Called during late-join sync (event 125 ITEM_SYNC_BATCH).
+    /// Registers all items and requests visual spawn for loaded chunks.
+    /// </summary>
+    private void HandleSyncBatch(DroppedItemData[] items)
+    {
+        if (items == null) return;
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemPresenter] Sync batch received: {items.Length} items");
+
+        foreach (var data in items)
+        {
+            if (data == null) continue;
+
+            // Skip duplicates
+            if (service.HasItem(data.dropId)) continue;
+
+            service.RegisterItem(data);
+
+            // Spawn visual if chunk is loaded
+            Vector2Int chunk = new Vector2Int(data.chunkX, data.chunkY);
+            if (IsChunkLoaded(chunk))
+            {
+                OnSpawnVisualRequested?.Invoke(data);
+            }
+        }
+    }
+
+    // ── Chunk Event Handlers ──────────────────────────────────
+
+    /// <summary>
+    /// When a chunk is loaded, spawn visuals for all dropped items in that chunk.
+    /// </summary>
+    private void HandleChunkLoaded(Vector2Int chunkPos)
+    {
+        var items = service.GetItemsInChunk(chunkPos);
+        foreach (var data in items)
+        {
+            OnSpawnVisualRequested?.Invoke(data);
+        }
+
+        if (showDebugLogs && items.Count > 0)
+            Debug.Log($"[DroppedItemPresenter] Chunk ({chunkPos.x}, {chunkPos.y}) loaded — spawning {items.Count} items.");
+    }
+
+    /// <summary>
+    /// When a chunk is unloaded, despawn visuals (data stays in registry).
+    /// </summary>
+    private void HandleChunkUnloaded(Vector2Int chunkPos)
+    {
+        var items = service.GetItemsInChunk(chunkPos);
+        int count = 0;
+        foreach (var data in items)
+        {
+            OnDespawnVisualRequested?.Invoke(data.dropId);
+            count++;
+        }
+
+        if (showDebugLogs && count > 0)
+            Debug.Log($"[DroppedItemPresenter] Chunk ({chunkPos.x}, {chunkPos.y}) unloaded — despawning {count} items.");
+    }
+
+    // ── Helpers ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Check if a chunk is currently loaded.
+    /// Falls back to true if ChunkLoadingManager is unavailable (show all items).
+    /// </summary>
+    private bool IsChunkLoaded(Vector2Int chunkPos)
+    {
+        if (chunkLoadingManager == null) return true;
+        return chunkLoadingManager.IsChunkLoaded(chunkPos);
+    }
+
+    // ── Cleanup ───────────────────────────────────────────────
+
+    /// <summary>Unsubscribe all events. Called by View.OnDestroy().</summary>
+    public void Cleanup()
+    {
+        UnsubscribeFromSyncEvents();
+        UnsubscribeFromChunkEvents();
     }
 }

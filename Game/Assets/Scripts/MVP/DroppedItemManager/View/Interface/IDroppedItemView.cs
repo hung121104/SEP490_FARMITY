@@ -1,6 +1,6 @@
 /// <summary>
 /// Interface for the visual representation of a dropped item in the world.
-/// DroppedItemPresenter drives this view based on model state.
+/// DroppedItemView implements this interface for the visual representation of a dropped item.
 /// </summary>
 public interface IDroppedItemView
 {

@@ -124,14 +124,14 @@ public class InventoryGameView : MonoBehaviour
     {
         Debug.Log($"Dropping item: {item.ItemName}");
 
-        // Delegate to DroppedItemManager which handles Photon sync + DB persistence
-        if (DroppedItemManager.Instance != null)
+        // Delegate to DroppedItemManagerView which handles Photon sync + DB persistence
+        if (DroppedItemManagerView.Instance != null)
         {
-            DroppedItemManager.Instance.RequestDropItem(item);
+            DroppedItemManagerView.Instance.RequestDropItem(item);
         }
         else
         {
-            Debug.LogError("[InventoryGameView] DroppedItemManager.Instance is null — cannot drop item!");
+            Debug.LogError("[InventoryGameView] DroppedItemManagerView.Instance is null — cannot drop item!");
         }
     }
 

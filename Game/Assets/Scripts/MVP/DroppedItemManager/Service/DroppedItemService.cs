@@ -1,15 +1,60 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
-/// In-memory registry of all dropped items known to this client.
-/// Thread-safe dictionary keyed by dropId.
-/// No networking or visual logic — purely data management.
+/// Handles data creation, registry management, and validation.
 /// </summary>
 public class DroppedItemService : IDroppedItemService
 {
     // ── Storage ───────────────────────────────────────────────
     private readonly Dictionary<string, DroppedItemData> items = new Dictionary<string, DroppedItemData>();
+    private readonly bool showDebugLogs;
+
+    public DroppedItemService(bool showDebugLogs = true)
+    {
+        this.showDebugLogs = showDebugLogs;
+    }
+
+    // ── Data Creation ─────────────────────────────────────────
+
+    public DroppedItemData CreateDroppedItemData(ItemModel item, Vector3 playerPosition, Vector2 dropOffset)
+    {
+        if (item == null)
+        {
+            Debug.LogWarning("[DroppedItemService] Cannot create data from null item.");
+            return null;
+        }
+
+        float worldX = playerPosition.x + dropOffset.x;
+        float worldY = playerPosition.y + dropOffset.y;
+
+        // Build DroppedItemData from ItemModel using the factory method
+        DroppedItemData data = DroppedItemData.FromItemModel(item, worldX, worldY);
+
+        // Override quantity to 1 (one item dropped per action)
+        data.quantity = 1;
+
+        // Fill chunk coordinates from WorldDataManager
+        if (WorldDataManager.Instance != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(
+                new Vector3(worldX, worldY, 0f));
+            data.chunkX = chunkPos.x;
+            data.chunkY = chunkPos.y;
+        }
+
+        // Fill room name from Photon
+        if (PhotonNetwork.CurrentRoom != null)
+        {
+            data.roomName = PhotonNetwork.CurrentRoom.Name;
+        }
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemService] Created drop data: {data.itemName} x{data.quantity} at ({worldX:F1}, {worldY:F1})");
+
+        return data;
+    }
 
     // ── Mutation ──────────────────────────────────────────────
 

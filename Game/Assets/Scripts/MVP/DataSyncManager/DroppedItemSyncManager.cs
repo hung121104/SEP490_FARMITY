@@ -267,8 +267,8 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
 
         string dropId = System.Text.Encoding.UTF8.GetString(bytes);
 
-        // Check if item still exists (DroppedItemManager manages the service)
-        var manager = DroppedItemManager.Instance;
+        // Check if item still exists (DroppedItemManagerView manages the service)
+        var manager = DroppedItemManagerView.Instance;
         if (manager == null || !manager.HasDroppedItem(dropId))
         {
             if (showDebugLogs)
@@ -329,7 +329,7 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
 
         isSyncing = true;
 
-        var manager = DroppedItemManager.Instance;
+        var manager = DroppedItemManagerView.Instance;
         List<DroppedItemData> allItems = manager != null
             ? new List<DroppedItemData>(manager.GetAllDroppedItems())
             : new List<DroppedItemData>();
@@ -495,8 +495,8 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
             yield break;
         }
 
-        // Rebuild registry and visuals via DroppedItemManager
-        var manager = DroppedItemManager.Instance;
+        // Rebuild registry and visuals via DroppedItemManagerView
+        var manager = DroppedItemManagerView.Instance;
         if (manager != null)
         {
             manager.RebuildFromDatabase(items);

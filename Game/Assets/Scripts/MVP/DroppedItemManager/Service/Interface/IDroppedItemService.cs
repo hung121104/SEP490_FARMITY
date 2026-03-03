@@ -2,11 +2,20 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Service interface for managing the in-memory registry of dropped items.
-/// Purely data-oriented — no visuals, no networking.
+/// Merged service interface for dropped item management.
+/// Covers in-memory registry operations and business logic (data creation, validation).
+/// No visuals, no networking events.
 /// </summary>
 public interface IDroppedItemService
 {
+    // ── Data Creation ─────────────────────────────────────────
+
+    /// <summary>
+    /// Create a DroppedItemData snapshot from an ItemModel at a calculated world position.
+    /// Applies drop offset, fills chunk coordinates and room name.
+    /// </summary>
+    DroppedItemData CreateDroppedItemData(ItemModel item, Vector3 playerPosition, Vector2 dropOffset);
+
     // ── Mutation ──────────────────────────────────────────────
 
     /// <summary>Register a dropped item into the local registry.</summary>

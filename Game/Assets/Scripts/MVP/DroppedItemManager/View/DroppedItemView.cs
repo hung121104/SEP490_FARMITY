@@ -6,17 +6,31 @@ using TMPro;
 
 /// <summary>
 /// Visual representation of a single dropped item in the world.
-/// Attach this to the DroppedItem prefab. 
+/// Attach this to the DroppedItem prefab.
+/// Manages both the visual display and the per-item lifecycle (despawn timer, blink, pickup).
+/// 
 /// Requires: SpriteRenderer, BoxCollider2D (trigger), child TextMeshPro for prompt.
 /// 
 /// Prefab setup:
 ///   DroppedItem (this script, SpriteRenderer, BoxCollider2D isTrigger)
 ///     └─ PickupPrompt (TextMeshPro "Press [F] to pick up", disabled by default)
+///
+/// Lifecycle:
+///   1. Created by DroppedItemManagerView when spawning a visual.
+///   2. Initialize(data) is called → shows the item immediately.
+///   3. Every frame checks remaining time; triggers blink at &lt;=30s.
+///   4. When timer reaches 0, MasterClient broadcasts despawn event.
+///   5. Destroyed by DroppedItemManagerView on despawn or pickup.
 /// </summary>
 [RequireComponent(typeof(SpriteRenderer))]
 [RequireComponent(typeof(BoxCollider2D))]
 public class DroppedItemView : MonoBehaviour, IDroppedItemView
 {
+    // ── Constants ─────────────────────────────────────────────────────────────
+
+    /// <summary>Seconds remaining when blink animation should start.</summary>
+    private const float BLINK_THRESHOLD_SECONDS = 30f;
+
     // ── Inspector ─────────────────────────────────────────────────────────────
 
     [Header("References")]
@@ -50,12 +64,28 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     private Coroutine _blinkCoroutine;
     private bool _isBlinking;
     private bool _playerInRange;
-
-    /// <summary>Presenter reference set by DroppedItemPresenter on creation.</summary>
-    public DroppedItemPresenter Presenter { get; set; }
+    private bool _blinkStarted;
+    private bool _despawnBroadcast;
 
     /// <summary>Drop ID this view represents.</summary>
     public string DropId => _data?.dropId;
+
+    // ── Initialization ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Initialize the view with a data model.
+    /// Called once by DroppedItemManagerView right after instantiation.
+    /// </summary>
+    /// <param name="data">The dropped item data from service/sync.</param>
+    public void Initialize(DroppedItemData data)
+    {
+        _data = data;
+        _blinkStarted = false;
+        _despawnBroadcast = false;
+
+        // Show the visual immediately
+        ShowItem(data);
+    }
 
     // ── IDroppedItemView ──────────────────────────────────────────────────────
 
@@ -173,17 +203,68 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         SetPickupPromptVisible(false);
     }
 
-    // ── Update (pickup input) ─────────────────────────────────────────────────
+    // ── Frame Update ──────────────────────────────────────────────────────────
 
     private void Update()
     {
-        if (!_playerInRange) return;
         if (_data == null) return;
 
-        // Listen for pickup key press
-        if (Input.GetKeyDown(pickupKey))
+        double remaining = _data.RemainingSeconds;
+
+        // Start blinking when <= threshold
+        if (!_blinkStarted && remaining <= BLINK_THRESHOLD_SECONDS && remaining > 0f)
         {
-            Presenter?.OnPickupRequested(_data.dropId);
+            _blinkStarted = true;
+            StartBlinking();
+        }
+
+        // Despawn when expired — only MasterClient broadcasts to avoid duplicate events
+        if (!_despawnBroadcast && _data.IsExpired)
+        {
+            _despawnBroadcast = true;
+
+            if (PhotonNetwork.IsMasterClient)
+            {
+                // Notify all clients to despawn this item
+                var syncManager = FindAnyObjectByType<DroppedItemSyncManager>();
+                if (syncManager != null)
+                {
+                    syncManager.BroadcastItemDespawn(_data.dropId);
+                }
+            }
+        }
+
+        // Listen for pickup key press when player is in range
+        if (_playerInRange && Input.GetKeyDown(pickupKey))
+        {
+            OnPickupRequested(_data.dropId);
+        }
+    }
+
+    // ── Pickup ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called when the local player presses the pickup key.
+    /// Delegates to DroppedItemManagerView which handles the Photon request flow.
+    /// </summary>
+    /// <param name="dropId">The unique drop ID to pick up.</param>
+    private void OnPickupRequested(string dropId)
+    {
+        if (_data == null) return;
+        if (_data.IsExpired)
+        {
+            Debug.Log($"[DroppedItemView] Item '{dropId}' already expired, ignoring pickup.");
+            return;
+        }
+
+        var manager = DroppedItemManagerView.Instance;
+        if (manager != null)
+        {
+            manager.RequestPickupItem(dropId);
+        }
+        else
+        {
+            Debug.LogError("[DroppedItemView] DroppedItemManagerView.Instance is null!");
         }
     }
 
@@ -204,9 +285,21 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
 
     // ── Cleanup ───────────────────────────────────────────────────────────────
 
+    /// <summary>Hide the view when this object is about to be destroyed.</summary>
+    public void Cleanup()
+    {
+        HideItem();
+        _data = null;
+    }
+
     private void OnDisable()
     {
         StopBlinking();
         _playerInRange = false;
+    }
+
+    private void OnDestroy()
+    {
+        Cleanup();
     }
 }
