@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Manages all equipped skills.
+/// Now uses SkillDatabase to find skills by SkillData reference.
 /// Handles skill input (Alpha1-4) and triggers skills.
 /// Provides skill references for UI cooldown display.
 /// </summary>
@@ -10,8 +11,8 @@ public class SkillManager : MonoBehaviour
 {
     public static SkillManager Instance;
 
-    [Header("Equipped Skills")]
-    [SerializeField] private SkillBase[] equippedSkills = new SkillBase[4];
+    [Header("Equipped Skills - Now using SkillData")]
+    [SerializeField] private SkillData[] equippedSkillsData = new SkillData[4];
 
     [Header("Input Keys")]
     [SerializeField] private KeyCode[] skillKeys = new KeyCode[]
@@ -21,6 +22,8 @@ public class SkillManager : MonoBehaviour
         KeyCode.Alpha3,
         KeyCode.Alpha4
     };
+
+    private SkillBase[] equippedSkillsComponents = new SkillBase[4];
 
     #region Unity Lifecycle
 
@@ -36,7 +39,7 @@ public class SkillManager : MonoBehaviour
             return;
         }
 
-        AutoFindSkills();
+        LinkSkillsFromDatabase();
     }
 
     private void Update()
@@ -51,17 +54,43 @@ public class SkillManager : MonoBehaviour
 
     #region Initialization
 
-    private void AutoFindSkills()
+    private void LinkSkillsFromDatabase()
     {
-        // Auto-find skill components in children if not assigned
-        SkillBase[] allSkills = GetComponentsInChildren<SkillBase>(true);
-        
-        for (int i = 0; i < Mathf.Min(allSkills.Length, equippedSkills.Length); i++)
+        if (SkillDatabase.Instance == null)
         {
-            if (equippedSkills[i] == null && i < allSkills.Length)
+            Debug.LogError("[SkillManager] SkillDatabase not found!");
+            return;
+        }
+
+        // Find skill components in CombatSystem children
+        SkillBase[] allSkillComponents = GetComponentsInChildren<SkillBase>(true);
+        Dictionary<string, SkillBase> componentsByName = new Dictionary<string, SkillBase>();
+
+        foreach (SkillBase skill in allSkillComponents)
+        {
+            componentsByName[skill.GetType().Name] = skill;
+        }
+
+        // Link equipped skills
+        for (int i = 0; i < equippedSkillsData.Length; i++)
+        {
+            if (equippedSkillsData[i] == null)
             {
-                equippedSkills[i] = allSkills[i];
-                Debug.Log($"[SkillManager] Auto-assigned {allSkills[i].GetType().Name} to slot {i}");
+                equippedSkillsComponents[i] = null;
+                continue;
+            }
+
+            string linkedName = equippedSkillsData[i].linkedComponentName;
+            
+            if (componentsByName.TryGetValue(linkedName, out var component))
+            {
+                equippedSkillsComponents[i] = component;
+                Debug.Log($"[SkillManager] Linked {linkedName} to slot {i}");
+            }
+            else
+            {
+                Debug.LogWarning($"[SkillManager] Could not find skill component '{linkedName}'");
+                equippedSkillsComponents[i] = null;
             }
         }
     }
@@ -90,8 +119,6 @@ public class SkillManager : MonoBehaviour
             return;
         }
 
-        // Skill will handle its own input via SkillBase.CheckSkillInput()
-        // This is just a fallback trigger
         Debug.Log($"[SkillManager] Attempting to trigger skill in slot {slotIndex}");
     }
 
@@ -101,20 +128,27 @@ public class SkillManager : MonoBehaviour
 
     public SkillBase GetSkill(int index)
     {
-        if (index >= 0 && index < equippedSkills.Length)
-            return equippedSkills[index];
+        if (index >= 0 && index < equippedSkillsComponents.Length)
+            return equippedSkillsComponents[index];
         return null;
     }
 
-    public int GetSkillCount() => equippedSkills.Length;
-
-    // Future: Add EquipSkill(index, skillPrefab) for dynamic skill swapping
-    public void EquipSkill(int slotIndex, SkillBase skill)
+    public SkillData GetSkillData(int index)
     {
-        if (slotIndex >= 0 && slotIndex < equippedSkills.Length)
+        if (index >= 0 && index < equippedSkillsData.Length)
+            return equippedSkillsData[index];
+        return null;
+    }
+
+    public int GetSkillCount() => equippedSkillsComponents.Length;
+
+    public void EquipSkill(int slotIndex, SkillData skillData)
+    {
+        if (slotIndex >= 0 && slotIndex < equippedSkillsData.Length)
         {
-            equippedSkills[slotIndex] = skill;
-            Debug.Log($"[SkillManager] Equipped {skill?.GetType().Name} to slot {slotIndex}");
+            equippedSkillsData[slotIndex] = skillData;
+            LinkSkillsFromDatabase(); // Re-link all skills
+            Debug.Log($"[SkillManager] Equipped {skillData?.skillName} to slot {slotIndex}");
         }
     }
 

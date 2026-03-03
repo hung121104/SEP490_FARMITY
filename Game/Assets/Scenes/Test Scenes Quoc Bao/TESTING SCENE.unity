@@ -620,11 +620,11 @@ MonoBehaviour:
   statsPanel: {fileID: 1934130028}
   toggleStatsKey: 99
   increaseStrengthButton: {fileID: 1612510131}
+  decreaseStrengthButton: {fileID: 993545813}
   increaseVitalityButton: {fileID: 800029523}
+  decreaseVitalityButton: {fileID: 543588302}
   applyButton: {fileID: 138641450}
   cancelButton: {fileID: 523210907}
-  decreaseStrengthButton: {fileID: 993545813}
-  decreaseVitalityButton: {fileID: 543588302}
   currentPoints: 0
 --- !u!1 &187795105
 GameObject:
@@ -2016,6 +2016,7 @@ Transform:
   - {fileID: 686442975}
   - {fileID: 339315468}
   - {fileID: 856723219}
+  - {fileID: 1500738128}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &543588300
@@ -3847,11 +3848,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dcfed210e3a12e64e8aeccb953f88627, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  equippedSkills:
-  - {fileID: 1898169960}
-  - {fileID: 32159089}
-  - {fileID: 0}
-  - {fileID: 0}
+  equippedSkillsData:
+  - {fileID: 11400000, guid: c0f06f6fda88de1498c7bb77a2f81711, type: 2}
+  - {fileID: 11400000, guid: 3f82b3ae1aab52d4e917a3f5cd186c21, type: 2}
+  - {fileID: 11400000, guid: e4c41399db2831d47b2ba0e57728782e, type: 2}
+  - {fileID: 11400000, guid: 4bae7d72317a306498172feeb2cada28, type: 2}
   skillKeys: 31000000320000003300000034000000
 --- !u!1 &993545811
 GameObject:
@@ -4823,6 +4824,55 @@ MonoBehaviour:
   healthBar: {fileID: 1933974391}
   healthBarEase: {fileID: 783564189}
   healthText: {fileID: 838038941}
+--- !u!1 &1500738127
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1500738128}
+  - component: {fileID: 1500738129}
+  m_Layer: 0
+  m_Name: 'SkillDatabase '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1500738128
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1500738127}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 526781250}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1500738129
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1500738127}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99dad6173c42a134cbce87cb8b2b7b5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  availableSkills:
+  - {fileID: 11400000, guid: c0f06f6fda88de1498c7bb77a2f81711, type: 2}
+  - {fileID: 11400000, guid: 3f82b3ae1aab52d4e917a3f5cd186c21, type: 2}
+  - {fileID: 11400000, guid: e4c41399db2831d47b2ba0e57728782e, type: 2}
+  - {fileID: 11400000, guid: 4bae7d72317a306498172feeb2cada28, type: 2}
 --- !u!1 &1605418948
 GameObject:
   m_ObjectHideFlags: 0
