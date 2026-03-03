@@ -1,11 +1,12 @@
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+using System.Collections.Generic;
 
 /// <summary>
-/// Manages the skill hotbar UI display.
-/// Updates skill icons, cooldowns, and visibility based on combat mode.
-/// Does NOT attach to SkillHotbar canvas - attach to a manager object in CombatSystem.
+/// Manages the skill hotbar UI.
+/// Initializes hotbar slots and handles combat mode visibility.
+/// Does NOT handle individual slot logic - that's SkillHotbarSlot's job.
+/// 
+/// Attach to a manager object in CombatSystem (NOT the canvas).
 /// </summary>
 public class SkillHotbarUI : MonoBehaviour
 {
@@ -14,68 +15,36 @@ public class SkillHotbarUI : MonoBehaviour
     [Header("Canvas Reference")]
     [SerializeField] private GameObject skillHotbarCanvas;
 
-    [Header("Slot 1 References")]
-    [SerializeField] private Image skillIcon1;
-    [SerializeField] private Image cooldownFill1;
-    [SerializeField] private TextMeshProUGUI hotkeyLabel1;
+    [Header("Slot References")]
+    [SerializeField] private SkillHotbarSlot[] slotReferences = new SkillHotbarSlot[4];
 
-    [Header("Slot 2 References")]
-    [SerializeField] private Image skillIcon2;
-    [SerializeField] private Image cooldownFill2;
-    [SerializeField] private TextMeshProUGUI hotkeyLabel2;
-
-    [Header("Slot 3 References")]
-    [SerializeField] private Image skillIcon3;
-    [SerializeField] private Image cooldownFill3;
-    [SerializeField] private TextMeshProUGUI hotkeyLabel3;
-
-    [Header("Slot 4 References")]
-    [SerializeField] private Image skillIcon4;
-    [SerializeField] private Image cooldownFill4;
-    [SerializeField] private TextMeshProUGUI hotkeyLabel4;
-
-    [Header("Skill Icons")]
-    [SerializeField] private Sprite airSlashIcon;
-    [SerializeField] private Sprite doubleStrikeIcon;
-    [SerializeField] private Sprite heavySwingIcon;
-    [SerializeField] private Sprite lightningStrikeIcon;
-    [SerializeField] private Sprite emptySlotIcon;
-
-    [Header("Visual State")]
-    [SerializeField] private Color readyIconColor = Color.white;
-    [SerializeField] private Color cooldownIconColor = new Color(0.55f, 0.55f, 0.55f, 1f);
-    [SerializeField] private float emptySlotAlpha = 0.35f;
+    [Header("Default Activation Keys")]
+    [SerializeField] private KeyCode[] defaultKeys = new KeyCode[]
+    {
+        KeyCode.Alpha1,
+        KeyCode.Alpha2,
+        KeyCode.Alpha3,
+        KeyCode.Alpha4
+    };
 
     #endregion
 
     #region Private Fields
 
-    private Image[] skillIcons;
-    private Image[] cooldownFills;
-    private TextMeshProUGUI[] hotkeyLabels;
+    private List<SkillHotbarSlot> slots = new List<SkillHotbarSlot>();
 
     #endregion
 
-    #region Unity Lifecycle
+    #region Initialization
 
     private void Start()
     {
-        InitializeArrays();
-        SetupHotkeyLabels();
+        InitializeSlots();
         SubscribeToCombatMode();
-        InitializeSkillIcons();
         
         // Start hidden
         if (skillHotbarCanvas != null)
             skillHotbarCanvas.SetActive(false);
-    }
-
-    private void Update()
-    {
-        if (!CombatModeManager.Instance.IsCombatModeActive)
-            return;
-
-        UpdateCooldowns();
     }
 
     private void OnDestroy()
@@ -85,37 +54,46 @@ public class SkillHotbarUI : MonoBehaviour
 
     #endregion
 
-    #region Initialization
+    #region Setup
 
-    private void InitializeArrays()
+    private void InitializeSlots()
     {
-        skillIcons = new Image[] { skillIcon1, skillIcon2, skillIcon3, skillIcon4 };
-        cooldownFills = new Image[] { cooldownFill1, cooldownFill2, cooldownFill3, cooldownFill4 };
-        hotkeyLabels = new TextMeshProUGUI[] { hotkeyLabel1, hotkeyLabel2, hotkeyLabel3, hotkeyLabel4 };
-    }
+        slots.Clear();
 
-    private void SetupHotkeyLabels()
-    {
-        for (int i = 0; i < hotkeyLabels.Length; i++)
+        // Use provided references or find them
+        if (slotReferences != null && slotReferences.Length > 0)
         {
-            if (hotkeyLabels[i] != null)
-                hotkeyLabels[i].text = (i + 1).ToString();
+            for (int i = 0; i < slotReferences.Length; i++)
+            {
+                if (slotReferences[i] != null)
+                {
+                    slots.Add(slotReferences[i]);
+                    SetupSlot(i, slotReferences[i]);
+                }
+            }
         }
+        else
+        {
+            // Auto-find slots if not assigned
+            Debug.LogWarning("[SkillHotbarUI] Slot references not assigned! Auto-finding...");
+            SkillHotbarSlot[] foundSlots = GetComponentsInChildren<SkillHotbarSlot>();
+            foreach (var slot in foundSlots)
+            {
+                slots.Add(slot);
+            }
+        }
+
+        Debug.Log($"[SkillHotbarUI] Initialized {slots.Count} skill hotbar slots");
     }
 
-    private void InitializeSkillIcons()
+    private void SetupSlot(int index, SkillHotbarSlot slot)
     {
-        // Slot 1: AirSlash
-        SetSkillIcon(0, airSlashIcon);
+        if (index < defaultKeys.Length)
+        {
+            slot.SetActivationKey(defaultKeys[index]);
+        }
 
-        // Slot 2: DoubleStrike
-        SetSkillIcon(1, doubleStrikeIcon);
-
-        // Slot 3: Empty (HeavySwing not implemented)
-        SetSkillIcon(2, emptySlotIcon);
-
-        // Slot 4: Empty (LightningStrike not implemented)
-        SetSkillIcon(3, emptySlotIcon);
+        Debug.Log($"[SkillHotbarUI] Slot {index} ready");
     }
 
     #endregion
@@ -135,91 +113,27 @@ public class SkillHotbarUI : MonoBehaviour
     private void OnCombatModeChanged(bool isActive)
     {
         if (skillHotbarCanvas != null)
+        {
             skillHotbarCanvas.SetActive(isActive);
-
-        Debug.Log($"[SkillHotbarUI] Combat mode: {isActive}");
-    }
-
-    #endregion
-
-    #region Cooldown Update
-
-    private void UpdateCooldowns()
-    {
-        if (SkillManager.Instance == null)
-            return;
-
-        for (int i = 0; i < 4; i++)
-        {
-            SkillBase skill = SkillManager.Instance.GetSkill(i);
-
-            if (skill == null)
-            {
-                // empty slot
-                SetCooldownFill(i, 1f);
-                SetIconVisual(i, isOnCooldown: true, isEmpty: true);
-                continue;
-            }
-
-            float cooldownPercent = skill.GetSkillCooldownPercent();
-
-            // overlay fill: 1 = fully covered (just used), 0 = ready
-            SetCooldownFill(i, 1f - cooldownPercent);
-
-            bool isOnCooldown = cooldownPercent < 0.999f;
-            SetIconVisual(i, isOnCooldown, isEmpty: false);
-        }
-    }
-
-    private void SetIconVisual(int index, bool isOnCooldown, bool isEmpty)
-    {
-        if (index < 0 || index >= skillIcons.Length) return;
-        if (skillIcons[index] == null) return;
-
-        if (isEmpty)
-        {
-            Color c = cooldownIconColor;
-            c.a = emptySlotAlpha;
-            skillIcons[index].color = c;
-            return;
         }
 
-        skillIcons[index].color = isOnCooldown ? cooldownIconColor : readyIconColor;
-    }
-
-    #endregion
-
-    #region Helper Methods
-
-    private void SetSkillIcon(int index, Sprite icon)
-    {
-        if (index < 0 || index >= skillIcons.Length)
-            return;
-
-        if (skillIcons[index] != null)
-        {
-            skillIcons[index].sprite = icon;
-            skillIcons[index].enabled = icon != null;
-        }
-    }
-
-    private void SetCooldownFill(int index, float fillAmount)
-    {
-        if (index < 0 || index >= cooldownFills.Length)
-            return;
-
-        if (cooldownFills[index] != null)
-            cooldownFills[index].fillAmount = fillAmount;
+        Debug.Log($"[SkillHotbarUI] Combat mode: {isActive}. Canvas: {skillHotbarCanvas?.activeSelf}");
     }
 
     #endregion
 
     #region Public API
 
-    public void UpdateSkillIcon(int slotIndex, Sprite newIcon)
+    public SkillHotbarSlot GetSlot(int index)
     {
-        SetSkillIcon(slotIndex, newIcon);
+        if (index >= 0 && index < slots.Count)
+            return slots[index];
+        return null;
     }
+
+    public int GetSlotCount() => slots.Count;
+
+    public List<SkillHotbarSlot> GetAllSlots() => new List<SkillHotbarSlot>(slots);
 
     #endregion
 }
