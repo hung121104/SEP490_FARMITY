@@ -8,8 +8,9 @@ using UnityEngine.EventSystems;
 /// Instantiated by SkillManagementPanel for each skill in database.
 /// Handles skill info display and drag-and-drop interaction.
 /// 
-/// Drag Logic: When dragging, hides visual, shows drag preview.
-/// On drop, returns to original position (no permanent move yet).
+/// Drag Logic: When dragging, shows the skill card (background, icon, name)
+/// but hides description. Creates a draggable preview of the skill.
+/// On drop, returns to original position and rebuilds grid layout.
 /// Based on InventorySlotView drag pattern.
 /// </summary>
 public class SkillDisplayItem : MonoBehaviour,
@@ -33,7 +34,9 @@ public class SkillDisplayItem : MonoBehaviour,
 
     private SkillData skillData;
     private CanvasGroup canvasGroup;
+    private RectTransform rectTransform;
     private Vector3 originalPosition;
+    private Transform gridParent;
     private bool isDragging = false;
 
     #endregion
@@ -87,10 +90,12 @@ public class SkillDisplayItem : MonoBehaviour,
 
     private void StoreOriginalPosition()
     {
-        RectTransform rect = GetComponent<RectTransform>();
-        if (rect != null)
+        rectTransform = GetComponent<RectTransform>();
+        gridParent = transform.parent;
+        
+        if (rectTransform != null)
         {
-            originalPosition = rect.localPosition;
+            originalPosition = rectTransform.localPosition;
             Debug.Log($"[SkillDisplayItem] Stored original position for {skillData?.skillName}: {originalPosition}");
         }
     }
@@ -124,7 +129,7 @@ public class SkillDisplayItem : MonoBehaviour,
 
     #endregion
 
-    #region Drag Implementation (Based on InventorySlotView)
+    #region Drag Implementation
 
     public void OnBeginDrag(PointerEventData eventData)
     {
@@ -137,15 +142,15 @@ public class SkillDisplayItem : MonoBehaviour,
         isDragging = true;
         Debug.Log($"[SkillDisplayItem] Begin drag: {skillData.skillName}");
 
-        // Reduce opacity to show it's being dragged
+        // Reduce opacity slightly to show it's being dragged
         if (canvasGroup != null)
         {
-            canvasGroup.alpha = 0.6f;
-            canvasGroup.blocksRaycasts = false; // Allow dropping on other elements
+            canvasGroup.alpha = 0.85f;
+            canvasGroup.blocksRaycasts = false;
         }
 
-        // Hide the skill visuals
-        SetSkillVisuals(false);
+        // Hide only the description (keep background, icon, name visible)
+        HideDescription();
 
         // Notify SkillManagementPanel that drag started
         if (SkillManagementPanel.Instance != null)
@@ -160,10 +165,9 @@ public class SkillDisplayItem : MonoBehaviour,
             return;
 
         // Move this skill card to follow mouse
-        RectTransform rect = GetComponent<RectTransform>();
-        if (rect != null)
+        if (rectTransform != null)
         {
-            rect.position = eventData.position;
+            rectTransform.position = eventData.position;
         }
     }
 
@@ -175,24 +179,35 @@ public class SkillDisplayItem : MonoBehaviour,
         isDragging = false;
         Debug.Log($"[SkillDisplayItem] End drag: {skillData.skillName}");
 
-        // Return to original position
-        RectTransform rect = GetComponent<RectTransform>();
-        if (rect != null)
+        // Enable raycast BEFORE resetting position
+        if (canvasGroup != null)
         {
-            rect.localPosition = originalPosition;
+            canvasGroup.blocksRaycasts = true;
+        }
+
+        // Return to original position
+        if (rectTransform != null)
+        {
+            rectTransform.localPosition = originalPosition;
         }
 
         // Restore opacity
         if (canvasGroup != null)
         {
             canvasGroup.alpha = 1f;
-            canvasGroup.blocksRaycasts = true;
         }
 
-        // Restore visuals
+        // Restore description visibility
         if (skillData != null)
         {
-            SetSkillVisuals(true);
+            ShowDescription();
+        }
+
+        // Rebuild layout for grid to recalculate positions
+        if (gridParent != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(gridParent as RectTransform);
+            Debug.Log($"[SkillDisplayItem] Grid layout rebuilt");
         }
 
         // Notify SkillManagementPanel that drag ended
@@ -200,22 +215,33 @@ public class SkillDisplayItem : MonoBehaviour,
         {
             SkillManagementPanel.Instance.OnSkillEndDrag(this);
         }
+
+        Debug.Log($"[SkillDisplayItem] ✓ Restored to original state: {skillData.skillName}");
     }
 
     /// <summary>
-    /// Show or hide the skill visuals (icon, name, description).
-    /// Used during drag to hide card content.
+    /// Hide only the description text during drag.
+    /// Background, icon, and name remain visible.
     /// </summary>
-    private void SetSkillVisuals(bool visible)
+    private void HideDescription()
     {
-        if (skillIconImage != null)
-            skillIconImage.enabled = visible;
-
-        if (skillNameText != null)
-            skillNameText.enabled = visible;
-
         if (skillDescriptionText != null)
-            skillDescriptionText.enabled = visible;
+        {
+            skillDescriptionText.enabled = false;
+            Debug.Log($"[SkillDisplayItem] Description hidden for: {skillData?.skillName}");
+        }
+    }
+
+    /// <summary>
+    /// Show the description text after drag ends.
+    /// </summary>
+    private void ShowDescription()
+    {
+        if (skillDescriptionText != null)
+        {
+            skillDescriptionText.enabled = true;
+            Debug.Log($"[SkillDisplayItem] Description shown for: {skillData?.skillName}");
+        }
     }
 
     #endregion
@@ -260,24 +286,31 @@ public class SkillDisplayItem : MonoBehaviour,
         {
             isDragging = false;
 
-            // Return to original position
-            RectTransform rect = GetComponent<RectTransform>();
-            if (rect != null)
+            // Enable raycast first
+            if (canvasGroup != null)
             {
-                rect.localPosition = originalPosition;
+                canvasGroup.blocksRaycasts = true;
+            }
+
+            // Return to original position
+            if (rectTransform != null)
+            {
+                rectTransform.localPosition = originalPosition;
             }
 
             // Restore opacity
             if (canvasGroup != null)
             {
                 canvasGroup.alpha = 1f;
-                canvasGroup.blocksRaycasts = true;
             }
 
-            // Restore visuals
-            if (skillData != null)
+            // Restore description
+            ShowDescription();
+
+            // Rebuild grid layout
+            if (gridParent != null)
             {
-                SetSkillVisuals(true);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(gridParent as RectTransform);
             }
 
             Debug.Log($"[SkillDisplayItem] Force reset state for: {skillData?.skillName}");
