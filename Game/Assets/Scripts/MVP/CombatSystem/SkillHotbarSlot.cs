@@ -6,6 +6,7 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Represents a single slot in the skill hotbar.
 /// Can receive dropped skills from SkillManagementPanel.
+/// Can be dragged to switch/swap with other slots or unequip.
 /// Displays the equipped skill icon and cooldown.
 /// Handles skill execution via key press.
 /// 
@@ -15,7 +16,10 @@ using UnityEngine.EventSystems;
 public class SkillHotbarSlot : MonoBehaviour,
     IDropHandler,
     IPointerEnterHandler,
-    IPointerExitHandler
+    IPointerExitHandler,
+    IBeginDragHandler,
+    IDragHandler,
+    IEndDragHandler
 {
     #region Editor Fields
 
@@ -33,6 +37,10 @@ public class SkillHotbarSlot : MonoBehaviour,
     [SerializeField] private Color emptySlotColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
     [SerializeField] private Color occupiedSlotColor = Color.white;
     [SerializeField] private Color hoverColor = new Color(1f, 1f, 0.7f, 1f);
+    [SerializeField] private Color dragColor = new Color(0.7f, 0.7f, 0.7f, 0.7f);
+
+    [Header("Drag Settings")]
+    [SerializeField] private float unequipDistance = 300f;
 
     #endregion
 
@@ -41,6 +49,11 @@ public class SkillHotbarSlot : MonoBehaviour,
     private SkillData equippedSkill = null;
     private SkillBase equippedSkillComponent = null;
     private bool isHovering = false;
+    private bool isDragging = false;
+    private Vector3 originalPosition;
+    private RectTransform rectTransform;
+    private CanvasGroup canvasGroup;
+    private SkillHotbarSlot dragSourceSlot = null;
 
     #endregion
 
@@ -48,8 +61,22 @@ public class SkillHotbarSlot : MonoBehaviour,
 
     private void Start()
     {
+        SetupComponents();
         SetupUI();
         SetEmptyState();
+    }
+
+    private void SetupComponents()
+    {
+        rectTransform = GetComponent<RectTransform>();
+        canvasGroup = GetComponent<CanvasGroup>();
+        
+        if (canvasGroup == null)
+        {
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        }
+
+        originalPosition = rectTransform.localPosition;
     }
 
     private void SetupUI()
@@ -69,8 +96,8 @@ public class SkillHotbarSlot : MonoBehaviour,
         if (!CombatModeManager.Instance.IsCombatModeActive)
             return;
 
-        // Check if this slot's key was pressed
-        if (Input.GetKeyDown(activationKey))
+        // Only trigger skill if we're not dragging the hotbar
+        if (!isDragging && Input.GetKeyDown(activationKey))
         {
             TryExecuteSkill();
         }
@@ -103,10 +130,8 @@ public class SkillHotbarSlot : MonoBehaviour,
             return;
 
         float cooldownPercent = equippedSkillComponent.GetSkillCooldownPercent();
-        // Fill represents the cooldown overlay (1 = fully covered, 0 = ready)
         cooldownFillImage.fillAmount = 1f - cooldownPercent;
 
-        // Update icon color based on cooldown state
         if (skillIconImage != null)
         {
             bool isOnCooldown = cooldownPercent < 0.999f;
@@ -118,38 +143,140 @@ public class SkillHotbarSlot : MonoBehaviour,
 
     #endregion
 
-    #region Drop Handler
+    #region Drop Handler (From SkillManagementPanel)
 
     public void OnDrop(PointerEventData eventData)
     {
         Debug.Log($"[SkillHotbarSlot {slotIndex}] OnDrop called");
 
-        // Get the dragged SkillDisplayItem
+        // Check if skill panel is active
+        if (!IsSkillPanelActive())
+        {
+            Debug.LogWarning("[SkillHotbarSlot] Skill management panel not active!");
+            return;
+        }
+
+        // Get the dragged SkillDisplayItem from panel
         SkillDisplayItem draggedItem = eventData.pointerDrag?.GetComponent<SkillDisplayItem>();
         
-        if (draggedItem == null)
+        if (draggedItem != null)
         {
-            Debug.LogWarning("[SkillHotbarSlot] Dropped object is not a SkillDisplayItem!");
+            // Drag from panel - simple equip
+            SkillData droppedSkill = draggedItem.GetSkillData();
+            if (droppedSkill != null)
+            {
+                EquipSkill(droppedSkill);
+                Debug.Log($"[SkillHotbarSlot {slotIndex}] Equipped from panel: {droppedSkill.skillName}");
+            }
             return;
         }
 
-        SkillData droppedSkill = draggedItem.GetSkillData();
+        // Get the dragged SkillHotbarSlot (slot-to-slot drag)
+        SkillHotbarSlot draggedSlot = eventData.pointerDrag?.GetComponent<SkillHotbarSlot>();
         
-        if (droppedSkill == null)
+        if (draggedSlot != null && draggedSlot != this)
         {
-            Debug.LogWarning("[SkillHotbarSlot] Dropped skill data is null!");
+            // Swap skills between slots
+            SwapSkills(draggedSlot);
+            Debug.Log($"[SkillHotbarSlot {slotIndex}] Swapped with slot {draggedSlot.slotIndex}");
+        }
+    }
+
+    #endregion
+
+    #region Drag Handlers (Hotbar Slot Dragging)
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        // Can only drag if skill panel is active
+        if (!IsSkillPanelActive())
+        {
+            Debug.LogWarning("[SkillHotbarSlot] Cannot drag - skill panel not active!");
             return;
         }
 
-        // Assign the skill to this slot
-        EquipSkill(droppedSkill);
+        // Can't drag empty slots
+        if (equippedSkill == null)
+        {
+            Debug.LogWarning($"[SkillHotbarSlot {slotIndex}] Cannot drag empty slot");
+            return;
+        }
+
+        isDragging = true;
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] Begin drag: {equippedSkill.skillName}");
+
+        // Store original position for potential revert
+        originalPosition = rectTransform.localPosition;
+
+        // Visual feedback
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 0.7f;
+            canvasGroup.blocksRaycasts = false;
+        }
+
+        if (slotBackground != null)
+        {
+            slotBackground.color = dragColor;
+        }
     }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (!isDragging)
+            return;
+
+        // Move to follow mouse
+        if (rectTransform != null)
+        {
+            rectTransform.position = eventData.position;
+        }
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        if (!isDragging)
+            return;
+
+        isDragging = false;
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] End drag: {equippedSkill.skillName}");
+
+        // Check if dragged far enough to unequip
+        if (IsOutsideUnequipDistance(eventData.position))
+        {
+            Debug.Log($"[SkillHotbarSlot {slotIndex}] Unequipping skill (dragged too far)");
+            UnequipSkill();
+            return;
+        }
+
+        // Return to original position
+        if (rectTransform != null)
+        {
+            rectTransform.localPosition = originalPosition;
+        }
+
+        // Restore visuals
+        RestoreVisuals();
+    }
+
+    private bool IsOutsideUnequipDistance(Vector3 dragEndPosition)
+    {
+        Vector3 slotScreenPos = RectTransformUtility.WorldToScreenPoint(null, rectTransform.position);
+        float distance = Vector3.Distance(slotScreenPos, dragEndPosition);
+        
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] Drag distance: {distance}, Unequip threshold: {unequipDistance}");
+        return distance > unequipDistance;
+    }
+
+    #endregion
+
+    #region Pointer Events
 
     public void OnPointerEnter(PointerEventData eventData)
     {
         isHovering = true;
         
-        if (slotBackground != null)
+        if (slotBackground != null && !isDragging)
         {
             slotBackground.color = hoverColor;
         }
@@ -161,9 +288,9 @@ public class SkillHotbarSlot : MonoBehaviour,
     {
         isHovering = false;
         
-        if (slotBackground != null)
+        if (slotBackground != null && !isDragging)
         {
-            slotBackground.color = equippedSkill != null ? occupiedSlotColor : emptySlotColor;
+            UpdateSlotBackground();
         }
 
         Debug.Log($"[SkillHotbarSlot {slotIndex}] Hover exit");
@@ -174,7 +301,7 @@ public class SkillHotbarSlot : MonoBehaviour,
     #region Skill Equipment
 
     /// <summary>
-    /// Equips a skill to this slot.
+    /// Equips a skill to this slot (replaces existing skill if any).
     /// Updates SkillManager and refreshes UI.
     /// </summary>
     public void EquipSkill(SkillData skillData)
@@ -217,6 +344,25 @@ public class SkillHotbarSlot : MonoBehaviour,
         Debug.Log($"[SkillHotbarSlot {slotIndex}] Skill unequipped");
     }
 
+    /// <summary>
+    /// Swap skills between this slot and another slot.
+    /// </summary>
+    private void SwapSkills(SkillHotbarSlot otherSlot)
+    {
+        if (otherSlot == null || otherSlot == this)
+            return;
+
+        // Store current skills
+        SkillData thisSkill = this.equippedSkill;
+        SkillData otherSkill = otherSlot.equippedSkill;
+
+        // Swap
+        this.EquipSkill(otherSkill);
+        otherSlot.EquipSkill(thisSkill);
+
+        Debug.Log($"[SkillHotbarSlot] Swapped slot {slotIndex} <-> {otherSlot.slotIndex}");
+    }
+
     #endregion
 
     #region UI Updates
@@ -238,10 +384,7 @@ public class SkillHotbarSlot : MonoBehaviour,
         }
 
         // Set background color
-        if (slotBackground != null)
-        {
-            slotBackground.color = occupiedSlotColor;
-        }
+        UpdateSlotBackground();
 
         // Reset cooldown visual
         if (cooldownFillImage != null)
@@ -262,10 +405,7 @@ public class SkillHotbarSlot : MonoBehaviour,
         }
 
         // Set background color to empty state
-        if (slotBackground != null)
-        {
-            slotBackground.color = emptySlotColor;
-        }
+        UpdateSlotBackground();
 
         // Reset cooldown
         if (cooldownFillImage != null)
@@ -274,6 +414,52 @@ public class SkillHotbarSlot : MonoBehaviour,
         }
 
         Debug.Log($"[SkillHotbarSlot {slotIndex}] Set to empty state");
+    }
+
+    private void UpdateSlotBackground()
+    {
+        if (slotBackground != null)
+        {
+            if (isDragging)
+            {
+                slotBackground.color = dragColor;
+            }
+            else if (isHovering)
+            {
+                slotBackground.color = hoverColor;
+            }
+            else
+            {
+                slotBackground.color = equippedSkill != null ? occupiedSlotColor : emptySlotColor;
+            }
+        }
+    }
+
+    private void RestoreVisuals()
+    {
+        // Restore opacity
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 1f;
+            canvasGroup.blocksRaycasts = true;
+        }
+
+        // Restore background color based on state
+        UpdateSlotBackground();
+
+        Debug.Log($"[SkillHotbarSlot {slotIndex}] Visuals restored");
+    }
+
+    #endregion
+
+    #region Helpers
+
+    private bool IsSkillPanelActive()
+    {
+        if (SkillManagementPanel.Instance == null)
+            return false;
+
+        return SkillManagementPanel.Instance.isSkillPanelActive;
     }
 
     #endregion
@@ -292,6 +478,8 @@ public class SkillHotbarSlot : MonoBehaviour,
             hotkeyLabel.text = key.ToString().Replace("Alpha", "");
         }
     }
+
+    public bool IsDragging => isDragging;
 
     #endregion
 }

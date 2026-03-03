@@ -239,6 +239,29 @@ public class SkillManagementPanel : MonoBehaviour
         {
             CancelAllDragActions();
         }
+
+        // Debug: Show panel state
+        if (skillManagementCanvas != null && skillManagementCanvas.activeSelf)
+        {
+            Debug.Log("[SkillManagementPanel] Panel is ACTIVE - drag/swap enabled in hotbar");
+        }
+    }
+
+    #endregion
+
+    #region Panel State
+
+    /// <summary>
+    /// Check if the skill management panel is currently active/visible.
+    /// </summary>
+    public bool isSkillPanelActive
+    {
+        get
+        {
+            if (skillManagementCanvas != null)
+                return skillManagementCanvas.activeSelf;
+            return false;
+        }
     }
 
     #endregion
