@@ -148,8 +148,8 @@ GameObject:
   - component: {fileID: 88280766174969592}
   - component: {fileID: 2050755100586832955}
   - component: {fileID: 5129284533962877816}
-  - component: {fileID: 3994754205359661233}
-  - component: {fileID: 8062538987486878226}
+  - component: {fileID: 755641985855722400}
+  - component: {fileID: 3725560545789056115}
   m_Layer: 0
   m_Name: SkillDisplayItem
   m_TagString: Untagged
@@ -261,30 +261,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
---- !u!223 &3994754205359661233
-Canvas:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3951854400017865695}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_RenderMode: 2
-  m_Camera: {fileID: 0}
-  m_PlaneDistance: 100
-  m_PixelPerfect: 0
-  m_ReceivesEvents: 1
-  m_OverrideSorting: 0
-  m_OverridePixelPerfect: 0
-  m_SortingBucketNormalizedSize: 0
-  m_VertexColorAlwaysGammaSpace: 0
-  m_AdditionalShaderChannelsFlag: 25
-  m_UpdateRectTransformForStandalone: 0
-  m_SortingLayerID: 0
-  m_SortingOrder: 0
-  m_TargetDisplay: 0
---- !u!114 &8062538987486878226
+--- !u!114 &755641985855722400
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -296,6 +273,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 22c28a58425eb1a4286f2eed02c37a18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!225 &3725560545789056115
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3951854400017865695}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &5051980715476663723
 GameObject:
   m_ObjectHideFlags: 0

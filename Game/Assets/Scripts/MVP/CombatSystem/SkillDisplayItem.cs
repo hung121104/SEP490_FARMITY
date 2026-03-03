@@ -1,13 +1,22 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Prefab component that displays a single skill.
 /// Instantiated by SkillManagementPanel for each skill in database.
-/// Handles skill info display and future drag-and-drop interaction.
+/// Handles skill info display and drag-and-drop interaction.
+/// 
+/// Drag Logic: When dragging, hides visual, shows drag preview.
+/// On drop, returns to original position (no permanent move yet).
+/// Based on InventorySlotView drag pattern.
 /// </summary>
-public class SkillDisplayItem : MonoBehaviour
+public class SkillDisplayItem : MonoBehaviour,
+    IBeginDragHandler,
+    IDragHandler,
+    IEndDragHandler,
+    IPointerClickHandler
 {
     #region Editor Fields
 
@@ -16,12 +25,16 @@ public class SkillDisplayItem : MonoBehaviour
     private TextMeshProUGUI skillNameText;
     private TextMeshProUGUI skillDescriptionText;
     private Button selectButton;
+    private Image backgroundImage;
 
     #endregion
 
     #region Private Fields
 
     private SkillData skillData;
+    private CanvasGroup canvasGroup;
+    private Vector3 originalPosition;
+    private bool isDragging = false;
 
     #endregion
 
@@ -31,8 +44,10 @@ public class SkillDisplayItem : MonoBehaviour
     {
         skillData = data;
         FindUIElements();
+        SetupCanvasGroup();
         PopulateUI();
         SetupButton();
+        StoreOriginalPosition();
     }
 
     private void FindUIElements()
@@ -54,6 +69,29 @@ public class SkillDisplayItem : MonoBehaviour
                 skillDescriptionText = txt;
             else if (child.name.Contains("Select") && btn != null)
                 selectButton = btn;
+        }
+
+        // Get background image from root
+        backgroundImage = GetComponent<Image>();
+    }
+
+    private void SetupCanvasGroup()
+    {
+        canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+        {
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+            Debug.Log($"[SkillDisplayItem] Added CanvasGroup to {skillData?.skillName ?? "Unknown"}");
+        }
+    }
+
+    private void StoreOriginalPosition()
+    {
+        RectTransform rect = GetComponent<RectTransform>();
+        if (rect != null)
+        {
+            originalPosition = rect.localPosition;
+            Debug.Log($"[SkillDisplayItem] Stored original position for {skillData?.skillName}: {originalPosition}");
         }
     }
 
@@ -86,6 +124,114 @@ public class SkillDisplayItem : MonoBehaviour
 
     #endregion
 
+    #region Drag Implementation (Based on InventorySlotView)
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        if (skillData == null)
+        {
+            Debug.LogWarning("[SkillDisplayItem] Cannot drag - skill data is null");
+            return;
+        }
+
+        isDragging = true;
+        Debug.Log($"[SkillDisplayItem] Begin drag: {skillData.skillName}");
+
+        // Reduce opacity to show it's being dragged
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 0.6f;
+            canvasGroup.blocksRaycasts = false; // Allow dropping on other elements
+        }
+
+        // Hide the skill visuals
+        SetSkillVisuals(false);
+
+        // Notify SkillManagementPanel that drag started
+        if (SkillManagementPanel.Instance != null)
+        {
+            SkillManagementPanel.Instance.OnSkillBeginDrag(this);
+        }
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (!isDragging)
+            return;
+
+        // Move this skill card to follow mouse
+        RectTransform rect = GetComponent<RectTransform>();
+        if (rect != null)
+        {
+            rect.position = eventData.position;
+        }
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        if (!isDragging)
+            return;
+
+        isDragging = false;
+        Debug.Log($"[SkillDisplayItem] End drag: {skillData.skillName}");
+
+        // Return to original position
+        RectTransform rect = GetComponent<RectTransform>();
+        if (rect != null)
+        {
+            rect.localPosition = originalPosition;
+        }
+
+        // Restore opacity
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 1f;
+            canvasGroup.blocksRaycasts = true;
+        }
+
+        // Restore visuals
+        if (skillData != null)
+        {
+            SetSkillVisuals(true);
+        }
+
+        // Notify SkillManagementPanel that drag ended
+        if (SkillManagementPanel.Instance != null)
+        {
+            SkillManagementPanel.Instance.OnSkillEndDrag(this);
+        }
+    }
+
+    /// <summary>
+    /// Show or hide the skill visuals (icon, name, description).
+    /// Used during drag to hide card content.
+    /// </summary>
+    private void SetSkillVisuals(bool visible)
+    {
+        if (skillIconImage != null)
+            skillIconImage.enabled = visible;
+
+        if (skillNameText != null)
+            skillNameText.enabled = visible;
+
+        if (skillDescriptionText != null)
+            skillDescriptionText.enabled = visible;
+    }
+
+    #endregion
+
+    #region Click Handler
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (isDragging)
+            return;
+
+        OnSkillSelected();
+    }
+
+    #endregion
+
     #region Interaction
 
     private void OnSkillSelected()
@@ -102,6 +248,41 @@ public class SkillDisplayItem : MonoBehaviour
     #region Public API
 
     public SkillData GetSkillData() => skillData;
+
+    public bool IsDragging => isDragging;
+
+    /// <summary>
+    /// Force reset drag state (called when drag is interrupted).
+    /// </summary>
+    public void ForceResetState()
+    {
+        if (isDragging)
+        {
+            isDragging = false;
+
+            // Return to original position
+            RectTransform rect = GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.localPosition = originalPosition;
+            }
+
+            // Restore opacity
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 1f;
+                canvasGroup.blocksRaycasts = true;
+            }
+
+            // Restore visuals
+            if (skillData != null)
+            {
+                SetSkillVisuals(true);
+            }
+
+            Debug.Log($"[SkillDisplayItem] Force reset state for: {skillData?.skillName}");
+        }
+    }
 
     #endregion
 }

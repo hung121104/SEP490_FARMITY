@@ -5,7 +5,7 @@ using System.Collections.Generic;
 /// Manager for Skill Management Menu.
 /// Gets all skills from SkillDatabase and creates UI elements dynamically.
 /// Displays available skills in a grid/list format.
-/// Future: Handle drag-and-drop for skill assignment.
+/// Handles drag state tracking.
 /// 
 /// This script attaches to a manager object in CombatSystem (NOT the Canvas).
 /// It finds and populates the SkillManagementCanvas (pure visual, no logic).
@@ -25,6 +25,7 @@ public class SkillManagementPanel : MonoBehaviour
     [SerializeField] private int gridColumnCount = 2;
 
     private List<SkillDisplayItem> displayItems = new List<SkillDisplayItem>();
+    private SkillDisplayItem currentlyDraggingItem = null;
 
     #region Initialization
 
@@ -70,11 +71,6 @@ public class SkillManagementPanel : MonoBehaviour
 
     private void OnCombatModeChanged(bool isActive)
     {
-        // TODO: Show skill management menu only when pressing a specific key
-        // For now, just toggle with combat mode (temporary)
-        // if (skillManagementCanvas != null)
-        //     skillManagementCanvas.SetActive(isActive);
-
         Debug.Log($"[SkillManagementPanel] Combat mode: {isActive}");
     }
 
@@ -139,27 +135,97 @@ public class SkillManagementPanel : MonoBehaviour
 
     #endregion
 
+    #region Drag Event Handlers
+
+    /// <summary>
+    /// Called by SkillDisplayItem when drag begins.
+    /// </summary>
+    public void OnSkillBeginDrag(SkillDisplayItem draggedItem)
+    {
+        currentlyDraggingItem = draggedItem;
+        Debug.Log($"[SkillManagementPanel] Skill drag started: {draggedItem.GetSkillData().skillName}");
+    }
+
+    /// <summary>
+    /// Called by SkillDisplayItem when drag ends.
+    /// </summary>
+    public void OnSkillEndDrag(SkillDisplayItem draggedItem)
+    {
+        if (currentlyDraggingItem == draggedItem)
+        {
+            currentlyDraggingItem = null;
+        }
+        Debug.Log($"[SkillManagementPanel] Skill drag ended: {draggedItem.GetSkillData().skillName}");
+    }
+
+    /// <summary>
+    /// Cancel all drag operations (similar to inventory system).
+    /// </summary>
+    public void CancelAllDragActions()
+    {
+        if (currentlyDraggingItem != null)
+        {
+            currentlyDraggingItem.ForceResetState();
+            currentlyDraggingItem = null;
+        }
+
+        // Reset all items' state
+        foreach (var item in displayItems)
+        {
+            if (item != null && item.IsDragging)
+            {
+                item.ForceResetState();
+            }
+        }
+
+        Debug.Log("[SkillManagementPanel] All drag actions cancelled");
+    }
+
+    #endregion
+
     #region Public API
 
     public void ShowSkillPanel()
     {
         if (skillManagementCanvas != null)
             skillManagementCanvas.SetActive(true);
+        
+        Debug.Log("[SkillManagementPanel] Skill panel shown");
     }
 
     public void HideSkillPanel()
     {
+        // Cancel drag before hiding
+        CancelAllDragActions();
+
         if (skillManagementCanvas != null)
             skillManagementCanvas.SetActive(false);
+
+        Debug.Log("[SkillManagementPanel] Skill panel hidden");
     }
 
     public void ToggleSkillPanel()
     {
         if (skillManagementCanvas != null)
-            skillManagementCanvas.SetActive(!skillManagementCanvas.activeSelf);
+        {
+            if (skillManagementCanvas.activeSelf)
+            {
+                HideSkillPanel();
+            }
+            else
+            {
+                ShowSkillPanel();
+            }
+        }
     }
 
+    public bool IsAnySkillDragging => currentlyDraggingItem != null;
+
+    public SkillDisplayItem GetCurrentlyDraggingItem => currentlyDraggingItem;
+
     #endregion
+
+    #region Input Handling
 
     private void Update()
     {
@@ -167,5 +233,13 @@ public class SkillManagementPanel : MonoBehaviour
         {
             ToggleSkillPanel();
         }
+
+        // ESC to cancel drag
+        if (Input.GetKeyDown(KeyCode.Escape) && IsAnySkillDragging)
+        {
+            CancelAllDragActions();
+        }
     }
+
+    #endregion
 }

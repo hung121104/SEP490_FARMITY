@@ -119,50 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &10019649
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 10019650}
-  - component: {fileID: 10019651}
-  m_Layer: 0
-  m_Name: 'TimeManager '
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &10019650
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 10019649}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 526781250}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &10019651
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 10019649}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5d6da3a0bcbbf704cb08c84a824e4e70, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &32159087
 GameObject:
   m_ObjectHideFlags: 0
@@ -174,7 +130,7 @@ GameObject:
   - component: {fileID: 32159088}
   - component: {fileID: 32159089}
   m_Layer: 0
-  m_Name: 'DoubleStrikeManager '
+  m_Name: DoubleStrike
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1980,6 +1936,67 @@ MonoBehaviour:
   rollAnimationDuration: 0.4
   wobbleScale: 1.15
   wobbleSpeed: 10
+--- !u!1 &482992091
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 482992092}
+  - component: {fileID: 482992093}
+  m_Layer: 0
+  m_Name: LightningStrike
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &482992092
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 482992091}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 526781250}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &482992093
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 482992091}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a49c62a18d52d394e8464044edc0d4a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skillKey: 49
+  confirmKey: 101
+  cancelKey: 113
+  skillCooldown: 3
+  skillTier: 6
+  skillMultiplier: 1.5
+  chargeDuration: 0.2
+  rollDisplayDuration: 0.4
+  attackPoint: {fileID: 0}
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  anim: {fileID: 0}
+  blockAttackDamage: 0
+  strikeRadius: 3
+  strikeMaxRange: 10
+  attackAnimationDuration: 0.5
 --- !u!1 &483193349
 GameObject:
   m_ObjectHideFlags: 0
@@ -2268,9 +2285,12 @@ Transform:
   m_Children:
   - {fileID: 362715216}
   - {fileID: 835830958}
+  - {fileID: 1898169959}
+  - {fileID: 32159088}
+  - {fileID: 631851616}
+  - {fileID: 482992092}
   - {fileID: 164896964}
   - {fileID: 1101536458}
-  - {fileID: 10019650}
   - {fileID: 906646528}
   - {fileID: 1098689632}
   - {fileID: 1452809350}
@@ -2278,8 +2298,6 @@ Transform:
   - {fileID: 1488666580}
   - {fileID: 853019150}
   - {fileID: 993018640}
-  - {fileID: 32159088}
-  - {fileID: 1898169959}
   - {fileID: 463133439}
   - {fileID: 686442975}
   - {fileID: 339315468}
@@ -2443,6 +2461,67 @@ Transform:
   - {fileID: 993545812}
   m_Father: {fileID: 1934130029}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &631851615
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 631851616}
+  - component: {fileID: 631851617}
+  m_Layer: 0
+  m_Name: HeavySwing
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &631851616
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 631851615}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 526781250}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &631851617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 631851615}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dfcd29f5460f1784195edffbc2afbfa5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skillKey: 49
+  confirmKey: 101
+  cancelKey: 113
+  skillCooldown: 3
+  skillTier: 6
+  skillMultiplier: 1.5
+  chargeDuration: 0.2
+  rollDisplayDuration: 0.4
+  attackPoint: {fileID: 0}
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  anim: {fileID: 0}
+  blockAttackDamage: 0
+  swingRange: 5
+  swingAngle: 90
+  attackAnimationDuration: 0.6
 --- !u!1 &645366424
 GameObject:
   m_ObjectHideFlags: 0
@@ -4635,6 +4714,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1128915050}
   - component: {fileID: 1128915051}
+  - component: {fileID: 1128915052}
   m_Layer: 0
   m_Name: SkillGrid
   m_TagString: Untagged
@@ -4659,7 +4739,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -0.000000014086, y: -39.371}
-  m_SizeDelta: {x: 920, y: 571.26}
+  m_SizeDelta: {x: 920, y: 570}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1128915051
 MonoBehaviour:
@@ -4685,6 +4765,26 @@ MonoBehaviour:
   m_Spacing: {x: 20, y: 20}
   m_Constraint: 0
   m_ConstraintCount: 2
+--- !u!114 &1128915052
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1128915049}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: 920
+  m_PreferredHeight: 570
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1 &1184474961
 GameObject:
   m_ObjectHideFlags: 0
@@ -22593,7 +22693,7 @@ GameObject:
   - component: {fileID: 1898169959}
   - component: {fileID: 1898169960}
   m_Layer: 0
-  m_Name: 'AirSlashManager '
+  m_Name: AirSlash
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -22734,6 +22834,7 @@ GameObject:
   - component: {fileID: 1911548668}
   - component: {fileID: 1911548667}
   - component: {fileID: 1911548666}
+  - component: {fileID: 1911548669}
   m_Layer: 0
   m_Name: SkillManagementCanvas
   m_TagString: Untagged
@@ -22824,6 +22925,23 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
+--- !u!114 &1911548669
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1911548664}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreReversedGraphics: 0
+  m_BlockingObjects: 0
+  m_BlockingMask:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!1 &1933974389
 GameObject:
   m_ObjectHideFlags: 0
