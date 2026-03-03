@@ -120,7 +120,8 @@ public class ItemCatalogService : MonoBehaviour
         Debug.Log("[ItemCatalogService] Catalog ready.");
     }
 
-    /// <summary>Load catalog from a remote URL (future NestJS endpoint).</summary>
+    /// <summary>Load catalog from a remote URL (NestJS /items endpoint).
+    /// Falls back to <see cref="catalogJsonAsset"/> automatically if the request fails.</summary>
     public IEnumerator LoadCatalogFromUrl(string url)
     {
         IsReady = false;
@@ -132,22 +133,30 @@ public class ItemCatalogService : MonoBehaviour
 
         if (req.result != UnityWebRequest.Result.Success)
         {
-            Debug.LogError($"[ItemCatalogService] Failed to fetch from {url}: {req.error}");
+            Debug.LogWarning($"[ItemCatalogService] Failed to fetch from {url}: {req.error}. Falling back to local mock.");
+            yield return FallbackToLocal();
             yield break;
         }
 
-        ItemCatalogResponse response;
+        ItemCatalogResponse response = null;
+        bool parseFailed = false;
         try
         {
             response = JsonConvert.DeserializeObject<ItemCatalogResponse>(req.downloadHandler.text, _jsonSettings);
         }
         catch (Exception e)
         {
-            Debug.LogError($"[ItemCatalogService] Remote JSON parse error: {e.Message}");
-            yield break;
+            Debug.LogWarning($"[ItemCatalogService] Remote JSON parse error: {e.Message}. Falling back to local mock.");
+            parseFailed = true;
         }
 
-        if (response?.items == null) { Debug.LogError("[ItemCatalogService] Remote catalog is empty."); yield break; }
+        if (parseFailed || response?.items == null)
+        {
+            if (!parseFailed)
+                Debug.LogWarning("[ItemCatalogService] Remote catalog is empty. Falling back to local mock.");
+            yield return FallbackToLocal();
+            yield break;
+        }
 
         foreach (var item in response.items)
             _catalog[item.itemID] = item;
@@ -157,6 +166,18 @@ public class ItemCatalogService : MonoBehaviour
 
         IsReady = true;
         Debug.Log("[ItemCatalogService] Catalog ready (remote).");
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────────────────
+
+    private IEnumerator FallbackToLocal()
+    {
+        if (catalogJsonAsset == null)
+        {
+            Debug.LogError("[ItemCatalogService] No fallback asset assigned — catalog unavailable.");
+            yield break;
+        }
+        yield return LoadCatalogFromJson(catalogJsonAsset);
     }
 
     // ── Sprite Download ───────────────────────────────────────────────────────

@@ -111,7 +111,8 @@ public class RecipeCatalogService : MonoBehaviour
         yield break;
     }
 
-    /// <summary>Load catalog from a remote URL (NestJS /recipes endpoint).</summary>
+    /// <summary>Load catalog from a remote URL (NestJS /recipes endpoint).
+    /// Falls back to <see cref="catalogJsonAsset"/> automatically if the request fails.</summary>
     public IEnumerator LoadCatalogFromUrl(string url)
     {
         IsReady = false;
@@ -122,22 +123,30 @@ public class RecipeCatalogService : MonoBehaviour
 
         if (req.result != UnityWebRequest.Result.Success)
         {
-            Debug.LogError($"[RecipeCatalogService] Failed to fetch from {url}: {req.error}");
+            Debug.LogWarning($"[RecipeCatalogService] Failed to fetch from {url}: {req.error}. Falling back to local mock.");
+            yield return FallbackToLocal();
             yield break;
         }
 
-        RecipeCatalogResponse response;
+        RecipeCatalogResponse response = null;
+        bool parseFailed = false;
         try
         {
             response = JsonConvert.DeserializeObject<RecipeCatalogResponse>(req.downloadHandler.text);
         }
         catch (Exception e)
         {
-            Debug.LogError($"[RecipeCatalogService] Remote JSON parse error: {e.Message}");
-            yield break;
+            Debug.LogWarning($"[RecipeCatalogService] Remote JSON parse error: {e.Message}. Falling back to local mock.");
+            parseFailed = true;
         }
 
-        if (response?.recipes == null) { Debug.LogError("[RecipeCatalogService] Remote catalog is empty."); yield break; }
+        if (parseFailed || response?.recipes == null)
+        {
+            if (!parseFailed)
+                Debug.LogWarning("[RecipeCatalogService] Remote catalog is empty. Falling back to local mock.");
+            yield return FallbackToLocal();
+            yield break;
+        }
 
         int loaded = 0;
         foreach (var recipe in response.recipes)
@@ -153,5 +162,17 @@ public class RecipeCatalogService : MonoBehaviour
 
         IsReady = true;
         Debug.Log($"[RecipeCatalogService] Fetched {loaded} recipes from {url}");
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────────────────
+
+    private IEnumerator FallbackToLocal()
+    {
+        if (catalogJsonAsset == null)
+        {
+            Debug.LogError("[RecipeCatalogService] No fallback asset assigned — catalog unavailable.");
+            yield break;
+        }
+        yield return LoadCatalogFromJson(catalogJsonAsset);
     }
 }

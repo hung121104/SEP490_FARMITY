@@ -489,9 +489,25 @@ Depending on `itemType`, specific extra fields must be included:
   - Path param: `id` - MongoDB ObjectId string
   - Response: Plant document or `null`
 
-- **DELETE** `/game-data/plants/:id`: Delete a plant by MongoDB `_id` (admin only).
+- **PUT** `/game-data/plants/:plantId`: Update an existing plant by game-side `plantId` (admin only).
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
-  - Path param: `id` - MongoDB ObjectId string
+  - Content-Type: `multipart/form-data`
+  - Path param: `plantId` - game-side string identifier (e.g., `plant_corn`)
+  - **Optional file fields** (each max 5 MB, re-uploaded to Cloudinary `plant-sprites`):
+
+    | Field name | Description |
+    |---|---|
+    | `stageSprites` | Repeated file field — replaces all stage sprites. Filenames must end with `_<stageIndex>`. Must be provided together with `growthStages` JSON and count must match. |
+    | `hybridFlowerSprite` | Replaces `hybridFlowerIconUrl` |
+    | `hybridMatureSprite` | Replaces `hybridMatureIconUrl` |
+
+  - **Optional text fields**: Any subset of plant fields (all optional). `growthStages` as JSON string if replacing stages.
+  - Response: Updated plant document
+  - Note: Returns `404` if plant not found
+
+- **DELETE** `/game-data/plants/:plantId`: Delete a plant by game-side `plantId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `plantId` - game-side string identifier (e.g., `plant_corn`)
   - Response: Deleted plant document
   - Note: Returns `404` if plant not found
 
