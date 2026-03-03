@@ -133,7 +133,8 @@ public class PlantCatalogService : MonoBehaviour
         Debug.Log("[PlantCatalogService] Catalog ready.");
     }
 
-    /// <summary>Load catalog from a remote URL (future NestJS endpoint).</summary>
+    /// <summary>Load catalog from a remote URL (NestJS /plants endpoint).
+    /// Falls back to <see cref="catalogJsonAsset"/> automatically if the request fails.</summary>
     public IEnumerator LoadCatalogFromUrl(string url)
     {
         IsReady = false;
@@ -145,22 +146,30 @@ public class PlantCatalogService : MonoBehaviour
 
         if (req.result != UnityWebRequest.Result.Success)
         {
-            Debug.LogError($"[PlantCatalogService] Failed to fetch from {url}: {req.error}");
+            Debug.LogWarning($"[PlantCatalogService] Failed to fetch from {url}: {req.error}. Falling back to local mock.");
+            yield return FallbackToLocal();
             yield break;
         }
 
-        PlantCatalogResponse response;
+        PlantCatalogResponse response = null;
+        bool parseFailed = false;
         try
         {
             response = JsonConvert.DeserializeObject<PlantCatalogResponse>(req.downloadHandler.text);
         }
         catch (Exception e)
         {
-            Debug.LogError($"[PlantCatalogService] Remote JSON parse error: {e.Message}");
-            yield break;
+            Debug.LogWarning($"[PlantCatalogService] Remote JSON parse error: {e.Message}. Falling back to local mock.");
+            parseFailed = true;
         }
 
-        if (response?.plants == null) { Debug.LogError("[PlantCatalogService] Remote catalog is empty."); yield break; }
+        if (parseFailed || response?.plants == null)
+        {
+            if (!parseFailed)
+                Debug.LogWarning("[PlantCatalogService] Remote catalog is empty. Falling back to local mock.");
+            yield return FallbackToLocal();
+            yield break;
+        }
 
         foreach (var plant in response.plants)
             _catalog[plant.plantId] = plant;
@@ -170,6 +179,18 @@ public class PlantCatalogService : MonoBehaviour
 
         IsReady = true;
         Debug.Log("[PlantCatalogService] Catalog ready (remote).");
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────────────────
+
+    private IEnumerator FallbackToLocal()
+    {
+        if (catalogJsonAsset == null)
+        {
+            Debug.LogError("[PlantCatalogService] No fallback asset assigned — catalog unavailable.");
+            yield break;
+        }
+        yield return LoadCatalogFromJson(catalogJsonAsset);
     }
 
     // ── Sprite Download ───────────────────────────────────────────────────────

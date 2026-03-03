@@ -19,6 +19,7 @@ import { CreatePlantDto } from './dto/create-plant.dto';
 import { CreateCraftingRecipeDto } from './dto/create-crafting-recipe.dto';
 import { UpdateCraftingRecipeDto } from './dto/update-crafting-recipe.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { UpdatePlantDto } from './dto/update-plant.dto';
 import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 
@@ -396,6 +397,17 @@ export class GatewayController {
         isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
       };
 
+      // crossResults arrives as a JSON string in multipart form-data
+      if (body.crossResults !== undefined) {
+        try {
+          dto.crossResults = typeof body.crossResults === 'string'
+            ? JSON.parse(body.crossResults)
+            : body.crossResults;
+        } catch {
+          throw new BadRequestException('crossResults must be a valid JSON array, e.g. [{"targetPlantId":"plant_corn","resultPlantId":"plant_hybrid_corn"}]');
+        }
+      }
+
       return await firstValueFrom(this.adminClient.send('create-item', dto));
     } catch (err) {
       if (err instanceof HttpException) throw err;
@@ -472,6 +484,16 @@ export class GatewayController {
       if (body.isQuestItem !== undefined) dto.isQuestItem = body.isQuestItem === 'true' || body.isQuestItem === true;
       if (body.isArtifact !== undefined) dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
       if (body.isRareItem !== undefined) dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
+
+      if (body.crossResults !== undefined) {
+        try {
+          dto.crossResults = typeof body.crossResults === 'string'
+            ? JSON.parse(body.crossResults)
+            : body.crossResults;
+        } catch {
+          throw new BadRequestException('crossResults must be a valid JSON array');
+        }
+      }
 
       return await firstValueFrom(this.adminClient.send('update-item', { itemID, dto }));
     } catch (err) {
@@ -638,11 +660,82 @@ export class GatewayController {
     }
   }
 
-  /** DELETE /game-data/plants/:id — delete by MongoDB _id (admin) */
-  @Delete('game-data/plants/:id')
-  async deletePlant(@Param('id') id: string) {
+  /** PUT /game-data/plants/:plantId — update an existing plant by game-side plantId.
+   *  Accepts multipart/form-data; include sprite files to replace sprites. */
+  @Put('game-data/plants/:plantId')
+  @UseInterceptors(AnyFilesInterceptor({ limits: { fileSize: 5 * 1024 * 1024 } }))
+  async updatePlant(
+    @Param('plantId') plantId: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: any,
+  ) {
     try {
-      return await firstValueFrom(this.adminClient.send('delete-plant', id));
+      const dto: UpdatePlantDto = {};
+
+      if (body.plantName !== undefined) dto.plantName = body.plantName;
+      if (body.harvestedItemId !== undefined) dto.harvestedItemId = body.harvestedItemId;
+      if (body.pollenItemId !== undefined) dto.pollenItemId = body.pollenItemId;
+      if (body.receiverPlantId !== undefined) dto.receiverPlantId = body.receiverPlantId;
+      if (body.pollenPlantId !== undefined) dto.pollenPlantId = body.pollenPlantId;
+      if (body.pollenStage !== undefined) dto.pollenStage = Number(body.pollenStage);
+      if (body.maxPollenHarvestsPerStage !== undefined) dto.maxPollenHarvestsPerStage = Number(body.maxPollenHarvestsPerStage);
+      if (body.growingSeason !== undefined) dto.growingSeason = Number(body.growingSeason);
+      if (body.canProducePollen !== undefined) dto.canProducePollen = body.canProducePollen === 'true' || body.canProducePollen === true;
+      if (body.isHybrid !== undefined) dto.isHybrid = body.isHybrid === 'true' || body.isHybrid === true;
+      if (body.dropSeeds !== undefined) dto.dropSeeds = body.dropSeeds === 'true' || body.dropSeeds === true;
+
+      // Re-parse growthStages if provided
+      if (body.growthStages) {
+        let stages: { stageNum: number; age: number; stageIconUrl?: string }[];
+        try {
+          stages = JSON.parse(body.growthStages);
+        } catch {
+          throw new BadRequestException('growthStages must be a valid JSON string array');
+        }
+
+        const stageFiles = (files ?? []).filter(f => f.fieldname === 'stageSprites');
+        if (stageFiles.length > 0) {
+          if (stageFiles.length !== stages.length) {
+            throw new BadRequestException(
+              `Expected ${stages.length} stageSprites file(s), received ${stageFiles.length}`,
+            );
+          }
+          const parseStageIndex = (filename: string): number => {
+            const match = filename.replace(/\.[^.]+$/, '').match(/(\d+)$/);
+            if (!match) throw new BadRequestException(
+              `Stage sprite filename "${filename}" must end with a stage index, e.g. "cabbage_0.png"`,
+            );
+            return parseInt(match[1], 10);
+          };
+          const sortedStageFiles = [...stageFiles].sort(
+            (a, b) => parseStageIndex(a.originalname) - parseStageIndex(b.originalname),
+          );
+          for (let i = 0; i < stages.length; i++) {
+            const publicId = sortedStageFiles[i].originalname.replace(/\.[^.]+$/, '');
+            stages[i].stageIconUrl = await this.cloudinaryService.uploadFile(sortedStageFiles[i], 'plant-sprites', publicId);
+          }
+        }
+        dto.growthStages = stages as any;
+      }
+
+      // Optional hybrid sprite replacements
+      const hybridFlowerFile = (files ?? []).find(f => f.fieldname === 'hybridFlowerSprite');
+      const hybridMatureFile = (files ?? []).find(f => f.fieldname === 'hybridMatureSprite');
+      if (hybridFlowerFile) dto.hybridFlowerIconUrl = await this.cloudinaryService.uploadFile(hybridFlowerFile, 'plant-sprites', hybridFlowerFile.originalname.replace(/\.[^.]+$/, ''));
+      if (hybridMatureFile) dto.hybridMatureIconUrl = await this.cloudinaryService.uploadFile(hybridMatureFile, 'plant-sprites', hybridMatureFile.originalname.replace(/\.[^.]+$/, ''));
+
+      return await firstValueFrom(this.adminClient.send('update-plant', { plantId, dto }));
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/plants/:plantId — delete by game-side plantId (admin) */
+  @Delete('game-data/plants/:plantId')
+  async deletePlant(@Param('plantId') plantId: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('delete-plant', plantId));
     } catch (err) {
       throw this.rpcError(err);
     }

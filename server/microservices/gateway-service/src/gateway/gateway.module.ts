@@ -54,7 +54,8 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/items/:itemID', method: RequestMethod.PUT },
         { path: 'game-data/items/:itemID', method: RequestMethod.DELETE },
         { path: 'game-data/plants/create', method: RequestMethod.POST },
-        { path: 'game-data/plants/:id', method: RequestMethod.DELETE },
+        { path: 'game-data/plants/:plantId', method: RequestMethod.PUT },
+        { path: 'game-data/plants/:plantId', method: RequestMethod.DELETE },
       );
 
     // enforce admin only on admin routes
@@ -77,7 +78,8 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/items/:itemID', method: RequestMethod.PUT },
         { path: 'game-data/items/:itemID', method: RequestMethod.DELETE },
         { path: 'game-data/plants/create', method: RequestMethod.POST },
-        { path: 'game-data/plants/:id', method: RequestMethod.DELETE },
+        { path: 'game-data/plants/:plantId', method: RequestMethod.PUT },
+        { path: 'game-data/plants/:plantId', method: RequestMethod.DELETE },
       );
   }
 }

@@ -7,7 +7,10 @@ import {
   IsArray,
   IsNotEmpty,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CrossResultDto } from './create-item.dto';
 
 export class UpdateItemDto {
   // ── Base Properties ────────────────────────────────────────────────────────
@@ -109,12 +112,22 @@ export class UpdateItemDto {
   // ── Pollen (itemType: 3) ───────────────────────────────────────────────────
 
   @IsOptional()
+  @IsString()
+  sourcePlantId?: string;
+
+  @IsOptional()
   @IsNumber()
   pollinationSuccessChance?: number;
 
   @IsOptional()
   @IsInt()
   viabilityDays?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CrossResultDto)
+  crossResults?: CrossResultDto[];
 
   // ── Consumable (itemType: 4) / Cooking (itemType: 8) ──────────────────────
 
