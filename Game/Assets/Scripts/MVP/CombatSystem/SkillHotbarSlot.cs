@@ -88,7 +88,9 @@ public class SkillHotbarSlot : MonoBehaviour,
         }
 
         Debug.Log($"[SkillHotbarSlot {slotIndex}] Executing skill: {equippedSkill.skillName}");
-        // TODO: Call equippedSkillComponent.StartSkillFlow() or similar
+        
+        // Call the skill's public TriggerSkill method through hotbar
+        equippedSkillComponent.TriggerSkill();
     }
 
     #endregion
