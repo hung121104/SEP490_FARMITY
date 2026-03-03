@@ -1,0 +1,99 @@
+{
+    "plants": [
+        {
+            "plantId": "plant_strawberry",
+            "plantName": "Strawberry",
+            "isHybrid": false,
+            "growingSeason": 0,
+            "harvestedItemId": "crop_strawberry",
+            "canProducePollen": true,
+            "pollenStage": 3,
+            "pollenItemId": "pollen_strawberry",
+            "maxPollenHarvestsPerStage": 1,
+            "dropSeeds": false,
+            "growthStages": [
+                {
+                    "stageNum": 0,
+                    "age": 0,
+                    "stageIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423792/strabberry_0_c0otyw.png"
+                },
+                {
+                    "stageNum": 1,
+                    "age": 2,
+                    "stageIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423793/strabberry_1_uqlyzt.png"
+                },
+                {
+                    "stageNum": 2,
+                    "age": 4,
+                    "stageIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423795/strabberry_2_pdiym1.png"
+                },
+                {
+                    "stageNum": 3,
+                    "age": 6,
+                    "stageIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423796/strabberry_3_hdxalu.png"
+                },
+                {
+                    "stageNum": 4,
+                    "age": 8,
+                    "stageIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423797/strabberry_4_m4hwgv.png"
+                }
+            ]
+        },
+        {
+            "plantId": "pumpkin_plant",
+            "plantName": "Pumpkin",
+            "isHybrid": false,
+            "growingSeason": 0,
+            "harvestedItemId": "pumpkin_crop",
+            "canProducePollen": true,
+            "pollenStage": 3,
+            "pollenItemId": "pumpkin_pollen",
+            "maxPollenHarvestsPerStage": 1,
+            "dropSeeds": false,
+            "growthStages": [
+                {
+                    "stageNum": 0,
+                    "age": 0,
+                    "stageIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423784/pumkin_0_ylpstf.png"
+                },
+                {
+                    "stageNum": 1,
+                    "age": 2,
+                    "stageIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423785/pumkin_1_fiu56e.png"
+                },
+                {
+                    "stageNum": 2,
+                    "age": 4,
+                    "stageIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423787/pumkin_2_tdaid7.png"
+                },
+                {
+                    "stageNum": 3,
+                    "age": 6,
+                    "stageIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423788/pumkin_3_y3ngpv.png"
+                },
+                {
+                    "stageNum": 4,
+                    "age": 8,
+                    "stageIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423790/pumkin_4_uephxj.png"
+                }
+            ]
+        },
+        {
+            "plantId": "pumbery_plant",
+            "plantName": "Pumbery (Hybrid)",
+            "isHybrid": true,
+            "receiverPlantId": "pumpkin_plant",
+            "pollenPlantId": "strawberry_plant",
+            "dropSeeds": false,
+            "growingSeason": 0,
+            "harvestedItemId": "pumbery_crop",
+            "canProducePollen": false,
+            "pollenStage": 3,
+            "pollenItemId": "",
+            "maxPollenHarvestsPerStage": 0,
+            "hybridFlowerIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423762/cabbage_3_kjfhya.png",
+            "hybridMatureIconUrl": "https://res.cloudinary.com/dnwjwhaqb/image/upload/v1772423763/cabbage_4_xjtybd.png",
+            "growthStages": []
+        }
+    ]
+}

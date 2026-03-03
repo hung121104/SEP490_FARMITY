@@ -2,6 +2,7 @@ import { Controller, Body } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ItemService } from './item.service';
 import { CreateItemDto } from './dto/create-item.dto';
+import { UpdateItemDto } from './dto/update-item.dto';
 
 @Controller()
 export class ItemController {
@@ -38,9 +39,17 @@ export class ItemController {
     return this.itemService.findByItemID(itemID);
   }
 
-  /** Delete an item by MongoDB _id */
+  /** Update an item by game-side itemID string */
+  @MessagePattern('update-item')
+  async updateItem(
+    @Payload() payload: { itemID: string; dto: UpdateItemDto },
+  ) {
+    return this.itemService.update(payload.itemID, payload.dto);
+  }
+
+  /** Delete an item by game-side itemID string */
   @MessagePattern('delete-item')
-  async deleteItem(@Payload() id: string) {
-    return this.itemService.delete(id);
+  async deleteItem(@Payload() itemID: string) {
+    return this.itemService.delete(itemID);
   }
 }

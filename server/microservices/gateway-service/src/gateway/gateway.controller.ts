@@ -15,10 +15,11 @@ import {
   Put,
   UseInterceptors,
   UploadedFile,
+  UploadedFiles,
   BadRequestException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { firstValueFrom } from 'rxjs';
 import { Response, Request } from 'express';
@@ -33,6 +34,10 @@ import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
 import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
 import { UpdateWorldDto } from './dto/update-world.dto';
 import { CreateItemDto } from './dto/create-item.dto';
+import { CreatePlantDto } from './dto/create-plant.dto';
+import { CreateCraftingRecipeDto } from './dto/create-crafting-recipe.dto';
+import { UpdateCraftingRecipeDto } from './dto/update-crafting-recipe.dto';
+import { UpdateItemDto } from './dto/update-item.dto';
 import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 
@@ -518,11 +523,367 @@ export class GatewayController {
     }
   }
 
-  /** DELETE /game-data/items/:id — delete by MongoDB _id (admin) */
-  @Delete('game-data/items/:id')
-  async deleteItem(@Param('id') id: string) {
+  /** PUT /game-data/items/:itemID — update item by game-side itemID.
+   *  Accepts multipart/form-data; include an "icon" file to replace the icon. */
+  @Put('game-data/items/:itemID')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateItem(
+    @Param('itemID') itemID: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
     try {
-      return await firstValueFrom(this.adminClient.send('delete-item', id));
+      const dto: UpdateItemDto = { ...body };
+
+      // If a new icon was uploaded, replace the iconUrl
+      if (file) {
+        dto.iconUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'item-icons',
+        );
+      }
+
+      // Parse numeric / boolean fields that arrive as strings from form-data
+      if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
+      if (body.itemCategory !== undefined)
+        dto.itemCategory = Number(body.itemCategory);
+      if (body.maxStack !== undefined) dto.maxStack = Number(body.maxStack);
+      if (body.basePrice !== undefined) dto.basePrice = Number(body.basePrice);
+      if (body.buyPrice !== undefined) dto.buyPrice = Number(body.buyPrice);
+      if (body.isStackable !== undefined)
+        dto.isStackable =
+          body.isStackable === 'true' || body.isStackable === true;
+      if (body.canBeSold !== undefined)
+        dto.canBeSold = body.canBeSold !== 'false' && body.canBeSold !== false;
+      if (body.canBeBought !== undefined)
+        dto.canBeBought =
+          body.canBeBought === 'true' || body.canBeBought === true;
+      if (body.isQuestItem !== undefined)
+        dto.isQuestItem =
+          body.isQuestItem === 'true' || body.isQuestItem === true;
+      if (body.isArtifact !== undefined)
+        dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
+      if (body.isRareItem !== undefined)
+        dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
+
+      return await firstValueFrom(
+        this.adminClient.send('update-item', { itemID, dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/items/:itemID — delete by game-side itemID (admin) */
+  @Delete('game-data/items/:itemID')
+  async deleteItem(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('delete-item', itemID));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Plants ───────────────────────────────────────────────────────
+
+  /** POST /game-data/plants/create — multipart/form-data.
+   *
+   *  File fields:
+   *    stageSprites         — repeated file field; filenames must end with _<stageIndex>
+   *                           e.g. cabbage_0.png, cabbage_1.png, cabbage_2.png
+   *    hybridFlowerSprite   — optional; sprite at pollenStage (hybrid plants only)
+   *    hybridMatureSprite   — optional; sprite at pollenStage+1 (hybrid plants only)
+   *
+   *  Text fields:
+   *    plantId, plantName, harvestedItemId  — required
+   *    growthStages  — JSON string: [{"stageNum":0,"age":0},{"stageNum":1,"age":3},…]
+   *                    stageIconUrl is injected automatically from the uploaded sprites.
+   *    All other CreatePlantDto optional fields as plain strings.
+   *
+   *  All sprites are uploaded to Cloudinary folder "plant-sprites" internally.
+   */
+  @Post('game-data/plants/create')
+  @UseInterceptors(
+    AnyFilesInterceptor({ limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createPlant(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: any,
+  ) {
+    try {
+      // Parse growthStages JSON string sent as a form field
+      let stages: { stageNum: number; age: number; stageIconUrl?: string }[] =
+        [];
+      if (body.growthStages) {
+        try {
+          stages = JSON.parse(body.growthStages);
+        } catch {
+          throw new BadRequestException(
+            'growthStages must be a valid JSON string array',
+          );
+        }
+      }
+      if (!stages.length) {
+        throw new BadRequestException(
+          'growthStages must contain at least one entry',
+        );
+      }
+
+      // Separate files by fieldname
+      const stageFiles = (files ?? []).filter(
+        (f) => f.fieldname === 'stageSprites',
+      );
+      const hybridFlowerFile = (files ?? []).find(
+        (f) => f.fieldname === 'hybridFlowerSprite',
+      );
+      const hybridMatureFile = (files ?? []).find(
+        (f) => f.fieldname === 'hybridMatureSprite',
+      );
+
+      if (stageFiles.length !== stages.length) {
+        throw new BadRequestException(
+          `Expected ${stages.length} stageSprites file(s), received ${stageFiles.length}`,
+        );
+      }
+
+      // Sort stage files by the trailing number in the original filename
+      // e.g. "cabbage_0.png" → 0, "cabbage_2.png" → 2
+      const parseStageIndex = (filename: string): number => {
+        const match = filename.replace(/\.[^.]+$/, '').match(/(\d+)$/);
+        if (!match)
+          throw new BadRequestException(
+            `Stage sprite filename "${filename}" must end with a stage index, e.g. "cabbage_0.png"`,
+          );
+        return parseInt(match[1], 10);
+      };
+
+      const sortedStageFiles = [...stageFiles].sort(
+        (a, b) =>
+          parseStageIndex(a.originalname) - parseStageIndex(b.originalname),
+      );
+
+      // Validate that the parsed indices are 0..N-1 with no gaps
+      sortedStageFiles.forEach((f, i) => {
+        const idx = parseStageIndex(f.originalname);
+        if (idx !== i)
+          throw new BadRequestException(
+            `Stage sprite indices must be contiguous starting from 0. Got index ${idx} at position ${i}.`,
+          );
+      });
+
+      // Upload stage sprites sorted by index and inject stageIconUrl
+      for (let i = 0; i < stages.length; i++) {
+        const publicId = sortedStageFiles[i].originalname.replace(
+          /\.[^.]+$/,
+          '',
+        );
+        stages[i].stageIconUrl = await this.cloudinaryService.uploadFile(
+          sortedStageFiles[i],
+          'plant-sprites',
+          publicId,
+        );
+      }
+
+      // Upload optional hybrid sprites
+      let hybridFlowerIconUrl: string | undefined;
+      let hybridMatureIconUrl: string | undefined;
+      if (hybridFlowerFile)
+        hybridFlowerIconUrl = await this.cloudinaryService.uploadFile(
+          hybridFlowerFile,
+          'plant-sprites',
+          hybridFlowerFile.originalname.replace(/\.[^.]+$/, ''),
+        );
+      if (hybridMatureFile)
+        hybridMatureIconUrl = await this.cloudinaryService.uploadFile(
+          hybridMatureFile,
+          'plant-sprites',
+          hybridMatureFile.originalname.replace(/\.[^.]+$/, ''),
+        );
+
+      const dto: CreatePlantDto = {
+        plantId: body.plantId,
+        plantName: body.plantName,
+        harvestedItemId: body.harvestedItemId,
+        growthStages: stages as any,
+        ...(body.canProducePollen !== undefined && {
+          canProducePollen:
+            body.canProducePollen === 'true' || body.canProducePollen === true,
+        }),
+        ...(body.pollenStage !== undefined && {
+          pollenStage: Number(body.pollenStage),
+        }),
+        ...(body.pollenItemId && { pollenItemId: body.pollenItemId }),
+        ...(body.maxPollenHarvestsPerStage !== undefined && {
+          maxPollenHarvestsPerStage: Number(body.maxPollenHarvestsPerStage),
+        }),
+        ...(body.growingSeason !== undefined && {
+          growingSeason: Number(body.growingSeason),
+        }),
+        ...(body.isHybrid !== undefined && {
+          isHybrid: body.isHybrid === 'true' || body.isHybrid === true,
+        }),
+        ...(body.receiverPlantId && { receiverPlantId: body.receiverPlantId }),
+        ...(body.pollenPlantId && { pollenPlantId: body.pollenPlantId }),
+        ...(hybridFlowerIconUrl && { hybridFlowerIconUrl }),
+        ...(hybridMatureIconUrl && { hybridMatureIconUrl }),
+        ...(body.dropSeeds !== undefined && {
+          dropSeeds: body.dropSeeds === 'true' || body.dropSeeds === true,
+        }),
+      };
+
+      return await firstValueFrom(this.adminClient.send('create-plant', dto));
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/plants/catalog — full catalog { plants: [...] } for Unity PlantCatalogService */
+  @Get('game-data/plants/catalog')
+  async getPlantCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-plant-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/plants/all — flat array of all plants */
+  @Get('game-data/plants/all')
+  async getAllPlants() {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-all-plants', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/plants/by-plant-id/:plantId — find by game-side plantId string */
+  @Get('game-data/plants/by-plant-id/:plantId')
+  async getPlantByPlantId(@Param('plantId') plantId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-plant-by-plant-id', plantId),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/plants/:id — find by MongoDB _id */
+  @Get('game-data/plants/:id')
+  async getPlantById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-plant-by-id', id));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/plants/:id — delete by MongoDB _id (admin) */
+  @Delete('game-data/plants/:id')
+  async deletePlant(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('delete-plant', id));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Crafting Recipes ──────────────────────────────────────────────
+
+  /** POST /game-data/crafting-recipes/create — create a new crafting recipe */
+  @Post('game-data/crafting-recipes/create')
+  async createCraftingRecipe(@Body() body: CreateCraftingRecipeDto) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('create-crafting-recipe', body),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/crafting-recipes/catalog — full catalog { recipes: [...] } for Unity client */
+  @Get('game-data/crafting-recipes/catalog')
+  async getCraftingRecipeCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-crafting-recipe-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/crafting-recipes/all — flat array of all crafting recipes */
+  @Get('game-data/crafting-recipes/all')
+  async getAllCraftingRecipes() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-crafting-recipes', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/crafting-recipes/by-recipe-id/:recipeID — find by game-side recipeID string */
+  @Get('game-data/crafting-recipes/by-recipe-id/:recipeID')
+  async getCraftingRecipeByRecipeId(@Param('recipeID') recipeID: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-crafting-recipe-by-recipe-id', recipeID),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/crafting-recipes/:id — find by MongoDB _id */
+  @Get('game-data/crafting-recipes/:id')
+  async getCraftingRecipeById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-crafting-recipe-by-id', id),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/crafting-recipes/:recipeID — update existing recipe by recipeID */
+  @Put('game-data/crafting-recipes/:recipeID')
+  async updateCraftingRecipe(
+    @Param('recipeID') recipeID: string,
+    @Body() body: UpdateCraftingRecipeDto,
+  ) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('update-crafting-recipe', {
+          recipeID,
+          dto: body,
+        }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/crafting-recipes/:recipeID — delete by game-side recipeID (admin) */
+  @Delete('game-data/crafting-recipes/:recipeID')
+  async deleteCraftingRecipe(@Param('recipeID') recipeID: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-crafting-recipe', recipeID),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }

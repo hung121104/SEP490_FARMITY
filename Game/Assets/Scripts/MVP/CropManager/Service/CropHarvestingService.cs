@@ -58,7 +58,7 @@ public class CropHarvestingService : ICropHarvestingService
             && cropManagerView != null
             && !string.IsNullOrEmpty(tileData.PlantId))
         {
-            PlantDataSO plantData = cropManagerView.GetPlantData(tileData.PlantId);
+            PlantData plantData = cropManagerView.GetPlantData(tileData.PlantId);
             if (plantData != null && !string.IsNullOrEmpty(plantData.harvestedItemId))
                 harvestedItem = ItemCatalogService.Instance?.GetItemData(plantData.harvestedItemId);
             else
