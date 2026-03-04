@@ -128,7 +128,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 78914443}
-  - component: {fileID: 78914442}
+  - component: {fileID: 78914444}
+  - component: {fileID: 78914445}
   m_Layer: 0
   m_Name: PlayerPointer
   m_TagString: Untagged
@@ -136,21 +137,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &78914442
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 78914441}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9cf184117d6489d488001cff6f4c7886, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  pointerPrefab: {fileID: 4859915784430039372, guid: 1c815e6a711efb24c9523502ceaa96a0, type: 3}
-  orbitRadius: 1
-  initializationDelay: 0.5
 --- !u!4 &78914443
 Transform:
   m_ObjectHideFlags: 0
@@ -166,6 +152,43 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1168532500}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &78914444
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 78914441}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52a2000f3fad7dd439f568593fcf3124, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model:
+    orbitRadius: 1
+    initializationDelay: 0.5
+    pointerPrefab: {fileID: 0}
+    playerTransform: {fileID: 0}
+    centerPoint: {fileID: 0}
+    mainCamera: {fileID: 0}
+    pointerTransform: {fileID: 0}
+    pointerSpriteRenderer: {fileID: 0}
+    currentDirection: {x: 1, y: 0, z: 0}
+    isInitialized: 0
+  pointerPrefab: {fileID: 4859915784430039372, guid: 1c815e6a711efb24c9523502ceaa96a0, type: 3}
+--- !u!114 &78914445
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 78914441}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 083969c0370e0cf478ecf53768eb28ac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  presenter: {fileID: 78914444}
 --- !u!1 &121140858
 GameObject:
   m_ObjectHideFlags: 0
@@ -2255,6 +2278,7 @@ Transform:
   - {fileID: 78914443}
   - {fileID: 1960489631}
   - {fileID: 1520985913}
+  - {fileID: 1556653013}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1197646804
@@ -2505,7 +2529,7 @@ MonoBehaviour:
     tempVitality: 10
     attackRange: 1
     knockbackForce: 50
-    cooldownTime: 1
+    cooldownTime: 0.5
     easeSpeed: 1
     currentPoints: 0
     pointsSpentThisSession: 0
@@ -3135,6 +3159,103 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1537479756}
   m_CullTransparentMesh: 1
+--- !u!1 &1556653012
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1556653013}
+  - component: {fileID: 1556653015}
+  - component: {fileID: 1556653014}
+  m_Layer: 0
+  m_Name: PlayerAttacker
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1556653013
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1556653012}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1168532500}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1556653014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1556653012}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4f29934e9860044388f88b19950fbbf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model:
+    stabVFXPrefab: {fileID: 0}
+    horizontalVFXPrefab: {fileID: 0}
+    verticalVFXPrefab: {fileID: 0}
+    damagePopupPrefab: {fileID: 0}
+    enemyLayers:
+      serializedVersion: 2
+      m_Bits: 0
+    comboResetTime: 2
+    stabMultiplier: 0.8
+    horizontalMultiplier: 1
+    verticalMultiplier: 1.5
+    vfxSpawnOffset: 1
+    stabDuration: 0.2
+    horizontalDuration: 0.3
+    verticalDuration: 0.4
+    stabPositionOffset: {x: 0, y: 0}
+    horizontalPositionOffset: {x: 0, y: 0}
+    verticalPositionOffset: {x: 0, y: 0}
+    playerTransform: {fileID: 0}
+    centerPoint: {fileID: 0}
+    currentComboStep: 0
+    comboResetTimer: 0
+    attackCooldownTimer: 0
+    isInitialized: 0
+  stabVFXPrefab: {fileID: 6199919663397036256, guid: 1c149b8484f0bd342b37db16dbb6c230, type: 3}
+  horizontalVFXPrefab: {fileID: 5107333870897779412, guid: a31d7178e27ce7d4bbbe209616de82d2, type: 3}
+  verticalVFXPrefab: {fileID: 8171461803801935278, guid: c6fdd417ce7c04540be8aa6077fdfe75, type: 3}
+  damagePopupPrefab: {fileID: 0}
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 128
+  stabPositionOffset: {x: 0, y: 0.25}
+  horizontalPositionOffset: {x: 0, y: 0.25}
+  verticalPositionOffset: {x: 0, y: -0.25}
+  vfxSpawnOffset: 1
+  statsPresenter: {fileID: 1383096724}
+  pointerPresenter: {fileID: 78914444}
+--- !u!114 &1556653015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1556653012}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d19af4ba0345bc4bb6a40d634c355b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  presenter: {fileID: 1556653014}
+  showDebugInfo: 1
 --- !u!1 &1610374487
 GameObject:
   m_ObjectHideFlags: 0
