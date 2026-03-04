@@ -124,8 +124,15 @@ public class InventoryGameView : MonoBehaviour
     {
         Debug.Log($"Dropping item: {item.ItemName}");
 
-        // TODO: Implement item drop logic
-        // Example: Spawn item in world at player position
+        // Delegate to DroppedItemManagerView which handles Photon sync + DB persistence
+        if (DroppedItemManagerView.Instance != null)
+        {
+            DroppedItemManagerView.Instance.RequestDropItem(item);
+        }
+        else
+        {
+            Debug.LogError("[InventoryGameView] DroppedItemManagerView.Instance is null — cannot drop item!");
+        }
     }
 
     #endregion

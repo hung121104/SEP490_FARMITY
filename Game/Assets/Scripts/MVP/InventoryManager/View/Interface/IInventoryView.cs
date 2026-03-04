@@ -19,6 +19,9 @@ public interface IInventoryView
     event Action<int> OnSlotHoverExit;
     event Action<int> OnItemDeleteRequested;
 
+    // Position check
+    bool IsScreenPositionInsideInventory(Vector2 screenPosition);
+
     // Slot operations
     void UpdateSlot(int slotIndex, ItemModel item);
     void ClearSlot(int slotIndex);
