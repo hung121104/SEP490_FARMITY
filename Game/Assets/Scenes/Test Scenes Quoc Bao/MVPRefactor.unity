@@ -2505,6 +2505,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1470115592}
+  - component: {fileID: 1470115594}
+  - component: {fileID: 1470115593}
   m_Layer: 0
   m_Name: PlayerKnockbackManager
   m_TagString: Untagged
@@ -2527,6 +2529,46 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1168532500}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1470115593
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1470115591}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be5dd30ce96e7a541a669e39338f0a6b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  presenter: {fileID: 1470115594}
+--- !u!114 &1470115594
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1470115591}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0af0e5e96673b574391c1d669569ea49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model:
+    knockbackDuration: 0.15
+    squashPixels: 0.05
+    stretchPixels: 0.05
+    waveDuration: 0.3
+    flashDuration: 0.2
+    flashCount: 2
+    playerEntity: {fileID: 0}
+    rigidbody: {fileID: 0}
+    spriteRenderer: {fileID: 0}
+    playerMovement: {fileID: 0}
+    originalColor: {r: 1, g: 1, b: 1, a: 1}
+    originalScale: {x: 1, y: 1, z: 1}
+    isInitialized: 0
+    isKnockbackActive: 0
 --- !u!1 &1492096328
 GameObject:
   m_ObjectHideFlags: 0
