@@ -5670,6 +5670,8 @@ MonoBehaviour:
   - {fileID: 1429142193}
   dropOffset: {x: 1, y: 1}
   showDebugLogs: 1
+  poolDefaultCapacity: 50
+  poolMaxSize: 100
 --- !u!1 &410756448
 GameObject:
   m_ObjectHideFlags: 0
@@ -8059,7 +8061,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 10
   m_TargetDisplay: 0
 --- !u!1 &584748973
 GameObject:

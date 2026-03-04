@@ -9,10 +9,11 @@ using TMPro;
 /// Attach this to the DroppedItem prefab.
 /// Manages both the visual display and the per-item lifecycle (despawn timer, blink, pickup).
 /// 
-/// Requires: SpriteRenderer, CircleCollider2D (trigger), child TextMeshPro for prompt.
+/// Requires: SpriteRenderer, child TextMeshPro for prompt.
+/// Player detection uses Physics2D.OverlapCircle in Update() instead of trigger events
+/// to ensure correct reset state when reused via Object Pooling.
 /// </summary>
 [RequireComponent(typeof(SpriteRenderer))]
-[RequireComponent(typeof(CircleCollider2D))]
 public class DroppedItemView : MonoBehaviour, IDroppedItemView
 {
     // ── Constants ─────────────────────────────────────────────────────────────
@@ -47,6 +48,22 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     [Tooltip("Key to pick up the item.")]
     [SerializeField] private KeyCode pickupKey = KeyCode.F;
 
+    [Tooltip("Radius (world units) to detect local player for pickup prompt.\nReplaces CircleCollider2D trigger — safe for Object Pooling.")]
+    [SerializeField] private float pickupRadius = 0.8f;
+
+    [Tooltip("Layer mask for player detection. Default: Everything.")]
+    [SerializeField] private LayerMask playerLayerMask = ~0;
+
+    [Header("Debug")]
+    [Tooltip("Show pickup radius gizmo in Scene view.")]
+    [SerializeField] private bool showGizmos = true;
+
+    [Tooltip("Color of the pickup radius gizmo.")]
+    [SerializeField] private Color gizmoColor = new Color(0f, 1f, 0.5f, 0.3f);
+
+    [Tooltip("Enable verbose logging to debug pickupPromptText and player detection.")]
+    [SerializeField] private bool debugLogs = false;
+
     // ── Runtime State ─────────────────────────────────────────────────────────
 
     private DroppedItemData _data;
@@ -55,6 +72,9 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     private bool _playerInRange;
     private bool _blinkStarted;
     private bool _despawnBroadcast;
+
+    /// <summary>Pre-allocated buffer for OverlapCircleNonAlloc — avoids per-frame heap allocation.</summary>
+    private readonly Collider2D[] _overlapBuffer = new Collider2D[16];
 
     /// <summary>Drop ID this view represents.</summary>
     public string DropId => _data?.dropId;
@@ -110,6 +130,11 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         // Prompt hidden by default
         SetPickupPromptVisible(false);
 
+        // Debug: warn if pickupPromptText is missing
+        if (pickupPromptText == null)
+            Debug.LogWarning($"[DroppedItemView] pickupPromptText is NULL on '{gameObject.name}'. " +
+                             "Assign a TextMeshProUGUI child in the Inspector or check prefab hierarchy.");
+
         gameObject.SetActive(true);
     }
 
@@ -153,6 +178,13 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         if (pickupPromptText != null)
         {
             pickupPromptText.gameObject.SetActive(visible);
+
+            if (debugLogs)
+                Debug.Log($"[DroppedItemView] pickupPromptText.SetActive({visible}) on '{gameObject.name}'");
+        }
+        else if (debugLogs)
+        {
+            Debug.LogWarning($"[DroppedItemView] SetPickupPromptVisible({visible}) skipped — pickupPromptText is NULL.");
         }
     }
 
@@ -176,20 +208,29 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         }
     }
 
-    // ── Trigger Detection ─────────────────────────────────────────────────────
+    // ── Player Range Detection ─────────────────────────────────────────────────────
 
-    private void OnTriggerEnter2D(Collider2D other)
+    /// <summary>
+    /// Uses Physics2D.OverlapCircleNonAlloc to detect the local player nearby.
+    /// NonAlloc writes into a pre-allocated buffer — zero heap allocation per frame.
+    /// </summary>
+    private bool IsLocalPlayerInRange()
     {
-        if (!IsLocalPlayer(other)) return;
-        _playerInRange = true;
-        SetPickupPromptVisible(true);
-    }
+        int count = Physics2D.OverlapCircleNonAlloc(transform.position, pickupRadius, _overlapBuffer, playerLayerMask);
 
-    private void OnTriggerExit2D(Collider2D other)
-    {
-        if (!IsLocalPlayer(other)) return;
-        _playerInRange = false;
-        SetPickupPromptVisible(false);
+        if (debugLogs && count > 0)
+            Debug.Log($"[DroppedItemView] OverlapCircleNonAlloc hit {count} collider(s) within radius {pickupRadius} on '{gameObject.name}'");
+
+        for (int i = 0; i < count; i++)
+        {
+            if (IsLocalPlayer(_overlapBuffer[i]))
+            {
+                if (debugLogs)
+                    Debug.Log($"[DroppedItemView] Local player detected: '{_overlapBuffer[i].gameObject.name}'");
+                return true;
+            }
+        }
+        return false;
     }
 
     // ── Frame Update ──────────────────────────────────────────────────────────
@@ -223,6 +264,14 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
             }
         }
 
+        // OverlapCircle-based player detection (pool-safe, replaces OnTriggerEnter/Exit)
+        bool playerNearby = IsLocalPlayerInRange();
+        if (playerNearby != _playerInRange)
+        {
+            _playerInRange = playerNearby;
+            SetPickupPromptVisible(_playerInRange);
+        }
+
         // Listen for pickup key press when player is in range
         if (_playerInRange && Input.GetKeyDown(pickupKey))
         {
@@ -254,6 +303,51 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         else
         {
             Debug.LogError("[DroppedItemView] DroppedItemManagerView.Instance is null!");
+        }
+    }
+
+    // ── Gizmos ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Draws pickup radius and debug info in the Scene view.
+    /// Visible only when the GameObject is selected (OnDrawGizmosSelected)
+    /// or always when showGizmos = true (OnDrawGizmos).
+    /// </summary>
+    private void OnDrawGizmosSelected()
+    {
+        DrawPickupGizmo();
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (!showGizmos) return;
+        DrawPickupGizmo();
+    }
+
+    private void DrawPickupGizmo()
+    {
+        // Filled disc — shows the detection area
+        UnityEditor.Handles.color = gizmoColor;
+#if UNITY_EDITOR
+        UnityEditor.Handles.DrawSolidDisc(transform.position, Vector3.forward, pickupRadius);
+#endif
+
+        // Outline wire circle
+        Gizmos.color = new Color(gizmoColor.r, gizmoColor.g, gizmoColor.b, 1f);
+        Gizmos.DrawWireSphere(transform.position, pickupRadius);
+
+        // Label: item name + prompt state
+        if (_data != null)
+        {
+#if UNITY_EDITOR
+            string promptState = pickupPromptText == null ? "[prompt: NULL!]" :
+                                 pickupPromptText.gameObject.activeSelf ? "[prompt: visible]" : "[prompt: hidden]";
+            UnityEditor.Handles.color = Color.white;
+            UnityEditor.Handles.Label(
+                transform.position + Vector3.up * (pickupRadius + 0.15f),
+                $"{_data.itemName} | r={pickupRadius} | {promptState} | inRange={_playerInRange}"
+            );
+#endif
         }
     }
 

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Pool;
 using Photon.Pun;
 using System;
 using System.Collections;
@@ -29,10 +30,17 @@ public class DroppedItemManagerView : MonoBehaviour
 
     [Header("Settings")]
     [Tooltip("Offset applied to player position when dropping an item.")]
-    [SerializeField] private Vector2 dropOffset = new Vector2(0f, -0.5f);
+    [SerializeField] private Vector2 dropOffset = new Vector2(0f, 0f);
 
     [Tooltip("Enable debug logging.")]
     [SerializeField] private bool showDebugLogs = true;
+
+    [Header("Object Pool Settings")]
+    [Tooltip("Pre-warmed capacity of the dropped item pool.")]
+    [SerializeField] private int poolDefaultCapacity = 20;
+
+    [Tooltip("Maximum number of objects the pool will hold before destroying excess.")]
+    [SerializeField] private int poolMaxSize = 100;
 
     // ── MVP Components ────────────────────────────────────────────────────────
 
@@ -43,6 +51,9 @@ public class DroppedItemManagerView : MonoBehaviour
 
     /// <summary>Active visual GameObjects keyed by dropId.</summary>
     private readonly Dictionary<string, GameObject> _activeVisuals = new();
+
+    /// <summary>Object pool for DroppedItem prefabs — avoids Instantiate/Destroy GC pressure.</summary>
+    private ObjectPool<GameObject> _itemPool;
 
     /// <summary>Cached reference to local player transform.</summary>
     private Transform _localPlayerTransform;
@@ -99,8 +110,10 @@ public class DroppedItemManagerView : MonoBehaviour
         // Cleanup presenter (unsubscribes from sync + chunk events)
         presenter?.Cleanup();
 
-        // Cleanup visuals
+        // Cleanup visuals and dispose pool
         ClearAllVisuals();
+        _itemPool?.Dispose();
+        _itemPool = null;
 
         if (Instance == this) Instance = null;
     }
@@ -174,6 +187,9 @@ public class DroppedItemManagerView : MonoBehaviour
         presenter.OnDespawnVisualRequested += HandleDespawnVisualRequested;
         presenter.OnAddToInventoryRequested += HandleAddToInventoryRequested;
         presenter.OnClearAllVisualsRequested += HandleClearAllVisualsRequested;
+
+        // Initialize the object pool
+        InitializePool();
 
         if (showDebugLogs)
             Debug.Log("[DroppedItemManagerView] MVP initialized.");
@@ -297,24 +313,61 @@ public class DroppedItemManagerView : MonoBehaviour
         ClearAllVisuals();
     }
 
-    // ── Visual Spawn / Despawn ────────────────────────────────────────────────
+    // ── Object Pool ───────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Instantiate the DroppedItem prefab and initialize its View.
+    /// Initialize the ObjectPool for DroppedItem prefabs.
+    /// Called once during InitializeMVP().
     /// </summary>
-    private void SpawnItemVisual(DroppedItemData data)
+    private void InitializePool()
     {
         if (droppedItemPrefab == null)
         {
-            Debug.LogError("[DroppedItemManagerView] droppedItemPrefab is not assigned!");
+            Debug.LogError("[DroppedItemManagerView] droppedItemPrefab is not assigned! ObjectPool cannot be created.");
+            return;
+        }
+
+        _itemPool = new ObjectPool<GameObject>(
+            createFunc: () =>
+            {
+                GameObject go = Instantiate(droppedItemPrefab);
+                go.SetActive(false);
+                return go;
+            },
+            actionOnGet: go => go.SetActive(true),
+            actionOnRelease: go =>
+            {
+                go.GetComponent<DroppedItemView>()?.Cleanup();
+                go.SetActive(false);
+            },
+            actionOnDestroy: go => Destroy(go),
+            collectionCheck: false,
+            defaultCapacity: poolDefaultCapacity,
+            maxSize: poolMaxSize
+        );
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemManagerView] ObjectPool initialized (capacity={poolDefaultCapacity}, maxSize={poolMaxSize}).");
+    }
+
+    // ── Visual Spawn / Despawn ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Get a DroppedItem from the pool, position it, and initialize its View.
+    /// </summary>
+    private void SpawnItemVisual(DroppedItemData data)
+    {
+        if (_itemPool == null)
+        {
+            Debug.LogError("[DroppedItemManagerView] ObjectPool is not initialized! Cannot spawn item.");
             return;
         }
 
         if (_activeVisuals.ContainsKey(data.dropId))
             return; // Already spawned
 
-        Vector3 spawnPos = new Vector3(data.worldX, data.worldY, 0f);
-        GameObject go = Instantiate(droppedItemPrefab, spawnPos, Quaternion.identity);
+        GameObject go = _itemPool.Get();
+        go.transform.position = new Vector3(data.worldX, data.worldY, 0f);
         go.name = $"DroppedItem_{data.itemName}_{data.dropId[..Mathf.Min(8, data.dropId.Length)]}";
 
         // Initialize DroppedItemView on the prefab
@@ -322,7 +375,7 @@ public class DroppedItemManagerView : MonoBehaviour
         if (view == null)
         {
             Debug.LogError("[DroppedItemManagerView] Prefab missing DroppedItemView! Cannot spawn item.");
-            Destroy(go);
+            _itemPool.Release(go);
             return;
         }
 
@@ -333,7 +386,7 @@ public class DroppedItemManagerView : MonoBehaviour
     }
 
     /// <summary>
-    /// Destroy the visual GameObject for a dropped item.
+    /// Release the DroppedItem visual back to the pool (instead of destroying).
     /// </summary>
     private void DespawnItemVisual(string dropId)
     {
@@ -342,27 +395,19 @@ public class DroppedItemManagerView : MonoBehaviour
             _activeVisuals.Remove(dropId);
 
             if (go != null)
-            {
-                var view = go.GetComponent<DroppedItemView>();
-                view?.Cleanup();
-                Destroy(go);
-            }
+                _itemPool.Release(go); // Cleanup() + SetActive(false) handled by actionOnRelease
 
             OnItemVisualDespawned?.Invoke(dropId);
         }
     }
 
-    /// <summary>Clear all active visual GameObjects.</summary>
+    /// <summary>Release all active visual GameObjects back to the pool.</summary>
     private void ClearAllVisuals()
     {
         foreach (var kvp in _activeVisuals)
         {
             if (kvp.Value != null)
-            {
-                var view = kvp.Value.GetComponent<DroppedItemView>();
-                view?.Cleanup();
-                Destroy(kvp.Value);
-            }
+                _itemPool?.Release(kvp.Value);
         }
         _activeVisuals.Clear();
     }
