@@ -4719,7 +4719,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &337970960
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5482,12 +5482,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dcfed210e3a12e64e8aeccb953f88627, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  equippedSkills:
-  - {fileID: 873920149}
-  - {fileID: 1964150463}
+  equippedSkillsData:
   - {fileID: 0}
   - {fileID: 0}
-  skillKeys: 31000000320000003300000034000000
+  - {fileID: 0}
+  - {fileID: 0}
 --- !u!1 &378176302
 GameObject:
   m_ObjectHideFlags: 0
@@ -6593,7 +6592,7 @@ RectTransform:
   m_Father: {fileID: 959600251}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -6877,7 +6876,7 @@ RectTransform:
   m_Father: {fileID: 957324604}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -7114,26 +7113,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillHotbarCanvas: {fileID: 0}
-  skillIcon1: {fileID: 0}
-  cooldownFill1: {fileID: 0}
-  hotkeyLabel1: {fileID: 0}
-  skillIcon2: {fileID: 0}
-  cooldownFill2: {fileID: 0}
-  hotkeyLabel2: {fileID: 0}
-  skillIcon3: {fileID: 0}
-  cooldownFill3: {fileID: 0}
-  hotkeyLabel3: {fileID: 0}
-  skillIcon4: {fileID: 0}
-  cooldownFill4: {fileID: 0}
-  hotkeyLabel4: {fileID: 0}
-  airSlashIcon: {fileID: 4841216214093879422, guid: 58c18dfabf66d014eab05bf297ae7e1b, type: 3}
-  doubleStrikeIcon: {fileID: 4475123825542513644, guid: 48da16bc839a6b441b7cb0dca5aa6731, type: 3}
-  heavySwingIcon: {fileID: 0}
-  lightningStrikeIcon: {fileID: 0}
-  emptySlotIcon: {fileID: 0}
-  readyIconColor: {r: 1, g: 1, b: 1, a: 1}
-  cooldownIconColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
-  emptySlotAlpha: 0.35
+  slotReferences:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  defaultKeys: 31000000320000003300000034000000
 --- !u!1 &485961056
 GameObject:
   m_ObjectHideFlags: 0
@@ -9004,10 +8989,10 @@ RectTransform:
   - {fileID: 1324325093}
   m_Father: {fileID: 1135632183}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 60.102158, y: -45}
+  m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &612599739
 MonoBehaviour:
@@ -11117,7 +11102,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &781351476
 Transform:
   m_ObjectHideFlags: 0
@@ -11726,7 +11711,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -133.99963, y: 168.00038}
+  m_AnchoredPosition: {x: -133.99953, y: 168.0005}
   m_SizeDelta: {x: 285, y: 336}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &812480459
@@ -12974,8 +12959,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 479262024}
   m_HandleRect: {fileID: 479262023}
   m_Direction: 0
-  m_Value: -0.00002154182
-  m_Size: 0.9138954
+  m_Value: -0.000028722427
+  m_Size: 0.908837
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -16023,10 +16008,10 @@ RectTransform:
   - {fileID: 719895192}
   m_Father: {fileID: 1135632183}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 420.10217, y: -45}
+  m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1054543475
 MonoBehaviour:
@@ -17139,7 +17124,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1138998623
 Transform:
   m_ObjectHideFlags: 0
@@ -17987,7 +17972,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.00001836511}
+  m_AnchoredPosition: {x: 0, y: -0.000038927814}
   m_SizeDelta: {x: 0, y: 628}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1240703307
@@ -22278,7 +22263,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa5d86d50d5703c49ac5f1b864475de0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  toggleForecastKey: 102
   seasonManager: {fileID: 0}
   rainChance: 1
   rainEffect: {fileID: 1854443877689547427, guid: 348feeeb673e4d0449bc6cc04825bff7, type: 3}
@@ -23238,11 +23222,11 @@ MonoBehaviour:
   statsPanel: {fileID: 759280783}
   toggleStatsKey: 99
   increaseStrengthButton: {fileID: 1495161226}
+  decreaseStrengthButton: {fileID: 1491749135}
   increaseVitalityButton: {fileID: 1056707583}
+  decreaseVitalityButton: {fileID: 2079348418}
   applyButton: {fileID: 1374227033}
   cancelButton: {fileID: 1426932643}
-  decreaseStrengthButton: {fileID: 1491749135}
-  decreaseVitalityButton: {fileID: 2079348418}
   currentPoints: 0
 --- !u!114 &1624159901
 MonoBehaviour:
@@ -23884,10 +23868,10 @@ RectTransform:
   - {fileID: 350615469}
   m_Father: {fileID: 1135632183}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 180.10216, y: -45}
+  m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1649451145
 MonoBehaviour:
@@ -25353,7 +25337,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1056705480}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9999977
+  m_Size: 0.9999969
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -26686,10 +26670,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1857123307}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 407b6b7618baf604fb7f49d84f6ff12f, type: 3}
+  m_Script: {fileID: 11500000, guid: 5d18f1ba06659094d99386e3615ebb7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  autoSaveInterval: 5
+  AutoSaveIntervalSeconds: 17
+  ShowDebugLogs: 1
 --- !u!1 &1859387250
 GameObject:
   m_ObjectHideFlags: 0
@@ -27592,10 +27577,10 @@ RectTransform:
   - {fileID: 1678912146}
   m_Father: {fileID: 1135632183}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 300.10217, y: -45}
+  m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1915471648
 MonoBehaviour:
@@ -27718,7 +27703,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 567473799}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9718661
+  m_Size: 0.96648717
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -29306,11 +29291,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   calendarPanel: {fileID: 1098265340}
-  dateText: {fileID: 213219884}
-  gridView: {fileID: 1274122536}
-  monthParent: {fileID: 907267211}
-  monthCellPrefab: {fileID: 79563291071716711, guid: a021c25e12e41044abbe56785883e21f, type: 3}
+  dayText: {fileID: 0}
+  monthText: {fileID: 0}
+  yearText: {fileID: 0}
+  gridParent: {fileID: 0}
+  dayCellPrefab: {fileID: 0}
+  columns: 7
+  rows: 4
+  spacing: {x: 6, y: 6}
   timeManager: {fileID: 0}
+  toggleKey: 99
 --- !u!4 &2042913118
 Transform:
   m_ObjectHideFlags: 0

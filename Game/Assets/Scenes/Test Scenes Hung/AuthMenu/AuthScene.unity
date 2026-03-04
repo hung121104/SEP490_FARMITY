@@ -436,6 +436,22 @@ PrefabInstance:
       propertyPath: m_Name
       value: Title_UI
       objectReference: {fileID: 0}
+    - target: {fileID: 5880725933697005754, guid: 20400726ec8e8ae47a2559c85338dc4b, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 348
+      objectReference: {fileID: 0}
+    - target: {fileID: 5880725933697005754, guid: 20400726ec8e8ae47a2559c85338dc4b, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -272
+      objectReference: {fileID: 0}
+    - target: {fileID: 6677336583421494786, guid: 20400726ec8e8ae47a2559c85338dc4b, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 348
+      objectReference: {fileID: 0}
+    - target: {fileID: 6677336583421494786, guid: 20400726ec8e8ae47a2559c85338dc4b, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -132
+      objectReference: {fileID: 0}
     - target: {fileID: 8370780578297256998, guid: 20400726ec8e8ae47a2559c85338dc4b, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -517,7 +533,8 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 2235514037929211334, guid: 20400726ec8e8ae47a2559c85338dc4b, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 20400726ec8e8ae47a2559c85338dc4b, type: 3}
@@ -714,7 +731,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 5364075792921141791, guid: 6de7cf91ad7da66498581a2bc5a82b09, type: 3}
+  m_Sprite: {fileID: -2064507588050208562, guid: 70546fc648e5d184a96bfc16a65ebc19, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

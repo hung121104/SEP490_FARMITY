@@ -112,28 +112,16 @@ export class GatewayController {
     const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
     try {
+      // Forward to save-world which handles time + characters + tile deltas
+      // inside a MongoDB transaction (falls back gracefully on standalone).
       return await firstValueFrom(
-        this.playerDataClient.send('update-world', { ...body, ownerId }),
+        this.playerDataClient.send('save-world', { ...body, ownerId }),
       );
     } catch (err) {
-      const payload = err?.message ?? err;
-      let status = 500;
-      let message = 'Internal server error';
-      if (typeof payload === 'string') {
-        try {
-          const parsed = JSON.parse(payload);
-          status = parsed.status || status;
-          message = parsed.message || parsed.error || payload;
-        } catch {
-          message = payload;
-        }
-      } else if (payload && typeof payload === 'object') {
-        status = payload.status || payload.code || status;
-        message = payload.message || payload.error || JSON.stringify(payload);
-      }
-      throw new HttpException(message, status);
+      throw this.rpcError(err);
     }
   }
+
 
   @Delete('player-data/world')
   async deleteWorld(@Query('_id') _id: string, @Req() req: Request) {
