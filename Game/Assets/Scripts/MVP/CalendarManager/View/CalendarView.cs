@@ -33,7 +33,6 @@ public class CalendarView : MonoBehaviour
     private GridLayoutGroup grid;
     private RectTransform gridRect;
 
-   
     void Start()
     {
         calendarPanel.SetActive(false);
@@ -68,9 +67,6 @@ public class CalendarView : MonoBehaviour
         }
     }
 
-    // =========================
-    // INPUT
-    // =========================
     void Update()
     {
         if (Input.GetKeyDown(toggleKey))
@@ -87,9 +83,6 @@ public class CalendarView : MonoBehaviour
             ShowCalendar();
     }
 
-    // =========================
-    // SHOW / HIDE
-    // =========================
     public void ShowCalendar()
     {
         calendarPanel.SetActive(true);
@@ -98,7 +91,7 @@ public class CalendarView : MonoBehaviour
         UpdateGrid();
 
         UpdateDateTexts();
-        BuildCalendar(presenter.GetDay());
+        BuildCalendar(GetDayOfMonth());
     }
 
     public void HideCalendar()
@@ -106,9 +99,6 @@ public class CalendarView : MonoBehaviour
         calendarPanel.SetActive(false);
     }
 
-    // =========================
-    // TIME UPDATE
-    // =========================
     void OnTimeChanged()
     {
         if (!calendarPanel.activeSelf) return;
@@ -119,25 +109,24 @@ public class CalendarView : MonoBehaviour
     void RefreshCalendar()
     {
         UpdateDateTexts();
-        BuildCalendar(presenter.GetDay());
+        BuildCalendar(GetDayOfMonth());
     }
 
-    // =========================
-    // UPDATE DATE TEXT
-    // =========================
+    
+    int GetDayOfMonth()
+    {
+        return (timeManager.week - 1) * 7 + timeManager.day;
+    }
+
     void UpdateDateTexts()
     {
-        dayText.text = presenter.GetDay().ToString();
+        dayText.text = GetDayOfMonth().ToString();
         monthText.text = presenter.GetMonth().ToString();
         yearText.text = presenter.GetYear().ToString();
     }
 
-    // =========================
-    // BUILD DAY GRID 
-    // =========================
     void BuildCalendar(int currentDay)
     {
-        // Clear old cells
         foreach (Transform child in gridParent)
             Destroy(child.gameObject);
 
@@ -157,9 +146,6 @@ public class CalendarView : MonoBehaviour
         }
     }
 
-    // =========================
-    // GRID AUTO FIT 
-    // =========================
     void UpdateGrid()
     {
         if (grid == null || gridRect == null) return;
