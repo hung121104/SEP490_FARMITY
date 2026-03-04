@@ -21,7 +21,7 @@ public class DroppedItemPresenter
 {
     private readonly IDroppedItemService service;
     private readonly DroppedItemSyncManager syncManager;
-    private readonly ChunkLoadingManager chunkLoadingManager;
+    private ChunkLoadingManager chunkLoadingManager;
     private readonly bool showDebugLogs;
 
     // ── Events (View subscribes to these) ─────────────────────
@@ -53,6 +53,10 @@ public class DroppedItemPresenter
 
         if (service == null)
             Debug.LogError("[DroppedItemPresenter] IDroppedItemService is null!");
+        if (syncManager == null)
+            Debug.LogError("[DroppedItemPresenter] DroppedItemSyncManager is null! Drop requests will fail silently.");
+        if (chunkLoadingManager == null)
+            Debug.LogWarning("[DroppedItemPresenter] ChunkLoadingManager is null at construction — chunk-based visibility disabled until late-init.");
     }
 
     // ── Event Subscriptions ───────────────────────────────────
@@ -125,13 +129,22 @@ public class DroppedItemPresenter
         }
 
         DroppedItemData data = service.CreateDroppedItemData(item, playerPosition, dropOffset);
-        if (data == null) return;
+        if (data == null)
+        {
+            Debug.LogError("[DroppedItemPresenter] Failed to create drop data — service returned null!");
+            return;
+        }
 
         if (showDebugLogs)
             Debug.Log($"[DroppedItemPresenter] Requesting drop: {data.itemName} at ({data.worldX:F1}, {data.worldY:F1})");
 
         // Send through Photon — Master will assign dropId, persist, and broadcast
-        syncManager?.SendDropRequest(data);
+        if (syncManager == null)
+        {
+            Debug.LogError("[DroppedItemPresenter] SyncManager is null! Cannot send drop request. Item will be lost.");
+            return;
+        }
+        syncManager.SendDropRequest(data);
     }
 
     /// <summary>
@@ -208,11 +221,29 @@ public class DroppedItemPresenter
         if (showDebugLogs)
             Debug.Log($"[DroppedItemPresenter] Item spawned: {data.itemName} ({data.dropId}) at ({data.worldX:F1}, {data.worldY:F1})");
 
-        // Spawn visual only if the chunk is currently loaded
+        // Spawn visual if chunk is loaded, OR if this item was just dropped by the local player
         Vector2Int chunk = new Vector2Int(data.chunkX, data.chunkY);
-        if (IsChunkLoaded(chunk))
+        bool chunkLoaded = IsChunkLoaded(chunk);
+        bool isLocalDrop = PhotonNetwork.LocalPlayer != null
+            && data.droppedByActorId == PhotonNetwork.LocalPlayer.ActorNumber;
+
+        if (chunkLoaded)
         {
             OnSpawnVisualRequested?.Invoke(data);
+        }
+        else if (isLocalDrop)
+        {
+            // Always spawn items dropped by the local player — they are standing right here.
+            // The chunk may not be tracked yet (ChunkLoadingManager still initializing),
+            // but the item should be visible immediately.
+            if (showDebugLogs)
+                Debug.Log($"[DroppedItemPresenter] Chunk ({chunk.x},{chunk.y}) not loaded, but item was dropped locally — spawning anyway.");
+            OnSpawnVisualRequested?.Invoke(data);
+        }
+        else
+        {
+            if (showDebugLogs)
+                Debug.Log($"[DroppedItemPresenter] Item {data.dropId} in unloaded chunk ({chunk.x},{chunk.y}) — will spawn when chunk loads.");
         }
     }
 
@@ -315,7 +346,25 @@ public class DroppedItemPresenter
         if (chunkLoadingManager == null) return true;
         return chunkLoadingManager.IsChunkLoaded(chunkPos);
     }
+    // ── Late-Init ──────────────────────────────────────────
 
+    /// <summary>
+    /// Update the ChunkLoadingManager reference if it was null at construction.
+    /// Called by View when a late-resolved reference becomes available.
+    /// </summary>
+    public void UpdateChunkLoadingManager(ChunkLoadingManager manager)
+    {
+        if (manager == null || chunkLoadingManager == manager) return;
+
+        // Unsubscribe from old if any
+        UnsubscribeFromChunkEvents();
+
+        chunkLoadingManager = manager;
+        SubscribeToChunkEvents();
+
+        if (showDebugLogs)
+            Debug.Log("[DroppedItemPresenter] ChunkLoadingManager late-init successful — chunk events subscribed.");
+    }
     // ── Cleanup ───────────────────────────────────────────────
 
     /// <summary>Unsubscribe all events. Called by View.OnDestroy().</summary>

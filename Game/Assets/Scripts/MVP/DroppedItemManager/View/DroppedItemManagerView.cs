@@ -82,6 +82,7 @@ public class DroppedItemManagerView : MonoBehaviour
         ResolveReferences();
         InitializeMVP();
         StartCoroutine(FindLocalPlayer());
+        StartCoroutine(LateResolveReferences());
     }
 
     private void OnDestroy()
@@ -113,6 +114,42 @@ public class DroppedItemManagerView : MonoBehaviour
             syncManager = FindAnyObjectByType<DroppedItemSyncManager>();
         if (chunkLoadingManager == null)
             chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
+    }
+
+    /// <summary>
+    /// Retry finding ChunkLoadingManager if it was not available at Start().
+    /// This ensures chunk-based load/unload works even if ChunkLoadingManager
+    /// initializes after DroppedItemManagerView.
+    /// </summary>
+    private IEnumerator LateResolveReferences()
+    {
+        // Give other scripts time to initialize
+        float maxWaitTime = 10f;
+        float waited = 0f;
+
+        while (chunkLoadingManager == null && waited < maxWaitTime)
+        {
+            yield return new WaitForSeconds(0.5f);
+            waited += 0.5f;
+
+            chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
+
+            if (chunkLoadingManager != null)
+            {
+                if (showDebugLogs)
+                    Debug.Log($"[DroppedItemManagerView] ChunkLoadingManager found via late-init after {waited:F1}s");
+
+                // Update presenter with the newly found reference
+                presenter?.UpdateChunkLoadingManager(chunkLoadingManager);
+                yield break;
+            }
+        }
+
+        if (chunkLoadingManager == null)
+        {
+            Debug.LogWarning("[DroppedItemManagerView] ChunkLoadingManager NOT found after late-init — " +
+                           "dropped items will NOT unload with chunks. Ensure ChunkLoadingManager is in the scene.");
+        }
     }
 
     /// <summary>
@@ -159,11 +196,18 @@ public class DroppedItemManagerView : MonoBehaviour
 
         if (_localPlayerTransform == null)
         {
-            Debug.LogWarning("[DroppedItemManagerView] Local player not found, cannot drop item.");
+            Debug.LogWarning("[DroppedItemManagerView] Local player not found, cannot drop item. " +
+                           "Ensure a PlayerEntity with PhotonView exists in the scene.");
             return;
         }
 
-        presenter?.RequestDropItem(item, _localPlayerTransform.position, dropOffset);
+        if (presenter == null)
+        {
+            Debug.LogError("[DroppedItemManagerView] Presenter is null! MVP not initialized properly.");
+            return;
+        }
+
+        presenter.RequestDropItem(item, _localPlayerTransform.position, dropOffset);
     }
 
     /// <summary>

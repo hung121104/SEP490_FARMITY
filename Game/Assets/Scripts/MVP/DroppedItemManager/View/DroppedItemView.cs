@@ -9,21 +9,10 @@ using TMPro;
 /// Attach this to the DroppedItem prefab.
 /// Manages both the visual display and the per-item lifecycle (despawn timer, blink, pickup).
 /// 
-/// Requires: SpriteRenderer, BoxCollider2D (trigger), child TextMeshPro for prompt.
-/// 
-/// Prefab setup:
-///   DroppedItem (this script, SpriteRenderer, BoxCollider2D isTrigger)
-///     └─ PickupPrompt (TextMeshPro "Press [F] to pick up", disabled by default)
-///
-/// Lifecycle:
-///   1. Created by DroppedItemManagerView when spawning a visual.
-///   2. Initialize(data) is called → shows the item immediately.
-///   3. Every frame checks remaining time; triggers blink at &lt;=30s.
-///   4. When timer reaches 0, MasterClient broadcasts despawn event.
-///   5. Destroyed by DroppedItemManagerView on despawn or pickup.
+/// Requires: SpriteRenderer, CircleCollider2D (trigger), child TextMeshPro for prompt.
 /// </summary>
 [RequireComponent(typeof(SpriteRenderer))]
-[RequireComponent(typeof(BoxCollider2D))]
+[RequireComponent(typeof(CircleCollider2D))]
 public class DroppedItemView : MonoBehaviour, IDroppedItemView
 {
     // ── Constants ─────────────────────────────────────────────────────────────

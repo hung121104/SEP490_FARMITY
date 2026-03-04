@@ -243,7 +243,8 @@ public class InventoryPresenter
         if (item != null && !item.IsQuestItem)
         {
             OnItemDropped?.Invoke(item);
-            service.RemoveItemFromSlot(slotIndex, 1);
+            // Remove the entire stack from inventory (drop whole stack to world)
+            service.RemoveItemFromSlot(slotIndex, item.Quantity);
         }
     }
 

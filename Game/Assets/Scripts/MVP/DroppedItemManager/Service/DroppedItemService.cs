@@ -30,10 +30,8 @@ public class DroppedItemService : IDroppedItemService
         float worldY = playerPosition.y + dropOffset.y;
 
         // Build DroppedItemData from ItemModel using the factory method
+        // quantity is taken directly from the ItemModel (drop the whole stack)
         DroppedItemData data = DroppedItemData.FromItemModel(item, worldX, worldY);
-
-        // Override quantity to 1 (one item dropped per action)
-        data.quantity = 1;
 
         // Fill chunk coordinates from WorldDataManager
         if (WorldDataManager.Instance != null)
