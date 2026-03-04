@@ -238,15 +238,16 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
         }
 
         // Persist to MongoDB (fire-and-forget from network perspective)
-        StartCoroutine(DroppedItemApi.CreateDroppedItem(
-            SessionManager.Instance.JwtToken,
-            item,
-            (success, response) =>
-            {
-                if (!success)
-                    Debug.LogError($"[DroppedItemSync] Failed to persist dropped item: {response}");
-            }
-        ));
+        // ── [API DISABLED] DB persistence temporarily disabled — commented out to run without backend ──
+        // StartCoroutine(DroppedItemApi.CreateDroppedItem(
+        //     SessionManager.Instance.JwtToken,
+        //     item,
+        //     (success, response) =>
+        //     {
+        //         if (!success)
+        //             Debug.LogError($"[DroppedItemSync] Failed to persist dropped item: {response}");
+        //     }
+        // ));
 
         // Broadcast ITEM_SPAWNED to all clients (including self)
         byte[] payload = SerializeSingleItem(item);
@@ -277,15 +278,16 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
         }
 
         // Delete from MongoDB (fire-and-forget)
-        StartCoroutine(DroppedItemApi.DeleteDroppedItem(
-            SessionManager.Instance.JwtToken,
-            dropId,
-            (success, response) =>
-            {
-                if (!success)
-                    Debug.LogWarning($"[DroppedItemSync] Failed to delete item from DB: {response}");
-            }
-        ));
+        // ── [API DISABLED] DB deletion temporarily disabled — commented out to run without backend ──
+        // StartCoroutine(DroppedItemApi.DeleteDroppedItem(
+        //     SessionManager.Instance.JwtToken,
+        //     dropId,
+        //     (success, response) =>
+        //     {
+        //         if (!success)
+        //             Debug.LogWarning($"[DroppedItemSync] Failed to delete item from DB: {response}");
+        //     }
+        // ));
 
         // Broadcast ITEM_REMOVED to all clients
         // Payload: dropId bytes + 4 bytes actorNumber
@@ -465,45 +467,52 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
     /// </summary>
     private IEnumerator ReloadRegistryFromDatabase()
     {
-        string roomName = PhotonNetwork.CurrentRoom?.Name ?? "";
-        if (string.IsNullOrEmpty(roomName))
-        {
-            Debug.LogWarning("[DroppedItemSync] Cannot reload registry — no room name");
-            yield break;
-        }
-
-        bool done = false;
-        DroppedItemData[] items = null;
-
-        yield return DroppedItemApi.GetDroppedItemsByRoom(
-            SessionManager.Instance.JwtToken,
-            roomName,
-            result =>
-            {
-                items = result;
-                done = true;
-            }
-        );
-
-        // Wait for callback
-        while (!done)
-            yield return null;
-
-        if (items == null)
-        {
-            Debug.LogWarning("[DroppedItemSync] Failed to reload registry from DB");
-            yield break;
-        }
-
-        // Rebuild registry and visuals via DroppedItemManagerView
-        var manager = DroppedItemManagerView.Instance;
-        if (manager != null)
-        {
-            manager.RebuildFromDatabase(items);
-        }
-
+        // ── [API DISABLED] Registry reload from DB temporarily disabled — commented out to run without backend ──
+        // When Master switches, the registry will not be reloaded from DB.
+        // Items already in the new Master's memory will continue to work normally via Photon sync.
         if (showDebugLogs)
-            Debug.Log($"[DroppedItemSync] Registry reloaded: {items.Length} items from DB");
+            Debug.Log("[DroppedItemSync] ReloadRegistryFromDatabase skipped (API disabled).");
+        yield break;
+
+        // string roomName = PhotonNetwork.CurrentRoom?.Name ?? "";
+        // if (string.IsNullOrEmpty(roomName))
+        // {
+        //     Debug.LogWarning("[DroppedItemSync] Cannot reload registry — no room name");
+        //     yield break;
+        // }
+        //
+        // bool done = false;
+        // DroppedItemData[] items = null;
+        //
+        // yield return DroppedItemApi.GetDroppedItemsByRoom(
+        //     SessionManager.Instance.JwtToken,
+        //     roomName,
+        //     result =>
+        //     {
+        //         items = result;
+        //         done = true;
+        //     }
+        // );
+        //
+        // // Wait for callback
+        // while (!done)
+        //     yield return null;
+        //
+        // if (items == null)
+        // {
+        //     Debug.LogWarning("[DroppedItemSync] Failed to reload registry from DB");
+        //     yield break;
+        // }
+        //
+        // // Rebuild registry and visuals via DroppedItemManagerView
+        // var manager = DroppedItemManagerView.Instance;
+        // if (manager != null)
+        // {
+        //     manager.RebuildFromDatabase(items);
+        // }
+        //
+        // if (showDebugLogs)
+        //     Debug.Log($"[DroppedItemSync] Registry reloaded: {items.Length} items from DB");
     }
 
     // ── Binary Serialization (same pattern as ChunkDataSyncManager) ──

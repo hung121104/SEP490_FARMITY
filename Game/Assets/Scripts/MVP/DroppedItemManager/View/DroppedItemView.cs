@@ -13,7 +13,7 @@ using TMPro;
 /// Player detection uses Physics2D.OverlapCircle in Update() instead of trigger events
 /// to ensure correct reset state when reused via Object Pooling.
 /// </summary>
-[RequireComponent(typeof(SpriteRenderer))]
+
 public class DroppedItemView : MonoBehaviour, IDroppedItemView
 {
     // ── Constants ─────────────────────────────────────────────────────────────
@@ -24,8 +24,14 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     // ── Inspector ─────────────────────────────────────────────────────────────
 
     [Header("References")]
-    [Tooltip("SpriteRenderer showing the item icon.")]
-    [SerializeField] private SpriteRenderer spriteRenderer;
+    [Tooltip("Root GameObject shown when quantity is 67–99 (multiple stack). Contains 3 SpriteRenderer children.")]
+    [SerializeField] private GameObject stackMultiple;
+
+    [Tooltip("Root GameObject shown when quantity is 34–66 (medium stack). Contains 2 SpriteRenderer children.")]
+    [SerializeField] private GameObject stackMedium;
+
+    [Tooltip("Root GameObject shown when quantity is 1–33 (single stack). Contains 1 SpriteRenderer child.")]
+    [SerializeField] private GameObject stackSingle;
 
     [Tooltip("TextMeshPro child for the pickup prompt.")]
     [SerializeField] private TextMeshProUGUI pickupPromptText;
@@ -111,18 +117,11 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
             ? ItemCatalogService.Instance.GetCachedSprite(data.itemId)
             : null;
 
-        if (icon != null)
-        {
-            spriteRenderer.sprite = icon;
-        }
-        else
-        {
+        if (icon == null)
             Debug.LogWarning($"[DroppedItemView] No cached sprite for item '{data.itemId}'. Using fallback.");
-        }
 
-        // Configure sorting
-        spriteRenderer.sortingLayerName = sortingLayerName;
-        spriteRenderer.sortingOrder = sortingOrder;
+        // Activate the correct stack visual group and set sprite on all its renderers
+        ApplyStackVisual(data.quantity, icon);
 
         // Position in world
         transform.position = new Vector3(data.worldX, data.worldY, 0f);
@@ -154,7 +153,7 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         _blinkCoroutine = StartCoroutine(BlinkRoutine());
     }
 
-    /// <summary>Stop alpha oscillation and restore full opacity.</summary>
+    /// <summary>Stop alpha oscillation and restore full opacity on all active renderers.</summary>
     public void StopBlinking()
     {
         if (!_isBlinking) return;
@@ -166,10 +165,13 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
             _blinkCoroutine = null;
         }
 
-        // Restore full alpha
-        Color c = spriteRenderer.color;
-        c.a = 1f;
-        spriteRenderer.color = c;
+        // Restore full alpha on all active renderers
+        foreach (var sr in GetActiveRenderers())
+        {
+            Color c = sr.color;
+            c.a = 1f;
+            sr.color = c;
+        }
     }
 
     /// <summary>Show or hide the "[F] Pick up" text prompt.</summary>
@@ -201,9 +203,14 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         {
             t += Time.deltaTime * blinkSpeed;
             float alpha = Mathf.Lerp(blinkMinAlpha, 1f, (Mathf.Sin(t * Mathf.PI * 2f) + 1f) * 0.5f);
-            Color c = spriteRenderer.color;
-            c.a = alpha;
-            spriteRenderer.color = c;
+
+            // Apply alpha to every renderer in the active stack group
+            foreach (var sr in GetActiveRenderers())
+            {
+                Color c = sr.color;
+                c.a = alpha;
+                sr.color = c;
+            }
             yield return null;
         }
     }
@@ -349,6 +356,55 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
             );
 #endif
         }
+    }
+
+    // ── Stack Visual Helpers ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Activate the correct stack group based on quantity and apply the sprite
+    /// to every SpriteRenderer child within that group.
+    /// Quantity ranges: 1\u201333 = Single, 34\u201366 = Medium, 67\u201399 = Multiple.
+    /// </summary>
+    private void ApplyStackVisual(int quantity, Sprite icon)
+    {
+        // quantity >= 67 : all three groups ON
+        // quantity 34–66 : Medium + Single ON, Multiple OFF
+        // quantity <= 33 : Single only ON,    Multiple + Medium OFF
+        bool showMultiple = quantity >= 67;
+        bool showMedium   = quantity >= 34;
+        bool showSingle   = true;             // always visible
+
+        if (stackMultiple != null) stackMultiple.SetActive(showMultiple);
+        if (stackMedium   != null) stackMedium.SetActive(showMedium);
+        if (stackSingle   != null) stackSingle.SetActive(showSingle);
+
+        // Apply sprite + staggered sortingOrder to every active renderer
+        SpriteRenderer[] renderers = GetActiveRenderers();
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (icon != null) renderers[i].sprite = icon;
+            renderers[i].sortingLayerName = sortingLayerName;
+            renderers[i].sortingOrder     = sortingOrder + i;
+        }
+    }
+
+    /// <summary>
+    /// Returns all SpriteRenderers inside whichever stack group is currently active.
+    /// </summary>
+    private SpriteRenderer[] GetActiveRenderers()
+    {
+        // Collect renderers from every group that is currently active.
+        // Order: Multiple → Medium → Single so sortingOrder index is consistent.
+        var list = new System.Collections.Generic.List<SpriteRenderer>();
+
+        if (stackMultiple != null && stackMultiple.activeSelf)
+            list.AddRange(stackMultiple.GetComponentsInChildren<SpriteRenderer>(true));
+        if (stackMedium != null && stackMedium.activeSelf)
+            list.AddRange(stackMedium.GetComponentsInChildren<SpriteRenderer>(true));
+        if (stackSingle != null && stackSingle.activeSelf)
+            list.AddRange(stackSingle.GetComponentsInChildren<SpriteRenderer>(true));
+
+        return list.ToArray();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
