@@ -27,11 +27,11 @@ public class StatsManager : MonoBehaviour
 
     [Header("Upgrade Buttons")]
     [SerializeField] private Button increaseStrengthButton;
+    [SerializeField] private Button decreaseStrengthButton;
     [SerializeField] private Button increaseVitalityButton;
+    [SerializeField] private Button decreaseVitalityButton;
     [SerializeField] private Button applyButton;
     [SerializeField] private Button cancelButton;
-    [SerializeField] private Button decreaseStrengthButton;
-    [SerializeField] private Button decreaseVitalityButton;
 
     [Header("Point System")]
     [SerializeField] private int currentPoints = 0;
@@ -82,22 +82,22 @@ public class StatsManager : MonoBehaviour
     private void InitializeButtons()
     {
         if (increaseStrengthButton != null)
-            increaseStrengthButton.onClick.AddListener(AddStrengthTemp);
+            increaseStrengthButton.onClick.AddListener(IncreaseStrengthTemp);
+
+        if (decreaseStrengthButton != null)
+            decreaseStrengthButton.onClick.AddListener(DecreaseStrengthTemp);
 
         if (increaseVitalityButton != null)
-            increaseVitalityButton.onClick.AddListener(AddVitalityTemp);
+            increaseVitalityButton.onClick.AddListener(IncreaseVitalityTemp);
+
+        if (decreaseVitalityButton != null)
+            decreaseVitalityButton.onClick.AddListener(DecreaseVitalityTemp);
 
         if (applyButton != null)
             applyButton.onClick.AddListener(ApplyStats);
 
         if (cancelButton != null)
             cancelButton.onClick.AddListener(CancelStats);
-
-        if (decreaseStrengthButton != null)
-            decreaseStrengthButton.onClick.AddListener(DecreaseStrengthTemp);
-
-        if (decreaseVitalityButton != null)
-            decreaseVitalityButton.onClick.AddListener(DecreaseVitalityTemp);
     }
 
     #endregion
@@ -171,7 +171,7 @@ public class StatsManager : MonoBehaviour
         UpdatePointsText();
     }
 
-    public void AddStrengthTemp()
+    public void IncreaseStrengthTemp()
     {
         if (currentPoints >= 1)
         {
@@ -182,7 +182,7 @@ public class StatsManager : MonoBehaviour
         }
     }
 
-    public void AddVitalityTemp()
+    public void IncreaseVitalityTemp()
     {
         if (currentPoints >= 1)
         {

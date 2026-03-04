@@ -91,7 +91,6 @@ public abstract class SkillBase : MonoBehaviour
     protected virtual void Update()
     {
         UpdateSkillCooldown();
-        CheckSkillInput();
         HandleStateInput();
         UpdateAiming();
     }
@@ -198,6 +197,13 @@ public abstract class SkillBase : MonoBehaviour
 
     private void CheckSkillInput()
     {
+        // DISABLED: Skills are now triggered ONLY through the hotbar system
+        // Previously skills could be triggered directly by their key, but now
+        // all skill execution goes through SkillHotbarSlot which checks if a skill is equipped.
+        // 
+        // This prevents skills from being triggered when they're not assigned to the hotbar.
+        
+        /*
         if (!CombatModeManager.Instance.IsCombatModeActive) return;
 
         // Get slot index from SkillManager
@@ -208,6 +214,7 @@ public abstract class SkillBase : MonoBehaviour
         
         if (Input.GetKeyDown(assignedKey) && CanTriggerSkillLocal())
             TriggerSkillLocal();
+        */
     }
 
     private int GetSlotIndex()
@@ -294,6 +301,16 @@ public abstract class SkillBase : MonoBehaviour
     #endregion
 
     #region Skill Flow
+
+    /// <summary>
+    /// Public method to trigger the skill from external systems (like hotbar).
+    /// Called by SkillHotbarSlot when the appropriate key is pressed.
+    /// </summary>
+    public void TriggerSkill()
+    {
+        if (CanTriggerSkillLocal())
+            TriggerSkillLocal();
+    }
 
     private void TriggerSkillLocal()
     {

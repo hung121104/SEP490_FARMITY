@@ -34,8 +34,5 @@ public class WeatherForecastView : MonoBehaviour
         }
     }
 
-    public void Toggle()
-    {
-        rootPanel.SetActive(!rootPanel.activeSelf);
-    }
+  
 }

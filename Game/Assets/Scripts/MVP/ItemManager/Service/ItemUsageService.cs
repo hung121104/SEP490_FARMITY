@@ -60,11 +60,7 @@ public class ItemUsageService : IItemUsageService
             return false;
         }
 
-        // TODO: Reconnect crossbreeding when PlantData is refactored
-        // if (useToolService is UseToolService uts)
-        //     return uts.UsePollen(pollen, pos);
-        Debug.LogWarning("[ItemUsageService] UsePollen: crossbreeding deferred (PlantData not yet refactored)");
-        return false;
+        return useToolService.UsePollen(pollen, pos);
     }
 
     private bool LogUnknownTool(ToolData toolData)

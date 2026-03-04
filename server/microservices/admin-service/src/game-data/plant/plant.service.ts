@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Plant, PlantDocument } from './plant.schema';
 import { CreatePlantDto } from './dto/create-plant.dto';
+import { UpdatePlantDto } from './dto/update-plant.dto';
 
 @Injectable()
 export class PlantService {
@@ -38,9 +39,17 @@ export class PlantService {
     return this.plantModel.findOne({ plantId }).exec();
   }
 
-  async delete(id: string): Promise<Plant | null> {
-    const plant = await this.plantModel.findByIdAndDelete(id).exec();
-    if (!plant) throw new NotFoundException(`Plant with id "${id}" not found`);
+  async update(plantId: string, dto: UpdatePlantDto): Promise<Plant> {
+    const updated = await this.plantModel
+      .findOneAndUpdate({ plantId }, { $set: dto }, { new: true })
+      .exec();
+    if (!updated) throw new NotFoundException(`Plant with plantId "${plantId}" not found`);
+    return updated;
+  }
+
+  async delete(plantId: string): Promise<Plant | null> {
+    const plant = await this.plantModel.findOneAndDelete({ plantId }).exec();
+    if (!plant) throw new NotFoundException(`Plant with plantId "${plantId}" not found`);
     return plant;
   }
 }
