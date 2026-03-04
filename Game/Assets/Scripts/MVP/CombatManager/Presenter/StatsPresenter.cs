@@ -1,9 +1,9 @@
 using UnityEngine;
-using CombatSystem.Model;
-using CombatSystem.Service;
-using CombatSystem.View;
+using CombatManager.Model;
+using CombatManager.Service;
+using CombatManager.View;
 
-namespace CombatSystem.Presenter
+namespace CombatManager.Presenter
 {
     /// <summary>
     /// Presenter for Stats system.

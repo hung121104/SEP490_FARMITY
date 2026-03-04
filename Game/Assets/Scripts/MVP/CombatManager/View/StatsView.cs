@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using CombatSystem.Presenter;
+using CombatManager.Presenter;
 
-namespace CombatSystem.View
+namespace CombatManager.View
 {
     /// <summary>
     /// View for Stats system UI.

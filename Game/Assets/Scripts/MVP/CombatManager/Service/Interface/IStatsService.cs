@@ -1,4 +1,4 @@
-namespace CombatSystem.Service
+namespace CombatManager.Service
 {
     /// <summary>
     /// Interface for stats management service.

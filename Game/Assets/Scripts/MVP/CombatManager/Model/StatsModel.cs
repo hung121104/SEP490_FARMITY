@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CombatSystem.Model
+namespace CombatManager.Model
 {
     /// <summary>
     /// Data model for player stats (STR, VIT) and derived combat stats.

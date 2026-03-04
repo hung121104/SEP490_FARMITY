@@ -1,7 +1,7 @@
 using UnityEngine;
-using CombatSystem.Model;
+using CombatManager.Model;
 
-namespace CombatSystem.Service
+namespace CombatManager.Service
 {
     /// <summary>
     /// Service layer for stats management.
