@@ -2279,6 +2279,7 @@ Transform:
   - {fileID: 1960489631}
   - {fileID: 1520985913}
   - {fileID: 1556653013}
+  - {fileID: 1478360087}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1197646804
@@ -2830,6 +2831,81 @@ MonoBehaviour:
     originalScale: {x: 1, y: 1, z: 1}
     isInitialized: 0
     isKnockbackActive: 0
+--- !u!1 &1478360086
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1478360087}
+  - component: {fileID: 1478360089}
+  - component: {fileID: 1478360088}
+  m_Layer: 0
+  m_Name: 'WeaponAnimationController '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1478360087
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1478360086}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1168532500}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1478360088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1478360086}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: abd587206f090d941915e6ba58a82a71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  presenter: {fileID: 1478360089}
+--- !u!114 &1478360089
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1478360086}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56df4afe492247e45829930946f3f1d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model:
+    weaponAnimationPrefab: {fileID: 8171461803801935278, guid: 0dc3195a5b158b944842525bad010852, type: 3}
+    centerPoint: {fileID: 0}
+    mainCamera: {fileID: 0}
+    anchorOffset: {x: 0, y: 0, z: 0}
+    gripLocalOffset: {x: 0, y: 0, z: 0}
+    rotationOffsetDegrees: 0
+    pivotRoot: {fileID: 8171461803801935278, guid: 0dc3195a5b158b944842525bad010852, type: 3}
+    weaponVisual: {fileID: 8171461803801935278, guid: 0dc3195a5b158b944842525bad010852, type: 3}
+    weaponAnimator: {fileID: 3252363585421596620, guid: 0dc3195a5b158b944842525bad010852, type: 3}
+    attackTrigger: Attack
+    isWeaponActive: 0
+    isInitialized: 0
+  weaponAnimationPrefab: {fileID: 8171461803801935278, guid: 0dc3195a5b158b944842525bad010852, type: 3}
+  anchorOffset: {x: 0, y: -0.3, z: 0}
+  gripLocalOffset: {x: 0, y: 0, z: 0}
+  rotationOffsetDegrees: -133
 --- !u!1 &1492096328
 GameObject:
   m_ObjectHideFlags: 0
@@ -3236,9 +3312,9 @@ MonoBehaviour:
   enemyLayers:
     serializedVersion: 2
     m_Bits: 128
-  stabPositionOffset: {x: 0, y: 0.25}
-  horizontalPositionOffset: {x: 0, y: 0.25}
-  verticalPositionOffset: {x: 0, y: -0.25}
+  stabPositionOffset: {x: 0.25, y: 0.25}
+  horizontalPositionOffset: {x: 0.25, y: 0.25}
+  verticalPositionOffset: {x: 0.25, y: -0.25}
   vfxSpawnOffset: 1
   statsPresenter: {fileID: 1383096724}
   pointerPresenter: {fileID: 78914444}

@@ -199,6 +199,12 @@ namespace CombatManager.Presenter
             // Spawn VFX with CURRENT combo step
             SpawnSlashVFX(vfxPrefab, vfxDuration, finalDamage, knockbackForce, comboStep);
 
+            // Trigger weapon swing animation
+            if (WeaponAnimationPresenter.Instance != null && WeaponAnimationPresenter.Instance.IsWeaponActive())
+            {
+                WeaponAnimationPresenter.Instance.PlayAttackAnimation();
+            }
+
             // NOW execute attack (increments combo for NEXT attack)
             service.ExecuteAttack();
 
