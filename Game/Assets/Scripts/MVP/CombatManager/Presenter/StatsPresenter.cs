@@ -68,11 +68,11 @@ namespace CombatManager.Presenter
             service.ApplyStats();
             NotifyViewUpdate();
             
-            // Notify PlayerHealth to refresh (will be refactored later)
-            PlayerHealthManager healthManager = FindObjectOfType<PlayerHealthManager>();
-            if (healthManager != null)
+            // ===== NEW: Notify PlayerHealth to refresh =====
+            PlayerHealthPresenter healthPresenter = FindObjectOfType<PlayerHealthPresenter>();
+            if (healthPresenter != null)
             {
-                healthManager.RefreshHealthBar();
+                healthPresenter.RefreshHealthBar();
             }
         }
 

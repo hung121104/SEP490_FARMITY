@@ -20508,6 +20508,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2141366058}
+  - component: {fileID: 2141366060}
+  - component: {fileID: 2141366059}
   m_Layer: 0
   m_Name: PlayerHealthManager
   m_TagString: Untagged
@@ -20530,6 +20532,42 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1168532500}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2141366059
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2141366057}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 232efe192348b1a4cb7ec35e966a30a5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  presenter: {fileID: 2141366060}
+  healthBar: {fileID: 1837053917}
+  healthBarEase: {fileID: 1417906038}
+  healthText: {fileID: 1921960610}
+--- !u!114 &2141366060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2141366057}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43d5e35606df5704690096c0f83ba469, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model:
+    currentHealth: 0
+    maxHealth: 0
+    targetHealthValue: 0
+    isInvulnerable: 0
+    isInitialized: 0
+    playerEntity: {fileID: 0}
+  statsPresenter: {fileID: 1383096724}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
