@@ -7,7 +7,7 @@ using CombatManager.View;
 
 namespace CombatManager.Presenter
 {
-    public abstract class SkillPresenter : MonoBehaviour
+    public abstract class SkillPresenter : SkillPresenterBase
     {
         #region Serialized Fields
 
@@ -43,14 +43,10 @@ namespace CombatManager.Presenter
         #region Runtime References (Auto-Found)
 
         protected Transform playerTransform;
-
-        // ✅ Use old PlayerMovement directly - same as original SkillBase
         protected PlayerMovement playerMovement;
-
         protected StatsPresenter statsPresenter;
         protected PlayerPointerPresenter pointerPresenter;
         protected CombatModePresenter combatModePresenter;
-
         protected Camera mainCamera;
         protected Transform attackPoint;
         protected Transform centerPoint;
@@ -115,7 +111,6 @@ namespace CombatManager.Presenter
 
         private void FindLocalPlayer()
         {
-            // Find local player via PhotonView (multiplayer)
             foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
             {
                 PhotonView pv = go.GetComponent<PhotonView>();
@@ -126,7 +121,6 @@ namespace CombatManager.Presenter
                 }
             }
 
-            // Fallback: solo test scene (no PhotonView)
             GameObject fallback = GameObject.FindGameObjectWithTag("PlayerEntity");
             if (fallback != null)
             {
@@ -142,30 +136,25 @@ namespace CombatManager.Presenter
         {
             playerTransform = playerGO.transform;
 
-            // ✅ Same as original SkillBase - use PlayerMovement directly
             playerMovement = playerGO.GetComponent<PlayerMovement>();
             if (playerMovement == null)
                 Debug.LogWarning($"[{GetType().Name}] PlayerMovement not found on player!");
 
-            // Find CenterPoint
             Transform found = playerGO.transform.Find("CenterPoint");
             centerPoint = found != null ? found : playerGO.transform;
 
-            // StatsPresenter
             statsPresenter = playerGO.GetComponent<StatsPresenter>();
             if (statsPresenter == null)
                 statsPresenter = FindObjectOfType<StatsPresenter>();
             if (statsPresenter == null)
                 Debug.LogWarning($"[{GetType().Name}] StatsPresenter not found!");
 
-            // Find Pointer
             pointerPresenter = FindObjectOfType<PlayerPointerPresenter>();
             if (pointerPresenter != null)
                 attackPoint = pointerPresenter.transform;
             else
                 Debug.LogWarning($"[{GetType().Name}] PlayerPointerPresenter not found!");
 
-            // CombatModePresenter
             combatModePresenter = CombatModePresenter.Instance;
             if (combatModePresenter == null)
                 Debug.LogWarning($"[{GetType().Name}] CombatModePresenter not found!");
@@ -212,28 +201,6 @@ namespace CombatManager.Presenter
                 if (direction.magnitude > 0.01f)
                     model.targetDirection = direction.normalized;
             }
-
-            // TODO: SPAWN_VFX - Add direction indicator VFX here
-        }
-
-        #endregion
-
-        #region Public API - Trigger
-
-        public void TriggerSkill()
-        {
-            if (!skillService.CanTrigger()) return;
-            if (!IsCombatModeActive()) return;
-            if (playerTransform == null)
-            {
-                Debug.LogWarning($"[{GetType().Name}] Player not found yet!");
-                return;
-            }
-
-            model.isExecuting = true;
-            skillService.StartCooldown();
-            DisablePlayerSystems();
-            StartCoroutine(ExecuteSkillSequence());
         }
 
         #endregion
@@ -242,18 +209,13 @@ namespace CombatManager.Presenter
 
         private IEnumerator ExecuteSkillSequence()
         {
-            // === CHARGE PHASE ===
             skillService.SetState(SkillState.Charging);
             OnChargeStart();
 
-            // TODO: SPAWN_VFX - Play charge animation/VFX here
-
             yield return new WaitForSeconds(model.chargeDuration);
 
-            // === ROLL PHASE ===
             model.currentDiceRoll = diceRollerService.Roll(model.skillTier);
 
-            // ✅ FIX: Fully qualify both arguments to avoid global DiceTier ambiguity
             CombatManager.Presenter.DiceDisplayPresenter.Show(
                 model.currentDiceRoll,
                 (CombatManager.Model.DiceTier)model.skillTier
@@ -262,18 +224,14 @@ namespace CombatManager.Presenter
 
             yield return new WaitForSeconds(model.rollDisplayDuration);
 
-            // === WAIT FOR CONFIRMATION ===
             yield return StartCoroutine(WaitForConfirmationRoutine());
 
-            // Cancelled?
             if (!model.isExecuting)
                 yield break;
 
-            // === EXECUTE PHASE ===
             skillService.SetState(SkillState.Executing);
             DisablePlayerSystems();
 
-            // TODO: SPAWN_VFX - Play attack animation/VFX here
             OnAttackStart();
 
             yield return new WaitForSeconds(0.1f);
@@ -296,7 +254,6 @@ namespace CombatManager.Presenter
         private IEnumerator WaitForConfirmationRoutine()
         {
             skillService.SetState(SkillState.WaitingConfirm);
-
             ShowIndicator();
 
             while (model.IsWaitingConfirm && model.isExecuting)
@@ -320,10 +277,7 @@ namespace CombatManager.Presenter
 
             model.isExecuting = false;
             skillService.SetState(SkillState.Idle);
-
-            // TODO: SPAWN_VFX - Stop/destroy skill VFX here
             OnSkillCancelled();
-
             HideIndicator();
             DiceDisplayPresenter.Hide();
             EnablePlayerSystems();
@@ -333,9 +287,7 @@ namespace CombatManager.Presenter
 
         private void EndSkillExecution()
         {
-            // TODO: SPAWN_VFX - Stop/destroy skill VFX here
             OnAttackEnd();
-
             HideIndicator();
             EnablePlayerSystems();
 
@@ -368,8 +320,6 @@ namespace CombatManager.Presenter
         private void DisablePlayerSystems()
         {
             model.blockAttackDamage = true;
-
-            // ✅ PlayerMovement.enabled - same as original SkillBase
             if (playerMovement != null)
                 playerMovement.enabled = false;
         }
@@ -377,8 +327,6 @@ namespace CombatManager.Presenter
         private void EnablePlayerSystems()
         {
             model.blockAttackDamage = false;
-
-            // ✅ PlayerMovement.enabled - same as original SkillBase
             if (playerMovement != null)
                 playerMovement.enabled = true;
         }
@@ -412,12 +360,38 @@ namespace CombatManager.Presenter
 
         #endregion
 
-        #region Public Getters
+        // ✅ SkillPresenterBase implementation - ONLY HERE, no duplicates!
+        #region SkillPresenterBase Implementation
 
-        public bool IsExecuting => model.isExecuting;
+        public override bool IsExecuting => model.isExecuting;
+
+        public override bool IsCoolingDown()
+            => skillService?.IsCoolingDown() ?? false;
+
+        public override float GetCooldownPercent()
+            => skillService?.GetCooldownPercent() ?? 0f;
+
+        public override void TriggerSkill()
+        {
+            if (!skillService.CanTrigger()) return;
+            if (!IsCombatModeActive()) return;
+            if (playerTransform == null)
+            {
+                Debug.LogWarning($"[{GetType().Name}] Player not found yet!");
+                return;
+            }
+
+            model.isExecuting = true;
+            skillService.StartCooldown();
+            DisablePlayerSystems();
+            StartCoroutine(ExecuteSkillSequence());
+        }
+
+        #endregion
+
+        #region Extra Public Getters
+
         public SkillState GetCurrentState => model.currentState;
-        public float GetCooldownPercent() => skillService?.GetCooldownPercent() ?? 0f;
-        public bool IsCoolingDown() => skillService?.IsCoolingDown() ?? false;
         public CombatManager.Model.DiceTier GetSkillTier() => model.skillTier;
         public LayerMask GetEnemyLayers() => model.enemyLayers;
 

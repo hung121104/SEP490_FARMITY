@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 88f3e6ff451db5c4f9f8223d522a3115, type: 3}
   m_Name: Skill_AirSlash
   m_EditorClassIdentifier: 
-  skillName: Air Slash
+  skillName: AirSlash
   skillDescription: Launch a flying slash projectile at enemies
   skillID: 1
   skillIcon: {fileID: 4841216214093879422, guid: 58c18dfabf66d014eab05bf297ae7e1b, type: 3}
@@ -22,4 +22,4 @@ MonoBehaviour:
   diceTier: 6
   skillMultiplier: 1.5
   skillRange: 8
-  linkedComponentName: AirSlash
+  linkedComponentName: AirSlashPresenter
