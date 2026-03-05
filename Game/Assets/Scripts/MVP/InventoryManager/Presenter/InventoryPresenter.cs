@@ -193,6 +193,18 @@ public class InventoryPresenter
 
     private void HandleSlotEndDrag()
     {
+        // If drag wasn't consumed by a slot drop or delete zone,
+        // check if it ended outside the inventory panel → drop item to world
+        if (draggedSlot != -1)
+        {
+            Vector2 mousePos = Input.mousePosition;
+            if (view != null && !view.IsScreenPositionInsideInventory(mousePos))
+            {
+                HandleDropItem(draggedSlot);
+                Debug.Log($"[InventoryPresenter] Item dragged outside inventory — dropped to world from slot {draggedSlot}");
+            }
+        }
+
         view?.HideDragPreview();
         draggedSlot = -1;
     }
@@ -231,7 +243,8 @@ public class InventoryPresenter
         if (item != null && !item.IsQuestItem)
         {
             OnItemDropped?.Invoke(item);
-            service.RemoveItemFromSlot(slotIndex, 1);
+            // Remove the entire stack from inventory (drop whole stack to world)
+            service.RemoveItemFromSlot(slotIndex, item.Quantity);
         }
     }
 

@@ -19,7 +19,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
 
     [Header("Buttons")]
     [SerializeField] private Button useButton;
-    [SerializeField] private Button dropButton;
 
     [Header("Animation")]
     [SerializeField] private float fadeInDuration = 0.2f;
@@ -69,9 +68,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     {
         if (useButton != null)
             useButton.onClick.AddListener(() => OnUseRequested?.Invoke());
-
-        if (dropButton != null)
-            dropButton.onClick.AddListener(() => OnDropRequested?.Invoke());
     }
 
     #endregion
@@ -192,15 +188,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
         {
             useButton.gameObject.SetActive(interactable);
             useButton.interactable = interactable;
-        }
-    }
-
-    public void SetDropButtonState(bool interactable)
-    {
-        if (dropButton != null)
-        {
-            dropButton.gameObject.SetActive(interactable);
-            dropButton.interactable = interactable;
         }
     }
 
