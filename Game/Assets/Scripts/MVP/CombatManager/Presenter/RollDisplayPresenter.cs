@@ -5,20 +5,12 @@ using CombatManager.View;
 
 namespace CombatManager.Presenter
 {
-    /// <summary>
-    /// Presenter for individual dice roll display.
-    /// Attached to each spawned dice prefab.
-    /// Handles roll animation lifecycle and follow behavior.
-    /// </summary>
     public class RollDisplayPresenter : MonoBehaviour
     {
-        [Header("Follow Settings")]
         private Transform followTarget;
         private Vector3 followOffset;
-
-        [Header("Roll State")]
         private int finalValue;
-        private CombatManager.Model.DiceTier diceTier; // ✅ Explicit namespace
+        private CombatManager.Model.DiceTier diceTier;
         private float duration;
         private bool isRolling = false;
 
@@ -31,14 +23,13 @@ namespace CombatManager.Presenter
         {
             view = GetComponent<RollDisplayView>();
             if (view == null)
-            {
                 view = gameObject.AddComponent<RollDisplayView>();
-            }
         }
 
         private void LateUpdate()
         {
-            FollowTarget();
+            if (followTarget == null) return;
+            transform.position = followTarget.position + followOffset;
         }
 
         #endregion
@@ -51,31 +42,19 @@ namespace CombatManager.Presenter
             followOffset = offset;
 
             if (followTarget != null)
-            {
                 transform.position = followTarget.position + followOffset;
-            }
+
+            // ✅ Trigger popup animation on spawn
+            view?.Show();
 
             Debug.Log($"[RollDisplayPresenter] Initialized - following {target?.name}");
         }
 
         #endregion
 
-        #region Follow Logic
-
-        private void FollowTarget()
-        {
-            if (followTarget == null)
-                return;
-
-            Vector3 targetPosition = followTarget.position + followOffset;
-            transform.position = targetPosition;
-        }
-
-        #endregion
-
         #region Roll Animation
 
-        public void PlayRoll(int finalValue, CombatManager.Model.DiceTier tier, float duration) // ✅ Explicit namespace
+        public void PlayRoll(int finalValue, CombatManager.Model.DiceTier tier, float duration)
         {
             this.finalValue = finalValue;
             this.diceTier = tier;
@@ -93,12 +72,11 @@ namespace CombatManager.Presenter
             float elapsed = 0f;
             int sides = (int)diceTier;
 
-            // Animate random rolls during duration
+            // Animate random numbers cycling during roll duration
             while (elapsed < duration)
             {
                 int tempValue = Random.Range(1, sides + 1);
                 view?.UpdateDisplay(tempValue);
-
                 elapsed += Time.deltaTime;
                 yield return null;
             }
@@ -115,14 +93,9 @@ namespace CombatManager.Presenter
 
         #region Visibility
 
-        public void Show()
+        public void HideWithAnimation()
         {
-            gameObject.SetActive(true);
-            view?.Show();
-        }
-
-        public void Hide()
-        {
+            // ✅ Trigger disappear animation (fades out then destroys itself)
             view?.Hide();
         }
 

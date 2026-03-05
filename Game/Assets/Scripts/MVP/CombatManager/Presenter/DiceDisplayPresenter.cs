@@ -1,15 +1,12 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using CombatManager.Model;
 using CombatManager.Service;
+using Photon.Pun;
 
 namespace CombatManager.Presenter
 {
-    /// <summary>
-    /// Presenter for Dice Display Manager.
-    /// Centralized system for spawning and managing dice roll displays.
-    /// SkillPresenter calls this to show dice rolls above player.
-    /// </summary>
     public class DiceDisplayPresenter : MonoBehaviour
     {
         [Header("Model")]
@@ -36,6 +33,9 @@ namespace CombatManager.Presenter
         private GameObject currentDiceInstance;
         private RollDisplayPresenter currentRollPresenter;
 
+        // ✅ FIX 1: Found at runtime, not assigned in Inspector
+        private Transform playerTransform;
+
         #region Singleton
 
         private static DiceDisplayPresenter instance;
@@ -57,13 +57,70 @@ namespace CombatManager.Presenter
             InitializeService();
         }
 
+        private void Start()
+        {
+            // ✅ FIX 1: Find spawned player at Start (after Photon spawns)
+            StartCoroutine(FindPlayerDelayed());
+        }
+
+        #endregion
+
+        #region Find Player
+
+        // ✅ FIX 1: Find local player entity like PlayerHealthManager does
+        private IEnumerator FindPlayerDelayed()
+        {
+            yield return new WaitForSeconds(0.5f);
+            FindLocalPlayer();
+        }
+
+        private void FindLocalPlayer()
+        {
+            // Try "Player" tag first (multiplayer spawn)
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine)
+                {
+                    playerTransform = go.transform;
+                    Debug.Log($"[DiceDisplayPresenter] Found local player: {go.name}");
+                    return;
+                }
+            }
+
+            // Fallback: "PlayerEntity" tag (test scenes)
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine)
+                {
+                    playerTransform = go.transform;
+                    Debug.Log($"[DiceDisplayPresenter] Found local player (PlayerEntity): {go.name}");
+                    return;
+                }
+            }
+
+            // Final fallback: no PhotonView (solo test scene)
+            GameObject fallback = GameObject.FindGameObjectWithTag("Player");
+            if (fallback == null)
+                fallback = GameObject.FindGameObjectWithTag("PlayerEntity");
+
+            if (fallback != null)
+            {
+                playerTransform = fallback.transform;
+                Debug.Log($"[DiceDisplayPresenter] Found player (fallback): {fallback.name}");
+                return;
+            }
+
+            Debug.LogWarning("[DiceDisplayPresenter] Local player not found! Will retry on ShowRoll.");
+        }
+
         #endregion
 
         #region Initialization
 
         private void InitializeService()
         {
-            // Sync inspector values to model
             model.d6Prefab = d6Prefab;
             model.d8Prefab = d8Prefab;
             model.d10Prefab = d10Prefab;
@@ -84,12 +141,19 @@ namespace CombatManager.Presenter
 
         #region Public API - Roll Display
 
-        /// <summary>
-        /// Spawn dice above player and play roll animation.
-        /// Called by SkillPresenter during charge state.
-        /// </summary>
-        public void ShowRoll(int finalValue, CombatManager.Model.DiceTier tier, Transform playerTransform)
+        public void ShowRoll(int finalValue, CombatManager.Model.DiceTier tier)
         {
+            // ✅ FIX 1: Retry finding player if not found yet
+            if (playerTransform == null)
+            {
+                FindLocalPlayer();
+                if (playerTransform == null)
+                {
+                    Debug.LogWarning("[DiceDisplayPresenter] Cannot show roll - player not found!");
+                    return;
+                }
+            }
+
             if (service == null || !service.IsInitialized())
             {
                 Debug.LogWarning("[DiceDisplayPresenter] Service not initialized!");
@@ -99,13 +163,17 @@ namespace CombatManager.Presenter
             // Destroy previous dice if exists
             HideRoll();
 
-            // Spawn new dice at player position
+            // ✅ FIX 2: Spawn dice at player position + offset immediately
+            Vector3 spawnPos = playerTransform.position + rollDisplayOffset;
             currentDiceInstance = service.SpawnDice(tier, playerTransform);
             if (currentDiceInstance == null)
             {
                 Debug.LogError("[DiceDisplayPresenter] Failed to spawn dice!");
                 return;
             }
+
+            // ✅ FIX 2: Force position immediately at spawn
+            currentDiceInstance.transform.position = spawnPos;
 
             // Get or add RollDisplayPresenter on the dice prefab
             currentRollPresenter = currentDiceInstance.GetComponent<RollDisplayPresenter>();
@@ -114,11 +182,8 @@ namespace CombatManager.Presenter
                 currentRollPresenter = currentDiceInstance.AddComponent<RollDisplayPresenter>();
             }
 
-            // Initialize follow behavior
-            currentRollPresenter.Initialize(
-                playerTransform,
-                service.GetRollDisplayOffset()
-            );
+            // ✅ FIX 2: Initialize with player transform + offset so it FOLLOWS
+            currentRollPresenter.Initialize(playerTransform, rollDisplayOffset);
 
             // Play roll animation
             currentRollPresenter.PlayRoll(
@@ -130,18 +195,47 @@ namespace CombatManager.Presenter
             Debug.Log($"[DiceDisplayPresenter] Showing roll: {finalValue} ({tier}) above {playerTransform.name}");
         }
 
-        /// <summary>
-        /// Hide and destroy current dice display.
-        /// Called after player confirms/cancels skill.
-        /// </summary>
         public void HideRoll()
         {
             if (currentDiceInstance != null)
             {
-                service?.DespawnDice(currentDiceInstance);
+                // ✅ Play disappear animation first, THEN destroy
+                if (currentRollPresenter != null)
+                {
+                    currentRollPresenter.HideWithAnimation();
+                    // Destroy after animation finishes (0.3s = fadeOutDuration)
+                    Destroy(currentDiceInstance, 0.35f);
+                }
+                else
+                {
+                    service?.DespawnDice(currentDiceInstance);
+                }
+
                 currentDiceInstance = null;
                 currentRollPresenter = null;
             }
+        }
+
+        #endregion
+
+        #region Static Helpers
+
+        // ✅ No playerTransform parameter needed - found automatically!
+        public static void Show(int finalValue, CombatManager.Model.DiceTier tier)
+        {
+            if (Instance != null)
+            {
+                Instance.ShowRoll(finalValue, tier);
+            }
+            else
+            {
+                Debug.LogWarning("[DiceDisplayPresenter] Instance not found!");
+            }
+        }
+
+        public static void Hide()
+        {
+            Instance?.HideRoll();
         }
 
         #endregion
@@ -165,37 +259,13 @@ namespace CombatManager.Presenter
 
         #endregion
 
-        #region Static Helpers
-
-        /// <summary>
-        /// Static helper for easy access from SkillPresenter.
-        /// Usage: DiceDisplayPresenter.Show(roll, DiceTier.D6, playerTransform);
-        /// </summary>
-        public static void Show(int finalValue, CombatManager.Model.DiceTier tier, Transform playerTransform)
-        {
-            if (Instance != null)
-            {
-                Instance.ShowRoll(finalValue, tier, playerTransform);
-            }
-            else
-            {
-                Debug.LogWarning("[DiceDisplayPresenter] Instance not found!");
-            }
-        }
-
-        public static void Hide()
-        {
-            Instance?.HideRoll();
-        }
-
-        #endregion
-
         #region Getters
 
         public bool IsInitialized() => service?.IsInitialized() ?? false;
         public IDiceDisplayService GetService() => service;
         public bool IsRolling() => currentRollPresenter?.IsRolling() ?? false;
         public int GetLastRollValue() => currentRollPresenter?.GetFinalValue() ?? 0;
+        public Transform GetPlayerTransform() => playerTransform;
 
         #endregion
     }
