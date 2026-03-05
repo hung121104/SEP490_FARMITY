@@ -27,27 +27,53 @@
         [SerializeField] private InventoryView inventoryView;
         [SerializeField] private GameObject inventoryMenuRoot;
         [SerializeField] private SpriteRenderer spriteRenderer;
-        private GiftPresenter giftPresenter;
+
+    [Header("Quest System")]
+    [SerializeField] private QuestView questView;
+    [SerializeField] private QuestDatabase questDatabase;
+
+    private QuestPresenter questPresenter;
+    private GiftPresenter giftPresenter;
         private DialogueNode interactionNode;
         private NPCState currentState = NPCState.Idle;
         private NPCDialoguePresenter presenter;
         private bool playerInRange;
         private bool blockInteractOnce;
     private enum NPCState
-        {
-            Idle,
-            InteractionMenu,
-            Dialogue,
-            Gift
+    {
+        Idle,
+        InteractionMenu,
+        Dialogue,
+        Gift,
+        Quest
+    }
+    private void Awake()
+    {
+        // Dialogue Service
+        INPCDialogueService service = new NPCDialogueService(dialogueModel);
 
-        }
-        private void Awake()
+        // Quest Service
+        IQuestService questService = new QuestService();
+
+        if (questDatabase != null && questDatabase.quests.Length > 0)
         {
-            INPCDialogueService service = new NPCDialogueService(dialogueModel);
-            presenter = new NPCDialoguePresenter(service, dialogueView);
-            CreateInteractionNode();
+            questPresenter = new QuestPresenter(
+                questView,
+                questService,
+                questDatabase.quests[0]
+            );
         }
-        private void Update()
+
+        // Dialogue Presenter
+        presenter = new NPCDialoguePresenter(
+            service,
+            dialogueView,
+            questPresenter
+        );
+
+        CreateInteractionNode();
+    }
+    private void Update()
         {
             if (!playerInRange) return;
 
@@ -92,8 +118,21 @@
             {
                 HandleDialogueUpdate();
             }
-        
+        if (currentState == NPCState.Quest)
+        {
+            if (Input.GetKeyDown(interactKey))
+            {
+                questView.Hide();
+
+                UnlockPlayer();
+
+                currentState = NPCState.Idle;
+            }
+
+            return;
         }
+
+    }
         private void HandleInteractionMenuInput()
         {
             for (int i = 0; i < interactionNode.options.Count; i++)
@@ -106,14 +145,22 @@
                         currentState = NPCState.Dialogue;
                         presenter.StartDialogue();
                     }
-                    else if (i == 1) // send gift
-                    {
-                        dialogueView.Hide();
-                        currentState = NPCState.Gift;
-                        StartGiftMode();
-                    }
+                else if (i == 1) // GIFT
+                {
+                    dialogueView.Hide();
+                    currentState = NPCState.Gift;
+                    StartGiftMode();
+                }
+                else if (i == 2) // QUEST
+                {
+                    dialogueView.Hide();
 
-                    break;
+                    currentState = NPCState.Quest;
+
+                    questPresenter?.ShowQuest();
+                }
+
+                break;
                 }
             }
         }
@@ -218,12 +265,13 @@
             interactionNode = new DialogueNode();
             interactionNode.dialogueText = "What do you want to do?";
 
-            interactionNode.options = new List<DialogueOption>
-        {
-            new DialogueOption { optionText = "Talk", nextNodeIndex = -1 },
-            new DialogueOption { optionText = "Send Gift", nextNodeIndex = -1 }
-        };
-        }
+        interactionNode.options = new List<DialogueOption>
+{
+    new DialogueOption { optionText = "Talk", nextNodeIndex = -1 },
+    new DialogueOption { optionText = "Send Gift", nextNodeIndex = -1 },
+    new DialogueOption { optionText = "Quest", nextNodeIndex = -1 }
+    };
+    }
     private void ShowInteractionMenu()
     {
         if (playerMovement != null)
