@@ -118,13 +118,31 @@ namespace CombatManager.Presenter
             if (!model.isInitialized)
                 return;
 
-            // Check if colliding with player
+            // DEBUG: Log all collisions
+            Debug.Log($"[EnemyPresenter] {gameObject.name} colliding with {collision.gameObject.name}");
+            Debug.Log($"  - Collision object tag: {collision.gameObject.tag}");
+            Debug.Log($"  - Collision object layer: {LayerMask.LayerToName(collision.gameObject.layer)}");
+            Debug.Log($"  - Player layer mask: {model.playerLayer.value}");
+            Debug.Log($"  - Layer check result: {((1 << collision.gameObject.layer) & model.playerLayer)}");
+
+            // Check if colliding with player (using layer mask)
             if (((1 << collision.gameObject.layer) & model.playerLayer) != 0)
             {
+                Debug.Log($"[EnemyPresenter] Layer check PASSED - attempting to deal damage");
+                
                 if (combatService.CanDealDamage())
                 {
+                    Debug.Log($"[EnemyPresenter] Damage throttle check PASSED - dealing damage");
                     combatService.DealDamageToPlayer(collision);
                 }
+                else
+                {
+                    Debug.Log($"[EnemyPresenter] Damage throttle check FAILED - cooling down");
+                }
+            }
+            else
+            {
+                Debug.Log($"[EnemyPresenter] Layer check FAILED - not player layer");
             }
         }
 

@@ -111,7 +111,7 @@ MonoBehaviour:
     m_Bits: 9
   obstacleLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 1
   moveSpeed: 2
   chaseSpeed: 3
   wanderSpeed: 1
