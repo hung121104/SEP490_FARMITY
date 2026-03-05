@@ -127,11 +127,18 @@ public class ItemService : IItemService
 
     public GiftReaction GetNPCReaction(string npcName)
     {
-        if (string.IsNullOrEmpty(npcName) || model.NPCPreferences == null)
+        if (string.IsNullOrEmpty(npcName)) return GiftReaction.Neutral;
+
+        var names     = model.ItemData.npcPreferenceNames;
+        var reactions = model.ItemData.npcPreferenceReactions;
+
+        if (names == null || names.Length == 0) return GiftReaction.Neutral;
+
+        int idx = System.Array.IndexOf(names, npcName);
+        if (idx < 0 || reactions == null || idx >= reactions.Length)
             return GiftReaction.Neutral;
 
-        var preference = model.NPCPreferences.FirstOrDefault(p => p.npcName == npcName);
-        return preference?.reaction ?? GiftReaction.Neutral;
+        return (GiftReaction)reactions[idx];
     }
 
     public bool CanGiftToNPC(string npcName)

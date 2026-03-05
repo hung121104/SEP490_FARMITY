@@ -3,24 +3,15 @@ using UnityEngine.UI;
 
 public class CraftingSystemManager : MonoBehaviour
 {
-    [Header("Recipe Data")]
-    [SerializeField] private RecipeDataSO[] allRecipes;
-
     [Header("UI Views")]
+    [SerializeField] private CraftingMainView craftingInventoryView;
     [SerializeField] private CraftingMainView craftingMainView;
     [SerializeField] private CookingMainView cookingMainView;
-
-    [Header("Crafting Toggle Buttons")]
-    [SerializeField] private Button craftingOpenButton;
-    [SerializeField] private Button craftingCloseButton;
-
-    [Header("Cooking Toggle Buttons")]
-    [SerializeField] private Button cookingOpenButton;
-    [SerializeField] private Button cookingCloseButton;
 
     [Header("Inventory Display")]
     [SerializeField] private CraftingInventoryAdapter craftingInventoryAdapter;
     [SerializeField] private CraftingInventoryAdapter cookingInventoryAdapter;
+    [SerializeField] private CraftingInventoryAdapter craftingInInventoryAdapter;
 
     // Core components
     private CraftingModel craftingModel;
@@ -30,7 +21,10 @@ public class CraftingSystemManager : MonoBehaviour
 
     // Presenters
     private CraftingPresenter craftingPresenter;
+    private CraftingPresenter craftingInInventoryPresenter; //For crafting inventory tab
     private CookingPresenter cookingPresenter;
+
+    private bool isCraftingInInventoryActive = true;
 
     private void Awake()
     {
@@ -45,25 +39,13 @@ public class CraftingSystemManager : MonoBehaviour
     private void SetupUIStructure()
     {
         // Hide UIs by default
+        craftingInventoryView?.Hide();
         craftingMainView?.Hide();
         cookingMainView?.Hide();
-
-        // Setup toggle buttons
-        SetupToggleButtons();
-
+        
         Debug.Log("[CraftingSystemManager] UI structure setup complete");
     }
 
-    private void SetupToggleButtons()
-    {
-        // Crafting buttons
-        craftingOpenButton?.onClick.AddListener(OpenCraftingUI);
-        craftingCloseButton?.onClick.AddListener(CloseCraftingUI);
-
-        // Cooking buttons
-        cookingOpenButton?.onClick.AddListener(OpenCookingUI);
-        cookingCloseButton?.onClick.AddListener(CloseCookingUI);
-    }
 
     #region Initialization
     private void InitializeSystem()
@@ -79,24 +61,36 @@ public class CraftingSystemManager : MonoBehaviour
         // 3. Initialize Crafting Service
         craftingService = new CraftingService(craftingModel);
 
-        // 4. Load recipes
-        if (allRecipes != null && allRecipes.Length > 0)
+        // 4. Load recipes from the catalog service (JSON)
+        var catalogService = RecipeCatalogService.Instance;
+        if (catalogService == null)
         {
-            craftingService.LoadRecipes(allRecipes);
-            Debug.Log($"[CraftingSystemManager] Loaded {allRecipes.Length} recipes");
+            Debug.LogError("[CraftingSystemManager] RecipeCatalogService not found in scene! Add it as a GameObject.");
         }
         else
         {
-            Debug.LogWarning("[CraftingSystemManager] No recipes assigned!");
+            var recipes = catalogService.GetAllRecipes();
+            if (recipes.Count > 0)
+            {
+                craftingService.LoadRecipes(recipes);
+                Debug.Log($"[CraftingSystemManager] Loaded {recipes.Count} recipes from catalog.");
+            }
+            else
+            {
+                Debug.LogWarning("[CraftingSystemManager] Recipe catalog is empty!");
+            }
         }
 
         // 5. Initialize Crafting Presenter
         InitializeCraftingPresenter();
 
-        // 6. Initialize Cooking Presenter
+        // 6. Initialize Crafting In Inventory Presenter
+        InitializeCraftingInInventoryPresenter();
+
+        // 7. Initialize Cooking Presenter
         InitializeCookingPresenter();
 
-        // 7. Connect inventory adapter last (after all systems ready)
+        // 8. Connect inventory adapter last (after all systems ready)
         ConnectInventoryAdapter();
 
         Debug.Log("[CraftingSystemManager] System initialized successfully");
@@ -142,7 +136,31 @@ public class CraftingSystemManager : MonoBehaviour
             cookingInventoryAdapter.InjectInventory(inventoryModel, inventoryService);
         else
             Debug.LogWarning("[CraftingSystemManager] CookingInventoryAdapter not assigned.");
+
+        if (craftingInInventoryAdapter != null)
+            craftingInInventoryAdapter.InjectInventory(inventoryModel, inventoryService);
+        else
+            Debug.LogWarning("[CraftingSystemManager] CraftingInInventoryAdapter not assigned.");
     }
+
+    private void InitializeCraftingInInventoryPresenter()
+    {
+        if (craftingInventoryView == null)
+        {
+            Debug.LogWarning("[CraftingSystemManager] Crafting in inventory view not assigned");
+            return;
+        }
+
+        craftingInInventoryPresenter = new CraftingPresenter(craftingModel, craftingService, inventoryService);
+        craftingInInventoryPresenter.SetView(craftingInventoryView);
+
+        // Subscribe to events
+        craftingInInventoryPresenter.OnItemCrafted += HandleItemCraftedInInventory;
+        craftingInInventoryPresenter.OnCraftFailed += HandleCraftFailedInInventory;
+
+        Debug.Log("[CraftingSystemManager] Crafting in inventory presenter initialized");
+    }
+
 
     private void InitializeCraftingPresenter()
     {
@@ -206,6 +224,17 @@ public class CraftingSystemManager : MonoBehaviour
         Debug.LogWarning($"[CraftingSystemManager] Cook failed: {reason}");
     }
 
+    private void HandleItemCraftedInInventory(RecipeModel recipe, int amount)
+    {
+        Debug.Log($"[CraftingSystemManager] Crafted in inventory: {recipe.RecipeName} x{amount}");
+        // Add additional logic here (achievements, statistics, etc.)
+    }
+
+    private void HandleCraftFailedInInventory(string reason)
+    {
+        Debug.LogWarning($"[CraftingSystemManager] Craft in inventory failed: {reason}");
+    }
+
     #endregion
 
     #region Public API
@@ -247,6 +276,24 @@ public class CraftingSystemManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Open crafting in inventory UI
+    /// </summary>
+    public void OpenCraftingInInventory()
+    {
+        craftingInInventoryPresenter?.OpenCraftingUI();
+        craftingInInventoryAdapter?.OnOpen();
+    }
+
+    /// <summary>
+    /// Close crafting in inventory UI
+    /// </summary>
+    public void CloseCraftingInInventory()
+    {
+        craftingInInventoryPresenter?.CloseCraftingUI();
+        craftingInInventoryAdapter?.OnClose();
+    }
+
+    /// <summary>
     /// Unlock a recipe by ID
     /// </summary>
     public void UnlockRecipe(string recipeID)
@@ -276,18 +323,19 @@ public class CraftingSystemManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Cleanup toggle buttons
-        craftingOpenButton?.onClick.RemoveAllListeners();
-        craftingCloseButton?.onClick.RemoveAllListeners();
-        cookingOpenButton?.onClick.RemoveAllListeners();
-        cookingCloseButton?.onClick.RemoveAllListeners();
-
         // Cleanup presenters
         if (craftingPresenter != null)
         {
             craftingPresenter.OnItemCrafted -= HandleItemCrafted;
             craftingPresenter.OnCraftFailed -= HandleCraftFailed;
             craftingPresenter.Cleanup();
+        }
+
+        if (craftingInInventoryPresenter != null)
+        {
+            craftingInInventoryPresenter.OnItemCrafted -= HandleItemCraftedInInventory;
+            craftingInInventoryPresenter.OnCraftFailed -= HandleCraftFailedInInventory;
+            craftingInInventoryPresenter.Cleanup();
         }
 
         if (cookingPresenter != null)
@@ -307,31 +355,31 @@ public class CraftingSystemManager : MonoBehaviour
     [ContextMenu("Test Open Crafting UI")]
     private void TestOpenCraftingUI()
     {
-        OpenCraftingUI();
+        if (craftingPresenter != null && craftingPresenter.IsUIOpen())
+            CloseCraftingUI();
+        else
+            OpenCraftingUI();
+    }
+
+    [ContextMenu("Test Close Crafting UI")]
+    private void TestCLoseCraftingUI()
+    {
+        CloseCraftingUI();
     }
 
     [ContextMenu("Test Open Cooking UI")]
     private void TestOpenCookingUI()
     {
-        OpenCookingUI();
+        if (cookingPresenter != null && cookingPresenter.IsUIOpen())
+            CloseCookingUI();
+        else
+            OpenCookingUI();
     }
 
-    [ContextMenu("Test Add Test Items to Inventory")]
-    private void TestAddItemsToInventory()
+    [ContextMenu("Test Close Cooking UI")]
+    private void TestCloseCookingUI()
     {
-        if (inventoryService == null || allRecipes == null || allRecipes.Length == 0)
-        {
-            Debug.LogWarning("Cannot add test items - service or recipes not available");
-            return;
-        }
-
-        // Add ingredients from first recipe
-        var firstRecipe = allRecipes[0];
-        foreach (var ingredient in firstRecipe.ingredients)
-        {
-            inventoryService.AddItem(ingredient.item, ingredient.quantity * 10);
-            Debug.Log($"Added {ingredient.item.itemName} x{ingredient.quantity * 10}");
-        }
+        CloseCookingUI();
     }
 
     #endregion

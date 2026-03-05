@@ -6,13 +6,13 @@ using Photon.Pun;
 /// Owns all crop-growth business logic: stage progression, day-tick processing,
 /// plant-data lookups, and domain-rule queries.
 /// Completely decoupled from Unity UI — no MonoBehaviour dependency.
+/// Plant data is sourced from PlantCatalogService (data-driven, no Inspector arrays).
 /// </summary>
 public class CropGrowthService : ICropGrowthService
 {
     // ── Dependencies ──────────────────────────────────────────────────────
     private readonly WorldDataManager worldData;
     private readonly ChunkDataSyncManager syncManager;
-    private readonly PlantDataSO[] plantDatabase;
 
     // ── Events ────────────────────────────────────────────────────────────
     /// <inheritdoc/>
@@ -21,23 +21,22 @@ public class CropGrowthService : ICropGrowthService
     // ─────────────────────────────────────────────────────────────────────
     public CropGrowthService(
         WorldDataManager worldData,
-        ChunkDataSyncManager syncManager,
-        PlantDataSO[] plantDatabase)
+        ChunkDataSyncManager syncManager)
     {
-        this.worldData     = worldData;
-        this.syncManager   = syncManager;
-        this.plantDatabase = plantDatabase;
+        this.worldData   = worldData;
+        this.syncManager = syncManager;
     }
 
     // ── ICropGrowthService : plant-data lookup ────────────────────────────
 
-    public PlantDataSO GetPlantData(string plantId)
+    public PlantData GetPlantData(string plantId)
     {
-        if (plantDatabase == null || string.IsNullOrEmpty(plantId)) return null;
-        foreach (var plant in plantDatabase)
-            if (plant != null && plant.PlantId == plantId) return plant;
-        Debug.LogWarning($"[CropGrowthService] PlantId '{plantId}' not found in plantDatabase.");
-        return null;
+        if (string.IsNullOrEmpty(plantId)) return null;
+
+        PlantData plant = PlantCatalogService.Instance?.GetPlantData(plantId);
+        if (plant == null)
+            Debug.LogWarning($"[CropGrowthService] PlantId '{plantId}' not found in PlantCatalogService.");
+        return plant;
     }
 
     // ── ICropGrowthService : domain-rule queries ──────────────────────────
@@ -46,22 +45,30 @@ public class CropGrowthService : ICropGrowthService
     {
         if (worldData == null) return false;
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        if (!worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+        if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
             return false;
 
-        PlantDataSO plant = GetPlantData(tileData.PlantId);
-        return plant != null && tileData.CropStage >= plant.GrowthStages.Count - 1;
+        PlantData plant = GetPlantData(tileData.PlantId);
+        if (plant == null) return false;
+
+        // Hybrid plants: harvestable stage is pollenStage+1 (mature).
+        // Normal plants: harvestable stage is the last entry in growthStages.
+        int harvestStage = plant.isHybrid
+            ? plant.pollenStage + 1
+            : plant.growthStages.Count - 1;
+
+        return tileData.CropStage >= harvestStage;
     }
 
     public bool IsCropAtPollenStage(int worldX, int worldY)
     {
         if (worldData == null) return false;
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        if (!worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+        if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
             return false;
 
-        PlantDataSO plant = GetPlantData(tileData.PlantId);
-        if (plant == null || !plant.canProducePollen || plant.PollenItem == null)
+        PlantData plant = GetPlantData(tileData.PlantId);
+        if (plant == null || !plant.canProducePollen || string.IsNullOrEmpty(plant.pollenItemId))
             return false;
 
         if (tileData.CropStage != plant.pollenStage) return false;
@@ -74,14 +81,16 @@ public class CropGrowthService : ICropGrowthService
         return true;
     }
 
-    public PollenDataSO GetPollenItem(int worldX, int worldY)
+    public PollenData GetPollenItem(int worldX, int worldY)
     {
         if (worldData == null) return null;
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        if (!worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+        if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
             return null;
 
-        return GetPlantData(tileData.PlantId)?.PollenItem;
+        PlantData plant = GetPlantData(tileData.PlantId);
+        if (plant == null || string.IsNullOrEmpty(plant.pollenItemId)) return null;
+        return ItemCatalogService.Instance?.GetItemData<PollenData>(plant.pollenItemId);
     }
 
     // ── ICropGrowthService : growth mutations ─────────────────────────────
@@ -103,23 +112,32 @@ public class CropGrowthService : ICropGrowthService
 
             foreach (var chunkPair in section)
             {
-                CropChunkData chunk = chunkPair.Value;
+                UnifiedChunkData chunk = chunkPair.Value;
 
                 foreach (var tile in chunk.GetAllCrops())
                 {
-                    if (!tile.HasCrop) continue;
-
                     Vector3 worldPos = new Vector3(tile.WorldX, tile.WorldY, 0);
                     worldData.IncrementCropAge(worldPos);
 
-                    if (!worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+                    if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
                         continue;
 
-                    PlantDataSO plant = GetPlantData(tileData.PlantId);
-                    if (plant == null || tileData.CropStage >= plant.GrowthStages.Count - 1) continue;
+                    PlantData plant = GetPlantData(tileData.PlantId);
+                    if (plant == null) continue;
+
+                    // Hybrid: grows from pollenStage → pollenStage+1 (mature), then stops.
+                    // Normal: grows until last growthStages entry.
+                    int effectiveLastStage = plant.isHybrid
+                        ? plant.pollenStage + 1
+                        : plant.growthStages.Count - 1;
+
+                    if (tileData.CropStage >= effectiveLastStage) continue;
 
                     int nextStageIndex = tileData.CropStage + 1;
-                    int ageRequired    = Mathf.RoundToInt(plant.GrowthStages[nextStageIndex].age / speedMultiplier);
+                    // Hybrid mature step may not have a growthStages entry — default to 1 day.
+                    int ageRequired = (nextStageIndex < plant.growthStages.Count)
+                        ? Mathf.RoundToInt(plant.growthStages[nextStageIndex].age / speedMultiplier)
+                        : 1;
 
                     if (tileData.TotalAge < ageRequired) continue;
 
@@ -132,7 +150,7 @@ public class CropGrowthService : ICropGrowthService
                     OnCropStageChanged?.Invoke(tile.WorldX, tile.WorldY, newStage);
                     cropsGrown++;
 
-                    if (newStage >= plant.GrowthStages.Count - 1)
+                    if (newStage >= plant.growthStages.Count - 1)
                     {
                         cropsReady++;
                         Debug.Log($"[CropGrowthService] '{tileData.PlantId}' at ({tile.WorldX},{tile.WorldY}) ready to harvest.");
@@ -154,17 +172,25 @@ public class CropGrowthService : ICropGrowthService
         if (worldData == null) return;
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        if (!worldData.TryGetCropAtWorldPosition(worldPos, out CropChunkData.TileData tileData))
+        if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
         {
             Debug.LogWarning($"[CropGrowthService] No crop at ({worldX},{worldY}) to force grow.");
             return;
         }
 
-        PlantDataSO plant = GetPlantData(tileData.PlantId);
-        if (plant == null || tileData.CropStage >= plant.GrowthStages.Count - 1) return;
+        PlantData plant = GetPlantData(tileData.PlantId);
+        if (plant == null) return;
+
+        int effectiveLastStage = plant.isHybrid
+            ? plant.pollenStage + 1
+            : plant.growthStages.Count - 1;
+
+        if (tileData.CropStage >= effectiveLastStage) return;
 
         byte newStage = (byte)(tileData.CropStage + 1);
-        int  newAge   = newStage < plant.GrowthStages.Count ? plant.GrowthStages[newStage].age : tileData.TotalAge;
+        int  newAge   = (newStage < plant.growthStages.Count)
+            ? plant.growthStages[newStage].age
+            : tileData.TotalAge + 1;
 
         worldData.UpdateCropStage(worldPos, newStage);
         worldData.UpdateCropAge(worldPos, newAge);

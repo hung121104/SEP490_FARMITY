@@ -81,7 +81,12 @@ public class InventoryGameView : MonoBehaviour
 
     #region Public API for Player/Other Systems
 
-    public bool AddItem(ItemDataSO itemData, int quantity = 1, Quality quality = Quality.Normal)
+    public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal)
+    {
+        return presenter.TryAddItem(itemId, quantity, quality);
+    }
+
+    public bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal)
     {
         return presenter.TryAddItem(itemData, quantity, quality);
     }
@@ -119,8 +124,15 @@ public class InventoryGameView : MonoBehaviour
     {
         Debug.Log($"Dropping item: {item.ItemName}");
 
-        // TODO: Implement item drop logic
-        // Example: Spawn item in world at player position
+        // Delegate to DroppedItemManagerView which handles Photon sync + DB persistence
+        if (DroppedItemManagerView.Instance != null)
+        {
+            DroppedItemManagerView.Instance.RequestDropItem(item);
+        }
+        else
+        {
+            Debug.LogError("[InventoryGameView] DroppedItemManagerView.Instance is null — cannot drop item!");
+        }
     }
 
     #endregion

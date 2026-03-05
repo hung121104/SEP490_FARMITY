@@ -20,9 +20,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     [Header("References")]
     public TimeManagerView timeManager;
 
-    [Header("Plant Data")]
-    [Tooltip("All PlantDataSO assets — passed to CropGrowthService.")]
-    public PlantDataSO[] plantDatabase;
+    // Plant data is sourced from PlantCatalogService at runtime — no Inspector array needed.
 
     [Header("Growth Settings")]
     public bool enableGrowth = true;
@@ -61,11 +59,10 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
         var syncManager     = FindAnyObjectByType<ChunkDataSyncManager>();
 
-        // Build the growth service
+        // Build the growth service — PlantData is resolved from PlantCatalogService at runtime
         growthService = new CropGrowthService(
             WorldDataManager.Instance,
-            syncManager,
-            plantDatabase);
+            syncManager);
 
         // Subscribe to visual-refresh event
         growthService.OnCropStageChanged += OnCropStageChanged;
@@ -112,39 +109,39 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         }
 
         // Fallback: update sprite directly
-        PlantDataSO plant = growthService.GetPlantData(
-            WorldDataManager.Instance.TryGetCropAtWorldPosition(new Vector3(worldX, worldY, 0),
-                out CropChunkData.TileData td) ? td.PlantId : null);
+        WorldDataManager.Instance.TryGetCropAtWorldPosition(new Vector3(worldX, worldY, 0),
+            out UnifiedChunkData.CropTileData td);
+        PlantData plant = growthService.GetPlantData(td.PlantId);
 
-        if (plant == null || newStage >= plant.GrowthStages.Count) return;
+        if (plant == null || newStage >= plant.growthStages.Count) return;
 
         string key = $"{worldX}_{worldY}";
         if (cropVisuals.TryGetValue(key, out GameObject go) && go != null)
         {
             var sr = go.GetComponent<SpriteRenderer>();
-            if (sr != null) sr.sprite = plant.GrowthStages[newStage].stageSprite;
+            if (sr != null) sr.sprite = PlantCatalogService.Instance?.GetStageSprite(td.PlantId, newStage);
         }
         else
         {
-            CreateCropVisual(worldX, worldY, plant, newStage);
+            CreateCropVisual(worldX, worldY, plant, td.PlantId, newStage);
         }
     }
 
     // ── Visual management ─────────────────────────────────────────────────
-    private void CreateCropVisual(int worldX, int worldY, PlantDataSO plant, int stage)
+    private void CreateCropVisual(int worldX, int worldY, PlantData plant, string plantId, int stage)
     {
-        if (plant == null || plant.GrowthStages.Count == 0) return;
+        if (plant == null || plant.growthStages.Count == 0) return;
         string key = $"{worldX}_{worldY}";
 
         if (cropVisuals.TryGetValue(key, out GameObject old) && old != null)
             Destroy(old);
 
-        GameObject go = new GameObject($"Crop_{plant.PlantName}_{worldX}_{worldY}");
+        GameObject go = new GameObject($"Crop_{plant.plantName}_{worldX}_{worldY}");
         go.transform.position = new Vector3(worldX + 0.5f, worldY + 0.5f, 0);
         go.transform.SetParent(cropVisualsParent);
 
         var sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite           = plant.GrowthStages[stage].stageSprite;
+        sr.sprite           = PlantCatalogService.Instance?.GetStageSprite(plantId, stage);
         sr.sortingLayerName = "Default";
         sr.sortingOrder     = 1;
 
@@ -180,10 +177,10 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     // ── Backward-compat thin delegates (used by existing services) ─────────────
     // These simply forward to the growth service so callers don't need updating.
 
-    public PlantDataSO GetPlantData(string plantId)          => growthService?.GetPlantData(plantId);
+    public PlantData GetPlantData(string plantId)            => growthService?.GetPlantData(plantId);
     public bool IsCropReadyToHarvest(int wx, int wy)         => growthService?.IsCropReadyToHarvest(wx, wy) ?? false;
     public bool IsCropAtPollenStage(int wx, int wy)          => growthService?.IsCropAtPollenStage(wx, wy) ?? false;
-    public PollenDataSO GetPollenItem(int wx, int wy)        => growthService?.GetPollenItem(wx, wy);
+    public PollenData GetPollenItem(int wx, int wy)          => growthService?.GetPollenItem(wx, wy);
 
     /// <summary>Debug-only: immediately advance the crop one stage.</summary>
     public void ForceGrowCrop(int worldX, int worldY)        => growthService?.ForceGrowCrop(worldX, worldY);
@@ -193,9 +190,9 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     {
         if (WorldDataManager.Instance == null) return 0f;
         if (!WorldDataManager.Instance.TryGetCropAtWorldPosition(
-                new Vector3(worldX, worldY, 0), out CropChunkData.TileData td)) return 0f;
-        PlantDataSO plant = growthService?.GetPlantData(td.PlantId);
-        if (plant == null || plant.GrowthStages.Count == 0) return 0f;
-        return (float)td.CropStage / (plant.GrowthStages.Count - 1);
+                new Vector3(worldX, worldY, 0), out UnifiedChunkData.CropTileData td)) return 0f;
+        PlantData plant = growthService?.GetPlantData(td.PlantId);
+        if (plant == null || plant.growthStages.Count == 0) return 0f;
+        return (float)td.CropStage / (plant.growthStages.Count - 1);
     }
 }

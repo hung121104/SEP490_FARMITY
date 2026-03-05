@@ -1,48 +1,34 @@
-using UnityEngine;
-
 public class RecipeModel
 {
-    private RecipeDataSO recipeData;
+    private RecipeData recipeData;
     public bool isUnlocked { get; private set; }
 
-    public RecipeDataSO RecipeData => recipeData;
-    public string RecipeID => recipeData.recipeID;
-    public string RecipeName => recipeData.recipeName;
-    public string Description => recipeData.description;
+    public RecipeData RecipeData => recipeData;
+    public string RecipeID      => recipeData.recipeID;
+    public string RecipeName    => recipeData.recipeName;
+    public string Description   => recipeData.description;
 
-    // Recipe Type
-    public RecipeType RecipeType => recipeData.recipeType;
-    public bool IsCrafting => recipeData.recipeType == RecipeType.Crafting;
-    public bool IsCooking => recipeData.recipeType == RecipeType.Cooking;
+    // Recipe Classification
+    public RecipeType       RecipeType => recipeData.RecipeType;
+    public bool             IsCrafting => recipeData.RecipeType == RecipeType.Crafting;
+    public bool             IsCooking  => recipeData.RecipeType == RecipeType.Cooking;
 
-    public ItemDataSO ResultItem => recipeData.resultItem;
-    public int ResultQuantity => recipeData.resultQuantity;
-    public Quality ResultQuality => recipeData.resultQuality;
+    /// <summary>itemID of the result item. Resolve via ItemCatalogService.GetItemData(ResultItemId).</summary>
+    public string           ResultItemId   => recipeData.resultItemId;
+    public int              ResultQuantity => recipeData.resultQuantity;
+    public Quality          ResultQuality  => recipeData.ResultQualityEnum;
 
-    public ItemIngredient[] Ingredients => recipeData.ingredients;
-    public CraftingCategory Category => recipeData.category;
+    public System.Collections.Generic.List<RecipeIngredient> Ingredients => recipeData.ingredients;
+    public CraftingCategory Category   => recipeData.Category;
 
-    public RecipeModel(RecipeDataSO data)
+    public RecipeModel(RecipeData data)
     {
         recipeData = data;
         isUnlocked = data.isUnlockedByDefault;
     }
 
-    internal void Unlock()
-    {
-        isUnlocked = true;
-    }
+    internal void Unlock() => isUnlocked = true;
+    internal void Lock()   => isUnlocked = false;
 
-    internal void Lock()
-    {
-        isUnlocked = false;
-    }
-
-    /// <summary>
-    /// Check if recipe is valid
-    /// </summary>
-    public bool IsValid()
-    {
-        return recipeData != null && recipeData.IsValid();
-    }
+    public bool IsValid() => recipeData != null && recipeData.IsValid();
 }

@@ -1,8 +1,9 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { RpcException } from '@nestjs/microservices';
 import { Account, AccountDocument } from './account.schema';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
@@ -29,19 +30,15 @@ export class AccountService {
     const account = new this.accountModel({
       ...rest,
       password: hashedPassword,
-      gameSettings: {
-        audio: createAccountDto.gameSettings?.audio ?? true,
-        keyBinds: createAccountDto.gameSettings?.keyBinds ?? { moveup: 'w', attack: 'Left_Click' },
-      },
     });
 
     try {
       return await account.save();
     } catch (error) {
       if (error.code === 11000) {
-        throw new BadRequestException('Username or email already exists');
+        throw new RpcException({ status: 400, message: 'Username or email already exists' });
       }
-      throw error;
+      throw new RpcException({ status: 500, message: 'Internal server error' });
     }
   }
 
@@ -53,11 +50,11 @@ export class AccountService {
     const { username, password } = loginDto;
     const account = await this.accountModel.findOne({ username }).exec();
     if (!account) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
     const isPasswordValid = await bcrypt.compare(password, account.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
     const payload = { username: account.username, sub: account._id };
     const token = this.jwtService.sign(payload);
@@ -76,11 +73,11 @@ export class AccountService {
     const { username, password } = loginDto;
     const account = await this.accountModel.findOne({ username }).exec();
     if (!account || !account.isAdmin) {
-      throw new UnauthorizedException('Invalid credentials or not an admin');
+      throw new RpcException({ status: 401, message: 'Invalid credentials or not an admin' });
     }
     const isPasswordValid = await bcrypt.compare(password, account.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
     const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin };
     const token = this.jwtService.sign(payload);
@@ -96,7 +93,7 @@ export class AccountService {
   // Admin account provisioning (restricted by shared secret)
   async createAdmin(createAdminDto: CreateAdminDto): Promise<Account> {
     if (createAdminDto.adminSecret !== process.env.ADMIN_CREATION_SECRET) {
-      throw new UnauthorizedException('Invalid admin secret');
+      throw new RpcException({ status: 401, message: 'Invalid admin secret' });
     }
     const { password, adminSecret, ...rest } = createAdminDto;
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -111,9 +108,9 @@ export class AccountService {
       return await account.save();
     } catch (error) {
       if (error.code === 11000) {
-        throw new BadRequestException('Username or email already exists');
+        throw new RpcException({ status: 400, message: 'Username or email already exists' });
       }
-      throw error;
+      throw new RpcException({ status: 500, message: 'Internal server error' });
     }
   }
 
@@ -123,14 +120,15 @@ export class AccountService {
       const isActive = await this.sessionService.isSessionActive(token);
       if (!isActive) {
         console.log('[auth-service] Token rejected: session inactive or revoked');
-        throw new UnauthorizedException('Session inactive or revoked');
+        throw new RpcException({ status: 401, message: 'Session inactive or revoked' });
       }
       await this.sessionService.updateActivity(token);
       const payload = this.jwtService.verify(token);
       console.log(`[auth-service] Token verified: ${payload?.username ?? 'unknown'}`);
       return payload;
     } catch (err) {
-      throw new UnauthorizedException('Invalid token');
+      if (err instanceof RpcException) throw err;
+      throw new RpcException({ status: 401, message: 'Invalid token' });
     }
   }
 
@@ -139,11 +137,12 @@ export class AccountService {
     try {
       const isActive = await this.sessionService.isSessionActive(token);
       if (!isActive) {
-        throw new UnauthorizedException('Session inactive or revoked');
+        throw new RpcException({ status: 401, message: 'Session inactive or revoked' });
       }
       return this.jwtService.verify(token);
     } catch (err) {
-      throw new UnauthorizedException('Invalid token');
+      if (err instanceof RpcException) throw err;
+      throw new RpcException({ status: 401, message: 'Invalid token' });
     }
   }
 
@@ -151,7 +150,7 @@ export class AccountService {
   async logout(token: string) {
     const revoked = await this.sessionService.revokeSession(token);
     if (!revoked) {
-      throw new BadRequestException('Session not found');
+      throw new RpcException({ status: 400, message: 'Session not found' });
     }
     console.log('[auth-service] Admin logged out');
     return { ok: true };
@@ -160,7 +159,7 @@ export class AccountService {
   async requestAdminPasswordReset(email: string) {
     const account = await this.accountModel.findOne({ email, isAdmin: true }).exec();
     if (!account) {
-      throw new BadRequestException('Admin account not found');
+      throw new RpcException({ status: 400, message: 'Admin account not found' });
     }
 
     const otp = this.generateOtp();
@@ -180,24 +179,24 @@ export class AccountService {
   async confirmAdminPasswordReset(email: string, otp: string, newPassword: string) {
     const account = await this.accountModel.findOne({ email, isAdmin: true }).exec();
     if (!account || !account.resetOtpHash || !account.resetOtpExpiresAt) {
-      throw new BadRequestException('Invalid reset request');
+      throw new RpcException({ status: 400, message: 'Invalid reset request' });
     }
 
     if (account.resetOtpUsed) {
-      throw new BadRequestException('OTP already used');
+      throw new RpcException({ status: 400, message: 'OTP already used' });
     }
 
     if (account.resetOtpExpiresAt.getTime() < Date.now()) {
-      throw new BadRequestException('OTP expired');
+      throw new RpcException({ status: 400, message: 'OTP expired' });
     }
 
     if (!/^\d{6}$/.test(otp)) {
-      throw new BadRequestException('Invalid OTP format');
+      throw new RpcException({ status: 400, message: 'Invalid OTP format' });
     }
 
     const isOtpValid = await bcrypt.compare(otp, account.resetOtpHash);
     if (!isOtpValid) {
-      throw new BadRequestException('Invalid OTP');
+      throw new RpcException({ status: 400, message: 'Invalid OTP' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -222,7 +221,7 @@ export class AccountService {
     const secure = this.configService.get<string>('MAIL_SECURE') === 'true';
 
     if (!host || !user || !pass || !from) {
-      throw new BadRequestException('Email configuration is missing');
+      throw new RpcException({ status: 500, message: 'Email configuration is missing' });
     }
 
     const transporter = nodemailer.createTransport({

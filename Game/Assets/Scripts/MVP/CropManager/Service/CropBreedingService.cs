@@ -3,6 +3,7 @@ using Photon.Pun;
 
 /// <summary>
 /// Validates pollen-application attempts and morphs the receiver crop into a hybrid.
+/// Reads cross-breeding tables from <see cref="PollenData.crossResults"/> (data-driven).
 /// All network sync goes through ChunkDataSyncManager.
 /// </summary>
 public class CropBreedingService : ICropBreedingService
@@ -16,82 +17,135 @@ public class CropBreedingService : ICropBreedingService
         CropManagerView  cropManagerView,
         ChunkDataSyncManager syncManager = null)
     {
-        this.worldData      = worldData;
+        this.worldData       = worldData;
         this.cropManagerView = cropManagerView;
-        this.syncManager    = syncManager;
+        this.syncManager     = syncManager;
     }
 
     // ── ICropBreedingService ──────────────────────────────────────────────
 
-    public bool CanApplyPollen(PollenDataSO pollen, Vector3 targetWorldPos)
+    public bool CanApplyPollen(PollenData pollen, Vector3 targetWorldPos)
     {
-        if (pollen == null || pollen.crossResults == null) return false;
-        if (!worldData.TryGetCropAtWorldPosition(targetWorldPos, out var tile)) return false;
-        if (tile.IsPollinated) return false;
+        if (pollen == null) { Debug.LogWarning("[CropBreedingService] CanApplyPollen: pollen is null."); return false; }
 
-        PlantDataSO targetPlant = GetPlant(tile.PlantId);
-        if (targetPlant == null) return false;
-        if (targetPlant == pollen.sourcePlant) return false;         // same species
-        if (tile.CropStage != targetPlant.pollenStage) return false; // must be flowering
+        if (!worldData.TryGetCropAtWorldPosition(targetWorldPos, out var tile))
+        {
+            // Detailed diagnostics — identify exactly which step failed
+            int wx = Mathf.FloorToInt(targetWorldPos.x);
+            int wy = Mathf.FloorToInt(targetWorldPos.y);
+            int secId = worldData.GetSectionIdFromWorldPosition(targetWorldPos);
+            if (secId == -1)
+            {
+                Debug.LogWarning($"[CropBreedingService] CanApplyPollen: position ({wx},{wy}) is NOT in any active section. Check WorldDataManager section configs.");
+            }
+            else
+            {
+                UnityEngine.Vector2Int chunkPos = worldData.WorldToChunkCoords(targetWorldPos);
+                var chunk = worldData.GetChunkAtWorldPosition(targetWorldPos);
+                if (chunk == null)
+                    Debug.LogWarning($"[CropBreedingService] CanApplyPollen: sectionId={secId} found but chunk {chunkPos} is NULL (not loaded?).");
+                else
+                {
+                    bool hasCrop = chunk.HasCrop(wx, wy);
+                    int cropCount = chunk.GetCropCount();
+                    Debug.LogWarning($"[CropBreedingService] CanApplyPollen: chunk {chunkPos} exists (crops={cropCount}), HasCrop({wx},{wy})={hasCrop}. Tile exists but HasCrop=false — tile not planted via WorldDataManager?");
+                }
+            }
+            Debug.LogWarning($"[CropBreedingService] CanApplyPollen: no crop at ({wx},{wy}).");
+            return false;
+        }
 
-        return FindCrossResult(pollen, targetPlant, out _);
+        if (tile.IsPollinated)
+        {
+            Debug.LogWarning($"[CropBreedingService] CanApplyPollen: crop at {targetWorldPos} already pollinated.");
+            return false;
+        }
+
+        PlantData targetPlant = GetPlant(tile.PlantId);
+        if (targetPlant == null)
+        {
+            Debug.LogWarning($"[CropBreedingService] CanApplyPollen: plant '{tile.PlantId}' not found in catalog.");
+            return false;
+        }
+
+        // Pollen from the same species is not allowed
+        if (!string.IsNullOrEmpty(pollen.sourcePlantId) && pollen.sourcePlantId == tile.PlantId)
+        {
+            Debug.LogWarning($"[CropBreedingService] CanApplyPollen: same-species pollen rejected ('{pollen.sourcePlantId}').");
+            return false;
+        }
+
+        // Target must be at its flowering/pollen stage
+        if (tile.CropStage != targetPlant.pollenStage)
+        {
+            Debug.LogWarning($"[CropBreedingService] CanApplyPollen: crop stage {tile.CropStage} != pollenStage {targetPlant.pollenStage} for plant '{tile.PlantId}'.");
+            return false;
+        }
+
+        // There must be a defined cross result for this target
+        string resultId = pollen.FindResultPlantId(tile.PlantId);
+        int crossCount = pollen.crossResults?.Length ?? 0;
+        Debug.Log($"[CropBreedingService] CanApplyPollen: pollen='{pollen.itemID}' crossResults={crossCount}, target='{tile.PlantId}', resultId='{resultId}'.");
+        if (resultId == null)
+        {
+            Debug.LogWarning($"[CropBreedingService] CanApplyPollen: no crossResult entry for target '{tile.PlantId}' in pollen '{pollen.itemID}'.");
+            return false;
+        }
+
+        return true;
     }
 
-    public bool TryApplyPollen(PollenDataSO pollen, Vector3 targetWorldPos)
+    public bool TryApplyPollen(PollenData pollen, Vector3 targetWorldPos)
     {
         if (!worldData.TryGetCropAtWorldPosition(targetWorldPos, out var tile)) return false;
 
-        PlantDataSO targetPlant = GetPlant(tile.PlantId);
-        if (targetPlant == null) return false;
-        if (!FindCrossResult(pollen, targetPlant, out var cross)) return false;
+        string resultPlantId = pollen.FindResultPlantId(tile.PlantId);
+        if (string.IsNullOrEmpty(resultPlantId))
+        {
+            Debug.LogWarning($"[CropBreedingService] No cross result for '{tile.PlantId}' + pollen '{pollen.itemID}'.");
+            return false;
+        }
 
-        // Roll success chance
-        if (Random.value > pollen.pollinationSuccessChance) return false;
+        // Verify the result plant exists in the catalog
+        PlantData resultPlant = PlantCatalogService.Instance?.GetPlantData(resultPlantId);
+        if (resultPlant == null)
+        {
+            Debug.LogWarning($"[CropBreedingService] Result plant '{resultPlantId}' not found in PlantCatalogService.");
+            return false;
+        }
 
-        // The hybrid starts at its first unique stage (pollenStage = flowering)
-        byte hybridStartStage = (byte)cross.resultPlant.pollenStage;
-
-        // Mutate the tile
-        bool ok = worldData.SetCropPlantId(targetWorldPos, cross.resultPlant.PlantId, hybridStartStage);
-        if (!ok) return false;
-
-        // Broadcast
         int wx = Mathf.FloorToInt(targetWorldPos.x);
         int wy = Mathf.FloorToInt(targetWorldPos.y);
-        if (PhotonNetwork.IsConnected && syncManager != null)
-            syncManager.BroadcastCropCrossbred(wx, wy, cross.resultPlant.PlantId, hybridStartStage);
 
-        // Refresh local visuals
+        // Set the crop to the hybrid's pollenStage so it shows the hybridFlower sprite.
+        // Growth service will advance it one more step to pollenStage+1 (hybridMature = harvestable).
+        byte hybridStartStage = (byte)resultPlant.pollenStage;
+
+        bool morphed = worldData.SetCropPlantId(targetWorldPos, resultPlantId, hybridStartStage);
+        if (!morphed)
+        {
+            Debug.LogError($"[CropBreedingService] SetCropPlantId failed at ({wx},{wy}).");
+            return false;
+        }
+
+        // Network sync
+        if (PhotonNetwork.IsConnected && syncManager != null)
+            syncManager.BroadcastCropCrossbred(wx, wy, resultPlantId, hybridStartStage);
+
         RefreshChunk(targetWorldPos);
 
-        Debug.Log($"[CropBreedingService] ✓ Crossbred ({wx},{wy}): {targetPlant.PlantName} + " +
-                  $"{pollen.sourcePlant?.PlantName} → {cross.resultPlant.PlantName}");
+        Debug.Log($"[CropBreedingService] Crossbred at ({wx},{wy}): '{tile.PlantId}' → '{resultPlantId}' (hybrid stage {hybridStartStage}, matures at {hybridStartStage + 1}).");
         return true;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
-    private static bool FindCrossResult(PollenDataSO pollen, PlantDataSO target,
-                                        out PollenDataSO.CrossResult result)
+    private PlantData GetPlant(string plantId)
     {
-        result = default;
-        foreach (var r in pollen.crossResults)
-        {
-            if (r.targetPlant == target && r.resultPlant != null)
-            {
-                result = r;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private PlantDataSO GetPlant(string plantId)
-    {
-        if (cropManagerView != null && cropManagerView.GrowthService != null)
+        if (cropManagerView?.GrowthService != null)
             return cropManagerView.GrowthService.GetPlantData(plantId);
 
-        return Resources.Load<PlantDataSO>($"Plants/{plantId}");
+        return PlantCatalogService.Instance?.GetPlantData(plantId);
     }
 
     private void RefreshChunk(Vector3 worldPos)

@@ -12,10 +12,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
     [SerializeField] private CookingRecipeListView recipeListView;
     [SerializeField] private CookingDetailView detailView;
 
-    [Header("Title")]
-    [SerializeField] private TMPro.TextMeshProUGUI titleText;
-    [SerializeField] private string defaultTitle = "Cooking";
-
     // Properties
     public IRecipeListView RecipeListView => recipeListView;
     public IRecipeDetailView RecipeDetailView => detailView;
@@ -24,13 +20,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
     private void Awake()
     {
         ValidateReferences();
-
-        // Set title
-        if (titleText != null)
-        {
-            titleText.text = defaultTitle;
-        }
-
         Hide();
     }
 
@@ -79,17 +68,6 @@ public class CookingMainView : MonoBehaviour, ICookingMainView
     #endregion
 
     #region Public Helper Methods
-
-    /// <summary>
-    /// Set the title text for this view
-    /// </summary>
-    public void SetTitle(string title)
-    {
-        if (titleText != null)
-        {
-            titleText.text = title;
-        }
-    }
 
     /// <summary>
     /// Check if view is currently visible

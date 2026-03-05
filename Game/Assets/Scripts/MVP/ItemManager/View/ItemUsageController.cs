@@ -35,7 +35,6 @@ public class ItemUsageController : MonoBehaviour
             return;
         }
 
-        // Build the service chain for tools (and consumables/weapons when ready)
         itemUsagePresenter = new ItemUsagePresenter(new ItemUsageService(new UseToolService()));
 
         presenter.OnItemUsed += HandleItemUsed;
@@ -43,20 +42,17 @@ public class ItemUsageController : MonoBehaviour
         Debug.Log("ItemUsageController: Subscribed to Hotbar");
     }
 
-    private void HandleItemUsed(ItemDataSO item, Vector3 targetPosition, int inventorySlotIndex)
+    private void HandleItemUsed(ItemData item, Vector3 targetPosition, int inventorySlotIndex)
     {
         Debug.Log("ItemUsageController: Using " + item.itemName + " at " + targetPosition);
 
-        switch (item.GetItemType())
+        switch (item.itemType)
         {
             case ItemType.Seed:
-                // Routed through ItemUsageService → UseSeedService → fires OnSeedRequested
                 itemUsagePresenter.UseSeed(item, targetPosition);
                 break;
 
             case ItemType.Tool:
-                // UseToolService fires per-tool events (OnHoeRequested, etc.)
-                // that the relevant Views subscribe to
                 itemUsagePresenter.UseTool(item, targetPosition);
                 break;
 
@@ -72,17 +68,26 @@ public class ItemUsageController : MonoBehaviour
                 break;
 
             case ItemType.Pollen:
-                // UsePollen fires UseToolService.OnPollenRequested → CropBreedingView handles it
-                if (itemUsagePresenter.UsePollen(item, targetPosition))
-                    presenter.ConsumeCurrentItem(1);
+                // Fire the pollen event. CropBreedingView will raise OnBreedingResult
+                // synchronously with true/false — consume only on success.
+                void OnResult(bool success)
+                {
+                    CropBreedingView.OnBreedingResult -= OnResult;
+                    if (success)
+                        presenter.ConsumeCurrentItem(1);
+                }
+                CropBreedingView.OnBreedingResult += OnResult;
+                bool eventFired = itemUsagePresenter.UsePollen(item, targetPosition);
+                // Guard: if the event was never fired (no CropBreedingView in scene), clean up
+                if (!eventFired)
+                    CropBreedingView.OnBreedingResult -= OnResult;
                 break;
 
             default:
-                Debug.LogWarning("No handler for item type: " + item.GetItemType());
+                Debug.LogWarning("No handler for item type: " + item.itemType);
                 break;
         }
     }
-
 
     private void OnDestroy()
     {

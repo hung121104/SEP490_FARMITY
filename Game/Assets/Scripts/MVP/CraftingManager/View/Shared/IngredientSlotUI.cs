@@ -14,33 +14,28 @@ public class IngredientSlotUI : MonoBehaviour
     [SerializeField] private Color hasEnoughColor = Color.white;
     [SerializeField] private Color missingColor = Color.red;
 
-    /// <summary>
-    /// Initialize ingredient slot with item data and availability
-    /// </summary>
-    public void Initialize(ItemDataSO item, int requiredAmount, int missingAmount)
+    public void Initialize(ItemData item, int requiredAmount, int missingAmount)
     {
         if (item == null) return;
 
-        itemIcon.sprite = item.icon;
-        itemNameText.text = item.itemName;
-        quantityText.text = $"x{requiredAmount}";
+        // Resolve icon from sprite cache
+        Sprite icon = ItemCatalogService.Instance?.GetCachedSprite(item.itemID);
+        if (icon != null && itemIcon != null) itemIcon.sprite = icon;
+
+        if (itemNameText != null) itemNameText.text = item.itemName;
+        if (quantityText != null) quantityText.text = $"x{requiredAmount}";
 
         bool hasMissing = missingAmount > 0;
 
-        // Show missing indicator
         if (missingIndicator != null)
-        {
             missingIndicator.SetActive(hasMissing);
-        }
 
         if (missingAmountText != null && hasMissing)
-        {
             missingAmountText.text = $"-{missingAmount}";
-        }
 
-        // Update colors
         Color color = hasMissing ? missingColor : hasEnoughColor;
-        itemNameText.color = color;
-        quantityText.color = color;
+        if (itemNameText != null) itemNameText.color = color;
+        if (quantityText != null) quantityText.color = color;
     }
 }
+

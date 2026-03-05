@@ -2,9 +2,10 @@ using UnityEngine;
 
 public interface IUseToolService
 {
-    bool UseHoe(ToolDataSO item, Vector3 pos);
-    bool UseWateringCan(ToolDataSO item, Vector3 pos);
-    bool UsePickaxe(ToolDataSO item, Vector3 pos);
-    bool UseAxe(ToolDataSO item, Vector3 pos);
-    bool UseFishingRod(ToolDataSO item, Vector3 pos);
+    bool UseHoe(ToolData item, Vector3 pos);
+    bool UseWateringCan(ToolData item, Vector3 pos);
+    bool UsePickaxe(ToolData item, Vector3 pos);
+    bool UseAxe(ToolData item, Vector3 pos);
+    bool UseFishingRod(ToolData item, Vector3 pos);
+    bool UsePollen(PollenData pollen, Vector3 pos);
 }

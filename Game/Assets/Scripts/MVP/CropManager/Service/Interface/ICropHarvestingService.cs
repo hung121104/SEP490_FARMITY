@@ -16,7 +16,7 @@ public interface ICropHarvestingService
     /// and returns the harvested ItemDataSO (or null if none matched).
     /// Returns false if the crop could not be removed.
     /// </summary>
-    bool TryHarvest(Vector3 worldPos, out ItemDataSO harvestedItem);
+    bool TryHarvest(Vector3 worldPos, out ItemData harvestedItem);
 
     /// <summary>
     /// Scans the 3×3 area around playerPos for any crop ready to harvest.
@@ -38,5 +38,5 @@ public interface ICropHarvestingService
     /// The crop itself is NOT removed — only pollen is taken.
     /// Returns true on success; pollenItem will contain the PollenDataSO given.
     /// </summary>
-    bool TryCollectPollen(Vector3 worldPos, out PollenDataSO pollenItem);
+    bool TryCollectPollen(Vector3 worldPos, out PollenData pollenItem);
 }

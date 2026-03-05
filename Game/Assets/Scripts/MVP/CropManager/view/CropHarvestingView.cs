@@ -111,12 +111,12 @@ public class CropHarvestingView : MonoBehaviourPun
 
     // ── View callbacks (called by Presenter) ──────────────────────────────
 
-    public void OnHarvestSuccess(Vector3 tilePos, ItemDataSO harvestedItem) { }
+    public void OnHarvestSuccess(Vector3 tilePos, ItemData harvestedItem) { }
 
     public void OnHarvestFailed(Vector3 tilePos) { }
 
     /// <summary>Called by the Presenter when pollen was successfully collected.</summary>
-    public void OnPollenCollectSuccess(Vector3 tilePos, PollenDataSO pollen)
+    public void OnPollenCollectSuccess(Vector3 tilePos, PollenData pollen)
     {
         // TODO: play a VFX/SFX, show a pickup notification, etc.
         Debug.Log($"[CropHarvestingView] Pollen '{pollen?.itemName}' collected at {tilePos}.");

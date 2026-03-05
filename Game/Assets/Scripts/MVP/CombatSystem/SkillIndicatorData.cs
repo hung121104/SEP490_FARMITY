@@ -1,23 +1,24 @@
 /// <summary>
-/// Data container passed from any skill to SkillIndicatorManager.
-/// Tells the manager what to display and how big.
+/// Data container for skill indicators.
+/// Skills pass this to SkillIndicatorManager.ShowIndicator().
 /// </summary>
-public struct SkillIndicatorData
+public class SkillIndicatorData
 {
     public SkillIndicatorManager.IndicatorType type;
 
     // Arrow
-    public float arrowRange; // World units - exact skill range/dash distance
+    public float arrowRange;
 
-    // Cone (for later)
+    // Cone
     public float coneRange;
     public float coneAngle;
 
-    // Circle (for later)
+    // Circle
     public float circleRadius;
     public float circleMaxRange;
 
-    // Quick constructor for Arrow
+    #region Static Factories
+
     public static SkillIndicatorData Arrow(float range)
     {
         return new SkillIndicatorData
@@ -27,7 +28,6 @@ public struct SkillIndicatorData
         };
     }
 
-    // Quick constructor for Cone (for later)
     public static SkillIndicatorData Cone(float range, float angle)
     {
         return new SkillIndicatorData
@@ -38,7 +38,6 @@ public struct SkillIndicatorData
         };
     }
 
-    // Quick constructor for Circle (for later)
     public static SkillIndicatorData Circle(float radius, float maxRange)
     {
         return new SkillIndicatorData
@@ -48,4 +47,6 @@ public struct SkillIndicatorData
             circleMaxRange = maxRange
         };
     }
+
+    #endregion
 }

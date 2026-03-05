@@ -32,6 +32,9 @@ public class InventoryView : MonoBehaviour, IInventoryView
     [Header("Delete Zone")]
     [SerializeField] private ItemDeleteView itemDeleteView;
 
+    [Header("Drop Zone")]
+    [SerializeField] private InventoryDropZone inventoryDropZone;
+
     private List<InventorySlotView> slotViews = new List<InventorySlotView>();
     private List<GameObject> rowObjects = new List<GameObject>();
     private Coroutine notificationCoroutine;
@@ -263,6 +266,14 @@ public class InventoryView : MonoBehaviour, IInventoryView
         OnItemDeleteRequested?.Invoke(slot);
     }
 
+    /// <summary>
+    /// Programmatically assigns a drop zone after Awake (e.g. from CraftingInventoryAdapter).
+    /// </summary>
+    public void SetDropZone(InventoryDropZone newDropZone)
+    {
+        inventoryDropZone = newDropZone;
+    }
+
     #endregion 
 
     #region IInventoryView Implementation
@@ -361,5 +372,33 @@ public class InventoryView : MonoBehaviour, IInventoryView
     private void HandleSlotClicked(int slotIndex)
     {
         OnSlotClicked?.Invoke(slotIndex);
+    }
+
+    /// <summary>
+    /// Check if a screen position is inside the inventory zone.
+    /// Prefers InventoryDropZone if assigned; falls back to inventoryPanel bounds.
+    /// Used to detect when a drag ends outside the inventory (drop to world).
+    /// </summary>
+    public bool IsScreenPositionInsideInventory(Vector2 screenPosition)
+    {
+        // Prefer the explicit drop zone if assigned
+        if (inventoryDropZone != null)
+        {
+            return inventoryDropZone.IsScreenPositionInsideZone(screenPosition);
+        }
+
+        // Fallback: use the inventory panel bounds
+        if (inventoryPanel == null) return false;
+
+        RectTransform rect = inventoryPanel.GetComponent<RectTransform>();
+        if (rect == null) return false;
+
+        // Check against the inventory panel's rect, using the parent canvas camera if needed
+        Canvas canvas = inventoryPanel.GetComponentInParent<Canvas>();
+        Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            ? canvas.worldCamera
+            : null;
+
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, screenPosition, cam);
     }
 }
