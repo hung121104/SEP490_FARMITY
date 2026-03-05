@@ -1,0 +1,426 @@
+using UnityEngine;
+using System.Collections;
+using Photon.Pun;
+using CombatManager.Model;
+using CombatManager.Service;
+using CombatManager.View;
+
+namespace CombatManager.Presenter
+{
+    public abstract class SkillPresenter : MonoBehaviour
+    {
+        #region Serialized Fields
+
+        [Header("Model")]
+        [SerializeField] protected SkillModel model = new SkillModel();
+
+        [Header("Skill Settings")]
+        [SerializeField] protected float skillCooldown = 3f;
+        [SerializeField] protected float chargeDuration = 0.2f;
+        [SerializeField] protected float rollDisplayDuration = 0.4f;
+
+        [Header("Dice Settings")]
+        [SerializeField] protected CombatManager.Model.DiceTier skillTier = CombatManager.Model.DiceTier.D6;
+        [SerializeField] protected float skillMultiplier = 1.5f;
+
+        [Header("Combat Settings")]
+        [SerializeField] public LayerMask enemyLayers;
+
+        [Header("Input Settings")]
+        [SerializeField] protected KeyCode confirmKey = KeyCode.E;
+        [SerializeField] protected KeyCode cancelKey = KeyCode.Q;
+
+        #endregion
+
+        #region Services
+
+        protected ISkillService skillService;
+        protected IDiceRollerService diceRollerService;
+        protected IDamageCalculatorService damageCalculatorService;
+
+        #endregion
+
+        #region Runtime References (Auto-Found)
+
+        protected Transform playerTransform;
+
+        // ✅ Use old PlayerMovement directly - same as original SkillBase
+        protected PlayerMovement playerMovement;
+
+        protected StatsPresenter statsPresenter;
+        protected PlayerPointerPresenter pointerPresenter;
+        protected CombatModePresenter combatModePresenter;
+
+        protected Camera mainCamera;
+        protected Transform attackPoint;
+        protected Transform centerPoint;
+
+        #endregion
+
+        #region Unity Lifecycle
+
+        protected virtual void Awake()
+        {
+            InitializeModel();
+            InitializeServices();
+        }
+
+        protected virtual void Start()
+        {
+            StartCoroutine(FindPlayerDelayed());
+            OnStart();
+        }
+
+        protected virtual void Update()
+        {
+            skillService?.UpdateCooldown(Time.deltaTime);
+            HandleConfirmCancelInput();
+            UpdateAiming();
+        }
+
+        #endregion
+
+        #region Initialization
+
+        private void InitializeModel()
+        {
+            model.skillCooldown = skillCooldown;
+            model.chargeDuration = chargeDuration;
+            model.rollDisplayDuration = rollDisplayDuration;
+            model.skillTier = skillTier;
+            model.skillMultiplier = skillMultiplier;
+            model.enemyLayers = enemyLayers;
+            model.confirmKey = confirmKey;
+            model.cancelKey = cancelKey;
+        }
+
+        private void InitializeServices()
+        {
+            skillService = new SkillService(model);
+            diceRollerService = new DiceRollerService();
+            damageCalculatorService = new DamageCalculatorService();
+
+            Debug.Log($"[{GetType().Name}] Services initialized");
+        }
+
+        #endregion
+
+        #region Find Player (Spawned at Runtime)
+
+        private IEnumerator FindPlayerDelayed()
+        {
+            yield return new WaitForSeconds(0.5f);
+            FindLocalPlayer();
+        }
+
+        private void FindLocalPlayer()
+        {
+            // Find local player via PhotonView (multiplayer)
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine)
+                {
+                    SetupPlayerReferences(go);
+                    return;
+                }
+            }
+
+            // Fallback: solo test scene (no PhotonView)
+            GameObject fallback = GameObject.FindGameObjectWithTag("PlayerEntity");
+            if (fallback != null)
+            {
+                SetupPlayerReferences(fallback);
+                return;
+            }
+
+            Debug.LogError($"[{GetType().Name}] Local player not found!");
+            enabled = false;
+        }
+
+        private void SetupPlayerReferences(GameObject playerGO)
+        {
+            playerTransform = playerGO.transform;
+
+            // ✅ Same as original SkillBase - use PlayerMovement directly
+            playerMovement = playerGO.GetComponent<PlayerMovement>();
+            if (playerMovement == null)
+                Debug.LogWarning($"[{GetType().Name}] PlayerMovement not found on player!");
+
+            // Find CenterPoint
+            Transform found = playerGO.transform.Find("CenterPoint");
+            centerPoint = found != null ? found : playerGO.transform;
+
+            // StatsPresenter
+            statsPresenter = playerGO.GetComponent<StatsPresenter>();
+            if (statsPresenter == null)
+                statsPresenter = FindObjectOfType<StatsPresenter>();
+            if (statsPresenter == null)
+                Debug.LogWarning($"[{GetType().Name}] StatsPresenter not found!");
+
+            // Find Pointer
+            pointerPresenter = FindObjectOfType<PlayerPointerPresenter>();
+            if (pointerPresenter != null)
+                attackPoint = pointerPresenter.transform;
+            else
+                Debug.LogWarning($"[{GetType().Name}] PlayerPointerPresenter not found!");
+
+            // CombatModePresenter
+            combatModePresenter = CombatModePresenter.Instance;
+            if (combatModePresenter == null)
+                Debug.LogWarning($"[{GetType().Name}] CombatModePresenter not found!");
+
+            mainCamera = Camera.main;
+
+            Debug.Log($"[{GetType().Name}] Player references set up from: {playerGO.name}");
+        }
+
+        #endregion
+
+        #region Input Handling
+
+        private void HandleConfirmCancelInput()
+        {
+            if (!model.IsWaitingConfirm) return;
+            if (!IsCombatModeActive()) return;
+
+            if (Input.GetKeyDown(model.confirmKey))
+                ConfirmSkill();
+            else if (Input.GetKeyDown(model.cancelKey))
+                CancelSkill();
+        }
+
+        #endregion
+
+        #region Aiming
+
+        private void UpdateAiming()
+        {
+            if (!model.IsWaitingConfirm) return;
+            if (mainCamera == null) mainCamera = Camera.main;
+            if (playerTransform == null) return;
+
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+            Plane plane = new Plane(Vector3.forward, playerTransform.position);
+
+            if (plane.Raycast(ray, out float dist))
+            {
+                Vector3 mouseWorldPos = ray.GetPoint(dist);
+                Vector3 direction = mouseWorldPos - playerTransform.position;
+                direction.z = 0f;
+
+                if (direction.magnitude > 0.01f)
+                    model.targetDirection = direction.normalized;
+            }
+
+            // TODO: SPAWN_VFX - Add direction indicator VFX here
+        }
+
+        #endregion
+
+        #region Public API - Trigger
+
+        public void TriggerSkill()
+        {
+            if (!skillService.CanTrigger()) return;
+            if (!IsCombatModeActive()) return;
+            if (playerTransform == null)
+            {
+                Debug.LogWarning($"[{GetType().Name}] Player not found yet!");
+                return;
+            }
+
+            model.isExecuting = true;
+            skillService.StartCooldown();
+            DisablePlayerSystems();
+            StartCoroutine(ExecuteSkillSequence());
+        }
+
+        #endregion
+
+        #region Skill Flow Coroutine
+
+        private IEnumerator ExecuteSkillSequence()
+        {
+            // === CHARGE PHASE ===
+            skillService.SetState(SkillState.Charging);
+            OnChargeStart();
+
+            // TODO: SPAWN_VFX - Play charge animation/VFX here
+
+            yield return new WaitForSeconds(model.chargeDuration);
+
+            // === ROLL PHASE ===
+            model.currentDiceRoll = diceRollerService.Roll(model.skillTier);
+
+            // ✅ FIX: Fully qualify both arguments to avoid global DiceTier ambiguity
+            CombatManager.Presenter.DiceDisplayPresenter.Show(
+                model.currentDiceRoll,
+                (CombatManager.Model.DiceTier)model.skillTier
+            );
+            EnablePlayerSystems();
+
+            yield return new WaitForSeconds(model.rollDisplayDuration);
+
+            // === WAIT FOR CONFIRMATION ===
+            yield return StartCoroutine(WaitForConfirmationRoutine());
+
+            // Cancelled?
+            if (!model.isExecuting)
+                yield break;
+
+            // === EXECUTE PHASE ===
+            skillService.SetState(SkillState.Executing);
+            DisablePlayerSystems();
+
+            // TODO: SPAWN_VFX - Play attack animation/VFX here
+            OnAttackStart();
+
+            yield return new WaitForSeconds(0.1f);
+
+            int strength = 0;
+            if (statsPresenter != null)
+                strength = statsPresenter.GetService().GetTempStrength();
+
+            int finalDamage = damageCalculatorService.CalculateSkillDamage(
+                model.currentDiceRoll,
+                strength,
+                model.skillMultiplier
+            );
+
+            yield return StartCoroutine(OnExecute(finalDamage, model.targetDirection));
+
+            EndSkillExecution();
+        }
+
+        private IEnumerator WaitForConfirmationRoutine()
+        {
+            skillService.SetState(SkillState.WaitingConfirm);
+
+            ShowIndicator();
+
+            while (model.IsWaitingConfirm && model.isExecuting)
+                yield return null;
+
+            DisablePlayerSystems();
+            HideIndicator();
+            DiceDisplayPresenter.Hide();
+        }
+
+        private void ConfirmSkill()
+        {
+            if (!model.IsWaitingConfirm) return;
+            skillService.SetState(SkillState.Executing);
+            Debug.Log($"[{GetType().Name}] Skill CONFIRMED");
+        }
+
+        private void CancelSkill()
+        {
+            if (!model.isExecuting) return;
+
+            model.isExecuting = false;
+            skillService.SetState(SkillState.Idle);
+
+            // TODO: SPAWN_VFX - Stop/destroy skill VFX here
+            OnSkillCancelled();
+
+            HideIndicator();
+            DiceDisplayPresenter.Hide();
+            EnablePlayerSystems();
+
+            Debug.Log($"[{GetType().Name}] Skill CANCELLED");
+        }
+
+        private void EndSkillExecution()
+        {
+            // TODO: SPAWN_VFX - Stop/destroy skill VFX here
+            OnAttackEnd();
+
+            HideIndicator();
+            EnablePlayerSystems();
+
+            model.isExecuting = false;
+            skillService.SetState(SkillState.Idle);
+
+            Debug.Log($"[{GetType().Name}] Skill execution END");
+        }
+
+        #endregion
+
+        #region Indicator
+
+        private void ShowIndicator()
+        {
+            // TODO: Replace with SkillIndicatorPresenter after refactor
+            // SkillIndicatorPresenter.Instance?.ShowIndicator(GetIndicatorData());
+        }
+
+        private void HideIndicator()
+        {
+            // TODO: Replace with SkillIndicatorPresenter after refactor
+            // SkillIndicatorPresenter.Instance?.HideAll();
+        }
+
+        #endregion
+
+        #region Player Systems
+
+        private void DisablePlayerSystems()
+        {
+            model.blockAttackDamage = true;
+
+            // ✅ PlayerMovement.enabled - same as original SkillBase
+            if (playerMovement != null)
+                playerMovement.enabled = false;
+        }
+
+        private void EnablePlayerSystems()
+        {
+            model.blockAttackDamage = false;
+
+            // ✅ PlayerMovement.enabled - same as original SkillBase
+            if (playerMovement != null)
+                playerMovement.enabled = true;
+        }
+
+        #endregion
+
+        #region Combat Mode Check
+
+        private bool IsCombatModeActive()
+        {
+            if (combatModePresenter == null) return true;
+            return combatModePresenter.IsCombatModeActive();
+        }
+
+        #endregion
+
+        #region Abstract Methods
+
+        protected abstract SkillIndicatorData GetIndicatorData();
+        protected abstract IEnumerator OnExecute(int finalDamage, Vector3 direction);
+
+        #endregion
+
+        #region Virtual Methods
+
+        protected virtual void OnStart() { }
+        protected virtual void OnChargeStart() { }
+        protected virtual void OnAttackStart() { }
+        protected virtual void OnAttackEnd() { }
+        protected virtual void OnSkillCancelled() { }
+
+        #endregion
+
+        #region Public Getters
+
+        public bool IsExecuting => model.isExecuting;
+        public SkillState GetCurrentState => model.currentState;
+        public float GetCooldownPercent() => skillService?.GetCooldownPercent() ?? 0f;
+        public bool IsCoolingDown() => skillService?.IsCoolingDown() ?? false;
+        public CombatManager.Model.DiceTier GetSkillTier() => model.skillTier;
+        public LayerMask GetEnemyLayers() => model.enemyLayers;
+
+        #endregion
+    }
+}

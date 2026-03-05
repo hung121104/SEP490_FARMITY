@@ -3,16 +3,9 @@ using CombatManager.Model;
 
 namespace CombatManager.Service
 {
-    /// <summary>
-    /// Service for dice rolling logic.
-    /// Inject into any system that needs dice rolls.
-    /// (Mirrors static DiceRoller from CombatSystem - kept for legacy)
-    /// </summary>
     public class DiceRollerService : IDiceRollerService
     {
-        #region Roll Methods
-
-        public int Roll(DiceTier tier)
+        public int Roll(CombatManager.Model.DiceTier tier)
         {
             int sides = (int)tier;
             int result = Random.Range(1, sides + 1);
@@ -20,7 +13,7 @@ namespace CombatManager.Service
             return result;
         }
 
-        public int RollWithAdvantage(DiceTier tier)
+        public int RollWithAdvantage(CombatManager.Model.DiceTier tier)
         {
             int roll1 = Roll(tier);
             int roll2 = Roll(tier);
@@ -29,7 +22,7 @@ namespace CombatManager.Service
             return result;
         }
 
-        public int RollWithDisadvantage(DiceTier tier)
+        public int RollWithDisadvantage(CombatManager.Model.DiceTier tier)
         {
             int roll1 = Roll(tier);
             int roll2 = Roll(tier);
@@ -38,9 +31,7 @@ namespace CombatManager.Service
             return result;
         }
 
-        public int GetMaxValue(DiceTier tier) => (int)tier;
+        public int GetMaxValue(CombatManager.Model.DiceTier tier) => (int)tier;
         public int GetMinValue() => 1;
-
-        #endregion
     }
 }
