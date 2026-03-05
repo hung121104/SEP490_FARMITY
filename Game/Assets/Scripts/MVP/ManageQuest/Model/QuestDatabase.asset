@@ -19,3 +19,9 @@ MonoBehaviour:
     requiredItemId: 01
     requiredAmount: 5
     status: 0
+  - questId: 2
+    questName: bring gold
+    description: bring me 5 gole
+    requiredItemId: 02
+    requiredAmount: 5
+    status: 0

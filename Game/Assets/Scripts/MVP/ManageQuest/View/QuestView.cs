@@ -1,50 +1,38 @@
 using UnityEngine;
-using TMPro;
-using UnityEngine.UI;
 using System;
+using System.Collections.Generic;
 
 public class QuestView : MonoBehaviour
 {
-    [Header("Root Panel")]
-    [SerializeField] private GameObject panelRoot;
+    [SerializeField] private NPCDialogueView dialogueView;
 
-    [Header("UI")]
-    [SerializeField] private TMP_Text questNameText;
-    [SerializeField] private TMP_Text descriptionText;
-    [SerializeField] private Button acceptButton;
+    public Action OnAccept;
+    public Action OnBack;
 
-    public event Action OnAcceptQuest;
-
-    private void Awake()
+    public void ShowQuest(QuestModel quest, string npcName, Sprite avatar)
     {
-        panelRoot.SetActive(false);
+        DialogueNode node = new DialogueNode();
 
-        acceptButton.onClick.AddListener(() =>
+        node.dialogueText =
+            quest.questName + "\n\n" +
+            quest.description;
+
+        node.options = new List<DialogueOption>()
         {
-            OnAcceptQuest?.Invoke();
-        });
+            new DialogueOption { optionText = "Accept", nextNodeIndex = -1 },
+            new DialogueOption { optionText = "Back", nextNodeIndex = -1 }
+        };
+
+        dialogueView.ShowNode(npcName, node, avatar);
     }
 
-    public void ShowQuest(QuestModel quest)
+    public void Accept()
     {
-        questNameText.text = quest.questName;
-        descriptionText.text = quest.description;
-
-        panelRoot.SetActive(true);
+        OnAccept?.Invoke();
     }
-    public void Hide()
+
+    public void Back()
     {
-        panelRoot.SetActive(false);
+        OnBack?.Invoke();
     }
-
-    public void Toggle()
-    {
-        panelRoot.SetActive(!panelRoot.activeSelf);
-    }
-
-    public bool IsOpen()
-    {
-        return panelRoot.activeSelf;
-    }
-
 }

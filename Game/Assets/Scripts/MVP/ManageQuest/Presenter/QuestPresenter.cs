@@ -1,28 +1,37 @@
+using UnityEngine;
+
 public class QuestPresenter
 {
     private QuestView view;
-    private IQuestService questService;
+    private IQuestService service;
     private QuestModel quest;
+
+    private string npcName;
+    private Sprite avatar;
 
     public QuestPresenter(
         QuestView view,
-        IQuestService questService,
-        QuestModel quest)
+        IQuestService service,
+        QuestModel quest,
+        string npcName,
+        Sprite avatar)
     {
         this.view = view;
-        this.questService = questService;
+        this.service = service;
         this.quest = quest;
+        this.npcName = npcName;
+        this.avatar = avatar;
 
-        view.OnAcceptQuest += OnAcceptQuest;
+        view.OnAccept += AcceptQuest;
     }
 
     public void ShowQuest()
     {
-        view.ShowQuest(quest);
+        view.ShowQuest(quest, npcName, avatar);
     }
 
-    private void OnAcceptQuest()
+    public void AcceptQuest()
     {
-        questService.AcceptQuest(quest);
+        service.AcceptQuest(quest);
     }
 }

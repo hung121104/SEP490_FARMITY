@@ -1,44 +1,47 @@
 ﻿    using UnityEngine;
     using System.Collections.Generic;
 
-    public class NPCInteractor : MonoBehaviour
-    {
-        private PlayerMovement playerMovement;   
-        [SerializeField] private NPCDialogueView dialogueView;
-        [SerializeField] private NPCDialogueModel dialogueModel;
-        [Header("Input Settings")]
-        [SerializeField] private KeyCode interactKey = KeyCode.E;
-        [Header("Option Keys")]
-        [SerializeField]
-        private List<KeyCode> optionKeys = new List<KeyCode>
+public class NPCInteractor : MonoBehaviour
+{
+    private PlayerMovement playerMovement;
+    [SerializeField] private NPCDialogueView dialogueView;
+    [SerializeField] private NPCDialogueModel dialogueModel;
+    [Header("Input Settings")]
+    [SerializeField] private KeyCode interactKey = KeyCode.E;
+    [Header("Option Keys")]
+    [SerializeField]
+    private List<KeyCode> optionKeys = new List<KeyCode>
         {
             KeyCode.Alpha1,
             KeyCode.Alpha2,
             KeyCode.Alpha3
         };
-        [Header("Gameplay Systems")]
-        [SerializeField] private MonoBehaviour hotbarScript;
-        [Header("Relationship")]
-        [SerializeField] private NPCRelationshipModel relationshipModel;
-        [Header("Gift System")]
-        [SerializeField] private GiftDatabaseSO giftDatabase;
-        [Header("Inventory")]
-        [SerializeField] private InventoryGameView inventoryGameView;
-        [SerializeField] private InventoryView inventoryView;
-        [SerializeField] private GameObject inventoryMenuRoot;
-        [SerializeField] private SpriteRenderer spriteRenderer;
+    [Header("Gameplay Systems")]
+    [SerializeField] private MonoBehaviour hotbarScript;
+    [Header("Relationship")]
+    [SerializeField] private NPCRelationshipModel relationshipModel;
+    [Header("Gift System")]
+    [SerializeField] private GiftDatabaseSO giftDatabase;
+    [Header("Inventory")]
+    [SerializeField] private InventoryGameView inventoryGameView;
+    [SerializeField] private InventoryView inventoryView;
+    [SerializeField] private GameObject inventoryMenuRoot;
+    [SerializeField] private SpriteRenderer spriteRenderer;
 
     [Header("Quest System")]
     [SerializeField] private QuestView questView;
     [SerializeField] private QuestDatabase questDatabase;
+    [SerializeField] private int questIndex;
+    [SerializeField] private QuestLogController questLogController;
 
+    private IQuestService questService;
     private QuestPresenter questPresenter;
     private GiftPresenter giftPresenter;
-        private DialogueNode interactionNode;
-        private NPCState currentState = NPCState.Idle;
-        private NPCDialoguePresenter presenter;
-        private bool playerInRange;
-        private bool blockInteractOnce;
+    private DialogueNode interactionNode;
+    private NPCState currentState = NPCState.Idle;
+    private NPCDialoguePresenter presenter;
+    private bool playerInRange;
+    private bool blockInteractOnce;
     private enum NPCState
     {
         Idle,
@@ -53,16 +56,21 @@
         INPCDialogueService service = new NPCDialogueService(dialogueModel);
 
         // Quest Service
-        IQuestService questService = new QuestService();
+        IQuestService questService = QuestManager.QuestService;
 
-        if (questDatabase != null && questDatabase.quests.Length > 0)
+        if (questDatabase != null &&
+    questDatabase.quests.Length > 0 &&
+    questIndex < questDatabase.quests.Length)
         {
             questPresenter = new QuestPresenter(
                 questView,
                 questService,
-                questDatabase.quests[0]
+                questDatabase.quests[questIndex],
+                dialogueModel.npcName,
+                dialogueModel.avatar
             );
         }
+    
 
         // Dialogue Presenter
         presenter = new NPCDialoguePresenter(
@@ -120,15 +128,7 @@
             }
         if (currentState == NPCState.Quest)
         {
-            if (Input.GetKeyDown(interactKey))
-            {
-                questView.Hide();
-
-                UnlockPlayer();
-
-                currentState = NPCState.Idle;
-            }
-
+            HandleOptionInput();
             return;
         }
 
@@ -289,27 +289,51 @@
         );
     }
     private void HandleOptionInput()
+    {
+        var node = presenter.GetCurrentNode();
+
+        // =====================
+        // QUEST OPTIONS
+        // =====================
+        if (currentState == NPCState.Quest)
         {
-            var node = presenter.GetCurrentNode();
-            if (node == null || node.options == null) return;
-
-            for (int i = 0; i < node.options.Count; i++)
+            if (Input.GetKeyDown(optionKeys[0])) // Accept
             {
-                if (i < optionKeys.Count && Input.GetKeyDown(optionKeys[i]))
+                questPresenter.AcceptQuest();
+
+                dialogueView.Hide();
+                UnlockPlayer();
+                currentState = NPCState.Idle;
+            }
+            else if (Input.GetKeyDown(optionKeys[1])) // Back
+            {
+                ShowInteractionMenu();
+            }
+
+            return;
+        }
+
+        // =====================
+        // NORMAL DIALOGUE
+        // =====================
+        if (node == null || node.options == null) return;
+
+        for (int i = 0; i < node.options.Count; i++)
+        {
+            if (i < optionKeys.Count && Input.GetKeyDown(optionKeys[i]))
+            {
+                presenter.SelectOption(i);
+
+                if (!presenter.IsDialogueActive())
                 {
-                    presenter.SelectOption(i);
-
-                    // If dialogue ended after selecting option
-                    if (!presenter.IsDialogueActive())
-                    {
-                        UnlockPlayer();
-                    }
-
-                    break;
+                    UnlockPlayer();
                 }
+
+                break;
             }
         }
-    
+    }
+
     private void OnTriggerEnter2D(Collider2D other)
         {
             if (!other.CompareTag("PlayerEntity")) return;
