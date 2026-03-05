@@ -13,8 +13,8 @@ GameObject:
   - component: {fileID: 3338884270885809640}
   - component: {fileID: 2898069734177863991}
   - component: {fileID: 3652096954840313609}
-  - component: {fileID: 6835398966472085706}
-  - component: {fileID: 2150702430191111501}
+  - component: {fileID: -4902265167950414290}
+  - component: {fileID: -7106696124856517156}
   m_Layer: 11
   m_Name: AirSlash_Projectile
   m_TagString: Bullet
@@ -168,7 +168,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 1
   m_Constraints: 0
---- !u!114 &6835398966472085706
+--- !u!114 &-4902265167950414290
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -180,7 +180,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6db65188b0e380a4f916dfdfa602706a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &2150702430191111501
+--- !u!114 &-7106696124856517156
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
