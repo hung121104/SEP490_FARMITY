@@ -2459,6 +2459,7 @@ Transform:
   - {fileID: 1478360087}
   - {fileID: 1116195027}
   - {fileID: 716574886}
+  - {fileID: 1533379651}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1197646804
@@ -2597,6 +2598,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1197646804}
   m_CullTransparentMesh: 1
+--- !u!1 &1225756597
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1225756598}
+  m_Layer: 0
+  m_Name: TestDiceDisplay
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1225756598
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1225756597}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -179.32869, y: 46.151714, z: -0.1004742}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1230124624
 GameObject:
   m_ObjectHideFlags: 0
@@ -3278,6 +3310,70 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   presenter: {fileID: 1520985914}
+--- !u!1 &1533379650
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1533379651}
+  - component: {fileID: 1533379652}
+  m_Layer: 0
+  m_Name: DiceDisplayManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1533379651
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1533379650}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1168532500}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1533379652
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1533379650}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acfbfb92141705647ae7a50c9e5cbeb8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model:
+    d6Prefab: {fileID: 0}
+    d8Prefab: {fileID: 0}
+    d10Prefab: {fileID: 0}
+    d12Prefab: {fileID: 0}
+    d20Prefab: {fileID: 0}
+    rollDisplayOffset: {x: 0, y: 1.8, z: 0}
+    rollAnimationDuration: 0.4
+    wobbleScale: 1.15
+    wobbleSpeed: 10
+    isInitialized: 0
+  d6Prefab: {fileID: 6620676086198952409, guid: df78acab420e4554ea0491f13214fb69, type: 3}
+  d8Prefab: {fileID: 6620676086198952409, guid: b20ac7f4aed96d44f863d9aa806b2f2f, type: 3}
+  d10Prefab: {fileID: 6620676086198952409, guid: 0f7573b12ba111344a3ca4db1c3803d0, type: 3}
+  d12Prefab: {fileID: 6620676086198952409, guid: 1ece932ebcda93c45bfce6c939292a9a, type: 3}
+  d20Prefab: {fileID: 6620676086198952409, guid: 718c17d01b5d3704cadcc95d8c9741ea, type: 3}
+  rollDisplayOffset: {x: 0, y: 1.8, z: 0}
+  rollAnimationDuration: 0.4
+  wobbleScale: 1.15
+  wobbleSpeed: 10
 --- !u!1 &1537479756
 GameObject:
   m_ObjectHideFlags: 0
@@ -21385,3 +21481,4 @@ SceneRoots:
   - {fileID: 1492096329}
   - {fileID: 2057075550}
   - {fileID: 1168532500}
+  - {fileID: 1225756598}
