@@ -351,14 +351,14 @@ namespace CombatManager.Presenter
 
         private void ShowIndicator()
         {
-            // TODO: Replace with SkillIndicatorPresenter after refactor
-            // SkillIndicatorPresenter.Instance?.ShowIndicator(GetIndicatorData());
+            CombatManager.Model.SkillIndicatorData data = GetIndicatorData();
+            if (data == null) return;
+            SkillIndicatorPresenter.Instance?.ShowIndicator(data);
         }
 
         private void HideIndicator()
         {
-            // TODO: Replace with SkillIndicatorPresenter after refactor
-            // SkillIndicatorPresenter.Instance?.HideAll();
+            SkillIndicatorPresenter.Instance?.HideAll();
         }
 
         #endregion
@@ -397,7 +397,7 @@ namespace CombatManager.Presenter
 
         #region Abstract Methods
 
-        protected abstract SkillIndicatorData GetIndicatorData();
+        protected abstract CombatManager.Model.SkillIndicatorData GetIndicatorData();
         protected abstract IEnumerator OnExecute(int finalDamage, Vector3 direction);
 
         #endregion
