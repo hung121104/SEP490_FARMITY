@@ -189,11 +189,11 @@ MonoBehaviour:
     knockbackForce: 0
     enemyLayers:
       serializedVersion: 2
-      m_Bits: 0
+      m_Bits: 128
     ownerTransform: {fileID: 0}
     damagePopupPrefab: {fileID: 0}
-    hitCollider: {fileID: 0}
-    animator: {fileID: 0}
+    hitCollider: {fileID: 3307515953814528921}
+    animator: {fileID: 3252363585421596620}
     isActive: 0
     animationDuration: 0.3
 --- !u!114 &3020678648273124420
@@ -208,6 +208,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2e0f31144bb03340aa44aa737f8f448, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  presenter: {fileID: 0}
-  slashSprite: {fileID: 0}
+  presenter: {fileID: 1808207510208682260}
+  slashSprite: {fileID: 1835541139890474109}
   hitParticles: {fileID: 0}

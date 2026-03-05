@@ -87,15 +87,24 @@ namespace CombatManager.Service
 
         public void DespawnWeapon()
         {
+            // Only destroy if it's an instantiated object (not a prefab asset)
             if (model.weaponVisual != null)
             {
-                Object.Destroy(model.weaponVisual);
+                // Check if it's actually in the scene (has a scene reference)
+                if (model.weaponVisual.scene.IsValid())
+                {
+                    Object.Destroy(model.weaponVisual);
+                }
                 model.weaponVisual = null;
             }
 
             if (model.pivotRoot != null)
             {
-                Object.Destroy(model.pivotRoot);
+                // Check if it's actually in the scene
+                if (model.pivotRoot.scene.IsValid())
+                {
+                    Object.Destroy(model.pivotRoot);
+                }
                 model.pivotRoot = null;
             }
 

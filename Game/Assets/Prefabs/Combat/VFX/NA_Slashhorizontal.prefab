@@ -186,8 +186,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2e0f31144bb03340aa44aa737f8f448, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  presenter: {fileID: 0}
-  slashSprite: {fileID: 0}
+  presenter: {fileID: 777310733052319262}
+  slashSprite: {fileID: 7395495069128513072}
   hitParticles: {fileID: 0}
 --- !u!114 &777310733052319262
 MonoBehaviour:
@@ -206,10 +206,10 @@ MonoBehaviour:
     knockbackForce: 0
     enemyLayers:
       serializedVersion: 2
-      m_Bits: 0
+      m_Bits: 128
     ownerTransform: {fileID: 0}
     damagePopupPrefab: {fileID: 0}
-    hitCollider: {fileID: 0}
-    animator: {fileID: 0}
+    hitCollider: {fileID: 5119034281474524937}
+    animator: {fileID: 7528576171005633928}
     isActive: 0
     animationDuration: 0.3
