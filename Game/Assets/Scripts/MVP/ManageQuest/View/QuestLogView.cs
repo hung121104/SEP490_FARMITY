@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
 
@@ -16,7 +16,7 @@ public class QuestLogView : MonoBehaviour
 
     public void ShowQuestList(List<QuestModel> quests)
     {
-        // Clear old entries
+        // Clear old UI
         foreach (Transform child in questListContainer)
             Destroy(child.gameObject);
 
@@ -27,11 +27,29 @@ public class QuestLogView : MonoBehaviour
             TMP_Text questNameText =
                 entry.transform.Find("QuestNameText").GetComponent<TMP_Text>();
 
-            TMP_Text objectiveText =
-                entry.transform.Find("ObjectiveList/ObjectiveText").GetComponent<TMP_Text>();
+            Transform objectiveList =
+                entry.transform.Find("ObjectiveList");
+
+            TMP_Text objectiveTemplate =
+                objectiveList.GetChild(0).GetComponent<TMP_Text>();
 
             questNameText.text = quest.questName;
-            objectiveText.text = quest.description;
+
+            // hide  template
+            objectiveTemplate.gameObject.SetActive(false);
+
+            foreach (var obj in quest.objectives)
+            {
+                TMP_Text objective =
+                    Instantiate(objectiveTemplate, objectiveList);
+
+                objective.gameObject.SetActive(true);
+
+                objective.text =
+                    obj.description + " " +
+                    obj.currentAmount + "/" +
+                    obj.requiredAmount;
+            }
         }
     }
 }

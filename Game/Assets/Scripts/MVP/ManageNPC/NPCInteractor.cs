@@ -48,7 +48,8 @@ public class NPCInteractor : MonoBehaviour
         InteractionMenu,
         Dialogue,
         Gift,
-        Quest
+        Quest,
+        SimpleDialogue
     }
     private void Awake()
     {
@@ -56,7 +57,7 @@ public class NPCInteractor : MonoBehaviour
         INPCDialogueService service = new NPCDialogueService(dialogueModel);
 
         // Quest Service
-        IQuestService questService = QuestManager.QuestService;
+        questService = QuestManager.QuestService;
 
         if (questDatabase != null &&
     questDatabase.quests.Length > 0 &&
@@ -82,8 +83,8 @@ public class NPCInteractor : MonoBehaviour
         CreateInteractionNode();
     }
     private void Update()
-        {
-            if (!playerInRange) return;
+    {
+        if (!playerInRange) return;
 
         // =====================
         // IDLE → Press E to open menu
@@ -107,33 +108,55 @@ public class NPCInteractor : MonoBehaviour
         // INTERACTION MENU
         // =====================
         if (currentState == NPCState.InteractionMenu)
+        {
+            HandleInteractionMenuInput();
+            return;
+        }
+
+        // =====================
+        // GIFT STATE
+        // =====================
+        if (currentState == NPCState.Gift)
+        {
+            giftPresenter?.Update();
+            return;
+        }
+
+        // =====================
+        // SIMPLE DIALOGUE
+        // =====================
+        if (currentState == NPCState.SimpleDialogue)
+        {
+            if (Input.GetKeyDown(interactKey))
             {
-                HandleInteractionMenuInput();
-                return;
+                dialogueView.Hide();
+                UnlockPlayer();
+                currentState = NPCState.Idle;
+                blockInteractOnce = true;
             }
-            // =====================
-            // GIFT STATE
-            // =====================
-            if (currentState == NPCState.Gift)
-            {
-                giftPresenter?.Update();
-                return;
-            }
-            // =====================
-            // DIALOGUE STATE 
-            // =====================
-            if (currentState == NPCState.Dialogue)
-            {
-                HandleDialogueUpdate();
-            }
+
+            return;
+        }
+
+        // =====================
+        // DIALOGUE STATE
+        // =====================
+        if (currentState == NPCState.Dialogue)
+        {
+            HandleDialogueUpdate();
+            return;
+        }
+
+        // =====================
+        // QUEST STATE
+        // =====================
         if (currentState == NPCState.Quest)
         {
             HandleOptionInput();
             return;
         }
-
     }
-        private void HandleInteractionMenuInput()
+    private void HandleInteractionMenuInput()
         {
             for (int i = 0; i < interactionNode.options.Count; i++)
             {
@@ -155,9 +178,30 @@ public class NPCInteractor : MonoBehaviour
                 {
                     dialogueView.Hide();
 
-                    currentState = NPCState.Quest;
+                    QuestModel quest = questDatabase.quests[questIndex];
 
-                    questPresenter?.ShowQuest();
+                    // QUEST CHƯA NHẬN
+                    if (!questService.HasQuest(quest.questId))
+                    {
+                        currentState = NPCState.Quest;
+                        questPresenter?.ShowQuest();
+                    }
+
+                    // QUEST ĐANG LÀM
+                    else if (questService.IsQuestActive(quest.questId))
+                    {
+                        ShowSimpleDialogue(
+                            "Thanks for your help. Please come back when you're finished."
+                        );
+                    }
+
+                    // QUEST HOÀN THÀNH
+                    else if (questService.IsQuestCompleted(quest.questId))
+                    {
+                        ShowSimpleDialogue(
+                            "Great work! Thank you for completing the quest."
+                        );
+                    }
                 }
 
                 break;
@@ -359,6 +403,20 @@ public class NPCInteractor : MonoBehaviour
         UnlockPlayer();
         playerMovement = null;
         currentState = NPCState.Idle;
+    }
+    private void ShowSimpleDialogue(string message)
+    {
+        DialogueNode node = new DialogueNode();
+        node.dialogueText = message;
+        node.options = null;
+
+        dialogueView.ShowNode(
+            dialogueModel.npcName,
+            node,
+            dialogueModel.avatar
+        );
+
+        currentState = NPCState.SimpleDialogue;
     }
     private void UnlockPlayer()
         {
