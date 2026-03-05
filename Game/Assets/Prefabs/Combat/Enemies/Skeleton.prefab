@@ -9,11 +9,11 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4046723159657654008}
+  - component: {fileID: -7219682121151889440}
   - component: {fileID: 9107845147142514731}
   - component: {fileID: 1634215716028221634}
   - component: {fileID: 6523819796232800320}
   - component: {fileID: 7705436625211187722}
-  - component: {fileID: -7219682121151889440}
   - component: {fileID: -4485954057296799238}
   m_Layer: 7
   m_Name: Skeleton
@@ -37,6 +37,102 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &-7219682121151889440
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7205149268433935669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e404ce90efee52f478cdaf0d98e75c48, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model:
+    currentHealth: 10
+    maxHealth: 10
+    currentState: 0
+    isAlerted: 0
+    alertTimer: 0
+    hitAlertDuration: 5
+    detectionRange: 8
+    attackRange: 1.5
+    fieldOfViewAngle: 120
+    playerLayer:
+      serializedVersion: 2
+      m_Bits: 0
+    obstacleLayer:
+      serializedVersion: 2
+      m_Bits: 0
+    moveSpeed: 2
+    chaseSpeed: 3
+    wanderSpeed: 1
+    wanderRange: 5
+    startPosition: {x: 0, y: 0, z: 0}
+    wanderTarget: {x: 0, y: 0, z: 0}
+    currentWanderDirection: {x: 1, y: 0}
+    facingDirection: {x: 1, y: 0}
+    guardDuration: 2
+    guardLookDuration: 1
+    guardTimer: 0
+    guardBehavior: 0
+    guardDirection: 1
+    guardLookTimer: 0
+    isLookingLeft: 0
+    friction: 3
+    maxVelocity: 10
+    isKnockedBack: 0
+    knockbackTimer: 0
+    knockbackDuration: 0.3
+    knockbackPushDistance: 3
+    squashPixels: 0.05
+    stretchPixels: 0.05
+    waveDuration: 0.3
+    flashDuration: 0.2
+    flashCount: 2
+    originalColor: {r: 1, g: 1, b: 1, a: 1}
+    originalScale: {x: 1, y: 1, z: 1}
+    damageAmount: 1
+    knockbackForce: 30
+    damageThrottleTime: 0.5
+    lastDamageTime: -999
+    playerTransform: {fileID: 0}
+    rb: {fileID: 0}
+    animator: {fileID: 0}
+    spriteRenderer: {fileID: 0}
+    isInitialized: 0
+  maxHealth: 100
+  detectionRange: 8
+  attackRange: 1.5
+  fieldOfViewAngle: 120
+  playerLayer:
+    serializedVersion: 2
+    m_Bits: 9
+  obstacleLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  moveSpeed: 2
+  chaseSpeed: 3
+  wanderSpeed: 1
+  wanderRange: 5
+  guardDuration: 2
+  guardLookDuration: 1
+  damageAmount: 1
+  knockbackForce: 30
+  damageThrottleTime: 0.5
+  damagePopupPrefab: {fileID: 0}
+  friction: 3
+  maxVelocity: 10
+  knockbackDuration: 0.3
+  knockbackPushDistance: 3
+  squashPixels: 0.05
+  stretchPixels: 0.05
+  waveDuration: 0.3
+  flashDuration: 0.2
+  flashCount: 2
+  animator: {fileID: 7705436625211187722}
+  spriteRenderer: {fileID: 9107845147142514731}
 --- !u!212 &9107845147142514731
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -178,102 +274,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &-7219682121151889440
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7205149268433935669}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e404ce90efee52f478cdaf0d98e75c48, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  model:
-    currentHealth: 10
-    maxHealth: 10
-    currentState: 0
-    isAlerted: 0
-    alertTimer: 0
-    hitAlertDuration: 5
-    detectionRange: 8
-    attackRange: 1.5
-    fieldOfViewAngle: 120
-    playerLayer:
-      serializedVersion: 2
-      m_Bits: 0
-    obstacleLayer:
-      serializedVersion: 2
-      m_Bits: 0
-    moveSpeed: 2
-    chaseSpeed: 3
-    wanderSpeed: 1
-    wanderRange: 5
-    startPosition: {x: 0, y: 0, z: 0}
-    wanderTarget: {x: 0, y: 0, z: 0}
-    currentWanderDirection: {x: 1, y: 0}
-    facingDirection: {x: 1, y: 0}
-    guardDuration: 2
-    guardLookDuration: 1
-    guardTimer: 0
-    guardBehavior: 0
-    guardDirection: 1
-    guardLookTimer: 0
-    isLookingLeft: 0
-    friction: 3
-    maxVelocity: 10
-    isKnockedBack: 0
-    knockbackTimer: 0
-    knockbackDuration: 0.3
-    knockbackPushDistance: 3
-    squashPixels: 0.05
-    stretchPixels: 0.05
-    waveDuration: 0.3
-    flashDuration: 0.2
-    flashCount: 2
-    originalColor: {r: 1, g: 1, b: 1, a: 1}
-    originalScale: {x: 1, y: 1, z: 1}
-    damageAmount: 1
-    knockbackForce: 30
-    damageThrottleTime: 0.5
-    lastDamageTime: -999
-    playerTransform: {fileID: 0}
-    rb: {fileID: 0}
-    animator: {fileID: 0}
-    spriteRenderer: {fileID: 0}
-    isInitialized: 0
-  maxHealth: 100
-  detectionRange: 8
-  attackRange: 1.5
-  fieldOfViewAngle: 120
-  playerLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  obstacleLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  moveSpeed: 2
-  chaseSpeed: 3
-  wanderSpeed: 1
-  wanderRange: 5
-  guardDuration: 2
-  guardLookDuration: 1
-  damageAmount: 1
-  knockbackForce: 30
-  damageThrottleTime: 0.5
-  damagePopupPrefab: {fileID: 0}
-  friction: 3
-  maxVelocity: 10
-  knockbackDuration: 0.3
-  knockbackPushDistance: 3
-  squashPixels: 0.05
-  stretchPixels: 0.05
-  waveDuration: 0.3
-  flashDuration: 0.2
-  flashCount: 2
-  animator: {fileID: 7705436625211187722}
-  spriteRenderer: {fileID: 9107845147142514731}
 --- !u!114 &-4485954057296799238
 MonoBehaviour:
   m_ObjectHideFlags: 0

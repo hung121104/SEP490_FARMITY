@@ -26,6 +26,16 @@ namespace CombatManager.Service
             GenerateNewWanderTarget();
             model.currentState = EnemyState.Guard;
             StartGuard();
+            
+            // Verify player is set
+            if (model.playerTransform == null)
+            {
+                Debug.LogWarning("[EnemyAIService] Player transform not found during initialization!");
+            }
+            else
+            {
+                Debug.Log($"[EnemyAIService] Initialized with player: {model.playerTransform.name}");
+            }
         }
 
         #endregion

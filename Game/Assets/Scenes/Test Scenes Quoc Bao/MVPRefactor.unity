@@ -1314,6 +1314,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: -7219682121151889440, guid: 9d5fc791692557741bafc5825c608b3f, type: 3}
+      propertyPath: detectionRange
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: -7219682121151889440, guid: 9d5fc791692557741bafc5825c608b3f, type: 3}
+      propertyPath: model.currentHealth
+      value: 100
+      objectReference: {fileID: 0}
     - target: {fileID: 4046723159657654008, guid: 9d5fc791692557741bafc5825c608b3f, type: 3}
       propertyPath: m_LocalPosition.x
       value: -169

@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
 using CombatManager.Model;
+using CombatManager.Presenter;
 
 namespace CombatManager.Service
 {
@@ -96,23 +97,40 @@ namespace CombatManager.Service
 
         private void DamageEnemy(Collider2D enemy)
         {
-            // Deal damage
-            EnemiesHealth enemyHealth = enemy.GetComponent<EnemiesHealth>();
-            if (enemyHealth != null)
+            // Get EnemyPresenter using tag first, then layer
+            EnemyPresenter enemyPresenter = null;
+            
+            // Try direct component
+            enemyPresenter = enemy.GetComponent<EnemyPresenter>();
+            
+            // Try parent if not found
+            if (enemyPresenter == null)
             {
-                enemyHealth.ChangeHealth(-model.damage);
-                Debug.Log($"[SlashHitboxService] Dealt {model.damage} damage to {enemy.name}");
+                enemyPresenter = enemy.GetComponentInParent<EnemyPresenter>();
+            }
+            
+            // Try children if still not found
+            if (enemyPresenter == null)
+            {
+                enemyPresenter = enemy.GetComponentInChildren<EnemyPresenter>();
             }
 
-            // Apply knockback
-            EnemyKnockback enemyKnockback = enemy.GetComponent<EnemyKnockback>();
-            if (enemyKnockback != null && model.ownerTransform != null)
+            if (enemyPresenter == null)
             {
-                enemyKnockback.Knockback(model.ownerTransform, model.knockbackForce);
+                Debug.LogWarning($"[SlashHitboxService] EnemyPresenter not found on {enemy.name}");
+                return;
             }
+
+            // Calculate knockback direction (from player to enemy)
+            Vector2 knockbackDir = (enemy.transform.position - model.ownerTransform.position).normalized;
+
+            // Deal damage using new MVP system
+            enemyPresenter.TakeDamage(model.damage, knockbackDir, model.knockbackForce);
 
             // Show popup
             ShowDamagePopup(enemy.transform.position);
+            
+            Debug.Log($"[SlashHitboxService] Dealt {model.damage} damage to {enemy.name}");
         }
 
         private void ShowDamagePopup(Vector3 position)

@@ -233,33 +233,47 @@ namespace CombatManager.Presenter
 
         private Transform FindLocalPlayerTransform()
         {
-            // Try "Player" tag first
-            foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+            // Method 1: Find by "Player" tag (multiplayer spawn point)
+            GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+            foreach (GameObject go in players)
             {
-                PhotonView pv = go.GetComponent<PhotonView>();
+                Photon.Pun.PhotonView pv = go.GetComponent<Photon.Pun.PhotonView>();
                 if (pv != null && pv.IsMine)
                 {
+                    Debug.Log($"[EnemyPresenter] Found local player via 'Player' tag: {go.name}");
                     return go.transform;
                 }
             }
 
-            // Try "PlayerEntity" tag
-            foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            // Method 2: Find by "PlayerEntity" tag (test scene)
+            GameObject[] playerEntities = GameObject.FindGameObjectsWithTag("PlayerEntity");
+            foreach (GameObject go in playerEntities)
             {
-                PhotonView pv = go.GetComponent<PhotonView>();
+                Photon.Pun.PhotonView pv = go.GetComponent<Photon.Pun.PhotonView>();
                 if (pv != null && pv.IsMine)
                 {
+                    Debug.Log($"[EnemyPresenter] Found local player via 'PlayerEntity' tag: {go.name}");
                     return go.transform;
                 }
             }
 
-            // Fallback: find by name
+            // Method 3: Fallback for test scenes (find by name)
             GameObject fallback = GameObject.Find("PlayerEntity");
             if (fallback != null)
             {
+                Debug.LogWarning("[EnemyPresenter] Found PlayerEntity by name (fallback)");
                 return fallback.transform;
             }
 
+            // Method 4: Find ANY object with PlayerHealthPresenter (ultra fallback)
+            PlayerHealthPresenter healthPresenter = Object.FindObjectOfType<PlayerHealthPresenter>();
+            if (healthPresenter != null)
+            {
+                Debug.LogWarning("[EnemyPresenter] Found player via PlayerHealthPresenter component");
+                return healthPresenter.transform;
+            }
+
+            Debug.LogError("[EnemyPresenter] Could not find player transform!");
             return null;
         }
 

@@ -7,6 +7,7 @@ namespace CombatManager.Service
 {
     /// <summary>
     /// Service for enemy combat - dealing damage and knockback to player.
+    /// Uses BOTH tags and layers for proper multiplayer detection.
     /// </summary>
     public class EnemyCombatService : IEnemyCombatService
     {
@@ -29,11 +30,6 @@ namespace CombatManager.Service
             if (Time.time - model.lastDamageTime < model.damageThrottleTime)
                 return false;
 
-            // Check if player health system exists
-            PlayerHealthPresenter healthPresenter = Object.FindObjectOfType<PlayerHealthPresenter>();
-            if (healthPresenter == null)
-                return false;
-
             return true;
         }
 
@@ -41,9 +37,9 @@ namespace CombatManager.Service
         {
             model.lastDamageTime = Time.time;
 
-            // Find player presenters
-            PlayerHealthPresenter healthPresenter = Object.FindObjectOfType<PlayerHealthPresenter>();
-            PlayerKnockbackPresenter knockbackPresenter = Object.FindObjectOfType<PlayerKnockbackPresenter>();
+            // Find PlayerHealthPresenter using tags (for multiplayer support)
+            PlayerHealthPresenter healthPresenter = FindPlayerPresenter<PlayerHealthPresenter>(collision.gameObject);
+            PlayerKnockbackPresenter knockbackPresenter = FindPlayerPresenter<PlayerKnockbackPresenter>(collision.gameObject);
 
             if (healthPresenter == null)
             {
@@ -57,10 +53,7 @@ namespace CombatManager.Service
             // Apply knockback
             if (knockbackPresenter != null)
             {
-                // Calculate knockback direction (from enemy to player)
-                Vector2 knockbackDir = (collision.transform.position - collision.otherCollider.transform.position).normalized;
-                
-                // Get the enemy transform source (this is the attacker)
+                // Get the enemy transform (attacker)
                 Transform attackerTransform = collision.otherCollider.transform;
                 
                 // Apply knockback using the correct method signature
@@ -71,6 +64,46 @@ namespace CombatManager.Service
             ShowDamagePopup(collision.transform.position);
 
             Debug.Log($"[EnemyCombatService] Dealt {model.damageAmount} damage to player");
+        }
+
+        /// <summary>
+        /// Find presenter on player object hierarchy using tags.
+        /// Checks: Player tag → PlayerEntity tag → direct component → parent → children
+        /// </summary>
+        private T FindPlayerPresenter<T>(GameObject hitObject) where T : Component
+        {
+            // Check if hit object is Player or PlayerEntity
+            if (hitObject.CompareTag("Player") || hitObject.CompareTag("PlayerEntity"))
+            {
+                // Try direct component
+                T presenter = hitObject.GetComponent<T>();
+                if (presenter != null) return presenter;
+
+                // Try parent
+                presenter = hitObject.GetComponentInParent<T>();
+                if (presenter != null) return presenter;
+
+                // Try children
+                presenter = hitObject.GetComponentInChildren<T>();
+                if (presenter != null) return presenter;
+            }
+
+            // Last resort: search in parent hierarchy
+            Transform current = hitObject.transform;
+            while (current != null)
+            {
+                if (current.CompareTag("Player") || current.CompareTag("PlayerEntity"))
+                {
+                    T presenter = current.GetComponent<T>();
+                    if (presenter != null) return presenter;
+
+                    presenter = current.GetComponentInChildren<T>();
+                    if (presenter != null) return presenter;
+                }
+                current = current.parent;
+            }
+
+            return null;
         }
 
         public void ShowDamagePopup(Vector3 position)
