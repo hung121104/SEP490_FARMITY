@@ -1,6 +1,11 @@
 using UnityEngine;
 using Photon.Pun;
 
+/// <summary>
+/// Complete enemy AI system with integrated movement/physics.
+/// Handles state machine, pathfinding, detection, and physics (friction, velocity, knockback).
+/// Merged from EnemyAI + EnemyMovement for cleaner architecture.
+/// </summary>
 public class EnemyAI : MonoBehaviour
 {
     [Header("Detection")]
@@ -25,6 +30,10 @@ public class EnemyAI : MonoBehaviour
     [Header("Combat")]
     [SerializeField] private float hitAlertDuration = 5f;
     [SerializeField] private float knockbackDuration = 0.3f;
+
+    [Header("Physics (Merged from EnemyMovement)")]
+    [SerializeField] private float friction = 3f;
+    [SerializeField] private float maxVelocity = 10f;
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
@@ -75,6 +84,11 @@ public class EnemyAI : MonoBehaviour
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        
+        if (rb == null)
+        {
+            Debug.LogError($"[EnemyAI] No Rigidbody2D found on {gameObject.name}");
+        }
         
         if (animator == null)
             animator = GetComponent<Animator>();
@@ -145,10 +159,19 @@ public class EnemyAI : MonoBehaviour
 
     private void FixedUpdate()
     {
-        // Don't override velocity while knocked back
-        if (isKnockedBack)
+        if (rb == null)
             return;
 
+        // Don't override velocity while knocked back
+        if (isKnockedBack)
+        {
+            // Apply friction even during knockback (gradually slow down)
+            ApplyFriction();
+            ClampVelocity();
+            return;
+        }
+
+        // State-based movement
         switch (currentState)
         {
             case EnemyState.Wandering:
@@ -161,9 +184,12 @@ public class EnemyAI : MonoBehaviour
 
             case EnemyState.Guard:
             case EnemyState.Attacking:
-                rb.linearVelocity = Vector2.Lerp(rb.linearVelocity, Vector2.zero, Time.fixedDeltaTime * 10f);
+                ApplyFriction(); // Slow down when not moving
                 break;
         }
+
+        // Always clamp velocity to prevent overspeeding
+        ClampVelocity();
     }
 
     #endregion
@@ -277,10 +303,72 @@ public class EnemyAI : MonoBehaviour
 
     #endregion
 
+    #region Physics (Merged from EnemyMovement)
+
+    /// <summary>
+    /// Apply friction to slow down the enemy's velocity.
+    /// Merged from EnemyMovement.cs
+    /// </summary>
+    private void ApplyFriction()
+    {
+        if (rb == null)
+            return;
+
+        rb.linearVelocity = Vector2.Lerp(
+            rb.linearVelocity,
+            Vector2.zero,
+            Time.fixedDeltaTime * friction
+        );
+    }
+
+    /// <summary>
+    /// Clamp velocity to maximum allowed speed.
+    /// Merged from EnemyMovement.cs
+    /// </summary>
+    private void ClampVelocity()
+    {
+        if (rb == null)
+            return;
+
+        if (rb.linearVelocity.magnitude > maxVelocity)
+        {
+            rb.linearVelocity = rb.linearVelocity.normalized * maxVelocity;
+        }
+    }
+
+    /// <summary>
+    /// Apply knockback force to the enemy.
+    /// Merged from EnemyMovement.TakeKnockback()
+    /// </summary>
+    public void TakeKnockback(Vector2 knockbackDirection, float knockbackForce)
+    {
+        if (rb == null)
+            return;
+
+        rb.linearVelocity = knockbackDirection * knockbackForce;
+        isKnockedBack = true;
+        knockbackTimer = knockbackDuration;
+    }
+
+    /// <summary>
+    /// Stop enemy movement immediately.
+    /// Merged from EnemyMovement.Stop()
+    /// </summary>
+    public void Stop()
+    {
+        if (rb == null)
+            return;
+
+        rb.linearVelocity = Vector2.zero;
+    }
+
+    #endregion
+
     #region Hit & Knockback
 
     /// <summary>
-    /// Called when enemy takes damage - triggers combat alert
+    /// Called when enemy takes damage - triggers combat alert.
+    /// Now coordinates with TakeKnockback() for unified knockback handling.
     /// </summary>
     public void OnHit()
     {
@@ -288,7 +376,7 @@ public class EnemyAI : MonoBehaviour
         isAlerted = true;
         alertTimer = hitAlertDuration;
 
-        // Trigger knockback pause
+        // Trigger knockback pause (visual effect only, actual force applied via TakeKnockback())
         isKnockedBack = true;
         knockbackTimer = knockbackDuration;
 
