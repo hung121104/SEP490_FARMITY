@@ -59,6 +59,7 @@ public class WorldDataManager : MonoBehaviour
     private Dictionary<string, IWorldDataModule> modules = new Dictionary<string, IWorldDataModule>();
     private CropDataModule cropModule;
     private StructureDataModule structureModule;
+    private InventoryDataModule inventoryModule;
     
     // Quick lookup: chunkPosition -> sectionId
     private Dictionary<Vector2Int, int> chunkToSectionMap = new Dictionary<Vector2Int, int>();
@@ -100,6 +101,7 @@ public class WorldDataManager : MonoBehaviour
     // Public access to modules
     public CropDataModule      CropData      => cropModule;
     public StructureDataModule StructureData => structureModule;
+    public InventoryDataModule InventoryData => inventoryModule;
     
     private void Awake()
     {
@@ -180,10 +182,10 @@ public class WorldDataManager : MonoBehaviour
         structureModule.Initialize(this);
         modules[structureModule.ModuleName] = structureModule;
 
-        // Future modules:
-        // inventoryModule = new InventoryDataModule();
-        // inventoryModule.Initialize(this);
-        // modules[inventoryModule.ModuleName] = inventoryModule;
+        // Inventory Module
+        inventoryModule = new InventoryDataModule();
+        inventoryModule.Initialize(this);
+        modules[inventoryModule.ModuleName] = inventoryModule;
     }
     
     #region Core Coordinate Utilities
@@ -294,6 +296,11 @@ public class WorldDataManager : MonoBehaviour
         stats.TotalStructures      = (int)structStats["TotalStructures"];
         stats.ChunksWithStructures = (int)structStats["ChunksWithStructures"];
 
+        var invStats = inventoryModule.GetStats();
+        stats.InventoryCharacters = (int)invStats["Characters"];
+        stats.InventoryOccupiedSlots = (int)invStats["OccupiedSlots"];
+        stats.InventoryTotalItems = (int)invStats["TotalItems"];
+
         return stats;
     }
     
@@ -393,5 +400,9 @@ public struct WorldDataStats
     // Structure
     public int   TotalStructures;
     public int   ChunksWithStructures;
+    // Inventory
+    public int   InventoryCharacters;
+    public int   InventoryOccupiedSlots;
+    public int   InventoryTotalItems;
     public float MemoryUsageMB;
 }
