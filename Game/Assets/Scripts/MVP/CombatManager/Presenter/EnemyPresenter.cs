@@ -317,6 +317,9 @@ namespace CombatManager.Presenter
             StartCoroutine(knockbackService.PlayKnockbackEffect());
             StartCoroutine(knockbackService.PlayFlashEffect());
 
+            // ===== NEW: Show damage popup =====
+            DamagePopupPresenter.Spawn(transform.position, damage);
+
             // Alert AI
             aiService.OnHit();
 

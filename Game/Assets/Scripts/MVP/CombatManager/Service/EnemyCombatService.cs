@@ -87,20 +87,8 @@ namespace CombatManager.Service
 
         public void ShowDamagePopup(Vector3 position)
         {
-            if (damagePopupPrefab == null)
-            {
-                Debug.LogWarning("[EnemyCombatService] Damage popup prefab not assigned");
-                return;
-            }
-
-            Vector3 spawnPos = position + Vector3.up;
-            GameObject popup = Object.Instantiate(damagePopupPrefab, spawnPos, Quaternion.identity);
-
-            TMP_Text damageText = popup.GetComponentInChildren<TMP_Text>();
-            if (damageText != null)
-            {
-                damageText.text = model.damageAmount.ToString();
-            }
+            // Use centralized manager
+            DamagePopupPresenter.Spawn(position, model.damageAmount);
         }
     }
 }
