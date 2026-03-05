@@ -13,6 +13,11 @@ MonoBehaviour:
   m_Name: QUEST
   m_EditorClassIdentifier: 
   questID: e7d4e206-6c50-4144-8f93-6c011cae3d1a
-  questName: 
-  description: 
-  objectives: []
+  questName: Bring apple
+  description: Bring me 5 apple
+  objectives:
+  - objectiveID: 1
+    description: collect 5 apple
+    type: 0
+    requiredAmount: 5
+    currentAmount: 0

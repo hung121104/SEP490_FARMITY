@@ -14,6 +14,7 @@ public class QuestService : IQuestService
             activeQuests.Add(quest.questId, quest);
 
             Debug.Log("Quest Accepted: " + quest.questName);
+            Debug.Log("Total active quests: " + activeQuests.Count);
         }
     }
 
