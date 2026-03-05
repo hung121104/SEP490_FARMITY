@@ -3,6 +3,7 @@ import { Document } from 'mongoose';
 
 export type AccountDocument = Account & Document;
 
+
 @Schema()
 export class Account {
   @Prop({ required: true, unique: true })
@@ -13,6 +14,7 @@ export class Account {
 
   @Prop({ required: true, unique: true })
   email: string;
+
 
   @Prop({ default: false })
   isAdmin: boolean;

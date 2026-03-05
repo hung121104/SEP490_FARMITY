@@ -1,15 +1,9 @@
-import {
-  Injectable,
-  BadRequestException,
-  Inject,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, ClientSession } from 'mongoose';
 import { ClientProxy } from '@nestjs/microservices';
 import { Character, CharacterDocument } from './character.schema';
 import { UpsertCharacterDto } from './dto/upsert-character.dto';
-import { InventoryService } from '../inventory/inventory.service';
 
 @Injectable()
 export class CharacterService implements OnModuleInit {
@@ -17,45 +11,27 @@ export class CharacterService implements OnModuleInit {
   private getPositionCounter = 0;
 
   constructor(
-    @InjectModel(Character.name)
-    private characterModel: Model<CharacterDocument>,
+    @InjectModel(Character.name) private characterModel: Model<CharacterDocument>,
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
-    private readonly inventoryService: InventoryService,
   ) {}
 
   async onModuleInit() {
     // Drop legacy unique index on `worldId` + `playerID` if it exists
     try {
       await this.characterModel.collection.dropIndex('worldId_1_playerID_1');
-      console.log(
-        '[character-service] Dropped legacy index worldId_1_playerID_1',
-      );
+      console.log('[character-service] Dropped legacy index worldId_1_playerID_1');
     } catch (err) {
-      const msg =
-        (err && (err as any).errmsg) ||
-        (err && (err as any).message) ||
-        String(err);
+      const msg = (err && (err as any).errmsg) || (err && (err as any).message) || String(err);
       console.log('[character-service] No legacy playerID index to drop:', msg);
     }
 
     // Ensure compound unique index on worldId + accountId exists
     try {
-      await this.characterModel.collection.createIndex(
-        { worldId: 1, accountId: 1 },
-        { unique: true },
-      );
-      console.log(
-        '[character-service] Ensured unique index on worldId+accountId',
-      );
+      await this.characterModel.collection.createIndex({ worldId: 1, accountId: 1 }, { unique: true });
+      console.log('[character-service] Ensured unique index on worldId+accountId');
     } catch (err) {
-      const msg =
-        (err && (err as any).errmsg) ||
-        (err && (err as any).message) ||
-        String(err);
-      console.log(
-        '[character-service] Could not create unique index worldId+accountId:',
-        msg,
-      );
+      const msg = (err && (err as any).errmsg) || (err && (err as any).message) || String(err);
+      console.log('[character-service] Could not create unique index worldId+accountId:', msg);
     }
   }
 
@@ -64,9 +40,7 @@ export class CharacterService implements OnModuleInit {
     accountId: Types.ObjectId,
     options?: { session?: ClientSession },
   ): Promise<Character> {
-    const account = await this.authClient
-      .send('find-account', accountId)
-      .toPromise();
+    const account = await this.authClient.send('find-account', accountId).toPromise();
     if (!account) {
       throw new BadRequestException('Invalid account');
     }
@@ -80,31 +54,15 @@ export class CharacterService implements OnModuleInit {
     } as Partial<Character>;
 
     // Use array form to support passing session option
-    const created = await this.characterModel.create([doc], {
-      session: options?.session,
-    });
-    const character = Array.isArray(created)
-      ? created[0]
-      : (created as unknown as CharacterDocument);
-
-    // Automatically create an empty inventory for the new character
-    await this.inventoryService.createInventory(
-      character._id as Types.ObjectId,
-      {
-        session: options?.session,
-      },
-    );
-
-    return character;
+    const created = await this.characterModel.create([doc], { session: options?.session });
+    return Array.isArray(created) ? created[0] : (created as unknown as Character);
   }
 
   async getCharacter(
     worldId: Types.ObjectId | string,
     accountId: Types.ObjectId | string,
   ): Promise<Character | null> {
-    const account = await this.authClient
-      .send('find-account', accountId)
-      .toPromise();
+    const account = await this.authClient.send('find-account', accountId).toPromise();
     if (!account) {
       throw new BadRequestException('Invalid account');
     }
@@ -113,32 +71,15 @@ export class CharacterService implements OnModuleInit {
   }
 
   // Get all characters belonging to a world.
-  async getAllByWorldId(
-    worldId: string | Types.ObjectId,
-  ): Promise<Character[]> {
-    const oid =
-      typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
+  async getAllByWorldId(worldId: string | Types.ObjectId): Promise<Character[]> {
+    const oid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
     return this.characterModel.find({ worldId: oid }).exec();
   }
 
   // Delete all characters belonging to a world. Returns number of deleted documents.
   async deleteByWorldId(worldId: string | Types.ObjectId): Promise<number> {
-    const oid =
-      typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
-
-    // Collect all characterIds before deletion to clean up their inventories
-    const characters = await this.characterModel
-      .find({ worldId: oid }, { _id: 1 })
-      .lean();
-    const characterIds = characters.map((c) => c._id as Types.ObjectId);
-
+    const oid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
     const result = await this.characterModel.deleteMany({ worldId: oid });
-
-    // Delete all associated inventories
-    if (characterIds.length > 0) {
-      await this.inventoryService.deleteByCharacterIds(characterIds);
-    }
-
     return result.deletedCount ?? 0;
   }
 
@@ -147,8 +88,7 @@ export class CharacterService implements OnModuleInit {
     worldId: string | Types.ObjectId,
     dto: UpsertCharacterDto,
   ): Promise<Character> {
-    const worldOid =
-      typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
+    const worldOid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
     const accountOid = new Types.ObjectId(dto.accountId);
 
     const update: Partial<Character> = {
@@ -161,14 +101,7 @@ export class CharacterService implements OnModuleInit {
 
     const result = await this.characterModel.findOneAndUpdate(
       { worldId: worldOid, accountId: accountOid },
-      {
-        $set: update,
-        $setOnInsert: {
-          worldId: worldOid,
-          accountId: accountOid,
-          sectionIndex: dto.sectionIndex ?? 0,
-        },
-      },
+      { $set: update, $setOnInsert: { worldId: worldOid, accountId: accountOid, sectionIndex: dto.sectionIndex ?? 0 } },
       { upsert: true, new: true },
     );
     return result;

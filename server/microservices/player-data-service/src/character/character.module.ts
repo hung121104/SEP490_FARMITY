@@ -4,13 +4,10 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { Character, CharacterSchema } from './character.schema';
 import { CharacterService } from './character.service';
 import { CharacterController } from './character.controller';
-import { InventoryModule } from '../inventory/inventory.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: Character.name, schema: CharacterSchema },
-    ]),
+    MongooseModule.forFeature([{ name: Character.name, schema: CharacterSchema }]),
     ClientsModule.register([
       {
         name: 'AUTH_SERVICE',
@@ -18,7 +15,6 @@ import { InventoryModule } from '../inventory/inventory.module';
         options: { host: 'localhost', port: 8877 },
       },
     ]),
-    InventoryModule,
   ],
   controllers: [CharacterController],
   providers: [CharacterService],
