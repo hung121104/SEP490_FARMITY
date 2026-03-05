@@ -22,7 +22,7 @@ public class InventoryDataModule : IWorldDataModule
     public string ModuleName => "Inventory Data";
 
     private WorldDataManager manager;
-    private bool showDebugLogs = true;
+    private bool showDebugLogs = false;
 
     // ── Storage ───────────────────────────────────────────────────────────
     // Key = characterId (string), Value = that character's inventory.
@@ -149,13 +149,13 @@ public class InventoryDataModule : IWorldDataModule
     // ══════════════════════════════════════════════════════════════════════
 
     /// <summary>Set a slot for a character. Auto-registers if not present.</summary>
-    public bool SetSlot(string characterId, byte slotIndex, ushort itemId, ushort quantity)
+    public bool SetSlot(string characterId, byte slotIndex, string itemId, ushort quantity)
     {
         var inv = GetOrCreateInventory(characterId);
         bool ok = inv.SetSlot(slotIndex, itemId, quantity);
 
         if (ok && showDebugLogs)
-            Debug.Log($"[InventoryDataModule] '{characterId}' Slot[{slotIndex}] = Item:{itemId} x{quantity}");
+            Debug.Log($"[InventoryDataModule] '{characterId}' Slot[{slotIndex}] = Item:'{itemId}' x{quantity}");
         return ok;
     }
 
@@ -168,7 +168,7 @@ public class InventoryDataModule : IWorldDataModule
     }
 
     /// <summary>Add quantity to a slot (stacking). Creates slot if empty.</summary>
-    public bool AddQuantity(string characterId, byte slotIndex, ushort itemId, ushort amount)
+    public bool AddQuantity(string characterId, byte slotIndex, string itemId, ushort amount)
     {
         var inv = GetOrCreateInventory(characterId);
         return inv.AddQuantity(slotIndex, itemId, amount);
@@ -208,7 +208,7 @@ public class InventoryDataModule : IWorldDataModule
     }
 
     /// <summary>Count total quantity of a specific item across all slots.</summary>
-    public int CountItem(string characterId, ushort itemId)
+    public int CountItem(string characterId, string itemId)
     {
         var inv = GetInventory(characterId);
         return inv?.CountItem(itemId) ?? 0;
@@ -299,22 +299,29 @@ public class InventoryDataModule : IWorldDataModule
     // ══════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Encode a single-slot change into a minimal byte payload for broadcast.
-    /// Layout: [charIdLen(1)][charIdUtf8(N)][slotIndex(1)][itemId(2)][quantity(2)]
-    /// Total: N + 6 bytes (typically ~30 bytes for a UUID characterId).
+    /// Encode a single-slot change into a byte payload for broadcast.
+    /// Layout: [charIdLen(1)][charIdUtf8(N)][slotIndex(1)][itemIdLen(1)][itemIdUtf8(M)][quantity(2)]
+    /// Same length-prefix pattern as CropTileData / PlantData serialization.
     /// </summary>
-    public static byte[] EncodeSlotDelta(string characterId, byte slotIndex, ushort itemId, ushort quantity)
+    public static byte[] EncodeSlotDelta(string characterId, byte slotIndex, string itemId, ushort quantity)
     {
         byte[] charIdBytes = System.Text.Encoding.UTF8.GetBytes(characterId ?? "");
-        byte[] result = new byte[1 + charIdBytes.Length + 5];
+        byte[] itemIdBytes = System.Text.Encoding.UTF8.GetBytes(itemId ?? "");
+
+        // 1 + charIdLen + 1 + 1 + itemIdLen + 2
+        byte[] result = new byte[1 + charIdBytes.Length + 1 + 1 + itemIdBytes.Length + 2];
 
         int offset = 0;
         result[offset++] = (byte)charIdBytes.Length;
         System.Buffer.BlockCopy(charIdBytes, 0, result, offset, charIdBytes.Length);
         offset += charIdBytes.Length;
+
         result[offset++] = slotIndex;
-        result[offset++] = (byte)(itemId & 0xFF);
-        result[offset++] = (byte)(itemId >> 8);
+
+        result[offset++] = (byte)itemIdBytes.Length;
+        System.Buffer.BlockCopy(itemIdBytes, 0, result, offset, itemIdBytes.Length);
+        offset += itemIdBytes.Length;
+
         result[offset++] = (byte)(quantity & 0xFF);
         result[offset]   = (byte)(quantity >> 8);
 
@@ -331,15 +338,18 @@ public class InventoryDataModule : IWorldDataModule
 
         int offset = 0;
         byte charIdLen = deltaBytes[offset++];
-        if (deltaBytes.Length < 1 + charIdLen + 5) return false;
+        if (deltaBytes.Length < 1 + charIdLen + 4) return false;
 
         string characterId = System.Text.Encoding.UTF8.GetString(deltaBytes, offset, charIdLen);
         offset += charIdLen;
 
-        byte   slotIndex = deltaBytes[offset++];
-        ushort itemId    = (ushort)(deltaBytes[offset] | (deltaBytes[offset + 1] << 8));
-        offset += 2;
-        ushort quantity  = (ushort)(deltaBytes[offset] | (deltaBytes[offset + 1] << 8));
+        byte slotIndex = deltaBytes[offset++];
+
+        byte itemIdLen = deltaBytes[offset++];
+        string itemId  = System.Text.Encoding.UTF8.GetString(deltaBytes, offset, itemIdLen);
+        offset += itemIdLen;
+
+        ushort quantity = (ushort)(deltaBytes[offset] | (deltaBytes[offset + 1] << 8));
 
         return SetSlot(characterId, slotIndex, itemId, quantity);
     }

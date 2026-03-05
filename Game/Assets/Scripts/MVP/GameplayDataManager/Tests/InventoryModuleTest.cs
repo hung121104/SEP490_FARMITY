@@ -33,12 +33,12 @@ public class InventoryModuleTest : MonoBehaviour
         Assert("T03 Unknown char = false", !wdm.HasCharacterInventory("ghost_999"),  ref passed, ref failed);
 
         // ── Test 2: Set slots ─────────────────────────────────────────────
-        wdm.SetInventorySlot("player_001", 0, itemId: 10, quantity: 5);
-        wdm.SetInventorySlot("player_001", 1, itemId: 20, quantity: 1);
-        wdm.SetInventorySlot("player_002", 0, itemId: 30, quantity: 99);
+        wdm.SetInventorySlot("player_001", 0, itemId: "resource_gold", quantity: 5);
+        wdm.SetInventorySlot("player_001", 1, itemId: "iron_hoe", quantity: 1);
+        wdm.SetInventorySlot("player_002", 0, itemId: "crop_strawberry", quantity: 99);
 
         Assert("T04 player_001 slot0 has item",
-            wdm.TryGetInventorySlot("player_001", 0, out var s04) && s04.ItemId == 10 && s04.Quantity == 5,
+            wdm.TryGetInventorySlot("player_001", 0, out var s04) && s04.ItemId == "resource_gold" && s04.Quantity == 5,
             ref passed, ref failed);
 
         Assert("T05 player_002 slot0 qty=99",
@@ -50,7 +50,7 @@ public class InventoryModuleTest : MonoBehaviour
         Assert("T07 HasItem slot5 = false", !wdm.HasInventoryItem("player_001", 5), ref passed, ref failed);
 
         // ── Test 4: AddQuantity ───────────────────────────────────────────
-        wdm.AddInventoryQuantity("player_001", 0, 10, 3); // 5 + 3 = 8
+        wdm.AddInventoryQuantity("player_001", 0, "resource_gold", 3); // 5 + 3 = 8
         Assert("T08 Add qty → 8",
             wdm.TryGetInventorySlot("player_001", 0, out var s08) && s08.Quantity == 8,
             ref passed, ref failed);
@@ -62,41 +62,41 @@ public class InventoryModuleTest : MonoBehaviour
             ref passed, ref failed);
 
         // ── Test 6: RemoveQuantity clears slot when qty = 0 ───────────────
-        wdm.SetInventorySlot("player_001", 2, itemId: 50, quantity: 3);
+        wdm.SetInventorySlot("player_001", 2, itemId: "seed_wheat", quantity: 3);
         wdm.RemoveInventoryQuantity("player_001", 2, 3); // 3 - 3 = 0 → slot cleared
         Assert("T10 Remove all → slot empty",
             !wdm.HasInventoryItem("player_001", 2),
             ref passed, ref failed);
 
         // ── Test 7: ClearSlot ─────────────────────────────────────────────
-        wdm.SetInventorySlot("player_001", 3, itemId: 99, quantity: 10);
+        wdm.SetInventorySlot("player_001", 3, itemId: "tool_axe", quantity: 10);
         wdm.ClearInventorySlot("player_001", 3);
         Assert("T11 ClearSlot → empty",
             !wdm.HasInventoryItem("player_001", 3),
             ref passed, ref failed);
 
         // ── Test 8: SwapSlots ─────────────────────────────────────────────
-        wdm.SetInventorySlot("player_001", 4, itemId: 11, quantity: 2);
-        wdm.SetInventorySlot("player_001", 5, itemId: 22, quantity: 7);
+        wdm.SetInventorySlot("player_001", 4, itemId: "potion_health", quantity: 2);
+        wdm.SetInventorySlot("player_001", 5, itemId: "potion_mana", quantity: 7);
         wdm.SwapInventorySlots("player_001", 4, 5);
 
         bool swapOk = wdm.TryGetInventorySlot("player_001", 4, out var swA)
                    && wdm.TryGetInventorySlot("player_001", 5, out var swB)
-                   && swA.ItemId == 22 && swB.ItemId == 11;
+                   && swA.ItemId == "potion_mana" && swB.ItemId == "potion_health";
         Assert("T12 SwapSlots", swapOk, ref passed, ref failed);
 
         // ── Test 9: CountItem ─────────────────────────────────────────────
-        wdm.SetInventorySlot("player_001", 6,  itemId: 77, quantity: 10);
-        wdm.SetInventorySlot("player_001", 7,  itemId: 77, quantity: 5);
-        int total77 = wdm.CountInventoryItem("player_001", 77);
-        Assert("T13 CountItem(77) = 15", total77 == 15, ref passed, ref failed);
+        wdm.SetInventorySlot("player_001", 6,  itemId: "wood_plank", quantity: 10);
+        wdm.SetInventorySlot("player_001", 7,  itemId: "wood_plank", quantity: 5);
+        int totalWood = wdm.CountInventoryItem("player_001", "wood_plank");
+        Assert("T13 CountItem(wood_plank) = 15", totalWood == 15, ref passed, ref failed);
 
         // ── Test 10: Network delta encode/decode roundtrip ────────────────
-        byte[] delta = InventoryDataModule.EncodeSlotDelta("player_001", 0, 10, 6);
+        byte[] delta = InventoryDataModule.EncodeSlotDelta("player_001", 0, "resource_gold", 6);
         bool deltaApplied = wdm.InventoryData.ApplySlotDelta(delta);
         Assert("T14 Delta encode/apply", deltaApplied, ref passed, ref failed);
         Assert("T15 Delta roundtrip value correct",
-            wdm.TryGetInventorySlot("player_001", 0, out var s15) && s15.ItemId == 10 && s15.Quantity == 6,
+            wdm.TryGetInventorySlot("player_001", 0, out var s15) && s15.ItemId == "resource_gold" && s15.Quantity == 6,
             ref passed, ref failed);
 
         // ── Test 11: Serialize / Deserialize single inventory ─────────────
@@ -124,7 +124,7 @@ public class InventoryModuleTest : MonoBehaviour
         Assert("T22 Duplicate register = same object", ReferenceEquals(inv1, inv2), ref passed, ref failed);
 
         // ── Test 14: Out-of-range slot index ─────────────────────────────
-        bool rangeOk = !wdm.SetInventorySlot("player_001", 255, 1, 1); // maxSlots=36 so 255 is invalid
+        bool rangeOk = !wdm.SetInventorySlot("player_001", 255, "test_item", 1); // maxSlots=36 so 255 is invalid
         Assert("T23 Out-of-range slot rejected", rangeOk, ref passed, ref failed);
 
         // ── Test 15: Dirty flags ──────────────────────────────────────────

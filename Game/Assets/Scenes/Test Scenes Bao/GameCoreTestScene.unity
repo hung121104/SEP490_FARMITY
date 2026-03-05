@@ -4318,6 +4318,7 @@ GameObject:
   - component: {fileID: 331681578}
   - component: {fileID: 331681579}
   - component: {fileID: 331681581}
+  - component: {fileID: 331681582}
   - component: {fileID: 331681580}
   m_Layer: 0
   m_Name: SyncDataManager
@@ -4391,8 +4392,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   itemsPerBatch: 20
-  batchDelay: 0.3
-  showDebugLogs: 1
+  batchDelay: 0.5
+  showDebugLogs: 0
+--- !u!114 &331681582
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 331681577}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76fde5fb36fefb145a5f8e6bca64395d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  inventoriesPerBatch: 4
+  batchDelay: 0.2
+  showDebugLogs: 0
 --- !u!1 &337970959
 GameObject:
   m_ObjectHideFlags: 0

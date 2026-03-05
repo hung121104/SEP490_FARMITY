@@ -146,7 +146,7 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     }
 
     /// <summary>Request Master to set a slot (replace item).</summary>
-    public void RequestSetSlot(byte slotIndex, ushort itemId, ushort quantity)
+    public void RequestSetSlot(byte slotIndex, string itemId, ushort quantity)
     {
         SendSlotRequest(OP_SET_SLOT, slotIndex, itemId, quantity, 0);
     }
@@ -154,11 +154,11 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     /// <summary>Request Master to clear a slot.</summary>
     public void RequestClearSlot(byte slotIndex)
     {
-        SendSlotRequest(OP_CLEAR_SLOT, slotIndex, 0, 0, 0);
+        SendSlotRequest(OP_CLEAR_SLOT, slotIndex, null, 0, 0);
     }
 
     /// <summary>Request Master to add quantity to a slot.</summary>
-    public void RequestAddQuantity(byte slotIndex, ushort itemId, ushort amount)
+    public void RequestAddQuantity(byte slotIndex, string itemId, ushort amount)
     {
         SendSlotRequest(OP_ADD_QUANTITY, slotIndex, itemId, amount, 0);
     }
@@ -166,13 +166,13 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     /// <summary>Request Master to remove quantity from a slot.</summary>
     public void RequestRemoveQuantity(byte slotIndex, ushort amount)
     {
-        SendSlotRequest(OP_REMOVE_QUANTITY, slotIndex, 0, amount, 0);
+        SendSlotRequest(OP_REMOVE_QUANTITY, slotIndex, null, amount, 0);
     }
 
     /// <summary>Request Master to swap two slots.</summary>
     public void RequestSwapSlots(byte slotA, byte slotB)
     {
-        SendSlotRequest(OP_SWAP_SLOTS, slotA, 0, 0, slotB);
+        SendSlotRequest(OP_SWAP_SLOTS, slotA, null, 0, slotB);
     }
 
     // ══════════════════════════════════════════════════════════
@@ -358,7 +358,7 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     {
         // Decode request
         if (!DecodeSlotRequest(requestData, out string charId, out byte opType,
-                                out byte slotIndex, out ushort itemId, out ushort quantity, out byte slotB))
+                                out byte slotIndex, out string itemId, out ushort quantity, out byte slotB))
         {
             Debug.LogWarning($"[InvSync] Invalid slot change request from actor {senderActorNumber}");
             return;
@@ -418,7 +418,7 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     private void HandleSlotBroadcast(byte[] data)
     {
         if (!DecodeSlotRequest(data, out string charId, out byte opType,
-                                out byte slotIndex, out ushort itemId, out ushort quantity, out byte slotB))
+                                out byte slotIndex, out string itemId, out ushort quantity, out byte slotB))
             return;
 
         ApplyOperation(charId, opType, slotIndex, itemId, quantity, slotB);
@@ -480,7 +480,7 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     // ══════════════════════════════════════════════════════════
 
     private bool ApplyOperation(string charId, byte opType, byte slotIndex,
-                                 ushort itemId, ushort quantity, byte slotB)
+                                 string itemId, ushort quantity, byte slotB)
     {
         var module = WorldDataManager.Instance.InventoryData;
         if (module == null) return false;
@@ -512,7 +512,7 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     // INTERNAL: SEND SLOT REQUEST
     // ══════════════════════════════════════════════════════════
 
-    private void SendSlotRequest(byte opType, byte slotIndex, ushort itemId, ushort quantity, byte slotB)
+    private void SendSlotRequest(byte opType, byte slotIndex, string itemId, ushort quantity, byte slotB)
     {
         string charId = LocalCharacterId;
         if (string.IsNullOrEmpty(charId))
@@ -553,14 +553,17 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     // BINARY SERIALIZATION
     // ══════════════════════════════════════════════════════════
 
-    // ── Slot request: [charIdLen(1)][charId(N)][opType(1)][slotIndex(1)][itemId(2)][quantity(2)][slotB(1)]
-    //    Total: N + 8 bytes
+    // ── Slot request: [charIdLen(1)][charId(N)][opType(1)][slotIndex(1)][itemIdLen(1)][itemId(M)][quantity(2)][slotB(1)]
+    //    Same length-prefix pattern as CropTileData / PlantData serialization.
 
     private static byte[] EncodeSlotRequest(string charId, byte opType, byte slotIndex,
-                                             ushort itemId, ushort quantity, byte slotB)
+                                             string itemId, ushort quantity, byte slotB)
     {
         byte[] charIdBytes = System.Text.Encoding.UTF8.GetBytes(charId ?? "");
-        byte[] result = new byte[1 + charIdBytes.Length + 7];
+        byte[] itemIdBytes = System.Text.Encoding.UTF8.GetBytes(itemId ?? "");
+
+        // 1 + charIdLen + 1 + 1 + 1 + itemIdLen + 2 + 1
+        byte[] result = new byte[1 + charIdBytes.Length + 1 + 1 + 1 + itemIdBytes.Length + 2 + 1];
         int o = 0;
 
         result[o++] = (byte)charIdBytes.Length;
@@ -569,8 +572,11 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
 
         result[o++] = opType;
         result[o++] = slotIndex;
-        result[o++] = (byte)(itemId & 0xFF);
-        result[o++] = (byte)(itemId >> 8);
+
+        result[o++] = (byte)itemIdBytes.Length;
+        System.Buffer.BlockCopy(itemIdBytes, 0, result, o, itemIdBytes.Length);
+        o += itemIdBytes.Length;
+
         result[o++] = (byte)(quantity & 0xFF);
         result[o++] = (byte)(quantity >> 8);
         result[o]   = slotB;
@@ -579,25 +585,30 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     }
 
     private static bool DecodeSlotRequest(byte[] data, out string charId, out byte opType,
-                                           out byte slotIndex, out ushort itemId,
+                                           out byte slotIndex, out string itemId,
                                            out ushort quantity, out byte slotB)
     {
-        charId = null; opType = 0; slotIndex = 0; itemId = 0; quantity = 0; slotB = 0;
+        charId = null; opType = 0; slotIndex = 0; itemId = null; quantity = 0; slotB = 0;
 
         if (data == null || data.Length < 8) return false;
 
         int o = 0;
         byte charIdLen = data[o++];
-        if (data.Length < 1 + charIdLen + 7) return false;
+        if (data.Length < 1 + charIdLen + 6) return false;
 
         charId = System.Text.Encoding.UTF8.GetString(data, o, charIdLen);
         o += charIdLen;
 
         opType    = data[o++];
         slotIndex = data[o++];
-        itemId    = (ushort)(data[o] | (data[o + 1] << 8)); o += 2;
-        quantity  = (ushort)(data[o] | (data[o + 1] << 8)); o += 2;
-        slotB     = data[o];
+
+        byte itemIdLen = data[o++];
+        if (data.Length < o + itemIdLen + 3) return false;
+        itemId = System.Text.Encoding.UTF8.GetString(data, o, itemIdLen);
+        o += itemIdLen;
+
+        quantity = (ushort)(data[o] | (data[o + 1] << 8)); o += 2;
+        slotB    = data[o];
 
         return true;
     }

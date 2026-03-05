@@ -31,7 +31,7 @@ public static class WorldDataManagerInventoryExtensions
 
     public static bool SetInventorySlot(
         this WorldDataManager manager, string characterId,
-        byte slotIndex, ushort itemId, ushort quantity)
+        byte slotIndex, string itemId, ushort quantity)
         => manager.InventoryData?.SetSlot(characterId, slotIndex, itemId, quantity) ?? false;
 
     public static bool ClearInventorySlot(
@@ -40,7 +40,7 @@ public static class WorldDataManagerInventoryExtensions
 
     public static bool AddInventoryQuantity(
         this WorldDataManager manager, string characterId,
-        byte slotIndex, ushort itemId, ushort amount)
+        byte slotIndex, string itemId, ushort amount)
         => manager.InventoryData?.AddQuantity(characterId, slotIndex, itemId, amount) ?? false;
 
     public static bool RemoveInventoryQuantity(
@@ -66,7 +66,7 @@ public static class WorldDataManagerInventoryExtensions
         => manager.InventoryData?.HasItemInSlot(characterId, slotIndex) ?? false;
 
     public static int CountInventoryItem(
-        this WorldDataManager manager, string characterId, ushort itemId)
+        this WorldDataManager manager, string characterId, string itemId)
         => manager.InventoryData?.CountItem(characterId, itemId) ?? 0;
 
     // ── Network helpers ───────────────────────────────────────────────────

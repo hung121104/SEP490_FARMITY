@@ -4,26 +4,25 @@ using System.IO;
 using UnityEngine;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INVENTORY SLOT — minimal struct, 5 bytes of payload per occupied slot
+// INVENTORY SLOT — uses string ItemId for direct catalog compatibility
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// <summary>
-/// Compact inventory slot.
-///   ushort ItemId    (2 bytes)  — 0 = empty, 1-65535 = valid item
-///   byte   SlotIndex (1 byte)  — 0-255 slot positions
-///   ushort Quantity  (2 bytes) — 0-65535 per stack
-/// Total payload: 5 bytes per occupied slot.
+/// Inventory slot — follows the same string-ID pattern as CropTileData.
+///   string ItemId    — catalog item ID (e.g. "resource_gold"), null/empty = empty slot
+///   byte   SlotIndex — 0-255 slot positions
+///   ushort Quantity  — 0-65535 per stack
 /// </summary>
 [Serializable]
 public struct InventorySlot
 {
-    public ushort ItemId;
+    public string ItemId;
     public byte   SlotIndex;
     public ushort Quantity;
 
-    public bool IsEmpty => ItemId == 0 || Quantity == 0;
+    public bool IsEmpty => string.IsNullOrEmpty(ItemId) || Quantity == 0;
 
-    public InventorySlot(ushort itemId, byte slotIndex, ushort quantity)
+    public InventorySlot(string itemId, byte slotIndex, ushort quantity)
     {
         ItemId    = itemId;
         SlotIndex = slotIndex;
@@ -41,10 +40,7 @@ public struct InventorySlot
 
 /// <summary>
 /// Stores one character's inventory. Only occupied slots are kept in memory.
-///
-/// Memory estimate per character (20 occupied slots, Dictionary overhead ~40 B/entry):
-///   20 × (5 payload + ~40 dict) ≈ 900 bytes.
-/// Empty inventories cost only the dictionary + header (~80 bytes).
+/// Uses string ItemId for direct compatibility with ItemCatalogService (same pattern as CropTileData.PlantId).
 /// </summary>
 [Serializable]
 public class CharacterInventory
@@ -73,8 +69,8 @@ public class CharacterInventory
 
     // ── Slot operations ───────────────────────────────────────────────────
 
-    /// <summary>Set (or overwrite) a slot. Removes the entry when quantity is 0.</summary>
-    public bool SetSlot(byte slotIndex, ushort itemId, ushort quantity)
+    /// <summary>Set (or overwrite) a slot. Removes the entry when itemId is null/empty or quantity is 0.</summary>
+    public bool SetSlot(byte slotIndex, string itemId, ushort quantity)
     {
         if (slotIndex >= MaxSlots)
         {
@@ -82,7 +78,7 @@ public class CharacterInventory
             return false;
         }
 
-        if (itemId == 0 || quantity == 0)
+        if (string.IsNullOrEmpty(itemId) || quantity == 0)
         {
             slots.Remove(slotIndex);
         }
@@ -116,15 +112,16 @@ public class CharacterInventory
     }
 
     /// <summary>Add quantity to an existing slot. Creates the slot if it doesn't exist.</summary>
-    public bool AddQuantity(byte slotIndex, ushort itemId, ushort amount)
+    public bool AddQuantity(byte slotIndex, string itemId, ushort amount)
     {
         if (slotIndex >= MaxSlots) return false;
+        if (string.IsNullOrEmpty(itemId)) return false;
 
         if (slots.TryGetValue(slotIndex, out InventorySlot existing))
         {
             if (existing.ItemId != itemId)
             {
-                Debug.LogWarning($"[CharacterInventory] Slot {slotIndex} holds item {existing.ItemId}, cannot add item {itemId}");
+                Debug.LogWarning($"[CharacterInventory] Slot {slotIndex} holds item '{existing.ItemId}', cannot add item '{itemId}'");
                 return false;
             }
 
@@ -199,7 +196,7 @@ public class CharacterInventory
     public Dictionary<byte, InventorySlot>.Enumerator GetEnumerator() => slots.GetEnumerator();
 
     /// <summary>Find first slot that contains the given itemId.</summary>
-    public bool TryFindItem(ushort itemId, out InventorySlot found)
+    public bool TryFindItem(string itemId, out InventorySlot found)
     {
         foreach (var slot in slots.Values)
         {
@@ -214,7 +211,7 @@ public class CharacterInventory
     }
 
     /// <summary>Count total quantity of a specific item across all slots.</summary>
-    public int CountItem(ushort itemId)
+    public int CountItem(string itemId)
     {
         int total = 0;
         foreach (var slot in slots.Values)
@@ -244,9 +241,10 @@ public class CharacterInventory
     // ── Serialization (network sync) ──────────────────────────────────────
 
     /// <summary>
-    /// Serialize this inventory to a compact byte array.
+    /// Serialize this inventory to a byte array.
     /// Layout: [charIdLen(1)][charIdUtf8(N)][maxSlots(1)][slotCount(1)]
-    ///         { [slotIndex(1)][itemId(2)][quantity(2)] } × slotCount
+    ///         { [slotIndex(1)][itemIdLen(1)][itemIdUtf8(M)][quantity(2)] } × slotCount
+    /// Same length-prefix pattern as CropTileData.PlantId serialization.
     /// </summary>
     public byte[] ToBytes()
     {
@@ -261,9 +259,11 @@ public class CharacterInventory
 
             foreach (var kvp in slots)
             {
-                w.Write(kvp.Key);          // slotIndex  (1 byte)
-                w.Write(kvp.Value.ItemId);  // itemId     (2 bytes)
-                w.Write(kvp.Value.Quantity);// quantity   (2 bytes)
+                w.Write(kvp.Key);                                         // slotIndex (1 byte)
+                byte[] itemIdBytes = System.Text.Encoding.UTF8.GetBytes(kvp.Value.ItemId ?? "");
+                w.Write((byte)itemIdBytes.Length);                         // itemIdLen (1 byte)
+                w.Write(itemIdBytes);                                      // itemId    (M bytes)
+                w.Write(kvp.Value.Quantity);                               // quantity  (2 bytes)
             }
 
             return ms.ToArray();
@@ -286,9 +286,10 @@ public class CharacterInventory
             var inv = new CharacterInventory(charId, maxSlots);
             for (int i = 0; i < slotCount; i++)
             {
-                byte   slotIdx = r.ReadByte();
-                ushort itemId  = r.ReadUInt16();
-                ushort qty     = r.ReadUInt16();
+                byte   slotIdx   = r.ReadByte();
+                byte   itemIdLen = r.ReadByte();
+                string itemId    = System.Text.Encoding.UTF8.GetString(r.ReadBytes(itemIdLen));
+                ushort qty       = r.ReadUInt16();
                 inv.slots[slotIdx] = new InventorySlot(itemId, slotIdx, qty);
             }
             return inv;
@@ -298,9 +299,10 @@ public class CharacterInventory
     /// <summary>Estimated size in bytes for memory statistics.</summary>
     public int GetDataSizeBytes()
     {
-        // ~40 bytes dict overhead per entry + 5 bytes payload
-        // + header (charId string + maxSlots + ref)
         int charIdSize = string.IsNullOrEmpty(CharacterId) ? 0 : CharacterId.Length * 2 + 20;
-        return charIdSize + 16 + slots.Count * 45;
+        int slotSize = 0;
+        foreach (var slot in slots.Values)
+            slotSize += 40 + (string.IsNullOrEmpty(slot.ItemId) ? 0 : slot.ItemId.Length * 2 + 20) + 3;
+        return charIdSize + 16 + slotSize;
     }
 }
