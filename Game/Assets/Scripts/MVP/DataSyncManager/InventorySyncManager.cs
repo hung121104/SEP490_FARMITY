@@ -107,15 +107,17 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     // PUBLIC API — called by gameplay / UI code
     // ══════════════════════════════════════════════════════════
 
-    /// <summary>Get local player's characterId (from Photon UserId).</summary>
+    /// <summary>Get local player's characterId from PlayerData._id (MongoDB _id).</summary>
     public string LocalCharacterId
     {
         get
         {
-            if (PhotonNetwork.LocalPlayer == null) return null;
-            return !string.IsNullOrEmpty(PhotonNetwork.LocalPlayer.UserId)
-                ? PhotonNetwork.LocalPlayer.UserId
-                : PhotonNetwork.LocalPlayer.NickName;
+            string accountId = SessionManager.Instance?.UserId;
+            if (string.IsNullOrEmpty(accountId)) return null;
+            if (PlayerDataManager.Instance == null) return null;
+
+            var data = PlayerDataManager.Instance.players.Find(p => p.accountId == accountId);
+            return string.IsNullOrEmpty(data._id) ? null : data._id;
         }
     }
 

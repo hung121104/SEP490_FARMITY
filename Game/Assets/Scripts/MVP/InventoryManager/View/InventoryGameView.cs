@@ -23,7 +23,7 @@ public class InventoryGameView : MonoBehaviour
 
     private void Start()
     {
-        RegisterWithNetwork();
+        StartCoroutine(RegisterWithNetworkWhenReady());
     }
 
     private void OnEnable()
@@ -71,6 +71,35 @@ public class InventoryGameView : MonoBehaviour
         // Subscribe to presenter events
         presenter.OnItemUsed += HandleItemUsed;
         presenter.OnItemDropped += HandleItemDropped;
+    }
+
+    /// <summary>
+    /// Wait for WorldDataBootstrapper to finish loading PlayerData, then register inventory.
+    /// </summary>
+    private System.Collections.IEnumerator RegisterWithNetworkWhenReady()
+    {
+        // Non-master clients don't have WorldDataBootstrapper running,
+        // but PlayerDataManager is still populated via sync — wait until it has data.
+        float timeout = 15f;
+        float elapsed = 0f;
+
+        while (elapsed < timeout)
+        {
+            bool bootstrapperReady = WorldDataBootstrapper.Instance == null || WorldDataBootstrapper.Instance.IsReady;
+            bool playerDataReady   = PlayerDataManager.Instance != null &&
+                                     PlayerDataManager.Instance.players.Count > 0;
+
+            if (bootstrapperReady && playerDataReady)
+                break;
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (elapsed >= timeout)
+            Debug.LogWarning("[InventoryGameView] Timed out waiting for PlayerData — registering anyway.");
+
+        RegisterWithNetwork();
     }
 
     /// <summary>
