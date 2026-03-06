@@ -8,7 +8,7 @@ public class QuestService : IQuestService
         new Dictionary<string, QuestModel>();
 
     // ACCEPT QUEST
-    public void AcceptQuest(QuestModel quest)
+    public void AcceptQuest(QuestModel quest, IInventoryService inventory)
     {
         if (quest == null)
             return;
@@ -17,15 +17,18 @@ public class QuestService : IQuestService
         {
             quest.status = QuestStatus.Active;
 
-            // reset objective progress
             foreach (var obj in quest.objectives)
             {
                 obj.currentAmount = 0;
             }
 
+            
+            SyncObjectiveWithInventory(quest, inventory);
+
             activeQuests.Add(quest.questId, quest);
 
             Debug.Log("Quest Accepted: " + quest.questName);
+
             OnQuestUpdated?.Invoke();
         }
     }
@@ -93,6 +96,7 @@ public class QuestService : IQuestService
                     );
                     
                 }
+                
                 OnQuestUpdated?.Invoke();
             }
 
@@ -176,5 +180,17 @@ public class QuestService : IQuestService
             " x" +
             quest.reward.quantity
         );
+    }
+    public void SyncObjectiveWithInventory(QuestModel quest, IInventoryService inventory)
+    {
+        foreach (var obj in quest.objectives)
+        {
+            if (obj.type == ObjectiveType.CollectItem)
+            {
+                int count = inventory.GetItemCount(obj.itemId);
+
+                obj.currentAmount = Mathf.Min(count, obj.requiredAmount);
+            }
+        }
     }
 }

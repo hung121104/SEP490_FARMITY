@@ -64,12 +64,13 @@ public class NPCInteractor : MonoBehaviour
     questIndex < questDatabase.quests.Length)
         {
             questPresenter = new QuestPresenter(
-                questView,
-                questService,
-                questDatabase.quests[questIndex],
-                dialogueModel.npcName,
-                dialogueModel.avatar
-            );
+             questView,
+            questService,
+             inventoryGameView.GetInventoryService(),
+             questDatabase.quests[questIndex],
+            dialogueModel.npcName,
+            dialogueModel.avatar
+                );
         }
     
 
