@@ -1,4 +1,5 @@
 using UnityEngine;
+using CombatManager.Model;
 
 namespace CombatManager.SO
 {
