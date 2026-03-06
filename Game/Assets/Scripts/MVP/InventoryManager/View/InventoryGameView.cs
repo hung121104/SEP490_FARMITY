@@ -133,48 +133,11 @@ public class InventoryGameView : MonoBehaviour
             return; // Sync will be retried on next OnInventoryChanged event
         }
 
-        // Sync InventoryDataModule → InventoryModel
-        // Disable network sync temporarily to avoid re-broadcasting remote changes
-        bool wasSyncEnabled = false;
-        if (service is InventoryService cs)
+        // Delegate all Model mutations to Service — GameView never touches Model directly
+        if (service is InventoryService concreteService)
         {
-            wasSyncEnabled = cs.NetworkSyncEnabled;
-            cs.NetworkSyncEnabled = false;
+            concreteService.ApplyRemoteInventoryState(inv, inventorySlots);
         }
-
-        // Apply each slot from authoritative data
-        for (byte i = 0; i < (byte)inventorySlots; i++)
-        {
-            if (inv.TryGetSlot(i, out InventorySlot slot) && !slot.IsEmpty)
-            {
-                var existingItem = model.GetItemAtSlot(i);
-                // Only update if different
-                if (existingItem == null || existingItem.ItemId != slot.ItemId || existingItem.Quantity != slot.Quantity)
-                {
-                    var itemData = ItemCatalogService.Instance?.GetItemData(slot.ItemId);
-                    if (itemData != null)
-                    {
-                        var itemModel = new ItemModel(itemData, Quality.Normal, slot.Quantity, i);
-                        model.SetItemAtSlot(i, itemModel);
-                    }
-                }
-            }
-            else
-            {
-                // Slot is empty in authoritative data → clear local
-                if (!model.IsSlotEmpty(i))
-                    model.ClearSlot(i);
-            }
-        }
-
-        // Re-enable network sync
-        if (service is InventoryService cs2)
-            cs2.NetworkSyncEnabled = wasSyncEnabled;
-
-        // Refresh UI through the existing MVP event pipeline
-        // InventoryPresenter subscribes to service.OnInventoryChanged → RefreshView()
-        if (service is InventoryService svc)
-            svc.NotifyInventoryChangedExternal();
 
         Debug.Log("[InventoryGameView] ✓ Remote inventory sync applied successfully");
     }
@@ -230,6 +193,7 @@ public class InventoryGameView : MonoBehaviour
 
     public IInventoryService GetInventoryService() => service;
     public InventoryModel GetInventoryModel() => model;
+    public int GetInventorySlotCount() => model.maxSlots;
 
     /// <summary>
     /// Register a secondary InventoryView (e.g. crafting panel) that receives

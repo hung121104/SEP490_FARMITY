@@ -18,6 +18,9 @@ public class InventoryPresenter
     // Track which slot is currently showing tooltip
     private int currentTooltipSlot = -1;
 
+    // Track cursor position from View events (avoids Input.mousePosition dependency)
+    private Vector2 lastKnownCursorPosition;
+
     // Action cooldown for network sync
     private float lastActionTime = 0f;
     private float actionCooldownDuration = 1.0f; // Đợi 1 giây sau action cuối cùng trước khi cho phép sync
@@ -267,6 +270,7 @@ public class InventoryPresenter
     private void HandleSlotDrag(Vector2 position)
     {
         ResetActionTimer();
+        lastKnownCursorPosition = position;
         view?.UpdateDragPreview(position);
     }
 
@@ -277,8 +281,7 @@ public class InventoryPresenter
         // check if it ended outside the inventory panel → drop item to world
         if (draggedSlot != -1)
         {
-            Vector2 mousePos = Input.mousePosition;
-            if (view != null && !view.IsScreenPositionInsideInventory(mousePos))
+            if (view != null && !view.IsScreenPositionInsideInventory(lastKnownCursorPosition))
             {
                 HandleDropItem(draggedSlot);
                 Debug.Log($"[InventoryPresenter] Item dragged outside inventory — dropped to world from slot {draggedSlot}");
@@ -401,6 +404,8 @@ public class InventoryPresenter
 
     private void HandleSlotHoverEnter(int slotIndex, Vector2 screenPosition)
     {
+        lastKnownCursorPosition = screenPosition;
+
         // Don't show tooltip if currently dragging
         if (draggedSlot != -1)
         {
@@ -487,11 +492,7 @@ public class InventoryPresenter
             return;
         }
 
-        // Get current mouse position
-        Vector2 mousePosition = Input.mousePosition;
-
-        // Show tooltip at current mouse position
-        ShowTooltipForSlot(slotIndex, mousePosition);
+        ShowTooltipForSlot(slotIndex, lastKnownCursorPosition);
     }
 
     /// <summary>
@@ -511,11 +512,7 @@ public class InventoryPresenter
             return;
         }
 
-        // Get current mouse position
-        Vector2 mousePosition = Input.mousePosition;
-
-        // Show updated tooltip
-        ShowTooltipForSlot(slotIndex, mousePosition);
+        ShowTooltipForSlot(slotIndex, lastKnownCursorPosition);
     }
 
     #endregion

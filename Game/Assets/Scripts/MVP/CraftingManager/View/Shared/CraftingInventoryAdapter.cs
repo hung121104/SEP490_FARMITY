@@ -30,7 +30,7 @@ public class CraftingInventoryAdapter : MonoBehaviour
 
     #region Private Fields
 
-    private InventoryModel inventoryModel;
+    private int slotCount;
     private IInventoryService inventoryService;
     private InventoryGameView mainInventoryGameView;
     private bool isInitialized = false;
@@ -60,20 +60,20 @@ public class CraftingInventoryAdapter : MonoBehaviour
                            "Please assign it in the Inspector.");
     }
 
-    public void InjectInventory(InventoryModel model, IInventoryService service)
+    public void InjectInventory(int inventorySlotCount, IInventoryService service)
     {
-        if (model == null || service == null)
+        if (inventorySlotCount <= 0 || service == null)
         {
-            Debug.LogError($"[{gameObject.name}] Cannot inject null model or service.");
+            Debug.LogError($"[{gameObject.name}] Cannot inject invalid slotCount or null service.");
             return;
         }
 
         Cleanup();
 
-        inventoryModel = model;
+        slotCount = inventorySlotCount;
         inventoryService = service;
 
-        inventoryView?.InitializeSlots(inventoryModel.maxSlots);
+        inventoryView?.InitializeSlots(slotCount);
 
         // Setup local view features (delete zone, drop zone)
         if (itemDeleteView != null)
@@ -249,9 +249,9 @@ public class CraftingInventoryAdapter : MonoBehaviour
 
     public void RefreshAllSlots()
     {
-        if (inventoryModel == null || inventoryService == null) return;
+        if (slotCount <= 0 || inventoryService == null) return;
 
-        for (int i = 0; i < inventoryModel.maxSlots; i++)
+        for (int i = 0; i < slotCount; i++)
             inventoryView.UpdateSlot(i, inventoryService.GetItemAtSlot(i));
     }
 
