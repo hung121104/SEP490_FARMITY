@@ -3750,8 +3750,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0, y: -0.0000019073}
-  m_SizeDelta: {x: 480, y: 117.3561}
+  m_AnchoredPosition: {x: 0, y: 15}
+  m_SizeDelta: {x: 500, y: 117.3561}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &280902898
 MonoBehaviour:
@@ -6208,7 +6208,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 64, y: 64}
+  m_SizeDelta: {x: 40, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &484745277
 MonoBehaviour:
@@ -9502,7 +9502,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 892170786}
   m_Direction: 2
   m_Value: 0
-  m_Size: 1
+  m_Size: 0.99997455
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -9919,8 +9919,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2135697868}
   m_HandleRect: {fileID: 2135697867}
   m_Direction: 0
-  m_Value: 0
-  m_Size: 0.94034404
+  m_Value: -0.0000071806066
+  m_Size: 0.9403389
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -10678,8 +10678,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: 669, y: -430}
-  m_SizeDelta: {x: 500, y: 100}
+  m_AnchoredPosition: {x: -451, y: 456}
+  m_SizeDelta: {x: 640, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &832017277
 MonoBehaviour:
@@ -12353,7 +12353,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -134, y: 167.99997}
+  m_AnchoredPosition: {x: -133.99988, y: 168.00014}
   m_SizeDelta: {x: 285, y: 336}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &982907909
@@ -16011,6 +16011,55 @@ Transform:
   - {fileID: 1258734039}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1218117052
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1218117054}
+  - component: {fileID: 1218117053}
+  m_Layer: 0
+  m_Name: EnemySpawnTest
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1218117053
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1218117052}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73e5654965828c944bd6b7e22164840e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enemyPrefab: {fileID: 7205149268433935669, guid: 9d5fc791692557741bafc5825c608b3f, type: 3}
+  spawnKey: 286
+  spawnDistance: 3
+  maxEnemies: 5
+  showSpawnLog: 1
+--- !u!4 &1218117054
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1218117052}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -171.16603, y: 53.302856, z: -0.012221192}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1219811523
 GameObject:
   m_ObjectHideFlags: 0
@@ -16166,8 +16215,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -623, y: 500}
-  m_SizeDelta: {x: 640, y: 60}
+  m_AnchoredPosition: {x: -397.40002, y: 503.90002}
+  m_SizeDelta: {x: 500, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1221958937
 MonoBehaviour:
@@ -16404,8 +16453,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -623, y: 500}
-  m_SizeDelta: {x: 640, y: 60}
+  m_AnchoredPosition: {x: -397.40002, y: 503.90002}
+  m_SizeDelta: {x: 500, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1228675855
 MonoBehaviour:
@@ -21067,8 +21116,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -623, y: 500}
-  m_SizeDelta: {x: 640, y: 60}
+  m_AnchoredPosition: {x: -397.40002, y: 503.90002}
+  m_SizeDelta: {x: 500, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1519494348
 MonoBehaviour:
@@ -21886,7 +21935,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -617.4, y: 498.9}
+  m_AnchoredPosition: {x: -397.40002, y: 503.9}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1564699059
@@ -27742,7 +27791,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 64, y: 64}
+  m_SizeDelta: {x: 40, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1973684652
 MonoBehaviour:
@@ -29449,7 +29498,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000033717086}
+  m_AnchoredPosition: {x: 0, y: 0.0006192512}
   m_SizeDelta: {x: 0, y: 628}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &2054539054
@@ -30089,7 +30138,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1711944735}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9999927
+  m_Size: 0.9999871
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -30166,8 +30215,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -910, y: -494}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: -686, y: 504.6}
+  m_SizeDelta: {x: 49.8728, y: 47.1199}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &2116009889
 GameObject:
@@ -30841,4 +30890,5 @@ SceneRoots:
   - {fileID: 1443821865}
   - {fileID: 1370945940}
   - {fileID: 335619571}
+  - {fileID: 1218117054}
   - {fileID: 114599135}
