@@ -38,6 +38,8 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     private const byte SLOT_CHANGE_REQUEST   = 133;
     private const byte SLOT_BROADCAST        = 134;
     private const byte INV_REGISTER          = 135;
+    private const byte REQUEST_CHAR_ID       = 136; // Client → Master: "give me my _id"
+    private const byte CHAR_ID_RESPONSE      = 137; // Master → Client: "your _id is ..."
 
     // ── Delta Operation Types ────────────────────────────────
     private const byte OP_SET_SLOT       = 0;
@@ -60,6 +62,12 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     // ── State ────────────────────────────────────────────────
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
+
+    /// <summary>In-memory cache of local player's MongoDB _id.</summary>
+    private string _cachedCharacterId;
+
+    /// <summary>PlayerPrefs key scoped to accountId so different accounts don't share cache.</summary>
+    private string CharIdPrefKey => "inv_char_id_" + (SessionManager.Instance?.UserId ?? "unknown");
 
     // ── Events (UI subscribes here) ──────────────────────────
     /// <summary>Fired whenever any inventory slot changes (local or remote).</summary>
@@ -107,31 +115,103 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     // PUBLIC API — called by gameplay / UI code
     // ══════════════════════════════════════════════════════════
 
-    /// <summary>Get local player's characterId from PlayerData._id (MongoDB _id).</summary>
+    /// <summary>Get local player's characterId from PlayerData._id (MongoDB _id).
+    /// Priority: in-memory cache → PlayerPrefs (persists across rejoin) → PlayerDataManager.
+    /// </summary>
     public string LocalCharacterId
     {
         get
         {
+            // 1. In-memory cache (fastest)
+            if (!string.IsNullOrEmpty(_cachedCharacterId))
+                return _cachedCharacterId;
+
+            // 2. PlayerPrefs cache — survives scene reload / master rejoin
+            string prefKey = CharIdPrefKey;
+            string stored = PlayerPrefs.GetString(prefKey, null);
+            if (!string.IsNullOrEmpty(stored))
+            {
+                _cachedCharacterId = stored;
+                return _cachedCharacterId;
+            }
+
+            // 3. Live lookup from PlayerDataManager (populated by WorldDataBootstrapper on master)
             string accountId = SessionManager.Instance?.UserId;
             if (string.IsNullOrEmpty(accountId)) return null;
             if (PlayerDataManager.Instance == null) return null;
 
             var data = PlayerDataManager.Instance.players.Find(p => p.accountId == accountId);
-            return string.IsNullOrEmpty(data._id) ? null : data._id;
+            if (!string.IsNullOrEmpty(data._id))
+            {
+                _cachedCharacterId = data._id;
+                PlayerPrefs.SetString(prefKey, _cachedCharacterId);
+                PlayerPrefs.Save();
+                return _cachedCharacterId;
+            }
+
+            return null;
         }
     }
 
     /// <summary>
+    /// Non-master client requests its own PlayerData._id from master.
+    /// Result will arrive via CHAR_ID_RESPONSE and be cached in _cachedCharacterId.
+    /// </summary>
+    public void RequestCharacterIdFromMaster()
+    {
+        if (PhotonNetwork.IsMasterClient) return; // master resolves locally
+
+        string accountId = SessionManager.Instance?.UserId;
+        if (string.IsNullOrEmpty(accountId))
+        {
+            Debug.LogError("[InvSync] Cannot request characterId — no accountId in SessionManager.");
+            return;
+        }
+
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
+        PhotonNetwork.RaiseEvent(REQUEST_CHAR_ID, accountId, opts, SendOptions.SendReliable);
+        if (showDebugLogs)
+            Debug.Log($"[InvSync] Requested characterId from master for accountId='{accountId}'");
+    }
+
+    /// <summary>
     /// Register local player's inventory on Master.
-    /// Call once when entering the game world.
+    /// Internally retries until characterId is available (handles master rejoin / promote scenarios).
     /// </summary>
     public void RegisterLocalPlayerInventory(byte maxSlots = 36)
     {
+        StartCoroutine(DoRegisterLocalPlayerInventory(maxSlots));
+    }
+
+    private IEnumerator DoRegisterLocalPlayerInventory(byte maxSlots)
+    {
+        const float timeout    = 20f;
+        const float retryEvery = 2f;
+        float elapsed   = 0f;
+        float nextRetry = retryEvery;
+
+        // Non-master: send initial request; master ignores this call.
+        RequestCharacterIdFromMaster();
+
+        while (string.IsNullOrEmpty(LocalCharacterId) && elapsed < timeout)
+        {
+            elapsed += Time.deltaTime;
+
+            // Retry in case of packet loss or master not ready yet
+            if (elapsed >= nextRetry)
+            {
+                RequestCharacterIdFromMaster();
+                nextRetry += retryEvery;
+            }
+
+            yield return null;
+        }
+
         string charId = LocalCharacterId;
         if (string.IsNullOrEmpty(charId))
         {
-            Debug.LogError("[InvSync] Cannot register — no local characterId available.");
-            return;
+            Debug.LogError("[InvSync] Cannot register — no local characterId available after timeout.");
+            yield break;
         }
 
         if (PhotonNetwork.IsMasterClient)
@@ -140,11 +220,13 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
         }
         else
         {
-            // Send register request to master
             byte[] payload = EncodeRegisterRequest(charId, maxSlots);
             RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
             PhotonNetwork.RaiseEvent(INV_REGISTER, payload, opts, SendOptions.SendReliable);
         }
+
+        if (showDebugLogs)
+            Debug.Log($"[InvSync] Registered inventory for charId='{charId}'");
     }
 
     /// <summary>Request Master to set a slot (replace item).</summary>
@@ -250,7 +332,38 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
             case INV_REGISTER when !PhotonNetwork.IsMasterClient:
                 HandleRegisterBroadcast((byte[])photonEvent.CustomData);
                 break;
+
+            // ── CharacterId lookup ───────────────────────────
+            case REQUEST_CHAR_ID when PhotonNetwork.IsMasterClient:
+                HandleCharIdRequest((string)photonEvent.CustomData, photonEvent.Sender);
+                break;
+
+            case CHAR_ID_RESPONSE when !PhotonNetwork.IsMasterClient:
+                _cachedCharacterId = (string)photonEvent.CustomData;
+                // Persist so master rejoin / scene reload doesn't lose the _id
+                PlayerPrefs.SetString(CharIdPrefKey, _cachedCharacterId);
+                PlayerPrefs.Save();
+                if (showDebugLogs)
+                    Debug.Log($"[InvSync] Received characterId from master: '{_cachedCharacterId}'");
+                break;
         }
+    }
+
+    private void HandleCharIdRequest(string accountId, int senderActorNumber)
+    {
+        if (PlayerDataManager.Instance == null) return;
+
+        var data = PlayerDataManager.Instance.players.Find(p => p.accountId == accountId);
+        if (string.IsNullOrEmpty(data._id))
+        {
+            Debug.LogWarning($"[InvSync] Master could not find _id for accountId='{accountId}'");
+            return;
+        }
+
+        RaiseEventOptions opts = new RaiseEventOptions { TargetActors = new int[] { senderActorNumber } };
+        PhotonNetwork.RaiseEvent(CHAR_ID_RESPONSE, data._id, opts, SendOptions.SendReliable);
+        if (showDebugLogs)
+            Debug.Log($"[InvSync] Sent characterId='{data._id}' to actor {senderActorNumber}");
     }
 
     // ══════════════════════════════════════════════════════════
