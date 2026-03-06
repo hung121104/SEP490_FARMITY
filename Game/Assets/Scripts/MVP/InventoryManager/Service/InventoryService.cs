@@ -14,9 +14,47 @@ public class InventoryService : IInventoryService
     public event Action<int, int> OnQuantityChanged;
     public event Action OnInventoryChanged;
 
+    /// <summary>When true, every successful local change is also sent through InventorySyncManager.</summary>
+    public bool NetworkSyncEnabled { get; set; }
+
     public InventoryService(InventoryModel inventoryModel)
     {
         model = inventoryModel;
+    }
+
+    // ── Network sync helper ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Push the current state of a single slot to InventorySyncManager (Master authority).
+    /// Called after every local InventoryModel mutation so the network layer stays in sync.
+    /// Follows the same pattern as CropPlantingService → ChunkDataSyncManager.
+    /// </summary>
+    private void SyncSlotToNetwork(int slotIndex)
+    {
+        if (!NetworkSyncEnabled) return;
+        if (InventorySyncManager.Instance == null) return;
+
+        var item = model.GetItemAtSlot(slotIndex);
+        if (item == null || item.Quantity <= 0)
+        {
+            InventorySyncManager.Instance.RequestClearSlot((byte)slotIndex);
+        }
+        else
+        {
+            InventorySyncManager.Instance.RequestSetSlot(
+                (byte)slotIndex,
+                item.ItemId,
+                (ushort)Mathf.Clamp(item.Quantity, 0, ushort.MaxValue));
+        }
+    }
+
+    /// <summary>
+    /// Fire OnInventoryChanged from external code (e.g., remote network sync).
+    /// Used by InventoryGameView.HandleRemoteInventoryChanged so the Presenter refreshes UI.
+    /// </summary>
+    public void NotifyInventoryChangedExternal()
+    {
+        OnInventoryChanged?.Invoke();
     }
 
     #region Add Operations
@@ -56,6 +94,7 @@ public class InventoryService : IInventoryService
 
                     OnQuantityChanged?.Invoke(slotIndex, existingItem.Quantity);
                     OnInventoryChanged?.Invoke();
+                    SyncSlotToNetwork(slotIndex);
 
                     if (remainingQuantity <= 0)
                         return true;
@@ -79,6 +118,7 @@ public class InventoryService : IInventoryService
 
             OnItemAdded?.Invoke(newItem, emptySlot);
             OnInventoryChanged?.Invoke();
+            SyncSlotToNetwork(emptySlot);
 
             remainingQuantity -= stackSize;
         }
@@ -129,6 +169,7 @@ public class InventoryService : IInventoryService
             }
 
             OnInventoryChanged?.Invoke();
+            SyncSlotToNetwork(slotIndex);
         }
 
         return remainingToRemove == 0;
@@ -153,6 +194,7 @@ public class InventoryService : IInventoryService
         }
 
         OnInventoryChanged?.Invoke();
+        SyncSlotToNetwork(slotIndex);
         return true;
     }
 
@@ -179,6 +221,8 @@ public class InventoryService : IInventoryService
 
             OnItemsMoved?.Invoke(fromSlot, toSlot);
             OnInventoryChanged?.Invoke();
+            SyncSlotToNetwork(fromSlot);
+            SyncSlotToNetwork(toSlot);
             return true;
         }
 
@@ -208,6 +252,8 @@ public class InventoryService : IInventoryService
                 }
 
                 OnInventoryChanged?.Invoke();
+                SyncSlotToNetwork(fromSlot);
+                SyncSlotToNetwork(toSlot);
                 return true;
             }
         }
@@ -225,6 +271,8 @@ public class InventoryService : IInventoryService
 
         OnItemsMoved?.Invoke(slotA, slotB);
         OnInventoryChanged?.Invoke();
+        SyncSlotToNetwork(slotA);
+        SyncSlotToNetwork(slotB);
         return true;
     }
 
@@ -294,6 +342,7 @@ public class InventoryService : IInventoryService
             if (!model.IsSlotEmpty(i))
             {
                 model.ClearSlot(i);
+                SyncSlotToNetwork(i);
             }
         }
         OnInventoryChanged?.Invoke();
@@ -318,6 +367,11 @@ public class InventoryService : IInventoryService
         {
             model.SetItemAtSlot(i, allItems[i]);
         }
+
+        // Sync all slots to network
+        for (int i = 0; i < model.maxSlots; i++)
+            SyncSlotToNetwork(i);
+
         OnInventoryChanged?.Invoke();
     }
 
