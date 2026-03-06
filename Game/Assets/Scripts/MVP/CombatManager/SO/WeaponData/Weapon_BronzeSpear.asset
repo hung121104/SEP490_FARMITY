@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2287234ff1c33b044bd8e42b74ed3ed9, type: 3}
+  m_Name: Weapon_BronzeSpear
+  m_EditorClassIdentifier: 
+  weaponName: Bronze Spear
+  weaponId: bronze_spear
+  weaponType: 3
+  weaponIcon: {fileID: 4961140084404521048, guid: ac1151509c5e4474da5a3bff34f1b921, type: 3}
+  weaponPrefab: {fileID: 8171461803801935278, guid: 2349b768c2985ff419154dd4c82109e7, type: 3}
+  damage: 13
+  tier: 1
+  linkedSkill: {fileID: 0}
+  weaponDescription: 
