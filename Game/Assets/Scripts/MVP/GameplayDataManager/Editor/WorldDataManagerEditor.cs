@@ -6,11 +6,13 @@ using System.Collections.Generic;
 public class WorldDataManagerEditor : Editor
 {
     private bool showChunkData = true;
+    private bool showInventoryData = true;
     private bool showEmptyChunks = false;
     private bool showTilledOnly = true;
     private bool showCropsOnly = true;
     private int selectedSectionFilter = -1; // -1 = all sections
     private Vector2 scrollPosition;
+    private Vector2 inventoryScrollPosition;
 
     public override void OnInspectorGUI()
     {
@@ -40,11 +42,25 @@ public class WorldDataManagerEditor : Editor
         EditorGUILayout.LabelField($"Total Sections: {stats.TotalSections}");
         EditorGUILayout.LabelField($"Total Chunks: {stats.TotalChunks}");
         EditorGUILayout.LabelField($"Loaded Chunks: {stats.LoadedChunks}");
-        EditorGUILayout.LabelField($"Chunks with Crops: {stats.ChunksWithCrops}");
-        EditorGUILayout.LabelField($"Total Crops: {stats.TotalCrops}", EditorStyles.boldLabel);
-        EditorGUILayout.LabelField($"Total Tilled Tiles: {stats.TotalTilledTiles}", EditorStyles.boldLabel);
-        EditorGUILayout.LabelField($"Total Structures: {stats.TotalStructures}", EditorStyles.boldLabel);
-        EditorGUILayout.LabelField($"Memory Usage: {stats.MemoryUsageMB:F3} MB");
+        
+        EditorGUILayout.Space(3);
+        EditorGUILayout.LabelField("Crops", EditorStyles.miniBoldLabel);
+        EditorGUILayout.LabelField($"  Chunks with Crops: {stats.ChunksWithCrops}");
+        EditorGUILayout.LabelField($"  Total Crops: {stats.TotalCrops}");
+        EditorGUILayout.LabelField($"  Total Tilled Tiles: {stats.TotalTilledTiles}");
+        
+        EditorGUILayout.Space(3);
+        EditorGUILayout.LabelField("Structures", EditorStyles.miniBoldLabel);
+        EditorGUILayout.LabelField($"  Total Structures: {stats.TotalStructures}");
+        
+        EditorGUILayout.Space(3);
+        EditorGUILayout.LabelField("Inventory", EditorStyles.miniBoldLabel);
+        EditorGUILayout.LabelField($"  Cached Characters: {stats.InventoryCharacters}");
+        EditorGUILayout.LabelField($"  Occupied Slots: {stats.InventoryOccupiedSlots}");
+        EditorGUILayout.LabelField($"  Total Items: {stats.InventoryTotalItems}");
+        
+        EditorGUILayout.Space(3);
+        EditorGUILayout.LabelField($"Memory Usage: {stats.MemoryUsageMB:F3} MB", EditorStyles.boldLabel);
 
         EditorGUILayout.Space(5);
 
@@ -67,7 +83,7 @@ public class WorldDataManagerEditor : Editor
             }
         }
         EditorGUILayout.EndHorizontal();
-
+        
         EditorGUILayout.Space(10);
 
         // Chunk data display
@@ -270,6 +286,88 @@ public class WorldDataManagerEditor : Editor
             }
 
             EditorGUILayout.EndScrollView();
+        }
+
+        EditorGUILayout.Space(10);
+
+        // Inventory data display
+        showInventoryData = EditorGUILayout.Foldout(showInventoryData, "Inventory Data Details", true);
+        
+        if (showInventoryData)
+        {
+            EditorGUILayout.HelpBox(
+                "📦 Cached character inventories\n" +
+                "Shows all characters with cached inventory data in RAM", 
+                MessageType.None);
+            
+            EditorGUILayout.Space(5);
+
+            // Get all character IDs
+            var charIds = manager.GetAllCharacterIds();
+            
+            if (charIds.Count == 0)
+            {
+                EditorGUILayout.HelpBox("No cached character inventories", MessageType.Info);
+            }
+            else
+            {
+                EditorGUILayout.LabelField($"Cached Characters: {charIds.Count}", EditorStyles.boldLabel);
+                
+                // Scrollable character list
+                inventoryScrollPosition = EditorGUILayout.BeginScrollView(inventoryScrollPosition, GUILayout.Height(300));
+
+                foreach (var charId in charIds)
+                {
+                    var info = manager.GetCharacterInventoryDebugInfo(charId);
+                    
+                    if (!info.IsValid) continue;
+
+                    // Character header with color based on occupied slots
+                    float fillPercent = info.OccupiedSlots / 36f;
+                    Color bgColor = fillPercent > 0.75f ? new Color(1f, 0.5f, 0.3f, 0.3f) : 
+                                    fillPercent > 0.5f ? new Color(1f, 0.8f, 0.3f, 0.3f) :
+                                    fillPercent > 0.25f ? new Color(0.5f, 1f, 0.5f, 0.3f) :
+                                    new Color(0.3f, 0.3f, 0.3f, 0.2f);
+                    
+                    GUI.backgroundColor = bgColor;
+                    EditorGUILayout.BeginVertical("box");
+                    GUI.backgroundColor = Color.white;
+
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField($"📦 {charId}", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField($"Slots: {info.OccupiedSlots}/36", GUILayout.Width(90));
+                    EditorGUILayout.LabelField($"Items: {info.TotalItems}", GUILayout.Width(80));
+                    
+                    EditorGUILayout.EndHorizontal();
+
+                    // Show some items if inventory has items
+                    if (info.Items.Count > 0)
+                    {
+                        EditorGUI.indentLevel++;
+                        
+                        int displayCount = Mathf.Min(5, info.Items.Count);
+                        for (int i = 0; i < displayCount; i++)
+                        {
+                            var item = info.Items[i];
+                            EditorGUILayout.LabelField($"  [Slot {item.SlotIndex:D2}] {item.ItemId} x{item.Quantity}", 
+                                EditorStyles.miniLabel);
+                        }
+                        
+                        if (info.Items.Count > displayCount)
+                        {
+                            EditorGUILayout.LabelField($"  ... and {info.Items.Count - displayCount} more items", 
+                                EditorStyles.miniLabel);
+                        }
+                        
+                        EditorGUI.indentLevel--;
+                    }
+
+                    EditorGUILayout.EndVertical();
+                    EditorGUILayout.Space(2);
+                }
+
+                EditorGUILayout.EndScrollView();
+            }
         }
 
         EditorGUILayout.EndVertical();
