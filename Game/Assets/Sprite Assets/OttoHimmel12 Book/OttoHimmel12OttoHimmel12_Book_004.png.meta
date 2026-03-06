@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 70546fc648e5d184a96bfc16a65ebc19
+guid: 5375a6d6668c20a4bb407f1292136692
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -2064507588050208562
-    second: Sprite-0001 2_0
+      213: -3528377535428063989
+    second: OttoHimmel12OttoHimmel12_Book_004_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -72,7 +72,7 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2048
+    maxTextureSize: 8192
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 0
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Sprite-0001 2_0
+      name: OttoHimmel12OttoHimmel12_Book_004_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 720
-        height: 405
+        x: 76
+        y: 16
+        width: 300
+        height: 272
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ec83b2279456953e0800000000000000
-      internalID: -2064507588050208562
+      spriteID: b0d875f535fa80fc0800000000000000
+      internalID: -3528377535428063989
       vertices: []
       indices: 
       edges: []
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Sprite-0001 2_0: -2064507588050208562
+      OttoHimmel12OttoHimmel12_Book_004_0: -3528377535428063989
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
