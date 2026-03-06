@@ -1,10 +1,13 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using UnityEngine.UI;
+using TMPro;
 
 public class QuestView : MonoBehaviour
 {
     [SerializeField] private NPCDialogueView dialogueView;
+
 
     public Action OnAccept;
     public Action OnBack;
@@ -18,12 +21,20 @@ public class QuestView : MonoBehaviour
             quest.description;
 
         node.options = new List<DialogueOption>()
-        {
-            new DialogueOption { optionText = "Accept", nextNodeIndex = -1 },
-            new DialogueOption { optionText = "Back", nextNodeIndex = -1 }
-        };
+    {
+        new DialogueOption { optionText = "Accept", nextNodeIndex = -1 },
+        new DialogueOption { optionText = "Back", nextNodeIndex = -1 }
+    };
 
         dialogueView.ShowNode(npcName, node, avatar);
+
+        if (quest.reward != null)
+        {
+            dialogueView.ShowReward(
+                quest.reward.icon,
+                quest.reward.quantity
+            );
+        }
     }
 
     public void Accept()
@@ -35,4 +46,5 @@ public class QuestView : MonoBehaviour
     {
         OnBack?.Invoke();
     }
+
 }

@@ -13,9 +13,13 @@ public class QuestLogPresenter
 
     public void OpenQuestLog()
     {
-        List<QuestModel> quests = service.GetActiveQuests();
-
         view.TogglePanel();
+        Refresh();
+    }
+
+    public void Refresh()
+    {
+        List<QuestModel> quests = service.GetActiveQuests();
         view.ShowQuestList(quests);
     }
 }

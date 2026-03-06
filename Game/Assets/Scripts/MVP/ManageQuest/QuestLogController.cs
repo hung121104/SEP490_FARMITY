@@ -19,4 +19,17 @@ public class QuestLogController : MonoBehaviour
     {
         presenter.OpenQuestLog();
     }
+    private void Refresh()
+    {
+        presenter.Refresh();
+    }
+    private void OnEnable()
+    {
+        QuestService.OnQuestUpdated += Refresh;
+    }
+
+    private void OnDisable()
+    {
+        QuestService.OnQuestUpdated -= Refresh;
+    }
 }

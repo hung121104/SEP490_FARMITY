@@ -157,17 +157,17 @@ public class NPCInteractor : MonoBehaviour
         }
     }
     private void HandleInteractionMenuInput()
+    {
+        for (int i = 0; i < interactionNode.options.Count; i++)
         {
-            for (int i = 0; i < interactionNode.options.Count; i++)
+            if (i < optionKeys.Count && Input.GetKeyDown(optionKeys[i]))
             {
-                if (i < optionKeys.Count && Input.GetKeyDown(optionKeys[i]))
+                if (i == 0) // talk
                 {
-                    if (i == 0) // talk
-                    {
-                        dialogueView.Hide();
-                        currentState = NPCState.Dialogue;
-                        presenter.StartDialogue();
-                    }
+                    dialogueView.Hide();
+                    currentState = NPCState.Dialogue;
+                    presenter.StartDialogue();
+                }
                 else if (i == 1) // GIFT
                 {
                     dialogueView.Hide();
@@ -180,34 +180,81 @@ public class NPCInteractor : MonoBehaviour
 
                     QuestModel quest = questDatabase.quests[questIndex];
 
-                    // QUEST CHƯA NHẬN
+                    // QUEST not taken
                     if (!questService.HasQuest(quest.questId))
                     {
                         currentState = NPCState.Quest;
                         questPresenter?.ShowQuest();
                     }
 
-                    // QUEST ĐANG LÀM
+                    // QUEST doing active
                     else if (questService.IsQuestActive(quest.questId))
                     {
-                        ShowSimpleDialogue(
-                            "Thanks for your help. Please come back when you're finished."
-                        );
+                        var inventory = inventoryGameView.GetInventoryService();
+
+                        foreach (var obj in quest.objectives)
+                        {
+                            if (obj.type == ObjectiveType.CollectItem)
+                            {
+                                int count = inventory.GetItemCount(obj.itemId);
+
+                                questService.UpdateObjective(obj.objectiveId, count);
+                            }
+                        }
+
+                        // check if all objectives are completed
+                        if (questService.IsQuestCompleted(quest.questId))
+                        {
+                            bool success = questService.SubmitQuestItems(
+                                quest.questId,
+                                inventory
+                            );
+
+                            if (success)
+                            {
+                                questService.GiveReward(quest.questId, inventory);
+                                questService.CompleteQuest(quest.questId);
+
+                                ShowSimpleDialogue("Thank you for bringing the items! Here is your reward.");
+                            }
+                        }
+                        else
+                        {
+                            ShowSimpleDialogue(
+                                "Thanks for your help. Please come back when you're finished."
+                            );
+                        }
                     }
 
-                    // QUEST HOÀN THÀNH
+                    // QUEST completed
                     else if (questService.IsQuestCompleted(quest.questId))
                     {
-                        ShowSimpleDialogue(
-                            "Great work! Thank you for completing the quest."
+                        bool success = questService.SubmitQuestItems(
+                            quest.questId,
+                            inventoryGameView.GetInventoryService()
                         );
-                    }
-                }
 
-                break;
+                        if (success)
+                        {
+                            var inventory = inventoryGameView.GetInventoryService();
+
+                            questService.GiveReward(quest.questId, inventory);
+
+                            questService.CompleteQuest(quest.questId);
+
+                            ShowSimpleDialogue("Thank you for bringing the items! Here is your reward.");
+                        }
+                        else
+                        {
+                            ShowSimpleDialogue("You don't have the required items.");
+                        }
+                    }
+
+                    break;
                 }
             }
         }
+    }
 
 
 
