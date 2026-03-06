@@ -9,17 +9,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 88f3e6ff451db5c4f9f8223d522a3115, type: 3}
+  m_Script: {fileID: 11500000, guid: a531c917f405b5d47948ccb54770694f, type: 3}
   m_Name: Skill_AirSlash
   m_EditorClassIdentifier: 
   skillName: AirSlash
-  skillDescription: Launch a flying slash projectile at enemies
+  skillDescription: A Flying slash
   skillID: 1
   skillIcon: {fileID: 4841216214093879422, guid: 58c18dfabf66d014eab05bf297ae7e1b, type: 3}
-  skillColor: {r: 0.09927912, g: 0.9150943, b: 0.85982347, a: 1}
+  skillColor: {r: 1, g: 1, b: 1, a: 1}
   activationKey: 49
-  cooldown: 2.5
+  cooldown: 3
   diceTier: 6
   skillMultiplier: 1.5
-  skillRange: 8
+  skillRange: 5
   linkedComponentName: AirSlashPresenter

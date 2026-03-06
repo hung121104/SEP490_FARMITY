@@ -9,15 +9,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 88f3e6ff451db5c4f9f8223d522a3115, type: 3}
+  m_Script: {fileID: 11500000, guid: a531c917f405b5d47948ccb54770694f, type: 3}
   m_Name: Skill_LightningStrike
   m_EditorClassIdentifier: 
-  skillName: Lightning Strike
-  skillDescription: bbbbb
-  skillID: 4
+  skillName: LightningStrike
+  skillDescription: 4
+  skillID: 0
   skillIcon: {fileID: 0}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
-  activationKey: 49
+  activationKey: 51
   cooldown: 3
   diceTier: 6
   skillMultiplier: 1.5

@@ -1276,10 +1276,10 @@ MonoBehaviour:
     availableSkills: []
     isInitialized: 0
   availableSkills:
-  - {fileID: 11400000, guid: c0f06f6fda88de1498c7bb77a2f81711, type: 2}
-  - {fileID: 11400000, guid: 3f82b3ae1aab52d4e917a3f5cd186c21, type: 2}
-  - {fileID: 11400000, guid: e4c41399db2831d47b2ba0e57728782e, type: 2}
-  - {fileID: 11400000, guid: 4bae7d72317a306498172feeb2cada28, type: 2}
+  - {fileID: 11400000, guid: 3f69bfaa32fb31f48a94e19bfbbeb93b, type: 2}
+  - {fileID: 11400000, guid: 284a45678e28cf041b6406f24cca9192, type: 2}
+  - {fileID: 11400000, guid: 0187c43eb1a027146beb4a470345a5e6, type: 2}
+  - {fileID: 11400000, guid: b182c8f3483f7f1498d392dcaab0cea7, type: 2}
 --- !u!1 &806009906
 GameObject:
   m_ObjectHideFlags: 0
@@ -3283,7 +3283,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   model:
     equippedSkillsData:
-    - {fileID: 11400000, guid: 3f69bfaa32fb31f48a94e19bfbbeb93b, type: 2}
+    - {fileID: 0}
     - {fileID: 0}
     - {fileID: 0}
     - {fileID: 0}
@@ -4670,6 +4670,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1750996831}
+  - component: {fileID: 1750996832}
   m_Layer: 0
   m_Name: SkillHotbar
   m_TagString: Untagged
@@ -4692,6 +4693,30 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1168532500}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1750996832
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1750996830}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad999093e38d933488bf990cf18e0364, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model:
+    slotCount: 4
+    activationKeys: 31000000320000003300000034000000
+    emptySlotColor: {r: 1, g: 1, b: 1, a: 0.3}
+    occupiedSlotColor: {r: 1, g: 1, b: 1, a: 1}
+    hoveredSlotColor: {r: 0.8, g: 1, b: 0.8, a: 1}
+    draggingSlotColor: {r: 1, g: 1, b: 1, a: 0.5}
+    isInitialized: 0
+    hoveredSlotIndex: -1
+  skillHotbarCanvas: {fileID: 1434574893}
+  skillHotbarContainer: {fileID: 2088111838}
+  skillHotbarSlotPrefab: {fileID: 1850482316954284577, guid: 4489f9d24716c854b87b39d51ace4733, type: 3}
 --- !u!1 &1763715870
 GameObject:
   m_ObjectHideFlags: 0
