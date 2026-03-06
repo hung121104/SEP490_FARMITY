@@ -230,6 +230,35 @@ public class InventoryGameView : MonoBehaviour
 
     public IInventoryService GetInventoryService() => service;
     public InventoryModel GetInventoryModel() => model;
+
+    /// <summary>
+    /// Register a secondary InventoryView (e.g. crafting panel) that receives
+    /// data-only updates from the single InventoryPresenter.
+    /// The secondary view still handles its own input (drag/drop) locally.
+    /// </summary>
+    public void RegisterSecondaryView(IInventoryView secondaryView)
+    {
+        presenter?.AddSecondaryView(secondaryView);
+    }
+
+    /// <summary>
+    /// Unregister a secondary InventoryView.
+    /// </summary>
+    public void UnregisterSecondaryView(IInventoryView secondaryView)
+    {
+        presenter?.RemoveSecondaryView(secondaryView);
+    }
+
+    /// <summary>
+    /// Called by CraftingInventoryAdapter (or other secondary views) when the user
+    /// performs an action (drag, drop, sort, delete) on that view.
+    /// Resets the main presenter's action cooldown so HandleRemoteInventoryChanged
+    /// correctly defers the echo broadcast and doesn't revert local changes.
+    /// </summary>
+    public void NotifyExternalAction()
+    {
+        presenter?.NotifyExternalAction();
+    }
     #endregion
     
     #region Event Handlers

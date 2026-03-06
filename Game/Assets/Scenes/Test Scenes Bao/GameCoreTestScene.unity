@@ -1268,7 +1268,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &66693715
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1309,7 +1309,7 @@ MonoBehaviour:
   selectedColor: {r: 1, g: 1, b: 1, a: 1}
   enableScrollWheel: 1
   enableLeftClick: 1
-  inventoryGameView: {fileID: 0}
+  inventoryGameView: {fileID: 1039417487}
 --- !u!222 &66693717
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1425,7 +1425,7 @@ MonoBehaviour:
   inventoryView: {fileID: 305662461}
   itemDetailView: {fileID: 956453292}
   itemDeleteView: {fileID: 639904862}
-  inventoryDropZone: {fileID: 0}
+  inventoryDropZone: {fileID: 675285902}
 --- !u!114 &95130091
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4256,7 +4256,7 @@ MonoBehaviour:
   dragPreviewIcon: {fileID: 103425365}
   dragPreviewCanvasGroup: {fileID: 1126689220}
   itemDeleteView: {fileID: 639904862}
-  inventoryDropZone: {fileID: 675285902}
+  inventoryDropZone: {fileID: 0}
 --- !u!1 &310445850
 GameObject:
   m_ObjectHideFlags: 0
@@ -5189,7 +5189,7 @@ MonoBehaviour:
   inventoryView: {fileID: 1105067270}
   itemDetailView: {fileID: 1244021004}
   itemDeleteView: {fileID: 183731445}
-  inventoryDropZone: {fileID: 0}
+  inventoryDropZone: {fileID: 1429142193}
 --- !u!114 &379280176
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6170,7 +6170,7 @@ MonoBehaviour:
   inventoryView: {fileID: 648511108}
   itemDetailView: {fileID: 912167351}
   itemDeleteView: {fileID: 1005992858}
-  inventoryDropZone: {fileID: 0}
+  inventoryDropZone: {fileID: 1999381601}
 --- !u!114 &435592460
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9009,7 +9009,7 @@ MonoBehaviour:
   dragPreviewIcon: {fileID: 2009872974}
   dragPreviewCanvasGroup: {fileID: 1971598074}
   itemDeleteView: {fileID: 1005992858}
-  inventoryDropZone: {fileID: 1999381601}
+  inventoryDropZone: {fileID: 0}
 --- !u!1 &664341796
 GameObject:
   m_ObjectHideFlags: 0
@@ -16054,7 +16054,7 @@ MonoBehaviour:
   dragPreviewIcon: {fileID: 1356239008}
   dragPreviewCanvasGroup: {fileID: 2044947356}
   itemDeleteView: {fileID: 183731445}
-  inventoryDropZone: {fileID: 1429142193}
+  inventoryDropZone: {fileID: 0}
 --- !u!1 &1123994725
 GameObject:
   m_ObjectHideFlags: 0

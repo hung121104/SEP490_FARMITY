@@ -1,5 +1,18 @@
 using UnityEngine;
 
+/// <summary>
+/// Lightweight adapter that connects a secondary InventoryView (inside crafting/cooking UI)
+/// to the single InventoryPresenter owned by InventoryGameView.
+///
+/// Data flow:
+///   InventoryGameView.presenter  ──(data updates)──►  this.inventoryView
+///   this.inventoryView           ──(input events)──►  this.localPresenter (drag/drop/sort only)
+///   this.localPresenter          ──(service calls)──► shared InventoryService
+///   shared InventoryService      ──(events)────────►  InventoryGameView.presenter ──► ALL views
+///
+/// The localPresenter here does NOT subscribe to service events — it only handles input.
+/// Data updates come exclusively through the secondary-view pipeline in InventoryGameView.presenter.
+/// </summary>
 public class CraftingInventoryAdapter : MonoBehaviour
 {
     #region Serialized Fields
@@ -19,7 +32,7 @@ public class CraftingInventoryAdapter : MonoBehaviour
 
     private InventoryModel inventoryModel;
     private IInventoryService inventoryService;
-    private InventoryPresenter inventoryPresenter;
+    private InventoryGameView mainInventoryGameView;
     private bool isInitialized = false;
 
     #endregion
@@ -62,12 +75,7 @@ public class CraftingInventoryAdapter : MonoBehaviour
 
         inventoryView?.InitializeSlots(inventoryModel.maxSlots);
 
-        inventoryPresenter = new InventoryPresenter(inventoryModel, inventoryService);
-        inventoryPresenter.SetView(inventoryView);
-
-        if (itemDetailView != null)
-            inventoryPresenter.SetItemDetailView(itemDetailView);
-
+        // Setup local view features (delete zone, drop zone)
         if (itemDeleteView != null)
         {
             inventoryView.SetDeleteZone(itemDeleteView);
@@ -77,11 +85,136 @@ public class CraftingInventoryAdapter : MonoBehaviour
         if (inventoryDropZone != null)
             inventoryView.SetDropZone(inventoryDropZone);
 
-        // Forward drop-to-world events to DroppedItemManagerView (same as InventoryGameView does)
-        inventoryPresenter.OnItemDropped += HandleItemDropped;
+        // Register as secondary view on the main InventoryGameView's presenter
+        mainInventoryGameView = Object.FindFirstObjectByType<InventoryGameView>();
+        if (mainInventoryGameView != null)
+        {
+            mainInventoryGameView.RegisterSecondaryView(inventoryView);
+        }
+        else
+        {
+            Debug.LogError($"[{gameObject.name}] InventoryGameView not found — secondary view not registered!");
+        }
+
+        // Subscribe to local input events for drag/drop/sort handling
+        SubscribeToViewInputEvents();
 
         isInitialized = true;
-        Debug.Log($"[{gameObject.name}] Inventory injected and initialized.");
+        Debug.Log($"[{gameObject.name}] Inventory injected as secondary view.");
+    }
+
+    #endregion
+
+    #region Local Input Event Handling
+
+    private void SubscribeToViewInputEvents()
+    {
+        if (inventoryView == null) return;
+
+        inventoryView.OnSlotBeginDrag += HandleSlotBeginDrag;
+        inventoryView.OnSlotDrag += HandleSlotDrag;
+        inventoryView.OnSlotEndDrag += HandleSlotEndDrag;
+        inventoryView.OnSlotDrop += HandleSlotDrop;
+        inventoryView.OnDropItemRequested += HandleDropItem;
+        inventoryView.OnSortRequested += HandleSort;
+        inventoryView.OnItemDeleteRequested += HandleItemDelete;
+    }
+
+    private void UnsubscribeFromViewInputEvents()
+    {
+        if (inventoryView == null) return;
+
+        inventoryView.OnSlotBeginDrag -= HandleSlotBeginDrag;
+        inventoryView.OnSlotDrag -= HandleSlotDrag;
+        inventoryView.OnSlotEndDrag -= HandleSlotEndDrag;
+        inventoryView.OnSlotDrop -= HandleSlotDrop;
+        inventoryView.OnDropItemRequested -= HandleDropItem;
+        inventoryView.OnSortRequested -= HandleSort;
+        inventoryView.OnItemDeleteRequested -= HandleItemDelete;
+    }
+
+    private int draggedSlot = -1;
+
+    private void HandleSlotBeginDrag(int slotIndex)
+    {
+        mainInventoryGameView?.NotifyExternalAction();
+        var item = inventoryService.GetItemAtSlot(slotIndex);
+        if (item != null)
+        {
+            draggedSlot = slotIndex;
+            inventoryView?.ShowDragPreview(item);
+        }
+    }
+
+    private void HandleSlotDrag(Vector2 position)
+    {
+        mainInventoryGameView?.NotifyExternalAction();
+        inventoryView?.UpdateDragPreview(position);
+    }
+
+    private void HandleSlotEndDrag()
+    {
+        mainInventoryGameView?.NotifyExternalAction();
+        if (draggedSlot != -1)
+        {
+            Vector2 mousePos = Input.mousePosition;
+            if (inventoryView != null && !inventoryView.IsScreenPositionInsideInventory(mousePos))
+            {
+                HandleDropItem(draggedSlot);
+            }
+        }
+        inventoryView?.HideDragPreview();
+        draggedSlot = -1;
+    }
+
+    private void HandleSlotDrop(int targetSlotIndex)
+    {
+        mainInventoryGameView?.NotifyExternalAction();
+        if (draggedSlot != -1 && draggedSlot != targetSlotIndex)
+        {
+            inventoryService.MoveItem(draggedSlot, targetSlotIndex);
+        }
+        draggedSlot = -1;
+        inventoryView?.HideDragPreview();
+    }
+
+    private void HandleDropItem(int slotIndex)
+    {
+        mainInventoryGameView?.NotifyExternalAction();
+        var item = inventoryService.GetItemAtSlot(slotIndex);
+        if (item != null && !item.IsQuestItem)
+        {
+            if (DroppedItemManagerView.Instance != null)
+                DroppedItemManagerView.Instance.RequestDropItem(item);
+
+            inventoryService.RemoveItemFromSlot(slotIndex, item.Quantity);
+        }
+    }
+
+    private void HandleSort()
+    {
+        mainInventoryGameView?.NotifyExternalAction();
+        inventoryService.SortInventory();
+    }
+
+    private void HandleItemDelete(int slotIndex)
+    {
+        mainInventoryGameView?.NotifyExternalAction();
+        var item = inventoryService.GetItemAtSlot(slotIndex);
+
+        if (item == null)
+        {
+            inventoryView?.ClearSlot(slotIndex);
+            inventoryView?.HideDragPreview();
+            draggedSlot = -1;
+            return;
+        }
+
+        if (item.IsQuestItem || item.IsArtifact) return;
+
+        inventoryService.RemoveItemFromSlot(slotIndex, item.Quantity);
+        inventoryView?.HideDragPreview();
+        draggedSlot = -1;
     }
 
     #endregion
@@ -98,7 +231,9 @@ public class CraftingInventoryAdapter : MonoBehaviour
 
     public void OnClose()
     {
-        inventoryPresenter?.CancelAllActions();
+        draggedSlot = -1;
+        inventoryView?.HideDragPreview();
+        inventoryView?.CancelAllActions();
         Debug.Log($"[{gameObject.name}] Closed.");
     }
 
@@ -114,7 +249,7 @@ public class CraftingInventoryAdapter : MonoBehaviour
 
     public void RefreshAllSlots()
     {
-        if (!ValidateInventoryReferences()) return;
+        if (inventoryModel == null || inventoryService == null) return;
 
         for (int i = 0; i < inventoryModel.maxSlots; i++)
             inventoryView.UpdateSlot(i, inventoryService.GetItemAtSlot(i));
@@ -130,42 +265,13 @@ public class CraftingInventoryAdapter : MonoBehaviour
 
     private void Cleanup()
     {
-        if (inventoryPresenter != null)
+        UnsubscribeFromViewInputEvents();
+
+        if (mainInventoryGameView != null && inventoryView != null)
         {
-            inventoryPresenter.OnItemDropped -= HandleItemDropped;
-            inventoryPresenter.Cleanup();
-            inventoryPresenter = null;
+            mainInventoryGameView.UnregisterSecondaryView(inventoryView);
+            mainInventoryGameView = null;
         }
-    }
-
-    #endregion
-
-    #region Drop-to-World Handler
-
-    private void HandleItemDropped(ItemModel item)
-    {
-        if (DroppedItemManagerView.Instance != null)
-        {
-            DroppedItemManagerView.Instance.RequestDropItem(item);
-        }
-        else
-        {
-            Debug.LogError($"[{gameObject.name}] DroppedItemManagerView.Instance is null — cannot drop item to world!");
-        }
-    }
-
-    #endregion
-
-    #region Private Helpers
-
-    private bool ValidateInventoryReferences()
-    {
-        if (inventoryModel == null || inventoryService == null)
-        {
-            Debug.LogWarning($"[{gameObject.name}] Model or service not set. Call InjectInventory() first.");
-            return false;
-        }
-        return true;
     }
 
     #endregion
