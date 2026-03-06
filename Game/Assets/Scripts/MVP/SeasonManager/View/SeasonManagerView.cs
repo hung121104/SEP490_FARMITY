@@ -46,6 +46,22 @@ public class SeasonManagerView : MonoBehaviour
 
         UpdateSeasonUI(CurrentSeason);
     }
+    void ApplyFarmingTextStyle(TMP_Text text)
+    {
+        if (text == null) return;
+
+        // Outline
+        text.outlineWidth = 0.25f;
+        text.outlineColor = Color.black;
+
+        // Shadow (Underlay)
+        text.fontMaterial.EnableKeyword("UNDERLAY_ON");
+
+        text.fontMaterial.SetColor("_UnderlayColor", new Color(0, 0, 0, 0.8f));
+        text.fontMaterial.SetFloat("_UnderlayOffsetX", 1f);
+        text.fontMaterial.SetFloat("_UnderlayOffsetY", -1f);
+        text.fontMaterial.SetFloat("_UnderlayDilate", 0.2f);
+    }
 
     private void HandleMonthChanged()
     {
@@ -70,16 +86,19 @@ public class SeasonManagerView : MonoBehaviour
     {
         if (seasonText == null) return;
 
+        // Apply farming RPG style
+        ApplyFarmingTextStyle(seasonText);
+
         switch (newSeason)
         {
             case Season.Sunny:
                 seasonText.text = "SUNNY SEASON";
-                seasonText.color = Color.yellow;
+                seasonText.color = new Color(1f, 0.85f, 0f); 
                 break;
 
             case Season.Rainy:
                 seasonText.text = "RAINY SEASON";
-                seasonText.color = Color.cyan;
+                seasonText.color = new Color(0.3f, 0.9f, 1f);
                 break;
         }
     }

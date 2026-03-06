@@ -14,6 +14,10 @@ public class InventoryPresenter
     // Track which slot is currently showing tooltip
     private int currentTooltipSlot = -1;
 
+    // Action cooldown for network sync
+    private float lastActionTime = 0f;
+    private float actionCooldownDuration = 1.0f; // Đợi 1 giây sau action cuối cùng trước khi cho phép sync
+
     // Events for GameView or other systems
     public event Action<ItemModel> OnItemUsed;
     public event Action<ItemModel> OnItemDropped;
@@ -24,6 +28,7 @@ public class InventoryPresenter
     {
         model = inventoryModel;
         service = inventoryService;
+        lastActionTime = Time.time; // Initialize to current time so initial state is "ready to sync"
 
         SubscribeToServiceEvents();
     }
@@ -42,6 +47,23 @@ public class InventoryPresenter
     public void SetItemDetailView(ItemDetailView detailView)
     {
         itemDetailView = detailView;
+    }
+
+    /// <summary>
+    /// Reset action cooldown timer. Called whenever user performs an action.
+    /// After this is called, sync is blocked for actionCooldownDuration seconds.
+    /// </summary>
+    private void ResetActionTimer()
+    {
+        lastActionTime = Time.time;
+    }
+
+    /// <summary>
+    /// Check if enough time has passed since last user action to allow network sync.
+    /// </summary>
+    public bool IsReadyToSync()
+    {
+        return (Time.time - lastActionTime) >= actionCooldownDuration;
     }
 
     public void RemoveView()
@@ -160,6 +182,7 @@ public class InventoryPresenter
     //Need for checking
     private void HandleSlotClicked(int slotIndex)
     {
+        ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
 
         if (item != null)
@@ -175,6 +198,7 @@ public class InventoryPresenter
 
     private void HandleSlotBeginDrag(int slotIndex)
     {
+        ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
         if (item != null)
         {
@@ -188,17 +212,32 @@ public class InventoryPresenter
 
     private void HandleSlotDrag(Vector2 position)
     {
+        ResetActionTimer();
         view?.UpdateDragPreview(position);
     }
 
     private void HandleSlotEndDrag()
     {
+        ResetActionTimer();
+        // If drag wasn't consumed by a slot drop or delete zone,
+        // check if it ended outside the inventory panel → drop item to world
+        if (draggedSlot != -1)
+        {
+            Vector2 mousePos = Input.mousePosition;
+            if (view != null && !view.IsScreenPositionInsideInventory(mousePos))
+            {
+                HandleDropItem(draggedSlot);
+                Debug.Log($"[InventoryPresenter] Item dragged outside inventory — dropped to world from slot {draggedSlot}");
+            }
+        }
+
         view?.HideDragPreview();
         draggedSlot = -1;
     }
 
     private void HandleSlotDrop(int targetSlotIndex)
     {
+        ResetActionTimer();
         if (draggedSlot != -1 && draggedSlot != targetSlotIndex)
         {
             service.MoveItem(draggedSlot, targetSlotIndex);
@@ -213,6 +252,7 @@ public class InventoryPresenter
 
     private void HandleUseItem(int slotIndex)
     {
+        ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
         if (item != null)
         {
@@ -227,16 +267,19 @@ public class InventoryPresenter
 
     private void HandleDropItem(int slotIndex)
     {
+        ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
         if (item != null && !item.IsQuestItem)
         {
             OnItemDropped?.Invoke(item);
-            service.RemoveItemFromSlot(slotIndex, 1);
+            // Remove the entire stack from inventory (drop whole stack to world)
+            service.RemoveItemFromSlot(slotIndex, item.Quantity);
         }
     }
 
     private void HandleSort()
     {
+        ResetActionTimer();
         service.SortInventory();
         HideCurrentItemDetail();
     }
@@ -247,6 +290,7 @@ public class InventoryPresenter
 
     private void HandleItemDelete(int slotIndex)
     {
+        ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
 
         if (item == null)

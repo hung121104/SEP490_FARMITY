@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 9107845147142514731}
   - component: {fileID: 1634215716028221634}
   - component: {fileID: 6523819796232800320}
-  - component: {fileID: 4971473455347226497}
   - component: {fileID: 1496533801912076096}
   - component: {fileID: 7843208650405123059}
   - component: {fileID: 5823601231637734570}
@@ -159,20 +158,6 @@ CapsuleCollider2D:
   m_Offset: {x: 0.0064468384, y: -0.0017261505}
   m_Size: {x: 1.4721527, y: 2.173046}
   m_Direction: 0
---- !u!114 &4971473455347226497
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7205149268433935669}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ffaa4be9be10a0642a14563dc353698f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  friction: 3
-  maxVelocity: 10
 --- !u!114 &1496533801912076096
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -202,6 +187,9 @@ MonoBehaviour:
   damageAmount: 5
   knockbackForce: 10
   damagePopupPrefab: {fileID: 6620676086198952409, guid: 26064304fbc9d04448d8b1e1d10f1876, type: 3}
+  damageThrottleTime: 0.5
+  playerSearchRetryInterval: 0.5
+  playerSearchTimeout: 10
 --- !u!114 &5823601231637734570
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -249,6 +237,8 @@ MonoBehaviour:
   guardLookDuration: 1
   hitAlertDuration: 5
   knockbackDuration: 0.3
+  friction: 3
+  maxVelocity: 10
   animator: {fileID: 7705436625211187722}
   spriteRenderer: {fileID: 9107845147142514731}
 --- !u!95 &7705436625211187722

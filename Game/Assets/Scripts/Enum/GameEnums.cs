@@ -123,8 +123,7 @@ public enum CraftingCategory
     Tools,
     Food,
     Materials,
-    Furniture,
-    Equipment
+    Furniture
 }
 
 public enum NotificationType

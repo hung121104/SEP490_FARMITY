@@ -17,7 +17,6 @@ public interface IItemDetailView
 
     // Button states
     void SetUseButtonState(bool interactable);
-    void SetDropButtonState(bool interactable);
 
     // Events to Presenter
     event Action OnUseRequested;

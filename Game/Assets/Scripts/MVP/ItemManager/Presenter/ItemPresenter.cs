@@ -72,8 +72,6 @@ public class ItemPresenter
 
         // Configure buttons based on item capabilities
         view.SetUseButtonState(service.CanBeUsed());
-        view.SetDropButtonState(!model.IsQuestItem && !model.IsArtifact);
-
         view.Show();
     }
 

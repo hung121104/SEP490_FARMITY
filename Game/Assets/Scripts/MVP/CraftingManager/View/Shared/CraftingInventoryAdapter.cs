@@ -11,6 +11,7 @@ public class CraftingInventoryAdapter : MonoBehaviour
     [Header("Optional")]
     [SerializeField] private ItemDetailView itemDetailView;
     [SerializeField] private ItemDeleteView itemDeleteView;
+    [SerializeField] private InventoryDropZone inventoryDropZone;
 
     #endregion
 
@@ -73,6 +74,12 @@ public class CraftingInventoryAdapter : MonoBehaviour
             itemDeleteView.Show();
         }
 
+        if (inventoryDropZone != null)
+            inventoryView.SetDropZone(inventoryDropZone);
+
+        // Forward drop-to-world events to DroppedItemManagerView (same as InventoryGameView does)
+        inventoryPresenter.OnItemDropped += HandleItemDropped;
+
         isInitialized = true;
         Debug.Log($"[{gameObject.name}] Inventory injected and initialized.");
     }
@@ -125,8 +132,25 @@ public class CraftingInventoryAdapter : MonoBehaviour
     {
         if (inventoryPresenter != null)
         {
+            inventoryPresenter.OnItemDropped -= HandleItemDropped;
             inventoryPresenter.Cleanup();
             inventoryPresenter = null;
+        }
+    }
+
+    #endregion
+
+    #region Drop-to-World Handler
+
+    private void HandleItemDropped(ItemModel item)
+    {
+        if (DroppedItemManagerView.Instance != null)
+        {
+            DroppedItemManagerView.Instance.RequestDropItem(item);
+        }
+        else
+        {
+            Debug.LogError($"[{gameObject.name}] DroppedItemManagerView.Instance is null — cannot drop item to world!");
         }
     }
 

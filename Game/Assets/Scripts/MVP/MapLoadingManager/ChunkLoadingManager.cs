@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using Photon.Pun;
+using System;
 using System.Collections.Generic;
 using System.Collections;
 
@@ -59,7 +60,17 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     private float nextUpdateTime;
     private Transform localPlayerTransform;
     private TimeManagerView timeManager;
-    
+
+    // ── Events for other systems (e.g. DroppedItemManager) ──────────────────
+
+    /// <summary>Fired after a chunk has been loaded and its visuals spawned.</summary>
+    public event Action<Vector2Int> OnChunkLoaded;
+
+    /// <summary>Fired after a chunk has been unloaded and its visuals destroyed.</summary>
+    public event Action<Vector2Int> OnChunkUnloaded;
+
+    // ── Public Query ─────────────────────────────────────────────────────────
+  
     private void Start()
     {
         if (!PhotonNetwork.IsConnected)
@@ -293,6 +304,9 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         {
             SpawnChunkVisuals(chunkPos, chunk);
         }
+
+        // Notify subscribers (e.g. DroppedItemManager)
+        OnChunkLoaded?.Invoke(chunkPos);
     }
     
     /// <summary>
@@ -303,6 +317,9 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         if (!currentlyLoadedChunks.Contains(chunkPos))
             return;
         
+        // Notify subscribers BEFORE removing (they may need to query state)
+        OnChunkUnloaded?.Invoke(chunkPos);
+
         currentlyLoadedChunks.Remove(chunkPos);
         
         // Note: We don't actually clear the chunk data, just mark as unloaded

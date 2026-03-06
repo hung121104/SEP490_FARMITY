@@ -1216,8 +1216,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.27324, y: -95.178}
-  m_SizeDelta: {x: 755.5394, y: 385.18}
+  m_AnchoredPosition: {x: 0.40049982, y: -95.178}
+  m_SizeDelta: {x: 764.89, y: 385.18}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &153926894
 MonoBehaviour:
@@ -2577,8 +2577,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.39678, y: -29.5103}
-  m_SizeDelta: {x: 728.35, y: 296.2664}
+  m_AnchoredPosition: {x: 0.27436, y: -29.8159}
+  m_SizeDelta: {x: 733.19, y: 295.6552}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &445017333
 MonoBehaviour:
@@ -2866,65 +2866,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 424651930}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &568174555
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 568174558}
-  - component: {fileID: 568174557}
-  - component: {fileID: 568174556}
-  m_Layer: 0
-  m_Name: 'ChatSystem '
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &568174556
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 568174555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b3c8e405fdb4a5a46bbd20e1faedd244, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  chatView: {fileID: 474607953}
-  chatService: {fileID: 568174557}
---- !u!114 &568174557
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 568174555}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7f05aee426adce94d81b95a5a3e5d36a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!4 &568174558
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 568174555}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1012.87146, y: 509.06406, z: -1.3401109}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1216207414}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &582960458
 GameObject:
   m_ObjectHideFlags: 0
@@ -3084,7 +3025,7 @@ RectTransform:
   - {fileID: 585944890}
   - {fileID: 870954927}
   - {fileID: 706728946}
-  - {fileID: 2097327288}
+  - {fileID: 1812996254}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -3291,58 +3232,6 @@ RectTransform:
   m_AnchoredPosition: {x: -213, y: 149}
   m_SizeDelta: {x: 681.7511, y: 146.3501}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!1 &617649730
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 617649732}
-  - component: {fileID: 617649731}
-  m_Layer: 0
-  m_Name: 'WeatherView '
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &617649731
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 617649730}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fa5d86d50d5703c49ac5f1b864475de0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  seasonManager: {fileID: 1619023916}
-  rainChance: 0.5
-  rainEffect: {fileID: 1854443877689547427, guid: 348feeeb673e4d0449bc6cc04825bff7, type: 3}
-  rainySeasonRainChance: 0.7
-  sunnySeasonRainChance: 0.3
-  rainManager: {fileID: 2126748213}
-  timeManager: {fileID: 76351687}
-  forecastView: {fileID: 1619023914}
---- !u!4 &617649732
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 617649730}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -1.2237244, y: -3.1220322, z: 0.04805883}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1216207414}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &654270552
 GameObject:
   m_ObjectHideFlags: 0
@@ -4613,8 +4502,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 218, y: 197.9}
-  m_SizeDelta: {x: -516.4774, y: -438.2286}
+  m_AnchoredPosition: {x: 219.69125, y: 197.61}
+  m_SizeDelta: {x: -498.6906, y: -438.81}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1044860491
 MonoBehaviour:
@@ -5367,41 +5256,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Padding: {x: -8, y: -5, z: -8, w: -5}
   m_Softness: {x: 0, y: 0}
---- !u!1 &1216207413
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1216207414}
-  m_Layer: 0
-  m_Name: WeatherSystem
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &1216207414
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1216207413}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -151.68991, y: 70.8621, z: -0.1150521}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1619023915}
-  - {fileID: 617649732}
-  - {fileID: 568174558}
-  - {fileID: 2126748214}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1231263071
 GameObject:
   m_ObjectHideFlags: 0
@@ -5730,8 +5584,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Rainy Season
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 435c43f186694524f85004c850ab0353, type: 2}
-  m_sharedMaterial: {fileID: -8598245246373943943, guid: 435c43f186694524f85004c850ab0353, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: b594c8a30457e5f41ad966b03d1d26aa, type: 2}
+  m_sharedMaterial: {fileID: -7953292292967863894, guid: b594c8a30457e5f41ad966b03d1d26aa, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -6181,8 +6035,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -163.79, y: 197.9}
-  m_SizeDelta: {x: -396.4941, y: -438.2286}
+  m_AnchoredPosition: {x: -165.79059, y: 197.60532}
+  m_SizeDelta: {x: -392.4888, y: -438.8094}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1435586601
 MonoBehaviour:
@@ -7025,75 +6879,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1619023913
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1619023915}
-  - component: {fileID: 1619023914}
-  - component: {fileID: 1619023916}
-  m_Layer: 5
-  m_Name: Forecast
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1619023914
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1619023913}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 70591e891b0885348a32727087ccc462, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  rootPanel: {fileID: 0}
-  todayIcon: {fileID: 0}
-  tomorrowIcon: {fileID: 0}
-  sunnySprite: {fileID: 3447397523584585331, guid: 20c5ab507cf04ea419c669c02804419c, type: 3}
-  rainSprite: {fileID: -2118747234004157197, guid: 1500bcf89010d9c4c87fe0349f5102e1, type: 3}
---- !u!224 &1619023915
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1619023913}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0.1150521}
-  m_LocalScale: {x: 1.6666666, y: 1.6666666, z: 1.6666666}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1216207414}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 421.08994, y: 31.197906}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1619023916
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1619023913}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fefb78cc902e3384cb02f1500240df80, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  timeManager: {fileID: 76351687}
-  monthsPerSeason: 1
-  seasonText: {fileID: 0}
 --- !u!1 &1625412490
 GameObject:
   m_ObjectHideFlags: 0
@@ -7627,6 +7412,82 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1811444114}
   m_CullTransparentMesh: 1
+--- !u!1 &1812996253
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1812996254}
+  - component: {fileID: 1812996256}
+  - component: {fileID: 1812996255}
+  m_Layer: 5
+  m_Name: CalenderPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1812996254
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1812996253}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2097327288}
+  m_Father: {fileID: 583161136}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 21.279358, y: 15.742004}
+  m_SizeDelta: {x: -637.5591, y: -196.90501}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1812996255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1812996253}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.89411765}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: -8567643912832686301, guid: 7dff94a1c3ab0be4ea0a0127ef9885dc, type: 3}
+  m_Type: 1
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 3
+--- !u!222 &1812996256
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1812996253}
+  m_CullTransparentMesh: 1
 --- !u!1 &1828711464
 GameObject:
   m_ObjectHideFlags: 0
@@ -7958,8 +7819,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.3975, y: 148.6}
-  m_SizeDelta: {x: 728.3478, y: 57.022}
+  m_AnchoredPosition: {x: 0.2745, y: 149.51672}
+  m_SizeDelta: {x: 733.1871, y: 55.1886}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1876618772
 MonoBehaviour:
@@ -8028,7 +7889,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 021544054aa3b1947b1f2b2d1852b45b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  calendarPanel: {fileID: 2097327285}
+  calendarPanel: {fileID: 1812996253}
   dayText: {fileID: 1176028988}
   monthText: {fileID: 1625412492}
   yearText: {fileID: 2087160251}
@@ -8916,7 +8777,6 @@ MonoBehaviour:
   updateInterval: 1
   unloadDelay: 5
   visualizeCrops: 1
-  plantDatabase: []
   tilledTile: {fileID: 0}
   tilledTilemapName: TillableTilemap
   showDebugLogs: 1
@@ -9484,11 +9344,11 @@ RectTransform:
   - {fileID: 1044860490}
   - {fileID: 1183880390}
   - {fileID: 1435586600}
-  m_Father: {fileID: 583161136}
+  m_Father: {fileID: 1812996254}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 9.999878, y: 24.097168}
+  m_AnchoredPosition: {x: -11.279449, y: 8.355179}
   m_SizeDelta: {x: 825, y: 629.8055}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &2119054326
@@ -9541,56 +9401,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2126748212
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2126748214}
-  - component: {fileID: 2126748213}
-  m_Layer: 0
-  m_Name: RainManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2126748213
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2126748212}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef7a0a773a6e8aa49aadf423f1e02c30, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  rainPrefab: {fileID: 1854443877689547427, guid: 348feeeb673e4d0449bc6cc04825bff7, type: 3}
-  zoneSize: 30
-  spawnEdgeDistance: 15
-  heightOffset: 10
-  baseEmissionRate: 1000
-  fadeDuration: 3
---- !u!4 &2126748214
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2126748212}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 2.2251434, y: -1.7487946, z: 1.9151139}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1216207414}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2134384685
 GameObject:
@@ -9771,7 +9581,6 @@ SceneRoots:
   - {fileID: 583161136}
   - {fileID: 2134384687}
   - {fileID: 318106715}
-  - {fileID: 1216207414}
   - {fileID: 2119054328}
   - {fileID: 1447786739}
   - {fileID: 1587500938}

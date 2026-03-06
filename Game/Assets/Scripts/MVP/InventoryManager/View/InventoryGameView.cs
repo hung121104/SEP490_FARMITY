@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Photon.Pun;
 
 public class InventoryGameView : MonoBehaviour
 {
@@ -20,6 +21,21 @@ public class InventoryGameView : MonoBehaviour
         InitializeInventorySystem();
     }
 
+    private void Start()
+    {
+        StartCoroutine(RegisterWithNetworkWhenReady());
+    }
+
+    private void OnEnable()
+    {
+        InventorySyncManager.OnInventoryChanged += HandleRemoteInventoryChanged;
+    }
+
+    private void OnDisable()
+    {
+        InventorySyncManager.OnInventoryChanged -= HandleRemoteInventoryChanged;
+    }
+
     private void OnDestroy()
     {
         Cleanup();
@@ -33,7 +49,8 @@ public class InventoryGameView : MonoBehaviour
         model = new InventoryModel(inventorySlots);
 
         // Create Service
-        service = new InventoryService(model);
+        var inventoryService = new InventoryService(model);
+        service = inventoryService;
 
         // Create Presenter
         presenter = new InventoryPresenter(model, service);
@@ -55,7 +72,112 @@ public class InventoryGameView : MonoBehaviour
         presenter.OnItemUsed += HandleItemUsed;
         presenter.OnItemDropped += HandleItemDropped;
     }
+
+    /// <summary>
+    /// Wait for InventorySyncManager to be ready, then register.
+    /// Retry logic is handled inside RegisterLocalPlayerInventory itself.
+    /// </summary>
+    private System.Collections.IEnumerator RegisterWithNetworkWhenReady()
+    {
+        yield return new WaitUntil(() => InventorySyncManager.Instance != null);
+        RegisterWithNetwork();
+    }
+
+    /// <summary>
+    /// Register local player's inventory with InventorySyncManager and enable network sync.
+    /// Follows the same late-init pattern as CropPlantingService.
+    /// </summary>
+    private void RegisterWithNetwork()
+    {
+        if (InventorySyncManager.Instance == null)
+        {
+            Debug.LogWarning("[InventoryGameView] InventorySyncManager not available — network sync disabled.");
+            return;
+        }
+
+        // Register character on Master
+        InventorySyncManager.Instance.RegisterLocalPlayerInventory((byte)inventorySlots);
+
+        // Enable auto-sync in the service layer
+        if (service is InventoryService concreteService)
+        {
+            concreteService.NetworkSyncEnabled = true;
+        }
+
+        Debug.Log("[InventoryGameView] Network inventory sync enabled.");
+    }
     #endregion
+
+    /// <summary>
+    /// Called when InventorySyncManager receives a remote slot change.
+    /// Reads the authoritative data from InventoryDataModule and refreshes local InventoryModel.
+    /// </summary>
+    private void HandleRemoteInventoryChanged()
+    {
+        if (InventorySyncManager.Instance == null) return;
+        string charId = InventorySyncManager.Instance.LocalCharacterId;
+        if (string.IsNullOrEmpty(charId)) return;
+
+        var module = WorldDataManager.Instance?.InventoryData;
+        if (module == null) return;
+
+        var inv = module.GetInventory(charId);
+        if (inv == null) return;
+
+        // ═══ ACTION COOLDOWN CHECK ═══
+        // Skip sync if user is currently performing actions (drag, drop, sort)
+        // This prevents race conditions where remote changes conflict with local UI updates
+        if (presenter != null && !presenter.IsReadyToSync())
+        {
+            Debug.Log("[InventoryGameView] User performing action, deferring remote sync...");
+            return; // Sync will be retried on next OnInventoryChanged event
+        }
+
+        // Sync InventoryDataModule → InventoryModel
+        // Disable network sync temporarily to avoid re-broadcasting remote changes
+        bool wasSyncEnabled = false;
+        if (service is InventoryService cs)
+        {
+            wasSyncEnabled = cs.NetworkSyncEnabled;
+            cs.NetworkSyncEnabled = false;
+        }
+
+        // Apply each slot from authoritative data
+        for (byte i = 0; i < (byte)inventorySlots; i++)
+        {
+            if (inv.TryGetSlot(i, out InventorySlot slot) && !slot.IsEmpty)
+            {
+                var existingItem = model.GetItemAtSlot(i);
+                // Only update if different
+                if (existingItem == null || existingItem.ItemId != slot.ItemId || existingItem.Quantity != slot.Quantity)
+                {
+                    var itemData = ItemCatalogService.Instance?.GetItemData(slot.ItemId);
+                    if (itemData != null)
+                    {
+                        var itemModel = new ItemModel(itemData, Quality.Normal, slot.Quantity, i);
+                        model.SetItemAtSlot(i, itemModel);
+                    }
+                }
+            }
+            else
+            {
+                // Slot is empty in authoritative data → clear local
+                if (!model.IsSlotEmpty(i))
+                    model.ClearSlot(i);
+            }
+        }
+
+        // Re-enable network sync
+        if (service is InventoryService cs2)
+            cs2.NetworkSyncEnabled = wasSyncEnabled;
+
+        // Refresh UI through the existing MVP event pipeline
+        // InventoryPresenter subscribes to service.OnInventoryChanged → RefreshView()
+        if (service is InventoryService svc)
+            svc.NotifyInventoryChangedExternal();
+
+        Debug.Log("[InventoryGameView] ✓ Remote inventory sync applied successfully");
+    }
 
     public void OpenInventory()
     {
@@ -109,7 +231,7 @@ public class InventoryGameView : MonoBehaviour
     public IInventoryService GetInventoryService() => service;
     public InventoryModel GetInventoryModel() => model;
     #endregion
-
+    
     #region Event Handlers
 
     private void HandleItemUsed(ItemModel item)
@@ -124,8 +246,15 @@ public class InventoryGameView : MonoBehaviour
     {
         Debug.Log($"Dropping item: {item.ItemName}");
 
-        // TODO: Implement item drop logic
-        // Example: Spawn item in world at player position
+        // Delegate to DroppedItemManagerView which handles Photon sync + DB persistence
+        if (DroppedItemManagerView.Instance != null)
+        {
+            DroppedItemManagerView.Instance.RequestDropItem(item);
+        }
+        else
+        {
+            Debug.LogError("[InventoryGameView] DroppedItemManagerView.Instance is null — cannot drop item!");
+        }
     }
 
     #endregion
