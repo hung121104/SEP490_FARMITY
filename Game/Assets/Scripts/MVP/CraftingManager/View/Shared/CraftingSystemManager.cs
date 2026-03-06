@@ -17,7 +17,7 @@ public class CraftingSystemManager : MonoBehaviour
     private CraftingModel craftingModel;
     private ICraftingService craftingService;
     private IInventoryService inventoryService;
-    private InventoryModel inventoryModel;
+    private int inventorySlotCount;
 
     // Presenters
     private CraftingPresenter craftingPresenter;
@@ -106,7 +106,7 @@ public class CraftingSystemManager : MonoBehaviour
         if (existingInventory != null)
         {
             inventoryService = existingInventory.GetInventoryService();
-            inventoryModel = existingInventory.GetInventoryModel();
+            inventorySlotCount = existingInventory.GetInventorySlotCount();
             Debug.Log("[CraftingSystemManager] Inventory references obtained from InventoryGameView.");
         }
         else
@@ -121,24 +121,24 @@ public class CraftingSystemManager : MonoBehaviour
     /// </summary>
     private void ConnectInventoryAdapter()
     {
-        if (inventoryModel == null || inventoryService == null)
+        if (inventorySlotCount <= 0 || inventoryService == null)
         {
-            Debug.LogError("[CraftingSystemManager] Cannot connect adapter, inventory model or service is null.");
+            Debug.LogError("[CraftingSystemManager] Cannot connect adapter, inventory slot count or service is null.");
             return;
         }
 
         if (craftingInventoryAdapter != null)
-            craftingInventoryAdapter.InjectInventory(inventoryModel, inventoryService);
+            craftingInventoryAdapter.InjectInventory(inventorySlotCount, inventoryService);
         else
             Debug.LogWarning("[CraftingSystemManager] CraftingInventoryAdapter not assigned.");
 
         if (cookingInventoryAdapter != null)
-            cookingInventoryAdapter.InjectInventory(inventoryModel, inventoryService);
+            cookingInventoryAdapter.InjectInventory(inventorySlotCount, inventoryService);
         else
             Debug.LogWarning("[CraftingSystemManager] CookingInventoryAdapter not assigned.");
 
         if (craftingInInventoryAdapter != null)
-            craftingInInventoryAdapter.InjectInventory(inventoryModel, inventoryService);
+            craftingInInventoryAdapter.InjectInventory(inventorySlotCount, inventoryService);
         else
             Debug.LogWarning("[CraftingSystemManager] CraftingInInventoryAdapter not assigned.");
     }
