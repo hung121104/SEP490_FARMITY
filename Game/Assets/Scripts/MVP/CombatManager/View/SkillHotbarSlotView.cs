@@ -90,8 +90,8 @@ namespace CombatManager.View
                 skillIconImage.enabled = false;
             }
 
-            if (slotBackground != null)
-                slotBackground.color = model != null ? model.emptySlotColor : new Color(1f, 1f, 1f, 0.3f);
+            // ✅ Don't touch slotBackground color - keep it as designed in prefab
+            // slotBackground is the root Image the user styled themselves
 
             if (cooldownFill != null)
             {
@@ -109,8 +109,7 @@ namespace CombatManager.View
                 skillIconImage.enabled = true;
             }
 
-            if (slotBackground != null)
-                slotBackground.color = model != null ? model.occupiedSlotColor : Color.white;
+            // ✅ Don't touch slotBackground color - keep it as designed in prefab
 
             if (cooldownFill != null)
             {
@@ -159,6 +158,7 @@ namespace CombatManager.View
 
         public void OnPointerEnter(PointerEventData eventData)
         {
+            // ✅ Only highlight if we have a background reference AND slot is empty
             if (slotBackground != null && currentSkillData == null)
                 slotBackground.color = model != null ? model.hoveredSlotColor : Color.green;
 
@@ -167,8 +167,9 @@ namespace CombatManager.View
 
         public void OnPointerExit(PointerEventData eventData)
         {
+            // ✅ Restore to original prefab color (white, full alpha) not emptySlotColor
             if (slotBackground != null && currentSkillData == null)
-                slotBackground.color = model != null ? model.emptySlotColor : new Color(1f, 1f, 1f, 0.3f);
+                slotBackground.color = Color.white;
 
             OnSlotHoverExit?.Invoke(slotIndex);
         }
