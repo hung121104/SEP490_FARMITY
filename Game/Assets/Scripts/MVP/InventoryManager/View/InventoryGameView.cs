@@ -23,7 +23,7 @@ public class InventoryGameView : MonoBehaviour
 
     private void Start()
     {
-        RegisterWithNetwork();
+        StartCoroutine(RegisterWithNetworkWhenReady());
     }
 
     private void OnEnable()
@@ -71,6 +71,16 @@ public class InventoryGameView : MonoBehaviour
         // Subscribe to presenter events
         presenter.OnItemUsed += HandleItemUsed;
         presenter.OnItemDropped += HandleItemDropped;
+    }
+
+    /// <summary>
+    /// Wait for InventorySyncManager to be ready, then register.
+    /// Retry logic is handled inside RegisterLocalPlayerInventory itself.
+    /// </summary>
+    private System.Collections.IEnumerator RegisterWithNetworkWhenReady()
+    {
+        yield return new WaitUntil(() => InventorySyncManager.Instance != null);
+        RegisterWithNetwork();
     }
 
     /// <summary>
