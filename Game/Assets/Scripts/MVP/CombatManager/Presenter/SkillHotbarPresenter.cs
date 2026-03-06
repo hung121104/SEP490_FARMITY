@@ -78,6 +78,7 @@ namespace CombatManager.Presenter
         private void Update()
         {
             HandleHotkeyInput();
+            UpdateCooldownFills();
         }
 
         private void OnDestroy()
@@ -250,6 +251,38 @@ namespace CombatManager.Presenter
         public int GetHoveredSlotIndex() => service.GetHoveredSlotIndex();
 
         public bool IsInitialized() => service.IsInitialized();
+
+        #endregion
+
+        #region Cooldown Fill
+
+        private void UpdateCooldownFills()
+        {
+            if (SkillManagerPresenter.Instance == null) return;
+
+            for (int i = 0; i < slots.Count; i++)
+            {
+                SkillPresenterBase baseSkill = SkillManagerPresenter.Instance.GetSkillComponent(i);
+                if (baseSkill == null)
+                {
+                    slots[i].UpdateCooldownFill(0f);
+                    continue;
+                }
+
+                SkillPresenter skill = baseSkill as SkillPresenter;
+                if (skill == null)
+                {
+                    slots[i].UpdateCooldownFill(0f);
+                    continue;
+                }
+
+                // ✅ Invert: GetCooldownPercent() = remaining (1→0)
+                // We want overlay to START full then drain away
+                // So invert: 1 - percent = how much has been consumed
+                float fill = skill.IsCoolingDown() ? 1f - skill.GetCooldownPercent() : 0f;
+                slots[i].UpdateCooldownFill(fill);
+            }
+        }
 
         #endregion
     }

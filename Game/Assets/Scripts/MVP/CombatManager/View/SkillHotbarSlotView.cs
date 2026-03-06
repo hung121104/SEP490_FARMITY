@@ -120,8 +120,14 @@ namespace CombatManager.View
 
         public void UpdateCooldownFill(float fillAmount)
         {
-            if (cooldownFill != null)
-                cooldownFill.fillAmount = Mathf.Clamp01(fillAmount);
+            if (cooldownFill == null) return;
+
+            cooldownFill.fillAmount = Mathf.Clamp01(fillAmount);
+
+            // ✅ Only show fill overlay when actually cooling down
+            cooldownFill.color = fillAmount > 0f
+                ? new Color(0f, 0f, 0f, 0.6f)
+                : Color.clear;
         }
 
         #endregion
