@@ -254,15 +254,65 @@ public class WorldDataManager : MonoBehaviour
         }
         return null;
     }
-    
+
+    /// <summary>
+    /// Get all character IDs with cached inventory data
+    /// </summary>
+    public List<string> GetAllCharacterIds()
+    {
+        return inventoryModule != null
+            ? new List<string>(inventoryModule.GetAllCharacterIds())
+            : new List<string>();
+    }
+
+    /// <summary>
+    /// Get debug information about a character's inventory
+    /// </summary>
+    public CharacterInventoryDebugInfo GetCharacterInventoryDebugInfo(string characterId)
+    {
+        var info = new CharacterInventoryDebugInfo();
+
+        if (inventoryModule == null)
+        {
+            info.IsValid = false;
+            return info;
+        }
+
+        var inventory = inventoryModule.GetInventory(characterId);
+        if (inventory == null)
+        {
+            info.IsValid = false;
+            return info;
+        }
+
+        info.IsValid = true;
+        info.CharacterId = characterId;
+        info.OccupiedSlots = inventory.OccupiedSlotCount;
+        info.TotalItems = 0;
+        info.Items = new List<CharacterInventoryDebugInfo.ItemInfo>();
+
+        foreach (var slot in inventory.GetAllSlots())
+        {
+            info.TotalItems += slot.Quantity;
+            info.Items.Add(new CharacterInventoryDebugInfo.ItemInfo
+            {
+                SlotIndex = slot.SlotIndex,
+                ItemId = slot.ItemId,
+                Quantity = slot.Quantity
+            });
+        }
+
+        return info;
+    }
+
     #endregion
-    
+
     // NOTE: Crop-related methods moved to WorldDataManagerCropExtensions.cs
     // This keeps WorldDataManager focused on core coordination (SOLID principle)
     // Usage remains identical: WorldDataManager.Instance.PlantCropAtWorldPosition(...)
-    
+
     #region Statistics and Management
-    
+
     /// <summary>
     /// Get memory usage estimate in MB
     /// </summary>
@@ -308,22 +358,27 @@ public class WorldDataManager : MonoBehaviour
     {
         WorldDataStats stats = GetStats();
         
-        string log = $"=== World Data Statistics ===\n" +
+        string log = $"========== World Data Statistics ==========\n" +
                      $"Sections: {stats.TotalSections}\n" +
                      $"Total Chunks: {stats.TotalChunks}\n" +
-                     $"Loaded Chunks: {stats.LoadedChunks}\n" +
-                     $"Memory Usage: {stats.MemoryUsageMB:F2} MB\n\n";
-        
-        foreach (var kvp in modules)
-        {
-            log += $"--- {kvp.Key} ---\n";
-            var moduleStats = kvp.Value.GetStats();
-            foreach (var statKvp in moduleStats)
-            {
-                log += $"  {statKvp.Key}: {statKvp.Value}\n";
-            }
-            log += "\n";
-        }
+                     $"Loaded Chunks: {stats.LoadedChunks}\n\n" +
+                     
+                     $"--- Crops ---\n" +
+                     $"  Chunks with Crops: {stats.ChunksWithCrops}\n" +
+                     $"  Total Crops: {stats.TotalCrops}\n" +
+                     $"  Total Tilled Tiles: {stats.TotalTilledTiles}\n\n" +
+                     
+                     $"--- Structures ---\n" +
+                     $"  Total Structures: {stats.TotalStructures}\n" +
+                     $"  Chunks with Structures: {stats.ChunksWithStructures}\n\n" +
+                     
+                     $"--- Inventory ---\n" +
+                     $"  Cached Characters: {stats.InventoryCharacters}\n" +
+                     $"  Occupied Slots: {stats.InventoryOccupiedSlots}\n" +
+                     $"  Total Items: {stats.InventoryTotalItems}\n\n" +
+                     
+                     $"Memory Usage: {stats.MemoryUsageMB:F3} MB\n" +
+                     $"==========================================";
         
         Debug.Log(log);
     }
@@ -340,7 +395,7 @@ public class WorldDataManager : MonoBehaviour
             Debug.Log("[WorldDataManager] All data cleared");
         }
     }
-    
+         
     #endregion
     
     #region Debug Visualization
@@ -405,4 +460,25 @@ public struct WorldDataStats
     public int   InventoryOccupiedSlots;
     public int   InventoryTotalItems;
     public float MemoryUsageMB;
+}
+
+/// <summary>
+/// Debug information structure for character inventory display in editor
+/// </summary>
+[System.Serializable]
+public struct CharacterInventoryDebugInfo
+{
+    public bool IsValid;
+    public string CharacterId;
+    public int OccupiedSlots;
+    public int TotalItems;
+    public List<ItemInfo> Items;
+    
+    [System.Serializable]
+    public struct ItemInfo
+    {
+        public byte SlotIndex;
+        public string ItemId;
+        public ushort Quantity;
+    }
 }

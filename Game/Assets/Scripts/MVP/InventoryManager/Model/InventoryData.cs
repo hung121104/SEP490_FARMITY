@@ -12,6 +12,10 @@ using UnityEngine;
 ///   string ItemId    — catalog item ID (e.g. "resource_gold"), null/empty = empty slot
 ///   byte   SlotIndex — 0-255 slot positions
 ///   ushort Quantity  — 0-65535 per stack
+//   Memory Estimates (per character):
+//   • Empty inventory (0 slots): ~58 bytes
+//   • Single item: ~130 bytes
+//   • Full inventory (36 slots × 10 bytes avg): ~1.5 KB
 /// </summary>
 [Serializable]
 public struct InventorySlot
@@ -32,6 +36,28 @@ public struct InventorySlot
     public override string ToString()
         => IsEmpty ? $"Slot[{SlotIndex}] (empty)"
                    : $"Slot[{SlotIndex}] Item:{ItemId} x{Quantity}";
+
+    // ── Type Conversion (ushort ↔ int) ────────────────────────────────────
+
+    /// <summary>
+    /// Convert ushort Quantity to int for compatibility with int-based systems.
+    /// Safe conversion since ushort (0-65535) fits within int range.
+    /// </summary>
+    public int GetQuantityAsInt()
+    {
+        return (int)Quantity;
+    }
+
+    /// <summary>
+    /// Create InventorySlot from int quantity (clamps to ushort range 0-65535).
+    /// Usage: var slot = InventorySlot.FromIntQuantity("apple", 0, 100);
+    /// </summary>
+    public static InventorySlot FromIntQuantity(string itemId, byte slotIndex, int quantity)
+    {
+        // Clamp: if int > ushort.MaxValue, cap at 65535
+        ushort clamped = quantity > ushort.MaxValue ? ushort.MaxValue : (ushort)quantity;
+        return new InventorySlot(itemId, slotIndex, clamped);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

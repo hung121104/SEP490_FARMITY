@@ -114,6 +114,15 @@ public class InventoryGameView : MonoBehaviour
         var inv = module.GetInventory(charId);
         if (inv == null) return;
 
+        // ═══ ACTION COOLDOWN CHECK ═══
+        // Skip sync if user is currently performing actions (drag, drop, sort)
+        // This prevents race conditions where remote changes conflict with local UI updates
+        if (presenter != null && !presenter.IsReadyToSync())
+        {
+            Debug.Log("[InventoryGameView] User performing action, deferring remote sync...");
+            return; // Sync will be retried on next OnInventoryChanged event
+        }
+
         // Sync InventoryDataModule → InventoryModel
         // Disable network sync temporarily to avoid re-broadcasting remote changes
         bool wasSyncEnabled = false;
@@ -156,6 +165,8 @@ public class InventoryGameView : MonoBehaviour
         // InventoryPresenter subscribes to service.OnInventoryChanged → RefreshView()
         if (service is InventoryService svc)
             svc.NotifyInventoryChangedExternal();
+
+        Debug.Log("[InventoryGameView] ✓ Remote inventory sync applied successfully");
     }
 
     public void OpenInventory()
@@ -210,7 +221,7 @@ public class InventoryGameView : MonoBehaviour
     public IInventoryService GetInventoryService() => service;
     public InventoryModel GetInventoryModel() => model;
     #endregion
-
+    
     #region Event Handlers
 
     private void HandleItemUsed(ItemModel item)
