@@ -213,14 +213,16 @@ namespace CombatManager.Presenter
 
         private void TryDropOnHotbar(SkillData skillData)
         {
-            // TODO: Uncomment after SkillHotbarPresenter is built
-            // if (SkillHotbarPresenter.Instance == null) return;
-            // int hoveredSlot = SkillHotbarPresenter.Instance.GetHoveredSlotIndex();
-            // if (hoveredSlot < 0) return;
-            // SkillManagerPresenter.Instance?.EquipSkill(hoveredSlot, skillData);
-            // SkillHotbarPresenter.Instance.RefreshSlot(hoveredSlot);
+            // ✅ Uncommented now that SkillHotbarPresenter exists
+            if (SkillHotbarPresenter.Instance == null) return;
 
-            Debug.Log($"[SkillManagementPresenter] TryDropOnHotbar → SkillHotbar not built yet! Skill: {skillData?.skillName}");
+            int hoveredSlot = SkillHotbarPresenter.Instance.GetHoveredSlotIndex();
+            if (hoveredSlot < 0) return;
+
+            SkillManagerPresenter.Instance?.EquipSkill(hoveredSlot, skillData);
+            SkillHotbarPresenter.Instance.RefreshSlot(hoveredSlot);
+
+            Debug.Log($"[SkillManagementPresenter] Dropped '{skillData?.skillName}' → Hotbar slot {hoveredSlot}");
         }
 
         #endregion
@@ -237,8 +239,8 @@ namespace CombatManager.Presenter
                 {
                     SkillManagerPresenter.Instance.EquipSkill(i, item.GetSkillData());
 
-                    // TODO: Uncomment after SkillHotbarPresenter is built
-                    // SkillHotbarPresenter.Instance?.RefreshSlot(i);
+                    // ✅ Uncommented now that SkillHotbarPresenter exists
+                    SkillHotbarPresenter.Instance?.RefreshSlot(i);
 
                     Debug.Log($"[SkillManagementPresenter] Selected '{item.GetSkillData().skillName}' → auto-equip slot {i}");
                     return;

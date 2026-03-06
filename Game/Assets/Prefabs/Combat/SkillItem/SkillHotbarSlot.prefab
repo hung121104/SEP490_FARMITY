@@ -87,6 +87,7 @@ GameObject:
   - component: {fileID: 739713485630469293}
   - component: {fileID: 2874861060460370547}
   - component: {fileID: 750549636655859094}
+  - component: {fileID: 1355347412051621837}
   m_Layer: 0
   m_Name: SkillHotbarSlot
   m_TagString: Untagged
@@ -198,6 +199,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1355347412051621837
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1850482316954284577}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acc9afd880f4b624ea7861208e536a86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  slotBackground: {fileID: 2874861060460370547}
+  skillIconImage: {fileID: 5780251471745986323}
+  hotkeyLabel: {fileID: 1494484024754632496}
+  cooldownFill: {fileID: 7925141881098683512}
 --- !u!1 &2420489755559905985
 GameObject:
   m_ObjectHideFlags: 0
