@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a531c917f405b5d47948ccb54770694f, type: 3}
-  m_Name: Skill_LightningStrike
+  m_Name: Skill_WeaponSwordSlash
   m_EditorClassIdentifier: 
-  skillName: LightningStrike
-  skillDescription: bbb
-  skillID: 4
-  skillIcon: {fileID: 0}
+  skillName: Sword Slash
+  skillDescription: Special Sword Slash
+  skillID: 5
+  skillIcon: {fileID: 2920698787889111498, guid: a022bb7a89f3bc141b1ceba628a657c4, type: 3}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
-  activationKey: 51
+  activationKey: 49
   cooldown: 3
   diceTier: 6
   skillMultiplier: 1.5
   skillRange: 5
-  linkedComponentName: LightningStrike
+  linkedComponentName: 

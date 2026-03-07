@@ -9,12 +9,6 @@ using CombatManager.SO;
 
 namespace CombatManager.Presenter
 {
-    /// <summary>
-    /// Presenter for SkillHotbar system.
-    /// Manages: slot spawning, skill equip/unequip/swap,
-    /// hotkey triggers, combat mode show/hide.
-    /// NO script on Canvas - only on manager GameObject.
-    /// </summary>
     public class SkillHotbarPresenter : MonoBehaviour
     {
         #region Serialized Fields
@@ -25,11 +19,14 @@ namespace CombatManager.Presenter
         [Header("Canvas Reference")]
         [SerializeField] private GameObject skillHotbarCanvas;
 
-        [Header("Slot Container")]
+        [Header("Player Skill Slots")]
         [SerializeField] private Transform skillHotbarContainer;
-
-        [Header("Prefab")]
         [SerializeField] private GameObject skillHotbarSlotPrefab;
+
+        [Header("Weapon Skill Slot")]
+        [SerializeField] private Transform weaponSkillSection;
+        [SerializeField] private GameObject weaponSkillSlotPrefab;
+        [SerializeField] private KeyCode weaponSkillKey = KeyCode.R;
 
         #endregion
 
@@ -37,6 +34,9 @@ namespace CombatManager.Presenter
 
         private ISkillHotbarService service;
         private List<SkillHotbarSlotView> slots = new List<SkillHotbarSlotView>();
+
+        // ✅ Spawned at runtime, not assigned in Inspector
+        private WeaponSkillSlotView weaponSkillSlotView;
 
         #endregion
 
@@ -63,14 +63,15 @@ namespace CombatManager.Presenter
         private void Start()
         {
             SpawnSlots();
+            SpawnWeaponSkillSlot(); // ✅ NEW
             service.Initialize();
             RefreshAllSlots();
 
-            // Subscribe to combat mode
             CombatModePresenter.OnCombatModeChanged += OnCombatModeChanged;
 
-            // Start hidden (combat mode starts off)
             SetHotbarVisible(false);
+
+            SubscribeToWeaponEvents();
 
             Debug.Log("[SkillHotbarPresenter] Initialized!");
         }
@@ -79,11 +80,14 @@ namespace CombatManager.Presenter
         {
             HandleHotkeyInput();
             UpdateCooldownFills();
+            HandleWeaponSkillInput();
+            UpdateWeaponSkillCooldown();
         }
 
         private void OnDestroy()
         {
             CombatModePresenter.OnCombatModeChanged -= OnCombatModeChanged;
+            UnsubscribeFromWeaponEvents();
         }
 
         #endregion
@@ -121,16 +125,46 @@ namespace CombatManager.Presenter
 
                 slotView.Initialize(i, model);
 
-                // Hook up slot events
-                slotView.OnDroppedOnSlot     += OnSkillDroppedOnSlot;
-                slotView.OnSlotSwapRequested += OnSlotSwapRequested;
+                slotView.OnDroppedOnSlot        += OnSkillDroppedOnSlot;
+                slotView.OnSlotSwapRequested    += OnSlotSwapRequested;
                 slotView.OnSlotUnequipRequested += OnSlotUnequipRequested;
-                slotView.OnSlotHoverEnter    += OnSlotHoverEnter;
-                slotView.OnSlotHoverExit     += OnSlotHoverExit;
+                slotView.OnSlotHoverEnter       += OnSlotHoverEnter;
+                slotView.OnSlotHoverExit        += OnSlotHoverExit;
 
                 slots.Add(slotView);
                 Debug.Log($"[SkillHotbarPresenter] Slot {i} spawned");
             }
+        }
+
+        // ✅ NEW: Spawn weapon skill slot into WeaponSkillSection
+        private void SpawnWeaponSkillSlot()
+        {
+            if (weaponSkillSection == null)
+            {
+                Debug.LogError("[SkillHotbarPresenter] weaponSkillSection not assigned!");
+                return;
+            }
+
+            if (weaponSkillSlotPrefab == null)
+            {
+                Debug.LogError("[SkillHotbarPresenter] weaponSkillSlotPrefab not assigned!");
+                return;
+            }
+
+            GameObject slotGO = Instantiate(weaponSkillSlotPrefab, weaponSkillSection);
+            slotGO.name = "WeaponSkillSlot";
+
+            weaponSkillSlotView = slotGO.GetComponent<WeaponSkillSlotView>();
+            if (weaponSkillSlotView == null)
+            {
+                Debug.LogError("[SkillHotbarPresenter] WeaponSkillSlotView missing on prefab!");
+                Destroy(slotGO);
+                return;
+            }
+
+            weaponSkillSlotView.SetEmpty();
+            weaponSkillSlotView.SetVisible(false);
+            Debug.Log("[SkillHotbarPresenter] Weapon skill slot spawned!");
         }
 
         #endregion
@@ -144,9 +178,7 @@ namespace CombatManager.Presenter
             for (int i = 0; i < model.activationKeys.Length && i < slots.Count; i++)
             {
                 if (Input.GetKeyDown(model.activationKeys[i]))
-                {
                     TriggerSlot(i);
-                }
             }
         }
 
@@ -170,43 +202,30 @@ namespace CombatManager.Presenter
         private void OnSkillDroppedOnSlot(int slotIndex, SkillData skillData)
         {
             if (SkillManagerPresenter.Instance == null) return;
-
             SkillManagerPresenter.Instance.EquipSkill(slotIndex, skillData);
             RefreshSlot(slotIndex);
-
             Debug.Log($"[SkillHotbarPresenter] Equipped '{skillData.skillName}' → slot {slotIndex}");
         }
 
         private void OnSlotSwapRequested(int slotA, int slotB)
         {
             if (SkillManagerPresenter.Instance == null) return;
-
             SkillManagerPresenter.Instance.SwapSkills(slotA, slotB);
             RefreshSlot(slotA);
             RefreshSlot(slotB);
-
             Debug.Log($"[SkillHotbarPresenter] Swapped slot {slotA} ↔ slot {slotB}");
         }
 
         private void OnSlotUnequipRequested(int slotIndex)
         {
             if (SkillManagerPresenter.Instance == null) return;
-
             SkillManagerPresenter.Instance.UnequipSkill(slotIndex);
             RefreshSlot(slotIndex);
-
             Debug.Log($"[SkillHotbarPresenter] Unequipped slot {slotIndex}");
         }
 
-        private void OnSlotHoverEnter(int slotIndex)
-        {
-            service.SetHoveredSlot(slotIndex);
-        }
-
-        private void OnSlotHoverExit(int slotIndex)
-        {
-            service.ClearHoveredSlot();
-        }
+        private void OnSlotHoverEnter(int slotIndex) => service.SetHoveredSlot(slotIndex);
+        private void OnSlotHoverExit(int slotIndex) => service.ClearHoveredSlot();
 
         #endregion
 
@@ -215,7 +234,6 @@ namespace CombatManager.Presenter
         public void RefreshSlot(int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= slots.Count) return;
-
             SkillData skillData = SkillManagerPresenter.Instance?.GetSkillData(slotIndex);
             slots[slotIndex].RefreshDisplay(skillData);
         }
@@ -224,7 +242,6 @@ namespace CombatManager.Presenter
         {
             for (int i = 0; i < slots.Count; i++)
                 RefreshSlot(i);
-
             Debug.Log("[SkillHotbarPresenter] All slots refreshed");
         }
 
@@ -246,14 +263,6 @@ namespace CombatManager.Presenter
 
         #endregion
 
-        #region Public API
-
-        public int GetHoveredSlotIndex() => service.GetHoveredSlotIndex();
-
-        public bool IsInitialized() => service.IsInitialized();
-
-        #endregion
-
         #region Cooldown Fill
 
         private void UpdateCooldownFills()
@@ -263,26 +272,107 @@ namespace CombatManager.Presenter
             for (int i = 0; i < slots.Count; i++)
             {
                 SkillPresenterBase baseSkill = SkillManagerPresenter.Instance.GetSkillComponent(i);
-                if (baseSkill == null)
-                {
-                    slots[i].UpdateCooldownFill(0f);
-                    continue;
-                }
+                if (baseSkill == null) { slots[i].UpdateCooldownFill(0f); continue; }
 
                 SkillPresenter skill = baseSkill as SkillPresenter;
-                if (skill == null)
-                {
-                    slots[i].UpdateCooldownFill(0f);
-                    continue;
-                }
+                if (skill == null) { slots[i].UpdateCooldownFill(0f); continue; }
 
-                // ✅ Invert: GetCooldownPercent() = remaining (1→0)
-                // We want overlay to START full then drain away
-                // So invert: 1 - percent = how much has been consumed
                 float fill = skill.IsCoolingDown() ? 1f - skill.GetCooldownPercent() : 0f;
                 slots[i].UpdateCooldownFill(fill);
             }
         }
+
+        #endregion
+
+        #region Weapon Skill Slot
+
+        private void SubscribeToWeaponEvents()
+        {
+            WeaponEquipPresenter.OnWeaponEquipped += OnWeaponEquipped;
+            WeaponEquipPresenter.OnWeaponUnequipped += OnWeaponUnequipped;
+        }
+
+        private void UnsubscribeFromWeaponEvents()
+        {
+            WeaponEquipPresenter.OnWeaponEquipped -= OnWeaponEquipped;
+            WeaponEquipPresenter.OnWeaponUnequipped -= OnWeaponUnequipped;
+        }
+
+        private void OnWeaponEquipped(WeaponDataSO weaponData)
+        {
+            if (weaponSkillSlotView == null) return;
+
+            if (weaponData.linkedSkill == null)
+            {
+                Debug.LogWarning($"[SkillHotbarPresenter] {weaponData.weaponName} has no linked skill!");
+                weaponSkillSlotView.SetEmpty();
+                return;
+            }
+
+            weaponSkillSlotView.SetSkill(weaponData.linkedSkill.skillIcon);
+            weaponSkillSlotView.SetVisible(true);
+            Debug.Log($"[SkillHotbarPresenter] Weapon skill slot loaded: {weaponData.linkedSkill.skillName}");
+        }
+
+        private void OnWeaponUnequipped()
+        {
+            if (weaponSkillSlotView == null) return;
+            weaponSkillSlotView.SetEmpty();
+            weaponSkillSlotView.SetVisible(false);
+            Debug.Log("[SkillHotbarPresenter] Weapon skill slot cleared");
+        }
+
+        private void HandleWeaponSkillInput()
+        {
+            if (!Input.GetKeyDown(weaponSkillKey)) return;
+            if (CombatModePresenter.Instance == null ||
+                !CombatModePresenter.Instance.IsCombatModeActive()) return;
+            if (WeaponEquipPresenter.Instance == null ||
+                !WeaponEquipPresenter.Instance.IsWeaponEquipped()) return;
+
+            var weaponType = WeaponEquipPresenter.Instance.GetCurrentWeaponType();
+
+            switch (weaponType)
+            {
+                case CombatManager.Model.WeaponType.Sword:
+                    WeaponSkillSwordSlash.Instance?.TryExecute();
+                    break;
+                // case WeaponType.Spear:
+                //     WeaponSkillSpearThrust.Instance?.TryExecute();
+                //     break;
+                // case WeaponType.Staff:
+                //     WeaponSkillStaffBolt.Instance?.TryExecute();
+                //     break;
+                default:
+                    Debug.LogWarning($"[SkillHotbarPresenter] No weapon skill for: {weaponType}");
+                    break;
+            }
+        }
+
+        private void UpdateWeaponSkillCooldown()
+        {
+            if (weaponSkillSlotView == null) return;
+
+            var weaponType = WeaponEquipPresenter.Instance?.GetCurrentWeaponType()
+                             ?? CombatManager.Model.WeaponType.None;
+
+            float cooldownPercent = 0f;
+            switch (weaponType)
+            {
+                case CombatManager.Model.WeaponType.Sword:
+                    cooldownPercent = WeaponSkillSwordSlash.Instance?.GetCooldownPercent() ?? 0f;
+                    break;
+            }
+
+            weaponSkillSlotView.UpdateCooldown(cooldownPercent);
+        }
+
+        #endregion
+
+        #region Public API
+
+        public int GetHoveredSlotIndex() => service.GetHoveredSlotIndex();
+        public bool IsInitialized() => service.IsInitialized();
 
         #endregion
     }

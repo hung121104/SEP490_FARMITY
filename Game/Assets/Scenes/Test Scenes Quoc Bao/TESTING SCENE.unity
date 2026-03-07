@@ -149,6 +149,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 48989963}
+  - {fileID: 833838873}
   m_Father: {fileID: 1349674085}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &46894831
@@ -762,6 +763,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1334690482}
+  - {fileID: 1143877774}
   m_Father: {fileID: 802398597}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
@@ -2917,6 +2919,64 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &833838872
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 833838873}
+  - component: {fileID: 833838874}
+  m_Layer: 0
+  m_Name: 'WeaponSkillSwordSlash '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &833838873
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 833838872}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 10812222}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &833838874
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 833838872}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ce4f242b1ecf3a4cb9766cb80751867, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cooldownDuration: 3
+  chargeDuration: 0.3
+  skillMultiplier: 2
+  swordSlashVFXPrefab: {fileID: 5107333870897779412, guid: 1244261c77c709b43a4c449b37ae4157, type: 3}
+  vfxDuration: 0.5
+  vfxSpawnOffset: 1.2
+  vfxPositionOffset: {x: -0.5, y: -0.25}
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 128
+  knockbackForce: 5
+  damagePopupPrefab: {fileID: 0}
+  statsPresenter: {fileID: 0}
+  pointerPresenter: {fileID: 0}
 --- !u!1 &835463492
 GameObject:
   m_ObjectHideFlags: 0
@@ -3052,7 +3112,7 @@ MonoBehaviour:
     attackTrigger: Attack
     isWeaponActive: 0
     isInitialized: 0
-  weaponAnimationPrefab: {fileID: 0}
+  fallbackWeaponPrefab: {fileID: 0}
   anchorOffset: {x: 0, y: -0.3, z: 0}
   gripLocalOffset: {x: 0, y: 0, z: 0}
   rotationOffsetDegrees: -133
@@ -3389,6 +3449,108 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 284a45678e28cf041b6406f24cca9192, type: 2}
   - {fileID: 11400000, guid: 0187c43eb1a027146beb4a470345a5e6, type: 2}
   - {fileID: 11400000, guid: b182c8f3483f7f1498d392dcaab0cea7, type: 2}
+--- !u!1 &1143877773
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1143877774}
+  - component: {fileID: 1143877776}
+  - component: {fileID: 1143877775}
+  - component: {fileID: 1143877777}
+  m_Layer: 0
+  m_Name: WeaponSkillSection
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1143877774
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1143877773}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 210847624}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -321.5, y: 15.002}
+  m_SizeDelta: {x: 114.675, y: 117.36}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1143877775
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1143877773}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: -8567643912832686301, guid: 7dff94a1c3ab0be4ea0a0127ef9885dc, type: 3}
+  m_Type: 1
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 2
+--- !u!222 &1143877776
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1143877773}
+  m_CullTransparentMesh: 1
+--- !u!114 &1143877777
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1143877773}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Padding:
+    m_Left: 0
+    m_Right: 0
+    m_Top: 0
+    m_Bottom: 0
+  m_ChildAlignment: 4
+  m_Spacing: 0
+  m_ChildForceExpandWidth: 1
+  m_ChildForceExpandHeight: 1
+  m_ChildControlWidth: 0
+  m_ChildControlHeight: 0
+  m_ChildScaleWidth: 0
+  m_ChildScaleHeight: 0
+  m_ReverseArrangement: 0
 --- !u!1 &1155939718
 GameObject:
   m_ObjectHideFlags: 0
@@ -20773,7 +20935,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   model:
     isCombatModeActive: 0
-    combatModeToggleKey: 308
+    debugToggleKey: 308
+    enableDebugToggle: 0
 --- !u!1 &1461544272
 GameObject:
   m_ObjectHideFlags: 0
@@ -21888,6 +22051,9 @@ MonoBehaviour:
   skillHotbarCanvas: {fileID: 210847623}
   skillHotbarContainer: {fileID: 1334690482}
   skillHotbarSlotPrefab: {fileID: 1850482316954284577, guid: 4489f9d24716c854b87b39d51ace4733, type: 3}
+  weaponSkillSection: {fileID: 1143877774}
+  weaponSkillSlotPrefab: {fileID: 1850482316954284577, guid: f2388b8580bd65e46afc277316a68afe, type: 3}
+  weaponSkillKey: 114
 --- !u!1 &1818026973
 GameObject:
   m_ObjectHideFlags: 0
