@@ -12707,7 +12707,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   menuCanvas: {fileID: 1087222851}
-  hotbarPanel: {fileID: 66693714}
+  hotbarPanel: {fileID: 66693716}
   inventoryGameView: {fileID: 1039417487}
   useMenu: 101
 --- !u!1 &907243777
@@ -25663,6 +25663,10 @@ MonoBehaviour:
   dialogueText: {fileID: 2114136620}
   avatarImage: {fileID: 43210734}
   continueHintText: {fileID: 1292212725}
+  rewardSlot: {fileID: 0}
+  rewardLabel: {fileID: 0}
+  rewardIcon: {fileID: 0}
+  rewardText: {fileID: 0}
   optionsContainer: {fileID: 1012713830}
   optionPrefab: {fileID: 1167625292944387460, guid: 2561ae478b8ae2a458d9c060613f6d75, type: 3}
   typingSpeed: 0.05
@@ -28546,6 +28550,10 @@ MonoBehaviour:
   inventoryView: {fileID: 1526296357}
   inventoryMenuRoot: {fileID: 1087222851}
   spriteRenderer: {fileID: 2072043109}
+  questView: {fileID: 0}
+  questDatabase: {fileID: 0}
+  questIndex: 0
+  questLogController: {fileID: 0}
 --- !u!95 &2072043108
 Animator:
   serializedVersion: 7

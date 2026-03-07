@@ -18,6 +18,8 @@ public class HotbarView : MonoBehaviour
     [SerializeField] private bool enableScrollWheel = true;
     [SerializeField] private bool enableLeftClick = true;
 
+    private bool isActive = true;
+
     [Header("Inventory Integration")]
     [SerializeField] private InventoryGameView inventoryGameView;
 
@@ -127,10 +129,17 @@ public class HotbarView : MonoBehaviour
 
     private void HandleItemUsage()
     {
+        if (!isActive) return;
         if (enableLeftClick && Input.GetMouseButtonDown(0))
         {
             OnUseItemInput?.Invoke();
         }
+    }
+
+    public void SetActive(bool active)
+    {
+        isActive = active;
+        gameObject.SetActive(active);
     }
 
     public Vector3 GetMouseWorldPosition()

@@ -4,7 +4,7 @@ using UnityEngine;
 public class MenuController : MonoBehaviour
 {
     public GameObject menuCanvas;
-    public GameObject hotbarPanel;
+    public HotbarView hotbarPanel;
     public InventoryGameView inventoryGameView;
     public KeyCode useMenu = KeyCode.E;
 
