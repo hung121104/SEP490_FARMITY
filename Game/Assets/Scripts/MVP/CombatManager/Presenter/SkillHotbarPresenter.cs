@@ -334,17 +334,17 @@ namespace CombatManager.Presenter
 
             switch (weaponType)
             {
+                // ✅ Renamed: SwordSlash → SwordSpecial
                 case CombatManager.Model.WeaponType.Sword:
-                    WeaponSkillSwordSlash.Instance?.TryExecute();
+                    WeaponSkillSwordSpecial.Instance?.TryExecute();
                     break;
 
-                // ✅ Uncommented - Spear skill ready!
                 case CombatManager.Model.WeaponType.Spear:
                     WeaponSkillSpearSpecial.Instance?.TryExecute();
                     break;
 
                 // case WeaponType.Staff:
-                //     WeaponSkillStaffBolt.Instance?.TryExecute();
+                //     WeaponSkillStaffSpecial.Instance?.TryExecute();
                 //     break;
 
                 default:
@@ -363,11 +363,11 @@ namespace CombatManager.Presenter
             float cooldownPercent = 0f;
             switch (weaponType)
             {
+                // ✅ Renamed: SwordSlash → SwordSpecial
                 case CombatManager.Model.WeaponType.Sword:
-                    cooldownPercent = WeaponSkillSwordSlash.Instance?.GetCooldownPercent() ?? 0f;
+                    cooldownPercent = WeaponSkillSwordSpecial.Instance?.GetCooldownPercent() ?? 0f;
                     break;
 
-                // ✅ Uncommented - Spear cooldown ready!
                 case CombatManager.Model.WeaponType.Spear:
                     cooldownPercent = WeaponSkillSpearSpecial.Instance?.GetCooldownPercent() ?? 0f;
                     break;

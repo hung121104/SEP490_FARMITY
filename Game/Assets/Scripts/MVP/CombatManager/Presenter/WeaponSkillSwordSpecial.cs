@@ -6,21 +6,26 @@ using CombatManager.SO;
 
 namespace CombatManager.Presenter
 {
-    public class WeaponSkillSwordSlash : MonoBehaviour
+    /// <summary>
+    /// Weapon skill for Sword type.
+    /// Renamed from WeaponSkillSwordSlash → WeaponSkillSwordSpecial.
+    /// </summary>
+    public class WeaponSkillSwordSpecial : MonoBehaviour
     {
-        public static WeaponSkillSwordSlash Instance { get; private set; }
+        public static WeaponSkillSwordSpecial Instance { get; private set; }
 
         [Header("Skill Settings")]
         [SerializeField] private float cooldownDuration = 3f;
         [SerializeField] private float chargeDuration = 0.3f;
         [SerializeField] private float skillMultiplier = 2.0f;
+        [SerializeField] private DiceTier diceTier = DiceTier.D6;
 
         [Header("Confirmation Keys")]
         [SerializeField] private KeyCode confirmKey = KeyCode.E;
         [SerializeField] private KeyCode cancelKey = KeyCode.Q;
 
         [Header("VFX")]
-        [SerializeField] private GameObject swordSlashVFXPrefab;
+        [SerializeField] private GameObject swordSpecialVFXPrefab;
         [SerializeField] private float vfxDuration = 0.5f;
         [SerializeField] private float vfxSpawnOffset = 1.2f;
         [SerializeField] private Vector2 vfxPositionOffset = Vector2.zero;
@@ -39,7 +44,6 @@ namespace CombatManager.Presenter
         private float cooldownRemaining = 0f;
         private GameObject localPlayerObj;
 
-        // ✅ Confirmation state
         private bool isWaitingConfirm = false;
         private bool confirmReceived = false;
         private bool cancelReceived = false;
@@ -75,18 +79,17 @@ namespace CombatManager.Presenter
             if (cooldownRemaining > 0f)
                 cooldownRemaining -= Time.deltaTime;
 
-            // ✅ Handle confirm/cancel input here in Update
             if (isWaitingConfirm)
             {
                 if (Input.GetKeyDown(confirmKey))
                 {
                     confirmReceived = true;
-                    Debug.Log("[WeaponSkillSwordSlash] Skill CONFIRMED!");
+                    Debug.Log("[WeaponSkillSwordSpecial] Skill CONFIRMED!");
                 }
                 else if (Input.GetKeyDown(cancelKey))
                 {
                     cancelReceived = true;
-                    Debug.Log("[WeaponSkillSwordSlash] Skill CANCELLED!");
+                    Debug.Log("[WeaponSkillSwordSpecial] Skill CANCELLED!");
                 }
             }
         }
@@ -114,9 +117,9 @@ namespace CombatManager.Presenter
             }
 
             if (localPlayerObj == null)
-                Debug.LogError("[WeaponSkillSwordSlash] Could not find local player!");
+                Debug.LogError("[WeaponSkillSwordSpecial] Could not find local player!");
             else
-                Debug.Log("[WeaponSkillSwordSlash] Initialized successfully");
+                Debug.Log("[WeaponSkillSwordSpecial] Initialized successfully");
         }
 
         private GameObject FindLocalPlayerEntity()
@@ -143,25 +146,25 @@ namespace CombatManager.Presenter
             var currentWeapon = WeaponEquipPresenter.Instance?.GetCurrentWeapon();
             if (currentWeapon == null || currentWeapon.weaponType != WeaponType.Sword)
             {
-                Debug.LogWarning("[WeaponSkillSwordSlash] Sword not equipped!");
+                Debug.LogWarning("[WeaponSkillSwordSpecial] Sword not equipped!");
                 return;
             }
 
             if (isExecuting)
             {
-                Debug.Log("[WeaponSkillSwordSlash] Already executing!");
+                Debug.Log("[WeaponSkillSwordSpecial] Already executing!");
                 return;
             }
 
             if (cooldownRemaining > 0f)
             {
-                Debug.Log($"[WeaponSkillSwordSlash] On cooldown: {cooldownRemaining:F1}s remaining");
+                Debug.Log($"[WeaponSkillSwordSpecial] On cooldown: {cooldownRemaining:F1}s remaining");
                 return;
             }
 
             if (localPlayerObj == null)
             {
-                Debug.LogError("[WeaponSkillSwordSlash] Local player not found!");
+                Debug.LogError("[WeaponSkillSwordSpecial] Local player not found!");
                 return;
             }
 
@@ -171,17 +174,17 @@ namespace CombatManager.Presenter
         private IEnumerator ExecuteSkillSequence(WeaponDataSO weaponData)
         {
             isExecuting = true;
-            Debug.Log("[WeaponSkillSwordSlash] Executing SwordSlash - Charging...");
+            Debug.Log("[WeaponSkillSwordSpecial] Executing Sword Special - Charging...");
 
             // Phase 1: Charge
             yield return new WaitForSeconds(chargeDuration);
 
             // Phase 2: Roll dice
             var diceRollerService = new DiceRollerService();
-            int diceRoll = diceRollerService.Roll(DiceTier.D6);
-            DiceDisplayPresenter.Show(diceRoll, DiceTier.D6);
+            int diceRoll = diceRollerService.Roll(diceTier);
+            DiceDisplayPresenter.Show(diceRoll, diceTier);
 
-            // Phase 3: Wait for confirmation ✅
+            // Phase 3: Wait for confirmation
             yield return StartCoroutine(WaitForConfirmation());
 
             // Phase 4: Cancelled → abort
@@ -192,7 +195,7 @@ namespace CombatManager.Presenter
                 isWaitingConfirm = false;
                 confirmReceived = false;
                 cancelReceived = false;
-                Debug.Log("[WeaponSkillSwordSlash] Skill aborted!");
+                Debug.Log("[WeaponSkillSwordSpecial] Skill aborted!");
                 yield break;
             }
 
@@ -209,42 +212,39 @@ namespace CombatManager.Presenter
                 weaponDamage
             );
 
-            Debug.Log($"[WeaponSkillSwordSlash] Damage: Roll={diceRoll}, " +
+            Debug.Log($"[WeaponSkillSwordSpecial] Damage: Roll={diceRoll}, " +
                       $"Str={strength}, WeaponDmg={weaponDamage}, " +
                       $"Mult={skillMultiplier} → Final={finalDamage}");
 
-            SpawnSlashVFX(finalDamage);
+            SpawnSwordVFX(finalDamage);
 
-            // Phase 6: Cooldown
+            // Phase 6: Cooldown + reset
             cooldownRemaining = cooldownDuration;
             isExecuting = false;
-
-            // Reset flags
             confirmReceived = false;
             cancelReceived = false;
         }
 
-        // ✅ Mirrors WaitForConfirmationRoutine from SkillPresenter
         private IEnumerator WaitForConfirmation()
         {
             isWaitingConfirm = true;
             confirmReceived = false;
             cancelReceived = false;
 
-            Debug.Log($"[WeaponSkillSwordSlash] Waiting for confirm [{confirmKey}] or cancel [{cancelKey}]...");
+            Debug.Log($"[WeaponSkillSwordSpecial] Waiting for confirm [{confirmKey}] " +
+                      $"or cancel [{cancelKey}]...");
 
-            // Wait until E or Q pressed
             while (!confirmReceived && !cancelReceived)
                 yield return null;
 
             isWaitingConfirm = false;
         }
 
-        private void SpawnSlashVFX(int damage)
+        private void SpawnSwordVFX(int damage)
         {
-            if (swordSlashVFXPrefab == null)
+            if (swordSpecialVFXPrefab == null)
             {
-                Debug.LogWarning("[WeaponSkillSwordSlash] VFX prefab not assigned!");
+                Debug.LogWarning("[WeaponSkillSwordSpecial] VFX prefab not assigned!");
                 return;
             }
 
@@ -264,7 +264,7 @@ namespace CombatManager.Presenter
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
 
             GameObject vfxObj = Instantiate(
-                swordSlashVFXPrefab,
+                swordSpecialVFXPrefab,
                 spawnPos,
                 Quaternion.Euler(0f, 0f, angle)
             );
@@ -280,11 +280,11 @@ namespace CombatManager.Presenter
                     damagePopupPrefab,
                     vfxDuration
                 );
-                Debug.Log($"[WeaponSkillSwordSlash] VFX spawned with damage={damage}");
+                Debug.Log($"[WeaponSkillSwordSpecial] VFX spawned with damage={damage}");
             }
             else
             {
-                Debug.LogWarning("[WeaponSkillSwordSlash] SlashHitboxPresenter missing on VFX prefab!");
+                Debug.LogWarning("[WeaponSkillSwordSpecial] SlashHitboxPresenter missing on VFX prefab!");
             }
 
             Destroy(vfxObj, vfxDuration);

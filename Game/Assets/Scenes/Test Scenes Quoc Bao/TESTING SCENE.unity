@@ -3022,21 +3022,22 @@ MonoBehaviour:
   m_GameObject: {fileID: 833838872}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1ce4f242b1ecf3a4cb9766cb80751867, type: 3}
+  m_Script: {fileID: 11500000, guid: b54ea2d63f6450d4aa7861db857032d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   cooldownDuration: 3
   chargeDuration: 0.3
   skillMultiplier: 2
+  diceTier: 6
   confirmKey: 101
   cancelKey: 113
-  swordSlashVFXPrefab: {fileID: 5107333870897779412, guid: 1244261c77c709b43a4c449b37ae4157, type: 3}
+  swordSpecialVFXPrefab: {fileID: 5107333870897779412, guid: 1244261c77c709b43a4c449b37ae4157, type: 3}
   vfxDuration: 0.5
   vfxSpawnOffset: 1.2
-  vfxPositionOffset: {x: -0.5, y: -0.25}
+  vfxPositionOffset: {x: 0, y: 0}
   enemyLayers:
     serializedVersion: 2
-    m_Bits: 128
+    m_Bits: 0
   knockbackForce: 5
   damagePopupPrefab: {fileID: 0}
   statsPresenter: {fileID: 0}
