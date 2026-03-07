@@ -6,7 +6,7 @@ public class QuestService : IQuestService
     public static System.Action OnQuestUpdated;
     private Dictionary<string, QuestModel> activeQuests =
         new Dictionary<string, QuestModel>();
-
+    private HashSet<string> completedQuests = new HashSet<string>(); // check quest completed
     // ACCEPT QUEST
     public void AcceptQuest(QuestModel quest, IInventoryService inventory)
     {
@@ -86,21 +86,16 @@ public class QuestService : IQuestService
                 {
                     obj.currentAmount += amount;
 
-                    if (obj.currentAmount > obj.requiredAmount)
-                        obj.currentAmount = obj.requiredAmount;
-
                     Debug.Log(
                         quest.questName + " progress: " +
                         obj.currentAmount + "/" +
                         obj.requiredAmount
                     );
-                    
                 }
-                
-                OnQuestUpdated?.Invoke();
             }
 
-            // CHECK QUEST COMPLETED
+            OnQuestUpdated?.Invoke();
+
             bool completed = quest.objectives.TrueForAll(o => o.IsCompleted);
 
             if (completed)
@@ -158,6 +153,8 @@ public class QuestService : IQuestService
 
         activeQuests.Remove(questId);
 
+        completedQuests.Add(questId);
+
         Debug.Log("Quest Turned In: " + quest.questName);
 
         OnQuestUpdated?.Invoke();
@@ -189,8 +186,12 @@ public class QuestService : IQuestService
             {
                 int count = inventory.GetItemCount(obj.itemId);
 
-                obj.currentAmount = Mathf.Min(count, obj.requiredAmount);
+                obj.currentAmount = count;
             }
         }
+    }
+    public bool IsQuestTurnedIn(string questId)
+    {
+        return completedQuests.Contains(questId);
     }
 }

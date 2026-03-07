@@ -17,4 +17,5 @@ public interface IQuestService
 
     bool IsQuestCompleted(string questId);
     void GiveReward(string questId, IInventoryService inventory);
+    bool IsQuestTurnedIn(string questId);
 }

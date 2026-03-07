@@ -30,10 +30,12 @@ public class QuestView : MonoBehaviour
 
         if (quest.reward != null)
         {
-            dialogueView.ShowReward(
-                quest.reward.icon,
-                quest.reward.quantity
-            );
+            Sprite icon = ItemCatalogService.Instance.GetCachedSprite(quest.reward.itemId);
+
+            if (icon != null)
+            {
+                dialogueView.ShowReward(icon, quest.reward.quantity);
+            }
         }
     }
 
