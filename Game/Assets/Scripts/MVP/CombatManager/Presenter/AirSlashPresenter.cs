@@ -5,12 +5,6 @@ using CombatManager.Presenter;
 
 namespace CombatManager.Presenter
 {
-    /// <summary>
-    /// AirSlash skill presenter.
-    /// Mirrors AirSlash from CombatSystem (kept for legacy).
-    /// Extends SkillPresenter - only handles projectile spawning.
-    /// Arrow indicator shows projectile range.
-    /// </summary>
     public class AirSlashPresenter : SkillPresenter
     {
         #region Serialized Fields
@@ -19,7 +13,6 @@ namespace CombatManager.Presenter
         [SerializeField] private GameObject projectilePrefab;
         [SerializeField] private float projectileSpeed = 10f;
         [SerializeField] private float projectileRange = 8f;
-        [SerializeField] private float projectileHitRadius = 0.5f;
         [SerializeField] private float attackAnimationDuration = 0.5f;
 
         #endregion
@@ -28,7 +21,6 @@ namespace CombatManager.Presenter
 
         protected override CombatManager.Model.SkillIndicatorData GetIndicatorData()
         {
-            // Arrow indicator = projectile range
             return CombatManager.Model.SkillIndicatorData.Arrow(projectileRange);
         }
 
@@ -46,27 +38,23 @@ namespace CombatManager.Presenter
         {
             if (!ValidateSetup()) return;
 
-            // Spawn at player position
             GameObject projectileGO = Instantiate(
                 projectilePrefab,
                 playerTransform.position,
                 Quaternion.identity
             );
 
-            // Build model
             AirSlashProjectileModel projectileModel = new AirSlashProjectileModel
             {
-                direction = direction.normalized,
-                speed = projectileSpeed,
-                maxRange = projectileRange,
-                damage = damage,
-                knockbackForce = GetKnockbackForce(),
-                enemyLayers = enemyLayers,
-                hitRadius = projectileHitRadius,
+                direction       = direction.normalized,
+                speed           = projectileSpeed,
+                maxRange        = projectileRange,
+                damage          = damage,
+                knockbackForce  = GetKnockbackForce(),
+                enemyLayers     = enemyLayers,
                 playerTransform = playerTransform
             };
 
-            // Initialize presenter on projectile
             AirSlashProjectilePresenter projectilePresenter =
                 projectileGO.GetComponent<AirSlashProjectilePresenter>();
 
@@ -104,12 +92,12 @@ namespace CombatManager.Presenter
             if (statsPresenter != null)
                 return statsPresenter.GetService().GetKnockbackForce();
 
-            return 5f; // fallback
+            return 5f;
         }
 
         #endregion
 
-        #region Virtual Overrides (Log for testing)
+        #region Virtual Overrides
 
         protected override void OnStart() =>
             Debug.Log("[AirSlash] Ready!");

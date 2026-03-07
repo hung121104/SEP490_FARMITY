@@ -364,7 +364,6 @@ MonoBehaviour:
   projectilePrefab: {fileID: 2996777577814843754, guid: 0228e8e4e652ae94e83f85676d3f128d, type: 3}
   projectileSpeed: 10
   projectileRange: 8
-  projectileHitRadius: 0.5
   attackAnimationDuration: 0.5
 --- !u!1 &123946602
 GameObject:
@@ -21195,11 +21194,10 @@ MonoBehaviour:
   projectilePrefab: {fileID: 2996777577814843754, guid: 361c72b4eb57a1243b47af566d1f9693, type: 3}
   projectileSpeed: 10
   projectileRange: 8
-  projectileHitRadius: 0.5
   knockbackForce: 5
   enemyLayers:
     serializedVersion: 2
-    m_Bits: 128
+    m_Bits: 0
   statsPresenter: {fileID: 0}
   pointerPresenter: {fileID: 0}
 --- !u!1 &1512877386

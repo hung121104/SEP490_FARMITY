@@ -31,7 +31,6 @@ namespace CombatManager.Presenter
         [SerializeField] private GameObject projectilePrefab;
         [SerializeField] private float projectileSpeed = 10f;
         [SerializeField] private float projectileRange = 8f;
-        [SerializeField] private float projectileHitRadius = 0.5f;
         [SerializeField] private float knockbackForce = 5f;
 
         [Header("Hitbox Settings")]
@@ -276,7 +275,6 @@ namespace CombatManager.Presenter
                 damage          = damage,
                 knockbackForce  = knockbackForce,
                 enemyLayers     = enemyLayers,
-                hitRadius       = projectileHitRadius,
                 playerTransform = localPlayerObj.transform
             };
 

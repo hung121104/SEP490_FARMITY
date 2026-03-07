@@ -2,14 +2,12 @@ using UnityEngine;
 using System.Collections.Generic;
 using CombatManager.Model;
 using CombatManager.View;
-using CombatManager.Presenter;
 
 namespace CombatManager.Presenter
 {
     /// <summary>
     /// Presenter for AirSlash projectile.
-    /// Mirrors AirSlashProjectile from CombatSystem (kept for legacy).
-    /// Handles: movement, hit detection, enemy damage + knockback.
+    /// Movement + hit detection via PolygonCollider2D trigger.
     /// Sits on AirSlashProjectile prefab.
     /// </summary>
     public class AirSlashProjectilePresenter : MonoBehaviour
@@ -26,6 +24,13 @@ namespace CombatManager.Presenter
             view = GetComponent<AirSlashProjectileView>();
             if (view == null)
                 view = gameObject.AddComponent<AirSlashProjectileView>();
+
+            // ✅ Ensure PolygonCollider2D is trigger
+            PolygonCollider2D col = GetComponent<PolygonCollider2D>();
+            if (col != null)
+                col.isTrigger = true;
+            else
+                Debug.LogWarning("[AirSlashProjectile] PolygonCollider2D missing on prefab!");
         }
 
         private void Update()
@@ -43,17 +48,30 @@ namespace CombatManager.Presenter
                 DestroyProjectile();
                 return;
             }
+        }
 
-            CheckHits();
+        // ✅ NEW: Trigger instead of OverlapCircleAll
+        private void OnTriggerEnter2D(Collider2D other)
+        {
+            if (model == null || !model.isInitialized || model.isDestroyed)
+                return;
+
+            // Check enemy layer
+            if ((model.enemyLayers.value & (1 << other.gameObject.layer)) == 0)
+                return;
+
+            // Prevent double hit
+            if (alreadyHit.Contains(other)) return;
+            alreadyHit.Add(other);
+
+            HitEnemy(other);
+            DestroyProjectile();
         }
 
         #endregion
 
         #region Initialization
 
-        /// <summary>
-        /// Called by AirSlashPresenter after spawning.
-        /// </summary>
         public void Initialize(AirSlashProjectileModel projectileModel)
         {
             model = projectileModel;
@@ -61,10 +79,8 @@ namespace CombatManager.Presenter
             model.isInitialized = true;
             model.isDestroyed = false;
 
-            // Set visual direction
             view?.SetDirection(model.direction);
 
-            // Lock rigidbody - kinematic only
             Rigidbody2D rb = GetComponent<Rigidbody2D>();
             if (rb != null)
             {
@@ -72,30 +88,11 @@ namespace CombatManager.Presenter
                 rb.bodyType = RigidbodyType2D.Kinematic;
             }
 
-            Debug.Log($"[AirSlashProjectile] Initialized → Dir: {model.direction} | Speed: {model.speed} | Range: {model.maxRange} | Dmg: {model.damage}");
-        }
-
-        #endregion
-
-        #region Hit Detection
-
-        private void CheckHits()
-        {
-            Collider2D[] hits = Physics2D.OverlapCircleAll(
-                transform.position,
-                model.hitRadius,
-                model.enemyLayers
-            );
-
-            foreach (Collider2D hit in hits)
-            {
-                if (alreadyHit.Contains(hit)) continue;
-
-                alreadyHit.Add(hit);
-                HitEnemy(hit);
-                DestroyProjectile();
-                return;
-            }
+            Debug.Log($"[AirSlashProjectile] Initialized → " +
+                      $"Dir: {model.direction} | " +
+                      $"Speed: {model.speed} | " +
+                      $"Range: {model.maxRange} | " +
+                      $"Dmg: {model.damage}");
         }
 
         #endregion
@@ -107,8 +104,8 @@ namespace CombatManager.Presenter
             EnemyPresenter enemyPresenter = enemy.GetComponent<EnemyPresenter>();
             if (enemyPresenter != null)
             {
-                // ✅ Use model.playerTransform instead of playerTransform
-                Vector2 knockbackDir = (enemy.transform.position - model.playerTransform.position).normalized;
+                Vector2 knockbackDir = (enemy.transform.position
+                                       - model.playerTransform.position).normalized;
 
                 enemyPresenter.TakeDamage(
                     model.damage,
@@ -120,7 +117,8 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            Debug.LogWarning($"[AirSlashProjectile] Hit {enemy.name} but no EnemyPresenter found!");
+            Debug.LogWarning($"[AirSlashProjectile] Hit {enemy.name} " +
+                             $"but no EnemyPresenter found!");
         }
 
         private void DestroyProjectile()
@@ -137,9 +135,8 @@ namespace CombatManager.Presenter
 
         private void OnDrawGizmosSelected()
         {
-            if (model == null) return;
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(transform.position, model.hitRadius);
+            // ✅ Gizmo now shows PolygonCollider2D shape automatically
+            // No manual gizmo needed - Unity shows polygon in editor
         }
 
         #endregion

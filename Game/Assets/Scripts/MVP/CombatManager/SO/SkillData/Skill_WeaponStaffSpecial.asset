@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   skillName: Staff Special
   skillDescription: Staff Special Skill
-  skillID: 0
+  skillID: 7
   skillIcon: {fileID: 2952482376178455717, guid: 2e0f1fd247fdde94d9bcd59fd3fa3c74, type: 3}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
   activationKey: 49

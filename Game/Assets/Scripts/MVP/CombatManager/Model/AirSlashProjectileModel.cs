@@ -5,6 +5,7 @@ namespace CombatManager.Model
     /// <summary>
     /// Data model for AirSlash projectile.
     /// Pure data - no logic.
+    /// hitRadius removed - now uses PolygonCollider2D trigger.
     /// </summary>
     [System.Serializable]
     public class AirSlashProjectileModel
@@ -19,7 +20,6 @@ namespace CombatManager.Model
         public int damage;
         public float knockbackForce;
         public LayerMask enemyLayers;
-        public float hitRadius = 0.5f;
 
         [Header("Runtime State")]
         public bool isInitialized = false;

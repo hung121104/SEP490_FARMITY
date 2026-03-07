@@ -10,10 +10,11 @@ GameObject:
   m_Component:
   - component: {fileID: 372741990453722817}
   - component: {fileID: 1287363463556040799}
-  - component: {fileID: 3338884270885809640}
+  - component: {fileID: 6401541870564388406}
   - component: {fileID: 3652096954840313609}
   - component: {fileID: -4902265167950414290}
   - component: {fileID: -7106696124856517156}
+  - component: {fileID: 5232472936946208108}
   m_Layer: 11
   m_Name: WeaponSkill_StaffSpecial
   m_TagString: Bullet
@@ -31,7 +32,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -3.4815, y: -8.542, z: 0}
-  m_LocalScale: {x: 0.6276, y: 0.532, z: 1}
+  m_LocalScale: {x: 0.25, y: 0.25, z: 0.25}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -80,7 +81,7 @@ SpriteRenderer:
   m_SortingLayerID: 1697184185
   m_SortingLayer: 3
   m_SortingOrder: 200
-  m_Sprite: {fileID: -8961674735814929796, guid: 655217b28727c84478270b381584b0d4, type: 3}
+  m_Sprite: {fileID: -7585660988095454295, guid: 9607527126243c049a2f067778c0a869, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -91,8 +92,8 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!70 &3338884270885809640
-CapsuleCollider2D:
+--- !u!60 &6401541870564388406
+PolygonCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -126,8 +127,31 @@ CapsuleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Size: {x: 3, y: 3}
-  m_Direction: 0
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 8, y: 8}
+    newSize: {x: 3, y: 3}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: 2.25, y: 0.625}
+      - {x: 2, y: 1}
+      - {x: 1.8125, y: 1.3125}
+      - {x: 1.3125, y: 1.375}
+      - {x: -0.875, y: 1.375}
+      - {x: -1.125, y: 1.25}
+      - {x: -3.25, y: 0.5}
+      - {x: -3.375, y: 0.1875}
+      - {x: -3.375, y: -0.125}
+      - {x: -1.4375, y: -1.125}
+      - {x: 1.1875, y: -1.125}
+      - {x: 1.8125, y: -0.9375}
+      - {x: 2.25, y: -0.4375}
+  m_UseDelaunayMesh: 0
 --- !u!50 &3652096954840313609
 Rigidbody2D:
   serializedVersion: 5
@@ -180,3 +204,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   spriteRenderer: {fileID: 1287363463556040799}
+--- !u!95 &5232472936946208108
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2996777577814843754}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 56dfe92547e62be46ac9dffd639047e5, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
