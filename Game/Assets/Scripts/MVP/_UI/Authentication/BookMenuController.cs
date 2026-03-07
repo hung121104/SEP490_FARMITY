@@ -17,14 +17,15 @@ public class BookMenuController : MonoBehaviour
 
     [Header("Scale")]
     [SerializeField] private float scaleDuration = 0.5f;
+    [SerializeField] private float scaleTarget =15;
+
+    [Header("On start animation")]
+    [SerializeField] private string onStartAnimationName = "turnRToL";
 
     [Header("Canvas Groups")]
     [SerializeField] private CanvasGroup loginCanvasGroup;
     [SerializeField] private CanvasGroup registerCanvasGroup;
     [SerializeField] private CanvasGroup titleCanvasGroup;
-
-    [Header("Page Animator")]
-    [SerializeField] private Animator pageAnimator;
 
     [Header("Buttons")]
     [SerializeField] private Button openBookBtn;
@@ -33,12 +34,14 @@ public class BookMenuController : MonoBehaviour
     [SerializeField] private Button openRegisterBtn;
     [SerializeField] private Button openTitleBtn;
 
-    private bool checkInitAnimation = true;
     private string turnRToL = "turnRToL";
     private string turnLToR = "turnLToR";
+    private Coroutine _scalingCoroutine;
+    private Coroutine _movingCoroutine;
 
     private void Awake()
     {
+        PlayOnstartAnimation(onStartAnimationName);
         BindButtons();
     }
 
@@ -55,10 +58,27 @@ public class BookMenuController : MonoBehaviour
     public void ShowBook()
     {
         book.SetActive(!book.activeInHierarchy);
-        StartCoroutine(MoveBook());
-
+        PlayOnstartAnimation(onStartAnimationName);
+        if (_movingCoroutine != null) StopCoroutine(_movingCoroutine);
+        _movingCoroutine = StartCoroutine(MoveBook());
     }
 
+    [ContextMenu("hide book")]
+    public void HideBook()
+    {
+        StartCoroutine(HideBookRoutine());
+    }
+
+    private IEnumerator HideBookRoutine()
+    {
+        animator.SetTrigger(turnRToL);
+        ScalingBook(scaleTarget);
+        yield return _scalingCoroutine;
+        bookImage.enabled = false;
+        if (_movingCoroutine != null) StopCoroutine(_movingCoroutine);
+        _movingCoroutine = StartCoroutine(MoveBook());
+        animator.SetTrigger(turnRToL);
+    }
     IEnumerator MoveBook()
     {
         yield return new WaitForSeconds(delay * 0.7f);
@@ -66,10 +86,10 @@ public class BookMenuController : MonoBehaviour
         bookImage.enabled = true;
         yield return new WaitForSeconds(delay * 0.3f);
         //scale down book
-        ScaleDownBook();
+        ScalingBook(scaleTarget);
         Debug.Log("[BookMenu] finished delay");
         Debug.Log("[BookMenu] preparing to move book");
-        
+
         if (targetPosition == null)
         {
             Debug.LogWarning("[BookMenu] targetPosition is not assigned.");
@@ -80,8 +100,8 @@ public class BookMenuController : MonoBehaviour
         Vector3 startPos = book.transform.position;
         float elapsed = 0f;
 
-        // Move over a fixed duration using Lerp, stepped at 12fps
-        const float frameInterval = 1f / 24f;
+        // Move over a fixed duration using Lerp, stepped at 32fps
+        const float frameInterval = 1f / 32f;
         while (elapsed < moveDuration)
         {
             elapsed += frameInterval;
@@ -93,15 +113,9 @@ public class BookMenuController : MonoBehaviour
         book.transform.position = moveTarget;
         Debug.Log("[BookMenu] moved");
         yield return new WaitForSeconds(.5f);
-
-
+        _movingCoroutine = null;
     }
 
-    [ContextMenu("hide book")]
-    public void HideBook()
-    {
-        animator.SetTrigger(turnRToL);
-    }
 
     public void ShowLogin()
     {
@@ -109,7 +123,6 @@ public class BookMenuController : MonoBehaviour
         loginCanvasGroup.interactable = true;
         loginCanvasGroup.blocksRaycasts = true;
         animator.SetTrigger(turnRToL);
-
     }
 
     public void ShowRegister()
@@ -125,19 +138,21 @@ public class BookMenuController : MonoBehaviour
     /// Smoothly scales the book down to zero over <see cref="scaleDuration"/> seconds,
     /// then deactivates it.
     /// </summary>
-    public void ScaleDownBook()
+    public void ScalingBook(float targetScale)
     {
-        StartCoroutine(ScaleDown());
+        if (_scalingCoroutine != null)
+            StopCoroutine(_scalingCoroutine);
+        _scalingCoroutine = StartCoroutine(Scaling(targetScale));
     }
 
-    private IEnumerator ScaleDown()
+    private IEnumerator Scaling(float targetScale)
     {
-        yield return new WaitForSeconds(delay*.3f);
+        yield return new WaitForSeconds(delay * .3f);
         Vector3 startScale = book.transform.localScale;
-        Vector3 endScale = new Vector3(15f, 15f, 15f);
+        Vector3 endScale = new Vector3(targetScale, targetScale, targetScale);
         float elapsed = 0f;
 
-        const float frameInterval = 1f / 24f;
+        const float frameInterval = 1f / 32f;
         while (elapsed < scaleDuration)
         {
             elapsed += frameInterval;
@@ -147,6 +162,11 @@ public class BookMenuController : MonoBehaviour
         }
 
         book.transform.localScale = endScale;
-        Debug.Log("[BookMenu] scale down complete");
+        Debug.Log($"[BookMenu] scaling complete → {targetScale}");
+        _scalingCoroutine = null;
+    }
+    private void PlayOnstartAnimation(string animation)
+    {
+        animator.SetTrigger(animation);
     }
 }
