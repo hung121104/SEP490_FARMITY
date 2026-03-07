@@ -281,62 +281,6 @@ public class CraftingSystemManager : MonoBehaviour
     #region Public API
 
     /// <summary>
-    /// Open crafting UI
-    /// </summary>
-    public void OpenCraftingUI()
-    {
-        if (UIPanelManager.Instance != null)
-            UIPanelManager.Instance.Open(craftingPanelId);
-        else
-        {
-            craftingPresenter?.OpenCraftingUI();
-            craftingInventoryAdapter?.OnOpen();
-        }
-    }
-
-    /// <summary>
-    /// Close crafting UI
-    /// </summary>
-    public void CloseCraftingUI()
-    {
-        if (UIPanelManager.Instance != null)
-            UIPanelManager.Instance.Close(craftingPanelId);
-        else
-        {
-            craftingPresenter?.CloseCraftingUI();
-            craftingInventoryAdapter?.OnClose();
-        }
-    }
-
-    /// <summary>
-    /// Open cooking UI
-    /// </summary>
-    public void OpenCookingUI()
-    {
-        if (UIPanelManager.Instance != null)
-            UIPanelManager.Instance.Open(cookingPanelId);
-        else
-        {
-            cookingPresenter?.OpenCookingUI();
-            cookingInventoryAdapter?.OnOpen();
-        }
-    }
-
-    /// <summary>
-    /// Close cooking UI
-    /// </summary>
-    public void CloseCookingUI()
-    {
-        if (UIPanelManager.Instance != null)
-            UIPanelManager.Instance.Close(cookingPanelId);
-        else
-        {
-            cookingPresenter?.CloseCookingUI();
-            cookingInventoryAdapter?.OnClose();
-        }
-    }
-
-    /// <summary>
     /// Open crafting in inventory UI
     /// </summary>
     public void OpenCraftingInInventory()
@@ -413,40 +357,6 @@ public class CraftingSystemManager : MonoBehaviour
         }
 
         Debug.Log("[CraftingSystemManager] Cleaned up");
-    }
-
-    #endregion
-
-    #region Testing Helpers
-
-    [ContextMenu("Test Open Crafting UI")]
-    private void TestOpenCraftingUI()
-    {
-        if (craftingPresenter != null && craftingPresenter.IsUIOpen())
-            CloseCraftingUI();
-        else
-            OpenCraftingUI();
-    }
-
-    [ContextMenu("Test Close Crafting UI")]
-    private void TestCLoseCraftingUI()
-    {
-        CloseCraftingUI();
-    }
-
-    [ContextMenu("Test Open Cooking UI")]
-    private void TestOpenCookingUI()
-    {
-        if (cookingPresenter != null && cookingPresenter.IsUIOpen())
-            CloseCookingUI();
-        else
-            OpenCookingUI();
-    }
-
-    [ContextMenu("Test Close Cooking UI")]
-    private void TestCloseCookingUI()
-    {
-        CloseCookingUI();
     }
 
     #endregion
