@@ -10203,7 +10203,7 @@ MonoBehaviour:
   spriteRenderer: {fileID: 1976415141}
   questView: {fileID: 1013403979}
   questDatabase: {fileID: 11400000, guid: 8a944947f2eb2e041bc3f7f4b3e3e180, type: 2}
-  questIndex: 2
+  questIndex: 1
   questLogController: {fileID: 2098719472}
 --- !u!95 &1976415140
 Animator:

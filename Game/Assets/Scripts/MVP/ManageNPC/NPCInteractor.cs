@@ -53,6 +53,7 @@ public class NPCInteractor : MonoBehaviour
     }
     private void Awake()
     {
+        inventoryGameView.GetInventoryService().OnInventoryChanged += UpdateQuestObjectives;
         // Dialogue Service
         INPCDialogueService service = new NPCDialogueService(dialogueModel);
 
@@ -60,16 +61,17 @@ public class NPCInteractor : MonoBehaviour
         questService = QuestManager.QuestService;
 
         if (questDatabase != null &&
-    questDatabase.quests.Length > 0 &&
-    questIndex < questDatabase.quests.Length)
+         questDatabase.quests.Length > 0 &&
+         questIndex < questDatabase.quests.Length)
         {
             questPresenter = new QuestPresenter(
-                questView,
-                questService,
-                questDatabase.quests[questIndex],
-                dialogueModel.npcName,
-                dialogueModel.avatar
-            );
+             questView,
+            questService,
+             inventoryGameView.GetInventoryService(),
+             questDatabase.quests[questIndex],
+            dialogueModel.npcName,
+            dialogueModel.avatar
+                );
         }
     
 
@@ -81,6 +83,7 @@ public class NPCInteractor : MonoBehaviour
         );
 
         CreateInteractionNode();
+
     }
     private void Update()
     {
@@ -183,6 +186,13 @@ public class NPCInteractor : MonoBehaviour
                     // QUEST not taken
                     if (!questService.HasQuest(quest.questId))
                     {
+                        // nếu quest cuối đã xong
+                        if (string.IsNullOrEmpty(quest.nextQuestId) && questService.IsQuestTurnedIn(quest.questId))
+                        {
+                            ShowSimpleDialogue("Thanks, but I don’t have anything else for you to do.");
+                            return;
+                        }
+
                         currentState = NPCState.Quest;
                         questPresenter?.ShowQuest();
                     }
@@ -215,7 +225,33 @@ public class NPCInteractor : MonoBehaviour
                                 questService.GiveReward(quest.questId, inventory);
                                 questService.CompleteQuest(quest.questId);
 
-                                ShowSimpleDialogue("Thank you for bringing the items! Here is your reward.");
+                                // QUEST CHAIN
+                                if (!string.IsNullOrEmpty(quest.nextQuestId))
+                                {
+                                    int nextIndex = questDatabase.GetQuestIndex(quest.nextQuestId);
+
+                                    if (nextIndex != -1)
+                                    {
+                                        questIndex = nextIndex;
+
+                                        QuestModel nextQuest = questDatabase.quests[questIndex];
+
+                                        questPresenter = new QuestPresenter(
+                                            questView,
+                                            questService,
+                                            inventoryGameView.GetInventoryService(),
+                                            nextQuest,
+                                            dialogueModel.npcName,
+                                            dialogueModel.avatar
+                                        );
+                                    }
+
+                                    ShowSimpleDialogue("Thank you for bringing the items! Here is your reward.");
+                                }
+                                else
+                                {
+                                    ShowSimpleDialogue("Thank you for bringing the items! Here is your reward.");
+                                }
                             }
                         }
                         else
@@ -226,29 +262,7 @@ public class NPCInteractor : MonoBehaviour
                         }
                     }
 
-                    // QUEST completed
-                    else if (questService.IsQuestCompleted(quest.questId))
-                    {
-                        bool success = questService.SubmitQuestItems(
-                            quest.questId,
-                            inventoryGameView.GetInventoryService()
-                        );
-
-                        if (success)
-                        {
-                            var inventory = inventoryGameView.GetInventoryService();
-
-                            questService.GiveReward(quest.questId, inventory);
-
-                            questService.CompleteQuest(quest.questId);
-
-                            ShowSimpleDialogue("Thank you for bringing the items! Here is your reward.");
-                        }
-                        else
-                        {
-                            ShowSimpleDialogue("You don't have the required items.");
-                        }
-                    }
+                   
 
                     break;
                 }
@@ -464,6 +478,25 @@ public class NPCInteractor : MonoBehaviour
         );
 
         currentState = NPCState.SimpleDialogue;
+    }
+    private void UpdateQuestObjectives()
+    {
+        var inventory = inventoryGameView.GetInventoryService();
+
+        foreach (var quest in questService.GetActiveQuests())
+        {
+            foreach (var obj in quest.objectives)
+            {
+                if (obj.type == ObjectiveType.CollectItem)
+                {
+                    int count = inventory.GetItemCount(obj.itemId);
+
+                    obj.currentAmount = Mathf.Min(count, obj.requiredAmount);
+                }
+            }
+        }
+
+        QuestService.OnQuestUpdated?.Invoke();
     }
     private void UnlockPlayer()
         {
