@@ -7,12 +7,11 @@ namespace CombatManager.Presenter
 {
     /// <summary>
     /// Presenter for Combat Mode system.
-    /// Connects CombatModeModel and CombatModeService to CombatModeView.
-    /// Acts as singleton for easy access by other combat systems.
+    /// Phase 4: Combat mode now driven by weapon equip/unequip.
+    /// Alt key removed. SetCombatMode() called by WeaponEquipPresenter.
     /// </summary>
     public class CombatModePresenter : MonoBehaviour
     {
-        // Singleton instance for easy access
         public static CombatModePresenter Instance { get; private set; }
 
         [Header("Model")]
@@ -20,18 +19,14 @@ namespace CombatManager.Presenter
 
         private CombatModeService service;
 
-        // Static event for backward compatibility with old CombatModeManager
         public static event System.Action<bool> OnCombatModeChanged;
 
         #region Unity Lifecycle
 
         private void Awake()
         {
-            // Singleton setup
             if (Instance == null)
-            {
                 Instance = this;
-            }
             else
             {
                 Debug.LogWarning("[CombatModePresenter] Duplicate instance found, destroying");
@@ -44,15 +39,20 @@ namespace CombatManager.Presenter
 
         private void Update()
         {
-            CheckToggleInput();
+            // ✅ Phase 4: Only allow debug toggle if explicitly enabled in model
+            // In production: enableDebugToggle = false → this does nothing
+            if (model.enableDebugToggle && Input.GetKeyDown(model.debugToggleKey))
+            {
+                Debug.LogWarning("[CombatModePresenter] DEBUG toggle used! " +
+                                 "Disable enableDebugToggle in production.");
+                ToggleCombatMode();
+            }
         }
 
         private void OnDestroy()
         {
             if (Instance == this)
-            {
                 Instance = null;
-            }
         }
 
         #endregion
@@ -62,23 +62,8 @@ namespace CombatManager.Presenter
         private void InitializeService()
         {
             service = new CombatModeService(model);
-
-            // Subscribe to service events and forward to static event
             service.RegisterOnCombatModeChanged(OnModeChanged);
-
-            Debug.Log("[CombatModePresenter] Initialized");
-        }
-
-        #endregion
-
-        #region Input Handling
-
-        private void CheckToggleInput()
-        {
-            if (Input.GetKeyDown(model.combatModeToggleKey))
-            {
-                ToggleCombatMode();
-            }
+            Debug.Log("[CombatModePresenter] Initialized - Combat mode driven by weapon equip");
         }
 
         #endregion
@@ -108,30 +93,26 @@ namespace CombatManager.Presenter
 
         private void OnModeChanged(bool isActive)
         {
-            // Forward to static event (for backward compatibility)
             OnCombatModeChanged?.Invoke(isActive);
         }
 
         #endregion
 
-        #region View Update Notification
+        #region View Update
 
         private void NotifyViewUpdate()
         {
             CombatModeView view = GetComponent<CombatModeView>();
             if (view != null)
-            {
                 view.UpdateDisplay();
-            }
         }
 
         #endregion
 
-        #region Public API for Other Systems
+        #region Event Registration
 
         public ICombatModeService GetService() => service;
 
-        // Event registration for other systems
         public void RegisterCallback(System.Action<bool> callback)
         {
             service?.RegisterOnCombatModeChanged(callback);

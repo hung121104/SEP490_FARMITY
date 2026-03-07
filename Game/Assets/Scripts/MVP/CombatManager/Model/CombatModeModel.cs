@@ -4,7 +4,8 @@ namespace CombatManager.Model
 {
     /// <summary>
     /// Data model for combat mode state and settings.
-    /// Tracks whether combat mode is active and the toggle key.
+    /// Combat mode is now driven by weapon equip/unequip.
+    /// Alt key toggle removed - Phase 4.
     /// </summary>
     [System.Serializable]
     public class CombatModeModel
@@ -16,10 +17,14 @@ namespace CombatManager.Model
 
         #endregion
 
-        #region Settings
+        #region Debug Settings
 
-        [Header("Settings")]
-        public KeyCode combatModeToggleKey = KeyCode.LeftAlt;
+        [Header("Debug Settings")]
+        [Tooltip("DEBUG ONLY - kept for future debug toggle if needed. Not used in gameplay.")]
+        public KeyCode debugToggleKey = KeyCode.LeftAlt;
+
+        [Tooltip("Enable debug toggle via key. Disable in production!")]
+        public bool enableDebugToggle = false;
 
         #endregion
 
@@ -28,7 +33,7 @@ namespace CombatManager.Model
         public CombatModeModel()
         {
             isCombatModeActive = false;
-            combatModeToggleKey = KeyCode.LeftAlt;
+            enableDebugToggle = false;
         }
 
         #endregion
