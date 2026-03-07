@@ -2966,6 +2966,8 @@ MonoBehaviour:
   cooldownDuration: 3
   chargeDuration: 0.3
   skillMultiplier: 2
+  confirmKey: 101
+  cancelKey: 113
   swordSlashVFXPrefab: {fileID: 5107333870897779412, guid: 1244261c77c709b43a4c449b37ae4157, type: 3}
   vfxDuration: 0.5
   vfxSpawnOffset: 1.2

@@ -15,6 +15,10 @@ namespace CombatManager.Presenter
         [SerializeField] private float chargeDuration = 0.3f;
         [SerializeField] private float skillMultiplier = 2.0f;
 
+        [Header("Confirmation Keys")]
+        [SerializeField] private KeyCode confirmKey = KeyCode.E;
+        [SerializeField] private KeyCode cancelKey = KeyCode.Q;
+
         [Header("VFX")]
         [SerializeField] private GameObject swordSlashVFXPrefab;
         [SerializeField] private float vfxDuration = 0.5f;
@@ -34,6 +38,11 @@ namespace CombatManager.Presenter
         private bool isExecuting = false;
         private float cooldownRemaining = 0f;
         private GameObject localPlayerObj;
+
+        // ✅ Confirmation state
+        private bool isWaitingConfirm = false;
+        private bool confirmReceived = false;
+        private bool cancelReceived = false;
 
         #region Unity Lifecycle
 
@@ -65,6 +74,21 @@ namespace CombatManager.Presenter
         {
             if (cooldownRemaining > 0f)
                 cooldownRemaining -= Time.deltaTime;
+
+            // ✅ Handle confirm/cancel input here in Update
+            if (isWaitingConfirm)
+            {
+                if (Input.GetKeyDown(confirmKey))
+                {
+                    confirmReceived = true;
+                    Debug.Log("[WeaponSkillSwordSlash] Skill CONFIRMED!");
+                }
+                else if (Input.GetKeyDown(cancelKey))
+                {
+                    cancelReceived = true;
+                    Debug.Log("[WeaponSkillSwordSlash] Skill CANCELLED!");
+                }
+            }
         }
 
         private void OnDestroy()
@@ -147,17 +171,33 @@ namespace CombatManager.Presenter
         private IEnumerator ExecuteSkillSequence(WeaponDataSO weaponData)
         {
             isExecuting = true;
-            Debug.Log("[WeaponSkillSwordSlash] Executing SwordSlash!");
+            Debug.Log("[WeaponSkillSwordSlash] Executing SwordSlash - Charging...");
 
+            // Phase 1: Charge
             yield return new WaitForSeconds(chargeDuration);
 
-            // ✅ Fix 1: Use DiceTier not SkillTier
+            // Phase 2: Roll dice
             var diceRollerService = new DiceRollerService();
             int diceRoll = diceRollerService.Roll(DiceTier.D6);
-
             DiceDisplayPresenter.Show(diceRoll, DiceTier.D6);
 
-            yield return new WaitForSeconds(0.8f);
+            // Phase 3: Wait for confirmation ✅
+            yield return StartCoroutine(WaitForConfirmation());
+
+            // Phase 4: Cancelled → abort
+            if (cancelReceived)
+            {
+                DiceDisplayPresenter.Hide();
+                isExecuting = false;
+                isWaitingConfirm = false;
+                confirmReceived = false;
+                cancelReceived = false;
+                Debug.Log("[WeaponSkillSwordSlash] Skill aborted!");
+                yield break;
+            }
+
+            // Phase 5: Confirmed → execute
+            DiceDisplayPresenter.Hide();
 
             int strength = statsPresenter?.GetService().GetTempStrength() ?? 0;
             int weaponDamage = weaponData.damage;
@@ -175,8 +215,29 @@ namespace CombatManager.Presenter
 
             SpawnSlashVFX(finalDamage);
 
+            // Phase 6: Cooldown
             cooldownRemaining = cooldownDuration;
             isExecuting = false;
+
+            // Reset flags
+            confirmReceived = false;
+            cancelReceived = false;
+        }
+
+        // ✅ Mirrors WaitForConfirmationRoutine from SkillPresenter
+        private IEnumerator WaitForConfirmation()
+        {
+            isWaitingConfirm = true;
+            confirmReceived = false;
+            cancelReceived = false;
+
+            Debug.Log($"[WeaponSkillSwordSlash] Waiting for confirm [{confirmKey}] or cancel [{cancelKey}]...");
+
+            // Wait until E or Q pressed
+            while (!confirmReceived && !cancelReceived)
+                yield return null;
+
+            isWaitingConfirm = false;
         }
 
         private void SpawnSlashVFX(int damage)
@@ -189,7 +250,6 @@ namespace CombatManager.Presenter
 
             if (localPlayerObj == null) return;
 
-            // ✅ Fix 2: Use GetCurrentDirection() not GetAimDirection()
             Vector3 direction = Vector3.right;
             if (pointerPresenter != null)
                 direction = pointerPresenter.GetCurrentDirection();
@@ -209,7 +269,6 @@ namespace CombatManager.Presenter
                 Quaternion.Euler(0f, 0f, angle)
             );
 
-            // ✅ Fix 3: Pass all required params to Initialize()
             SlashHitboxPresenter hitbox = vfxObj.GetComponent<SlashHitboxPresenter>();
             if (hitbox != null)
             {
@@ -217,9 +276,9 @@ namespace CombatManager.Presenter
                     damage,
                     knockbackForce,
                     enemyLayers,
-                    localPlayerObj.transform,   // ownerTransform
-                    damagePopupPrefab,          // damagePopupPrefab
-                    vfxDuration                 // animationDuration
+                    localPlayerObj.transform,
+                    damagePopupPrefab,
+                    vfxDuration
                 );
                 Debug.Log($"[WeaponSkillSwordSlash] VFX spawned with damage={damage}");
             }

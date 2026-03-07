@@ -1,0 +1,741 @@
+fileFormatVersion: 2
+guid: ed39d34608aa3a64b8d5d459232949ed
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 1569842614448842261
+    second: SlashFX SpriteSheet All 2A_3_0
+  - first:
+      213: 828324873804201
+    second: SlashFX SpriteSheet All 2A_3_1
+  - first:
+      213: 7571740540186177800
+    second: SlashFX SpriteSheet All 2A_3_2
+  - first:
+      213: -170819305675219725
+    second: SlashFX SpriteSheet All 2A_3_3
+  - first:
+      213: 4887342227277022790
+    second: SlashFX SpriteSheet All 2A_3_4
+  - first:
+      213: -452581893032132466
+    second: SlashFX SpriteSheet All 2A_3_5
+  - first:
+      213: 4045597825718047586
+    second: SlashFX SpriteSheet All 2A_3_6
+  - first:
+      213: 5530091422853176580
+    second: SlashFX SpriteSheet All 2A_3_7
+  - first:
+      213: 888399224604163904
+    second: SlashFX SpriteSheet All 2A_3_8
+  - first:
+      213: -4131010269051886395
+    second: SlashFX SpriteSheet All 2A_3_9
+  - first:
+      213: -2681500597781143975
+    second: SlashFX SpriteSheet All 2A_3_10
+  - first:
+      213: -43266676527194574
+    second: SlashFX SpriteSheet All 2A_3_11
+  - first:
+      213: 6953895331958246519
+    second: SlashFX SpriteSheet All 2A_3_12
+  - first:
+      213: 1867436406346865234
+    second: SlashFX SpriteSheet All 2A_3_13
+  - first:
+      213: 1584878673626195640
+    second: SlashFX SpriteSheet All 2A_3_14
+  - first:
+      213: 7866333236586299394
+    second: SlashFX SpriteSheet All 2A_3_15
+  - first:
+      213: -2520416620067102040
+    second: SlashFX SpriteSheet All 2A_3_16
+  - first:
+      213: -2339034182816665804
+    second: SlashFX SpriteSheet All 2A_3_17
+  - first:
+      213: 9104663947113116045
+    second: SlashFX SpriteSheet All 2A_3_18
+  - first:
+      213: -5759153024912010660
+    second: SlashFX SpriteSheet All 2A_3_19
+  - first:
+      213: -7574115448423964906
+    second: SlashFX SpriteSheet All 2A_3_20
+  - first:
+      213: 9044082907724539422
+    second: SlashFX SpriteSheet All 2A_3_21
+  - first:
+      213: 3694953614431661347
+    second: SlashFX SpriteSheet All 2A_3_22
+  - first:
+      213: 4821159311532539896
+    second: SlashFX SpriteSheet All 2A_3_23
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_0
+      rect:
+        serializedVersion: 2
+        x: 56
+        y: 59
+        width: 19
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5166e7b5a8339c510800000000000000
+      internalID: 1569842614448842261
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_1
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 59
+        width: 57
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a99cd96b51f20000800000000000000
+      internalID: 828324873804201
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_2
+      rect:
+        serializedVersion: 2
+        x: 307
+        y: 59
+        width: 20
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 801b83d87e9341960800000000000000
+      internalID: 7571740540186177800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_3
+      rect:
+        serializedVersion: 2
+        x: 440
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3fc137c1fb021adf0800000000000000
+      internalID: -170819305675219725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_4
+      rect:
+        serializedVersion: 2
+        x: 568
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6460d988cd353d340800000000000000
+      internalID: 4887342227277022790
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_5
+      rect:
+        serializedVersion: 2
+        x: 696
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e80cb0a8a2b18b9f0800000000000000
+      internalID: -452581893032132466
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_6
+      rect:
+        serializedVersion: 2
+        x: 824
+        y: 59
+        width: 19
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 263540ab9c9d42830800000000000000
+      internalID: 4045597825718047586
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_7
+      rect:
+        serializedVersion: 2
+        x: 927
+        y: 59
+        width: 57
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40d199279d4debc40800000000000000
+      internalID: 5530091422853176580
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_8
+      rect:
+        serializedVersion: 2
+        x: 1075
+        y: 59
+        width: 20
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04f7349436a345c00800000000000000
+      internalID: 888399224604163904
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_9
+      rect:
+        serializedVersion: 2
+        x: 1208
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c4ebad1c04bba6c0800000000000000
+      internalID: -4131010269051886395
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_10
+      rect:
+        serializedVersion: 2
+        x: 1336
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 95ed14cd96569cad0800000000000000
+      internalID: -2681500597781143975
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_11
+      rect:
+        serializedVersion: 2
+        x: 1464
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 23e1cfadf29466ff0800000000000000
+      internalID: -43266676527194574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_12
+      rect:
+        serializedVersion: 2
+        x: 1592
+        y: 59
+        width: 19
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 77c4e9a06f2318060800000000000000
+      internalID: 6953895331958246519
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_13
+      rect:
+        serializedVersion: 2
+        x: 1695
+        y: 59
+        width: 57
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25adfe874877ae910800000000000000
+      internalID: 1867436406346865234
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_14
+      rect:
+        serializedVersion: 2
+        x: 1843
+        y: 59
+        width: 20
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b6e491b1ce9ef510800000000000000
+      internalID: 1584878673626195640
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_15
+      rect:
+        serializedVersion: 2
+        x: 1976
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 200439ba664da2d60800000000000000
+      internalID: 7866333236586299394
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_16
+      rect:
+        serializedVersion: 2
+        x: 2104
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8a2e8e2107ea50dd0800000000000000
+      internalID: -2520416620067102040
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_17
+      rect:
+        serializedVersion: 2
+        x: 2232
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43f67bfadc41a8fd0800000000000000
+      internalID: -2339034182816665804
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_18
+      rect:
+        serializedVersion: 2
+        x: 2360
+        y: 59
+        width: 19
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d81bbfe0f934a5e70800000000000000
+      internalID: 9104663947113116045
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_19
+      rect:
+        serializedVersion: 2
+        x: 2463
+        y: 59
+        width: 57
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c52d00f46d06310b0800000000000000
+      internalID: -5759153024912010660
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_20
+      rect:
+        serializedVersion: 2
+        x: 2611
+        y: 59
+        width: 20
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61f14e8012653e690800000000000000
+      internalID: -7574115448423964906
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_21
+      rect:
+        serializedVersion: 2
+        x: 2744
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e166a1aac79038d70800000000000000
+      internalID: 9044082907724539422
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_22
+      rect:
+        serializedVersion: 2
+        x: 2872
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 32daeb15cbc174330800000000000000
+      internalID: 3694953614431661347
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SlashFX SpriteSheet All 2A_3_23
+      rect:
+        serializedVersion: 2
+        x: 3000
+        y: 59
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8ffb679a9d238e240800000000000000
+      internalID: 4821159311532539896
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      SlashFX SpriteSheet All 2A_3_0: 1569842614448842261
+      SlashFX SpriteSheet All 2A_3_1: 828324873804201
+      SlashFX SpriteSheet All 2A_3_10: -2681500597781143975
+      SlashFX SpriteSheet All 2A_3_11: -43266676527194574
+      SlashFX SpriteSheet All 2A_3_12: 6953895331958246519
+      SlashFX SpriteSheet All 2A_3_13: 1867436406346865234
+      SlashFX SpriteSheet All 2A_3_14: 1584878673626195640
+      SlashFX SpriteSheet All 2A_3_15: 7866333236586299394
+      SlashFX SpriteSheet All 2A_3_16: -2520416620067102040
+      SlashFX SpriteSheet All 2A_3_17: -2339034182816665804
+      SlashFX SpriteSheet All 2A_3_18: 9104663947113116045
+      SlashFX SpriteSheet All 2A_3_19: -5759153024912010660
+      SlashFX SpriteSheet All 2A_3_2: 7571740540186177800
+      SlashFX SpriteSheet All 2A_3_20: -7574115448423964906
+      SlashFX SpriteSheet All 2A_3_21: 9044082907724539422
+      SlashFX SpriteSheet All 2A_3_22: 3694953614431661347
+      SlashFX SpriteSheet All 2A_3_23: 4821159311532539896
+      SlashFX SpriteSheet All 2A_3_3: -170819305675219725
+      SlashFX SpriteSheet All 2A_3_4: 4887342227277022790
+      SlashFX SpriteSheet All 2A_3_5: -452581893032132466
+      SlashFX SpriteSheet All 2A_3_6: 4045597825718047586
+      SlashFX SpriteSheet All 2A_3_7: 5530091422853176580
+      SlashFX SpriteSheet All 2A_3_8: 888399224604163904
+      SlashFX SpriteSheet All 2A_3_9: -4131010269051886395
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
