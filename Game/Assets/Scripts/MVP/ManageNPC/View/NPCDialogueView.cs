@@ -15,6 +15,12 @@ public class NPCDialogueView : MonoBehaviour
     [SerializeField] private Image avatarImage;
     [SerializeField] private TMP_Text continueHintText;
 
+    [Header("Reward")]
+    [SerializeField] private GameObject rewardSlot;
+    [SerializeField] private TMP_Text rewardLabel;
+    [SerializeField] private Image rewardIcon;
+    [SerializeField] private TMP_Text rewardText;
+    
     [Header("Options")]
     [SerializeField] private Transform optionsContainer;
     [SerializeField] private TMP_Text optionPrefab;
@@ -27,15 +33,18 @@ public class NPCDialogueView : MonoBehaviour
 
     private List<TMP_Text> currentOptions = new List<TMP_Text>();
 
-    
+    private void Awake()
+    {
+        Hide();
+    }
     // SHOW NODE 
-    
+
     public void ShowNode(string npcName, DialogueNode node, Sprite avatar)
     {
         dialoguePanel.SetActive(true);
-
+        HideReward();
         npcNameText.text = npcName;
-
+        
         avatarImage.sprite = avatar;
         avatarImage.enabled = avatar != null;
 
@@ -47,7 +56,7 @@ public class NPCDialogueView : MonoBehaviour
 
         typingCoroutine = StartCoroutine(TypeText(node));
     }
-
+    
     private IEnumerator TypeText(DialogueNode node)
     {
         isTyping = true;
@@ -114,7 +123,11 @@ public class NPCDialogueView : MonoBehaviour
     {
         dialoguePanel.SetActive(false);
         continueHintText.gameObject.SetActive(false);
+        rewardSlot.SetActive(false);
+        rewardIcon.gameObject.SetActive(false);
+        rewardText.gameObject.SetActive(false);
         ClearOptions();
+
     }
 
     private void ClearOptions()
@@ -125,5 +138,28 @@ public class NPCDialogueView : MonoBehaviour
         }
 
         currentOptions.Clear();
+    }
+    public void ShowReward(Sprite icon, int amount)
+    {
+        rewardSlot.SetActive(true);
+        rewardLabel.gameObject.SetActive(true);
+        rewardIcon.gameObject.SetActive(true);
+        rewardText.gameObject.SetActive(true);
+
+        rewardIcon.sprite = icon;
+        rewardText.text = "x" + amount;
+    }
+
+    public void HideReward()
+    {
+        rewardSlot.SetActive(false);
+
+        if (rewardIcon != null)
+            rewardIcon.gameObject.SetActive(false);
+
+        if (rewardText != null)
+            rewardText.gameObject.SetActive(false);
+        if (rewardLabel != null)
+            rewardLabel.gameObject.SetActive(false);
     }
 }
