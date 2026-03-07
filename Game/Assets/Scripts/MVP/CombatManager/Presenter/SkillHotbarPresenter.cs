@@ -334,7 +334,6 @@ namespace CombatManager.Presenter
 
             switch (weaponType)
             {
-                // ✅ Renamed: SwordSlash → SwordSpecial
                 case CombatManager.Model.WeaponType.Sword:
                     WeaponSkillSwordSpecial.Instance?.TryExecute();
                     break;
@@ -343,9 +342,10 @@ namespace CombatManager.Presenter
                     WeaponSkillSpearSpecial.Instance?.TryExecute();
                     break;
 
-                // case WeaponType.Staff:
-                //     WeaponSkillStaffSpecial.Instance?.TryExecute();
-                //     break;
+                // ✅ Uncommented - Staff skill ready!
+                case CombatManager.Model.WeaponType.Staff:
+                    WeaponSkillStaffSpecial.Instance?.TryExecute();
+                    break;
 
                 default:
                     Debug.LogWarning($"[SkillHotbarPresenter] No weapon skill for: {weaponType}");
@@ -363,13 +363,17 @@ namespace CombatManager.Presenter
             float cooldownPercent = 0f;
             switch (weaponType)
             {
-                // ✅ Renamed: SwordSlash → SwordSpecial
                 case CombatManager.Model.WeaponType.Sword:
                     cooldownPercent = WeaponSkillSwordSpecial.Instance?.GetCooldownPercent() ?? 0f;
                     break;
 
                 case CombatManager.Model.WeaponType.Spear:
                     cooldownPercent = WeaponSkillSpearSpecial.Instance?.GetCooldownPercent() ?? 0f;
+                    break;
+
+                // ✅ Uncommented - Staff cooldown ready!
+                case CombatManager.Model.WeaponType.Staff:
+                    cooldownPercent = WeaponSkillStaffSpecial.Instance?.GetCooldownPercent() ?? 0f;
                     break;
             }
 
