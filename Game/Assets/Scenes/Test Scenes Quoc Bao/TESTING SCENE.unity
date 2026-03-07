@@ -3037,7 +3037,7 @@ MonoBehaviour:
   vfxPositionOffset: {x: 0, y: 0}
   enemyLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 128
   knockbackForce: 5
   damagePopupPrefab: {fileID: 0}
   statsPresenter: {fileID: 0}
@@ -21197,7 +21197,7 @@ MonoBehaviour:
   knockbackForce: 5
   enemyLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 128
   statsPresenter: {fileID: 0}
   pointerPresenter: {fileID: 0}
 --- !u!1 &1512877386
@@ -21644,6 +21644,10 @@ MonoBehaviour:
   horizontalVFXPrefab: {fileID: 5107333870897779412, guid: a31d7178e27ce7d4bbbe209616de82d2, type: 3}
   verticalVFXPrefab: {fileID: 8171461803801935278, guid: c6fdd417ce7c04540be8aa6077fdfe75, type: 3}
   damagePopupPrefab: {fileID: 0}
+  staffProjectilePrefab: {fileID: 2996777577814843754, guid: e6b7c2b9f03fde44f88cf4cf1ab958ce, type: 3}
+  staffProjectileSpeed: 15
+  staffProjectileRange: 8
+  staffKnockbackForce: 5
   enemyLayers:
     serializedVersion: 2
     m_Bits: 128

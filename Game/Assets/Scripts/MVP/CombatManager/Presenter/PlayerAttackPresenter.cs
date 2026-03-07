@@ -4,6 +4,7 @@ using System.Collections;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
+using CombatManager.SO; 
 
 namespace CombatManager.Presenter
 {
@@ -12,11 +13,19 @@ namespace CombatManager.Presenter
         [Header("Model")]
         [SerializeField] private PlayerAttackModel model = new PlayerAttackModel();
 
-        [Header("VFX Prefabs")]
+        [Header("VFX Prefabs - Melee")]
         [SerializeField] private GameObject stabVFXPrefab;
         [SerializeField] private GameObject horizontalVFXPrefab;
         [SerializeField] private GameObject verticalVFXPrefab;
         [SerializeField] private GameObject damagePopupPrefab;
+
+        [Header("Staff Projectile")]
+        [SerializeField] private GameObject staffProjectilePrefab;
+        [SerializeField] private float staffProjectileSpeed = 10f;
+        [SerializeField] private float staffProjectileRange = 8f;
+        [SerializeField] private float staffKnockbackForce = 5f;
+        // TODO: Staff combo system - currently single shot
+        // Future: staffComboSteps[] with different projectile patterns
 
         [Header("Combat Settings")]
         [SerializeField] private LayerMask enemyLayers;
@@ -35,9 +44,10 @@ namespace CombatManager.Presenter
 
         private IPlayerAttackService service;
         private IStatsService statsService;
-
-        // ✅ NEW: DamageCalculatorService instance
         private IDamageCalculatorService damageCalculator;
+
+        // Cached local player transform for staff projectile
+        private Transform localPlayerTransform;
 
         #region Unity Lifecycle
 
@@ -88,8 +98,6 @@ namespace CombatManager.Presenter
             }
 
             statsService = statsPresenter.GetService();
-
-            // ✅ NEW: Initialize damage calculator
             damageCalculator = new DamageCalculatorService();
 
             GameObject playerObj = FindLocalPlayerEntity();
@@ -99,6 +107,9 @@ namespace CombatManager.Presenter
                 enabled = false;
                 return;
             }
+
+            // Cache for staff projectile use
+            localPlayerTransform = playerObj.transform;
 
             Transform centerPoint = playerObj.transform.Find("CenterPoint");
             if (centerPoint == null)
@@ -128,15 +139,13 @@ namespace CombatManager.Presenter
             foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
             {
                 PhotonView pv = go.GetComponent<PhotonView>();
-                if (pv != null && pv.IsMine)
-                    return go;
+                if (pv != null && pv.IsMine) return go;
             }
 
             foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
             {
                 PhotonView pv = go.GetComponent<PhotonView>();
-                if (pv != null && pv.IsMine)
-                    return go;
+                if (pv != null && pv.IsMine) return go;
             }
 
             GameObject fallback = GameObject.Find("PlayerEntity");
@@ -155,19 +164,16 @@ namespace CombatManager.Presenter
 
         private void CheckAttackInput()
         {
-            if (CombatModePresenter.Instance == null || !CombatModePresenter.Instance.IsCombatModeActive())
+            if (CombatModePresenter.Instance == null ||
+                !CombatModePresenter.Instance.IsCombatModeActive())
                 return;
 
-            // ✅ NEW: Block attack if no weapon equipped
-            if (WeaponEquipPresenter.Instance == null || !WeaponEquipPresenter.Instance.IsWeaponEquipped())
-            {
+            if (WeaponEquipPresenter.Instance == null ||
+                !WeaponEquipPresenter.Instance.IsWeaponEquipped())
                 return;
-            }
 
             if (Input.GetMouseButtonDown(0) && service.CanAttack())
-            {
                 ExecuteAttack();
-            }
         }
 
         #endregion
@@ -176,10 +182,8 @@ namespace CombatManager.Presenter
 
         private void ExecuteAttack()
         {
-            if (service == null || !service.IsInitialized())
-                return;
+            if (service == null || !service.IsInitialized()) return;
 
-            // ✅ NEW: Get weapon - required for attack
             var currentWeapon = WeaponEquipPresenter.Instance?.GetCurrentWeapon();
             if (currentWeapon == null)
             {
@@ -187,6 +191,41 @@ namespace CombatManager.Presenter
                 return;
             }
 
+            int strength = statsService.GetAttackDamage();
+            int weaponDamage = currentWeapon.damage;
+            int baseDamage = damageCalculator.CalculateBasicAttackDamage(strength, weaponDamage);
+
+            // ✅ Route attack by weapon type
+            switch (currentWeapon.weaponType)
+            {
+                case WeaponType.Staff:
+                    ExecuteStaffAttack(baseDamage, currentWeapon);
+                    break;
+
+                case WeaponType.Sword:
+                case WeaponType.Spear:
+                default:
+                    ExecuteMeleeAttack(baseDamage, currentWeapon);
+                    break;
+            }
+
+            // Play weapon animation
+            if (WeaponAnimationPresenter.Instance != null &&
+                WeaponAnimationPresenter.Instance.IsWeaponActive())
+                WeaponAnimationPresenter.Instance.PlayAttackAnimation();
+
+            service.ExecuteAttack();
+
+            float cooldown = statsService.GetCooldownTime();
+            service.SetAttackCooldown(cooldown);
+        }
+
+        #endregion
+
+        #region Melee Attack
+
+        private void ExecuteMeleeAttack(int baseDamage, WeaponDataSO currentWeapon)
+        {
             int comboStep = service.GetCurrentComboStep();
             GameObject vfxPrefab = service.GetVFXPrefab(comboStep);
             float vfxDuration = service.GetVFXDuration(comboStep);
@@ -197,75 +236,46 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            // ✅ NEW: Use DamageCalculatorService with weapon damage
-            // strength + weaponDamage = base, then apply combo multiplier
-            int strength = statsService.GetAttackDamage();
-            int weaponDamage = currentWeapon.damage;
-            int baseDamage = damageCalculator.CalculateBasicAttackDamage(strength, weaponDamage);
-
-            // Apply combo multiplier on top
             int finalDamage = service.CalculateDamage(comboStep, baseDamage);
-
             float knockbackForce = statsService.GetKnockbackForce();
 
             SpawnSlashVFX(vfxPrefab, vfxDuration, finalDamage, knockbackForce, comboStep);
 
-            if (WeaponAnimationPresenter.Instance != null && WeaponAnimationPresenter.Instance.IsWeaponActive())
-            {
-                WeaponAnimationPresenter.Instance.PlayAttackAnimation();
-            }
-
-            service.ExecuteAttack();
-
-            float cooldown = statsService.GetCooldownTime();
-            service.SetAttackCooldown(cooldown);
-
-            Debug.Log($"[PlayerAttackPresenter] Attack: Step={comboStep}, " +
-                      $"Strength={strength} + WeaponDmg={weaponDamage} " +
-                      $"= Base={baseDamage} × ComboMult → Final={finalDamage} | " +
+            // ✅ Fix: use statsService.GetAttackDamage() instead of undefined 'strength'
+            Debug.Log($"[PlayerAttackPresenter] Melee: Step={comboStep}, " +
+                      $"Str={statsService.GetAttackDamage()} + WeaponDmg={currentWeapon.damage} " +
+                      $"= Base={baseDamage} → Final={finalDamage} | " +
                       $"Weapon={currentWeapon.weaponName}");
         }
 
-        #endregion
-
-        #region VFX Spawning
-
-        private void SpawnSlashVFX(GameObject vfxPrefab, float duration, int damage, float knockback, int comboStep)
+        private void SpawnSlashVFX(GameObject vfxPrefab, float duration,
+                                    int damage, float knockback, int comboStep)
         {
             Transform centerPoint = service.GetCenterPoint();
             Vector3 pointerDirection = pointerPresenter.GetPointerDirection();
 
-            // Calculate spawn position with base offset
             float spawnOffset = service.GetVFXSpawnOffset();
             Vector3 spawnPosition = centerPoint.position + pointerDirection * spawnOffset;
 
-            // Apply per-VFX position offset (inspector adjustable)
             Vector2 positionOffset = service.GetPositionOffset(comboStep);
             spawnPosition += (Vector3)positionOffset;
-
             spawnPosition.z = centerPoint.position.z;
 
-            // Calculate rotation
             float angle = Mathf.Atan2(pointerDirection.y, pointerDirection.x) * Mathf.Rad2Deg;
             Quaternion rotation = Quaternion.Euler(0f, 0f, angle);
 
-            // Spawn VFX
             GameObject vfxInstance = Instantiate(vfxPrefab, spawnPosition, rotation);
 
-            // Fix upside-down flip when direction is to the left
             if (pointerDirection.x < 0)
             {
                 Vector3 scale = vfxInstance.transform.localScale;
-                scale.y *= -1; // Flip vertically
+                scale.y *= -1;
                 vfxInstance.transform.localScale = scale;
             }
 
-            // Initialize hitbox
             SlashHitboxPresenter hitboxPresenter = vfxInstance.GetComponent<SlashHitboxPresenter>();
             if (hitboxPresenter == null)
-            {
                 hitboxPresenter = vfxInstance.AddComponent<SlashHitboxPresenter>();
-            }
 
             hitboxPresenter.Initialize(
                 damage,
@@ -276,22 +286,78 @@ namespace CombatManager.Presenter
                 duration
             );
 
-            Debug.Log($"[PlayerAttackPresenter] Spawned VFX at {spawnPosition}, angle={angle}°, offset={positionOffset}");
+            Debug.Log($"[PlayerAttackPresenter] Melee VFX spawned at {spawnPosition}, angle={angle}°");
         }
 
         #endregion
 
-        #region Getters for View
+        #region Staff Projectile Attack
+
+        private void ExecuteStaffAttack(int baseDamage, WeaponDataSO currentWeapon)
+        {
+            if (staffProjectilePrefab == null)
+            {
+                Debug.LogWarning("[PlayerAttackPresenter] Staff projectile prefab not assigned!");
+                return;
+            }
+
+            if (localPlayerTransform == null)
+            {
+                Debug.LogWarning("[PlayerAttackPresenter] Local player transform missing!");
+                return;
+            }
+
+            // TODO: Staff combo system - currently single shot per click
+            // Future: add staffComboSteps[] for multi-projectile patterns
+            // e.g. step 1 = single, step 2 = double, step 3 = burst
+
+            Vector3 direction = pointerPresenter.GetPointerDirection().normalized;
+
+            GameObject projectileGO = Instantiate(
+                staffProjectilePrefab,
+                localPlayerTransform.position,
+                Quaternion.identity
+            );
+
+            AirSlashProjectileModel projectileModel = new AirSlashProjectileModel
+            {
+                direction       = direction,
+                speed           = staffProjectileSpeed,
+                maxRange        = staffProjectileRange,
+                damage          = baseDamage,
+                knockbackForce  = staffKnockbackForce,
+                enemyLayers     = enemyLayers,
+                playerTransform = localPlayerTransform
+            };
+
+            AirSlashProjectilePresenter projectilePresenter =
+                projectileGO.GetComponent<AirSlashProjectilePresenter>();
+
+            if (projectilePresenter == null)
+            {
+                Debug.LogWarning("[PlayerAttackPresenter] AirSlashProjectilePresenter " +
+                                 "missing on NA_Staff prefab!");
+                Destroy(projectileGO);
+                return;
+            }
+
+            projectilePresenter.Initialize(projectileModel);
+
+            Debug.Log($"[PlayerAttackPresenter] Staff projectile fired! " +
+                      $"Damage={baseDamage} | Dir={direction} | " +
+                      $"Speed={staffProjectileSpeed} | Range={staffProjectileRange} | " +
+                      $"Weapon={currentWeapon.weaponName}");
+        }
+
+        #endregion
+
+        #region Getters
 
         public bool IsInitialized() => service?.IsInitialized() ?? false;
         public bool CanAttack() => service?.CanAttack() ?? false;
         public int GetCurrentComboStep() => service?.GetCurrentComboStep() ?? 0;
-        public float GetCooldownPercent() => service?.GetCooldownPercent(statsService?.GetCooldownTime() ?? 1f) ?? 0f;
-
-        #endregion
-
-        #region Public API for Other Systems
-
+        public float GetCooldownPercent() =>
+            service?.GetCooldownPercent(statsService?.GetCooldownTime() ?? 1f) ?? 0f;
         public IPlayerAttackService GetService() => service;
 
         #endregion
