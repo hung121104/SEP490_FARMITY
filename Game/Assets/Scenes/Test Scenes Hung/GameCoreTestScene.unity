@@ -10387,7 +10387,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &707503128
 Transform:
   m_ObjectHideFlags: 0
@@ -11935,7 +11935,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -133.99979, y: 168.0004}
+  m_AnchoredPosition: {x: -133.99948, y: 168.00066}
   m_SizeDelta: {x: 285, y: 336}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &812480459
@@ -13343,8 +13343,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 479262024}
   m_HandleRect: {fileID: 479262023}
   m_Direction: 0
-  m_Value: -0.000014361213
-  m_Size: 0.8909411
+  m_Value: -0.000028722427
+  m_Size: 0.92879534
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -18905,7 +18905,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.000015489757, y: 0.00002106188}
+  m_AnchoredPosition: {x: 0.000015489757, y: -0.000027258646}
   m_SizeDelta: {x: 0, y: 628}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1240703307
@@ -25376,7 +25376,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1056705480}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99999785
+  m_Size: 0.9999961
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -26677,7 +26677,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1870806904
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26695,6 +26695,10 @@ MonoBehaviour:
   dialogueText: {fileID: 2114136620}
   avatarImage: {fileID: 43210734}
   continueHintText: {fileID: 1292212725}
+  rewardSlot: {fileID: 0}
+  rewardLabel: {fileID: 0}
+  rewardIcon: {fileID: 0}
+  rewardText: {fileID: 0}
   optionsContainer: {fileID: 1012713830}
   optionPrefab: {fileID: 1167625292944387460, guid: 2561ae478b8ae2a458d9c060613f6d75, type: 3}
   typingSpeed: 0.05
@@ -27364,7 +27368,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 567473799}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.94746035
+  m_Size: 0.98771197
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -29266,6 +29270,10 @@ MonoBehaviour:
   inventoryView: {fileID: 1526296357}
   inventoryMenuRoot: {fileID: 1087222851}
   spriteRenderer: {fileID: 2072043109}
+  questView: {fileID: 0}
+  questDatabase: {fileID: 0}
+  questIndex: 0
+  questLogController: {fileID: 0}
 --- !u!95 &2072043108
 Animator:
   serializedVersion: 7
