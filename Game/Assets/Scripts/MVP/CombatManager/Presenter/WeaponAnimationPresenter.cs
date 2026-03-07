@@ -4,24 +4,24 @@ using System.Collections;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
+using CombatManager.SO;
 
 namespace CombatManager.Presenter
 {
     /// <summary>
     /// Presenter for Weapon Animation system.
-    /// Connects WeaponAnimationModel and WeaponAnimationService to WeaponAnimationView.
-    /// Handles weapon spawning based on combat mode and coordinates with attack system.
+    /// Phase 3: Now accepts weapon prefab from WeaponDataSO.
+    /// Spawns correct prefab per weapon type.
     /// </summary>
     public class WeaponAnimationPresenter : MonoBehaviour
     {
-        // Singleton for easy access by PlayerAttackPresenter
         public static WeaponAnimationPresenter Instance { get; private set; }
 
         [Header("Model")]
         [SerializeField] private WeaponAnimationModel model = new WeaponAnimationModel();
 
-        [Header("Weapon Prefab")]
-        [SerializeField] private GameObject weaponAnimationPrefab;
+        [Header("Fallback Prefab (if weapon has no prefab assigned)")]
+        [SerializeField] private GameObject fallbackWeaponPrefab;
 
         [Header("Position Settings")]
         [SerializeField] private Vector3 anchorOffset = Vector3.zero;
@@ -33,15 +33,15 @@ namespace CombatManager.Presenter
 
         private IWeaponAnimationService service;
 
+        // ✅ NEW: Track current weapon SO
+        private WeaponDataSO currentWeaponData;
+
         #region Unity Lifecycle
 
         private void Awake()
         {
-            // Singleton setup
             if (Instance == null)
-            {
                 Instance = this;
-            }
             else
             {
                 Debug.LogWarning("[WeaponAnimationPresenter] Duplicate instance found, destroying");
@@ -53,16 +53,16 @@ namespace CombatManager.Presenter
         private void Start()
         {
             SubscribeToCombatModeEvents();
+            SubscribeToWeaponEquipEvents(); // ✅ NEW
         }
 
         private void OnDestroy()
         {
             UnsubscribeFromCombatModeEvents();
+            UnsubscribeFromWeaponEquipEvents(); // ✅ NEW
 
             if (Instance == this)
-            {
                 Instance = null;
-            }
         }
 
         #endregion
@@ -72,33 +72,71 @@ namespace CombatManager.Presenter
         private void SubscribeToCombatModeEvents()
         {
             if (CombatModePresenter.Instance != null)
-            {
                 CombatModePresenter.Instance.RegisterCallback(OnCombatModeChanged);
-            }
             else
-            {
                 Debug.LogWarning("[WeaponAnimationPresenter] CombatModePresenter.Instance not found");
-            }
         }
 
         private void UnsubscribeFromCombatModeEvents()
         {
             if (CombatModePresenter.Instance != null)
-            {
                 CombatModePresenter.Instance.UnregisterCallback(OnCombatModeChanged);
-            }
         }
 
         private void OnCombatModeChanged(bool isActive)
         {
-            if (isActive)
-            {
-                StartCoroutine(SpawnWhenPlayerReady());
-            }
-            else
-            {
+            if (!isActive)
                 DespawnWeapon();
+
+            // ✅ Don't spawn here anymore - weapon equip event handles spawning
+            // OnCombatModeChanged only handles DESPAWN on combat OFF
+        }
+
+        #endregion
+
+        #region Weapon Equip Events - NEW
+
+        private void SubscribeToWeaponEquipEvents()
+        {
+            WeaponEquipPresenter.OnWeaponEquipped += OnWeaponEquipped;
+            WeaponEquipPresenter.OnWeaponUnequipped += OnWeaponUnequipped;
+        }
+
+        private void UnsubscribeFromWeaponEquipEvents()
+        {
+            WeaponEquipPresenter.OnWeaponEquipped -= OnWeaponEquipped;
+            WeaponEquipPresenter.OnWeaponUnequipped -= OnWeaponUnequipped;
+        }
+
+        private void OnWeaponEquipped(WeaponDataSO weaponData)
+        {
+            if (weaponData == null)
+            {
+                Debug.LogWarning("[WeaponAnimationPresenter] Equipped weapon data is null!");
+                return;
             }
+
+            currentWeaponData = weaponData;
+
+            Debug.Log($"[WeaponAnimationPresenter] Weapon equipped: {weaponData.weaponName} " +
+                      $"({weaponData.weaponType}) → spawning prefab");
+
+            // Despawn old weapon first
+            DespawnWeapon();
+
+            // Reset service so it reinitializes with new prefab
+            service = null;
+            model.isInitialized = false;
+
+            // Spawn new weapon
+            StartCoroutine(SpawnWhenPlayerReady());
+        }
+
+        private void OnWeaponUnequipped()
+        {
+            currentWeaponData = null;
+            DespawnWeapon();
+            Debug.Log("[WeaponAnimationPresenter] Weapon unequipped → despawned");
         }
 
         #endregion
@@ -127,30 +165,39 @@ namespace CombatManager.Presenter
 
         private bool TryInitializeService()
         {
-            // Find main camera
             Camera mainCamera = Camera.main;
             if (mainCamera == null)
                 mainCamera = FindObjectOfType<Camera>();
 
-            // Find local player
             GameObject playerObj = FindLocalPlayerEntity();
             if (playerObj == null)
                 return false;
 
-            // Find center point
             Transform centerPoint = playerObj.transform.Find("CenterPoint");
             if (centerPoint == null)
                 centerPoint = playerObj.transform;
 
-            // Validate prefab
-            GameObject prefabToUse = model.weaponAnimationPrefab != null ? model.weaponAnimationPrefab : weaponAnimationPrefab;
-            if (prefabToUse == null)
+            // ✅ Use weapon prefab from WeaponDataSO first, fallback to inspector prefab
+            GameObject prefabToUse = null;
+
+            if (currentWeaponData != null && currentWeaponData.weaponPrefab != null)
             {
-                Debug.LogError("[WeaponAnimationPresenter] Weapon prefab not assigned!");
+                prefabToUse = currentWeaponData.weaponPrefab;
+                Debug.Log($"[WeaponAnimationPresenter] Using weapon prefab: {prefabToUse.name} " +
+                          $"for {currentWeaponData.weaponType}");
+            }
+            else if (fallbackWeaponPrefab != null)
+            {
+                prefabToUse = fallbackWeaponPrefab;
+                Debug.LogWarning($"[WeaponAnimationPresenter] No weapon prefab in WeaponDataSO, " +
+                                 $"using fallback: {fallbackWeaponPrefab.name}");
+            }
+            else
+            {
+                Debug.LogError("[WeaponAnimationPresenter] No weapon prefab available!");
                 return false;
             }
 
-            // Initialize service
             service = new WeaponAnimationService(model);
             service.Initialize(
                 prefabToUse,
@@ -208,10 +255,7 @@ namespace CombatManager.Presenter
 
         public void DespawnWeapon()
         {
-            if (service != null)
-            {
-                service.DespawnWeapon();
-            }
+            service?.DespawnWeapon();
         }
 
         #endregion
@@ -223,26 +267,16 @@ namespace CombatManager.Presenter
             service?.PlayAttackAnimation();
         }
 
-        public bool IsWeaponActive()
-        {
-            return service?.IsWeaponActive() ?? false;
-        }
-
-        #endregion
-
-        #region Getters for View
-
+        public bool IsWeaponActive() => service?.IsWeaponActive() ?? false;
         public bool IsInitialized() => service?.IsInitialized() ?? false;
         public Vector3 GetMouseDirection() => service?.CalculateMouseDirection() ?? Vector3.right;
         public float GetRotationAngle(Vector3 direction) => service?.CalculateRotationAngle(direction) ?? 0f;
         public GameObject GetPivotRoot() => service?.GetPivotRoot();
         public Transform GetCenterPoint() => service?.GetCenterPoint();
-
-        #endregion
-
-        #region Public API for Other Systems
-
         public IWeaponAnimationService GetService() => service;
+
+        // ✅ NEW
+        public WeaponDataSO GetCurrentWeaponData() => currentWeaponData;
 
         #endregion
     }

@@ -15,7 +15,7 @@ MonoBehaviour:
   weaponName: Bronze Sword
   weaponId: bronze_sword
   weaponType: 1
-  weaponIcon: {fileID: 8532567771987904425, guid: 456621cf3a8b5dd478df56b8a73838d6, type: 3}
+  weaponIcon: {fileID: 6677950224215248696, guid: 360ab48667e20224dbfde8756b57b4f9, type: 3}
   weaponPrefab: {fileID: 8171461803801935278, guid: 0dc3195a5b158b944842525bad010852, type: 3}
   damage: 15
   tier: 1
