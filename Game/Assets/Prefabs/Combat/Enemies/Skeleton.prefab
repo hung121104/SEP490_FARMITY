@@ -102,7 +102,7 @@ MonoBehaviour:
     animator: {fileID: 0}
     spriteRenderer: {fileID: 0}
     isInitialized: 0
-  maxHealth: 100
+  maxHealth: 500
   detectionRange: 8
   attackRange: 1.5
   fieldOfViewAngle: 120

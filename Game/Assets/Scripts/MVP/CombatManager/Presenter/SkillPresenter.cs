@@ -240,10 +240,20 @@ namespace CombatManager.Presenter
             if (statsPresenter != null)
                 strength = statsPresenter.GetService().GetTempStrength();
 
+            // ✅ Get weapon damage from WeaponEquipPresenter
+            int weaponDamage = 0;
+            var currentWeapon = WeaponEquipPresenter.Instance?.GetCurrentWeapon();
+            if (currentWeapon != null)
+                weaponDamage = currentWeapon.damage;
+            else
+                Debug.LogWarning($"[{GetType().Name}] No weapon equipped for skill damage calculation!");
+
+            // ✅ New formula: weaponDamage + (roll-1) × strength × multiplier
             int finalDamage = damageCalculatorService.CalculateSkillDamage(
                 model.currentDiceRoll,
                 strength,
-                model.skillMultiplier
+                model.skillMultiplier,
+                weaponDamage
             );
 
             yield return StartCoroutine(OnExecute(finalDamage, model.targetDirection));

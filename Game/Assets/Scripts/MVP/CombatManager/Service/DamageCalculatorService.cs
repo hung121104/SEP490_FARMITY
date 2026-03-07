@@ -5,17 +5,29 @@ namespace CombatManager.Service
 {
     /// <summary>
     /// Service for damage calculation logic.
-    /// Inject into any system that needs damage calculation.
-    /// (Mirrors static DamageCalculator from CombatSystem - kept for legacy)
+    /// Formula: weaponDamage + (diceRoll - 1) × strength × multiplier
+    /// Roll 1 = weapon damage floor only
+    /// Roll > 1 = weapon damage + scaling bonus
     /// </summary>
     public class DamageCalculatorService : IDamageCalculatorService
     {
         #region Skill Damage
 
-        public int CalculateSkillDamage(int diceRoll, int strength, float multiplier)
+        /// <summary>
+        /// Calculate skill damage using weapon-based formula.
+        /// Roll 1 = weaponDamage only (floor).
+        /// Roll > 1 = weaponDamage + (roll-1) × strength × multiplier.
+        /// </summary>
+        public int CalculateSkillDamage(int diceRoll, int strength, float multiplier, int weaponDamage = 0)
         {
-            int result = Mathf.RoundToInt((diceRoll + strength) * multiplier);
-            Debug.Log($"[DamageCalculatorService] Skill damage: ({diceRoll} + {strength}) × {multiplier} = {result}");
+            int bonus = Mathf.RoundToInt((diceRoll - 1) * strength * multiplier);
+            int result = weaponDamage + bonus;
+            result = Mathf.Max(1, result); // Always deal at least 1
+
+            Debug.Log($"[DamageCalculatorService] Skill damage: " +
+                      $"WeaponDmg={weaponDamage} + " +
+                      $"(Roll={diceRoll}-1) × Str={strength} × Mult={multiplier} " +
+                      $"= {weaponDamage} + {bonus} = {result}");
             return result;
         }
 
@@ -23,10 +35,15 @@ namespace CombatManager.Service
 
         #region Basic Attack Damage
 
+        /// <summary>
+        /// Basic attack = strength + weaponDamage flat.
+        /// No dice involved.
+        /// </summary>
         public int CalculateBasicAttackDamage(int strength, int weaponDamage)
         {
-            int result = strength + weaponDamage;
-            Debug.Log($"[DamageCalculatorService] Basic attack damage: {strength} + {weaponDamage} = {result}");
+            int result = Mathf.Max(1, strength + weaponDamage);
+            Debug.Log($"[DamageCalculatorService] Basic attack: " +
+                      $"Str={strength} + WeaponDmg={weaponDamage} = {result}");
             return result;
         }
 
@@ -36,7 +53,6 @@ namespace CombatManager.Service
 
         public int CalculateWithDefense(int rawDamage, int defense)
         {
-            // For future use: implement defense formula here
             int result = Mathf.Max(1, rawDamage - defense);
             Debug.Log($"[DamageCalculatorService] After defense: {rawDamage} - {defense} = {result}");
             return result;

@@ -7,11 +7,6 @@ using CombatManager.View;
 
 namespace CombatManager.Presenter
 {
-    /// <summary>
-    /// Presenter for Player Attack system.
-    /// Connects PlayerAttackModel and PlayerAttackService to PlayerAttackView.
-    /// Handles attack input, combo chain, and VFX spawning.
-    /// </summary>
     public class PlayerAttackPresenter : MonoBehaviour
     {
         [Header("Model")]
@@ -41,6 +36,9 @@ namespace CombatManager.Presenter
         private IPlayerAttackService service;
         private IStatsService statsService;
 
+        // ✅ NEW: DamageCalculatorService instance
+        private IDamageCalculatorService damageCalculator;
+
         #region Unity Lifecycle
 
         private void Start()
@@ -69,7 +67,6 @@ namespace CombatManager.Presenter
 
         private void InitializeComponents()
         {
-            // Find dependencies
             if (statsPresenter == null)
                 statsPresenter = FindObjectOfType<StatsPresenter>();
 
@@ -92,7 +89,9 @@ namespace CombatManager.Presenter
 
             statsService = statsPresenter.GetService();
 
-            // Find player
+            // ✅ NEW: Initialize damage calculator
+            damageCalculator = new DamageCalculatorService();
+
             GameObject playerObj = FindLocalPlayerEntity();
             if (playerObj == null)
             {
@@ -105,13 +104,11 @@ namespace CombatManager.Presenter
             if (centerPoint == null)
                 centerPoint = playerObj.transform;
 
-            // Sync inspector values to model
             model.stabPositionOffset = stabPositionOffset;
             model.horizontalPositionOffset = horizontalPositionOffset;
             model.verticalPositionOffset = verticalPositionOffset;
             model.vfxSpawnOffset = vfxSpawnOffset;
 
-            // Initialize service
             service = new PlayerAttackService(model);
             service.Initialize(
                 playerObj.transform,
@@ -158,11 +155,15 @@ namespace CombatManager.Presenter
 
         private void CheckAttackInput()
         {
-            // Only process if combat mode is active
             if (CombatModePresenter.Instance == null || !CombatModePresenter.Instance.IsCombatModeActive())
                 return;
 
-            // Check attack input
+            // ✅ NEW: Block attack if no weapon equipped
+            if (WeaponEquipPresenter.Instance == null || !WeaponEquipPresenter.Instance.IsWeaponEquipped())
+            {
+                return;
+            }
+
             if (Input.GetMouseButtonDown(0) && service.CanAttack())
             {
                 ExecuteAttack();
@@ -178,7 +179,14 @@ namespace CombatManager.Presenter
             if (service == null || !service.IsInitialized())
                 return;
 
-            // Get CURRENT combo step BEFORE incrementing
+            // ✅ NEW: Get weapon - required for attack
+            var currentWeapon = WeaponEquipPresenter.Instance?.GetCurrentWeapon();
+            if (currentWeapon == null)
+            {
+                Debug.LogWarning("[PlayerAttackPresenter] No weapon equipped - attack blocked!");
+                return;
+            }
+
             int comboStep = service.GetCurrentComboStep();
             GameObject vfxPrefab = service.GetVFXPrefab(comboStep);
             float vfxDuration = service.GetVFXDuration(comboStep);
@@ -189,30 +197,33 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            // Calculate damage
-            int baseDamage = statsService.GetAttackDamage();
+            // ✅ NEW: Use DamageCalculatorService with weapon damage
+            // strength + weaponDamage = base, then apply combo multiplier
+            int strength = statsService.GetAttackDamage();
+            int weaponDamage = currentWeapon.damage;
+            int baseDamage = damageCalculator.CalculateBasicAttackDamage(strength, weaponDamage);
+
+            // Apply combo multiplier on top
             int finalDamage = service.CalculateDamage(comboStep, baseDamage);
 
-            // Get knockback
             float knockbackForce = statsService.GetKnockbackForce();
 
-            // Spawn VFX with CURRENT combo step
             SpawnSlashVFX(vfxPrefab, vfxDuration, finalDamage, knockbackForce, comboStep);
 
-            // Trigger weapon swing animation
             if (WeaponAnimationPresenter.Instance != null && WeaponAnimationPresenter.Instance.IsWeaponActive())
             {
                 WeaponAnimationPresenter.Instance.PlayAttackAnimation();
             }
 
-            // NOW execute attack (increments combo for NEXT attack)
             service.ExecuteAttack();
 
-            // Set cooldown
             float cooldown = statsService.GetCooldownTime();
             service.SetAttackCooldown(cooldown);
 
-            Debug.Log($"[PlayerAttackPresenter] Attack executed: Step={comboStep}, Damage={finalDamage}");
+            Debug.Log($"[PlayerAttackPresenter] Attack: Step={comboStep}, " +
+                      $"Strength={strength} + WeaponDmg={weaponDamage} " +
+                      $"= Base={baseDamage} × ComboMult → Final={finalDamage} | " +
+                      $"Weapon={currentWeapon.weaponName}");
         }
 
         #endregion
