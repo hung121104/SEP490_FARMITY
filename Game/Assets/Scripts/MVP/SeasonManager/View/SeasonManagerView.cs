@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using TMPro;
+using System.Collections;
 
 public class SeasonManagerView : MonoBehaviour
 {
@@ -19,6 +20,8 @@ public class SeasonManagerView : MonoBehaviour
     public event SeasonChangedHandler OnSeasonChanged;
 
     private SeasonPresenter presenter;
+
+    private bool styleApplied = false;
 
     void Awake()
     {
@@ -40,27 +43,33 @@ public class SeasonManagerView : MonoBehaviour
 
     void Start()
     {
-        // Sync season 
+        ApplyFarmingTextStyle(seasonText);
+
         if (timeManager != null)
             presenter.EvaluateSeason(timeManager.month);
 
         UpdateSeasonUI(CurrentSeason);
     }
+
     void ApplyFarmingTextStyle(TMP_Text text)
     {
         if (text == null) return;
+
+        // Force TMP to create a material instance
+        Material mat = text.fontMaterial;
+
+        if (mat == null) return;
 
         // Outline
         text.outlineWidth = 0.25f;
         text.outlineColor = Color.black;
 
-        // Shadow (Underlay)
-        text.fontMaterial.EnableKeyword("UNDERLAY_ON");
-
-        text.fontMaterial.SetColor("_UnderlayColor", new Color(0, 0, 0, 0.8f));
-        text.fontMaterial.SetFloat("_UnderlayOffsetX", 1f);
-        text.fontMaterial.SetFloat("_UnderlayOffsetY", -1f);
-        text.fontMaterial.SetFloat("_UnderlayDilate", 0.2f);
+        // Enable shadow (Underlay)
+        mat.EnableKeyword("UNDERLAY_ON");
+        mat.SetColor("_UnderlayColor", new Color(0, 0, 0, 0.85f));
+        mat.SetFloat("_UnderlayOffsetX", 1f);
+        mat.SetFloat("_UnderlayOffsetY", -1f);
+        mat.SetFloat("_UnderlayDilate", 0.2f);
     }
 
     private void HandleMonthChanged()
@@ -86,14 +95,11 @@ public class SeasonManagerView : MonoBehaviour
     {
         if (seasonText == null) return;
 
-        // Apply farming RPG style
-        ApplyFarmingTextStyle(seasonText);
-
         switch (newSeason)
         {
             case Season.Sunny:
                 seasonText.text = "SUNNY SEASON";
-                seasonText.color = new Color(1f, 0.85f, 0f); 
+                seasonText.color = new Color(1f, 0.85f, 0f);
                 break;
 
             case Season.Rainy:

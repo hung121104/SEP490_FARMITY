@@ -350,28 +350,81 @@ public class InventoryService : IInventoryService
 
     public void SortInventory()
     {
-        var allItems = model.GetNonEmptyItems()
+        const int hotbarStartIndex = 27;
+
+        // Collect items from main inventory slots only (exclude hotbar)
+        var mainItems = new System.Collections.Generic.List<ItemModel>();
+        for (int i = 0; i < hotbarStartIndex; i++)
+        {
+            var item = model.GetItemAtSlot(i);
+            if (item != null && item.Quantity > 0)
+                mainItems.Add(item);
+        }
+
+        var sorted = mainItems
             .OrderBy(item => item.ItemType)
             .ThenBy(item => item.ItemCategory)
             .ThenBy(item => item.ItemName)
             .ToList();
 
-        // Clear all slots
-        for (int i = 0; i < model.maxSlots; i++)
+        // Clear only main inventory slots
+        for (int i = 0; i < hotbarStartIndex; i++)
         {
             model.ClearSlot(i);
         }
 
-        // Re-add sorted items
-        for (int i = 0; i < allItems.Count; i++)
+        // Re-add sorted items into main inventory slots
+        for (int i = 0; i < sorted.Count; i++)
         {
-            model.SetItemAtSlot(i, allItems[i]);
+            model.SetItemAtSlot(i, sorted[i]);
         }
 
-        // Sync all slots to network
-        for (int i = 0; i < model.maxSlots; i++)
+        // Sync main inventory slots to network (hotbar slots are unchanged)
+        for (int i = 0; i < hotbarStartIndex; i++)
             SyncSlotToNetwork(i);
 
+        OnInventoryChanged?.Invoke();
+    }
+
+    #endregion
+
+    #region Remote Sync
+
+    /// <summary>
+    /// Apply authoritative inventory state from InventorySyncManager.
+    /// All Model mutations go through Service — GameView never touches Model directly.
+    /// Temporarily disables NetworkSync to prevent re-broadcasting remote changes.
+    /// </summary>
+    public void ApplyRemoteInventoryState(CharacterInventory remoteInventory, int maxSlots)
+    {
+        if (remoteInventory == null) return;
+
+        bool wasSyncEnabled = NetworkSyncEnabled;
+        NetworkSyncEnabled = false;
+
+        for (byte i = 0; i < (byte)maxSlots; i++)
+        {
+            if (remoteInventory.TryGetSlot(i, out InventorySlot slot) && !slot.IsEmpty)
+            {
+                var existingItem = model.GetItemAtSlot(i);
+                if (existingItem == null || existingItem.ItemId != slot.ItemId || existingItem.Quantity != slot.Quantity)
+                {
+                    var itemData = ItemCatalogService.Instance?.GetItemData(slot.ItemId);
+                    if (itemData != null)
+                    {
+                        var itemModel = new ItemModel(itemData, Quality.Normal, slot.Quantity, i);
+                        model.SetItemAtSlot(i, itemModel);
+                    }
+                }
+            }
+            else
+            {
+                if (!model.IsSlotEmpty(i))
+                    model.ClearSlot(i);
+            }
+        }
+
+        NetworkSyncEnabled = wasSyncEnabled;
         OnInventoryChanged?.Invoke();
     }
 
