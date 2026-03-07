@@ -2,13 +2,17 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { World, WorldSchema } from './world.schema';
+import { Chunk, ChunkSchema } from './chunk.schema';
 import { WorldService } from './world.service';
 import { WorldController } from './world.controller';
 import { CharacterModule } from '../character/character.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: World.name, schema: WorldSchema }]),
+    MongooseModule.forFeature([
+      { name: World.name, schema: WorldSchema },
+      { name: Chunk.name, schema: ChunkSchema },
+    ]),
     CharacterModule,
     ClientsModule.register([
       {

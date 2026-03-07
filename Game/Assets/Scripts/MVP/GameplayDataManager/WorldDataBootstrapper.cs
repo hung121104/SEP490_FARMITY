@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -7,6 +9,11 @@ using UnityEngine.Networking;
 /// Fetches all world data from a single API call on scene load,
 /// then distributes data to the responsible managers.
 /// Other systems should wait on IsReady before reading from managers.
+///
+/// The bootstrapper runs only on the MasterClient.
+/// It uses Newtonsoft.Json instead of JsonUtility because WorldApiResponse
+/// includes a Dictionary<string, TileResponseData> (chunks.tiles) that
+/// JsonUtility cannot handle.
 /// </summary>
 public class WorldDataBootstrapper : MonoBehaviour
 {
@@ -14,9 +21,6 @@ public class WorldDataBootstrapper : MonoBehaviour
 
     /// <summary>True once all managers have been populated with API data.</summary>
     public bool IsReady { get; private set; } = false;
-
-    [Header("API")]
-    // Base URL is defined in AppConfig.ApiBaseUrl
 
     private string _worldId;
     private string _authToken;
@@ -70,14 +74,24 @@ public class WorldDataBootstrapper : MonoBehaviour
                 yield break;
             }
 
+            string json = req.downloadHandler.text;
+
+            // Use Newtonsoft.Json — required because chunks.tiles is a Dictionary<string,T>
+            // which Unity's built-in JsonUtility does not support.
             WorldApiResponse data;
             try
             {
-                data = JsonUtility.FromJson<WorldApiResponse>(req.downloadHandler.text);
+                data = JsonConvert.DeserializeObject<WorldApiResponse>(json);
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[WorldDataBootstrapper] Parse error: {ex.Message}");
+                yield break;
+            }
+
+            if (data == null)
+            {
+                Debug.LogError("[WorldDataBootstrapper] Deserialized null response.");
                 yield break;
             }
 
@@ -95,12 +109,15 @@ public class WorldDataBootstrapper : MonoBehaviour
             else
                 Debug.LogWarning("[WorldDataBootstrapper] WorldDataManager not found in scene.");
 
-            // 3. Future: tile/chunk data
-            // if (ChunkDataManager.Instance != null)
-            //     ChunkDataManager.Instance.Populate(data.chunks);
+            // 3. Chunk / tile data — rebuilt into RAM so crops / structures appear at startup
+            if (WorldDataManager.Instance != null && data.chunks != null && data.chunks.Count > 0)
+            {
+                WorldDataManager.Instance.PopulateChunks(data.chunks);
+                Debug.Log($"[WorldDataBootstrapper] Loaded {data.chunks.Count} chunk(s) from save.");
+            }
 
             IsReady = true;
-            Debug.Log($"[WorldDataBootstrapper] Ready. World: {data.worldName}, Characters: {data.characters.Count}");
+            Debug.Log($"[WorldDataBootstrapper] Ready. World: {data.worldName} | Characters: {data.characters?.Count ?? 0} | Chunks: {data.chunks?.Count ?? 0}");
         }
     }
 

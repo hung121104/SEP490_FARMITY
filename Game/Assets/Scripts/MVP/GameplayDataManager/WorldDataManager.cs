@@ -98,6 +98,93 @@ public class WorldDataManager : MonoBehaviour
         Debug.Log($"[WorldDataManager] World meta loaded: {worldName} | Day {day} | Gold {gold}");
     }
 
+    /// <summary>
+    /// Rebuilds all saved chunks into RAM from the API response.
+    /// Called by WorldDataBootstrapper once the GET /player-data/world response arrives.
+    ///
+    /// For each chunk the method:
+    ///   1. Derives the world-space origin of the chunk (chunkX * 30, chunkY * 30).
+    ///   2. Converts each local tile index (0–899) back to world XY using:
+    ///         localX = index % 30,  worldX = chunkX * 30 + localX
+    ///         localY = index / 30,  worldY = chunkY * 30 + localY
+    ///   3. Calls the appropriate WorldDataManager methods to recreate the tile state.
+    /// </summary>
+    public void PopulateChunks(System.Collections.Generic.List<ChunkResponseData> loadedChunks)
+    {
+        if (loadedChunks == null || loadedChunks.Count == 0) return;
+
+        int tilesApplied = 0;
+
+        foreach (var chunk in loadedChunks)
+        {
+            if (chunk.tiles == null || chunk.tiles.Count == 0) continue;
+
+            int originX = chunk.chunkX * chunkSizeTiles;   // world X of tile (0,0) in this chunk
+            int originY = chunk.chunkY * chunkSizeTiles;   // world Y of tile (0,0) in this chunk
+
+            foreach (var kvp in chunk.tiles)
+            {
+                // Parse the string key back to integer tile index
+                if (!int.TryParse(kvp.Key, out int localIndex)) continue;
+                TileResponseData td = kvp.Value;
+                if (td == null) continue;
+
+                int localX = localIndex % chunkSizeTiles;
+                int localY = localIndex / chunkSizeTiles;
+                int worldX = originX + localX;
+                int worldY = originY + localY;
+
+                var worldPos = new UnityEngine.Vector3(worldX, worldY, 0);
+
+                // ── Restore tilled ground ──
+                if (td.type == "tilled" || td.type == "crop")
+                {
+                    this.TillTileAtWorldPosition(worldPos);
+                }
+
+                // ── Restore crop ──
+                if (td.type == "crop" && !string.IsNullOrEmpty(td.plantId))
+                {
+                    this.PlantCropAtWorldPosition(worldPos, td.plantId);
+
+                    // Restore all crop sub-fields
+                    if (td.cropStage > 0)
+                        this.UpdateCropStage(worldPos, (byte)td.cropStage);
+
+                    if (td.totalAge > 0)
+                        this.UpdateCropAge(worldPos, td.totalAge);
+
+                    // Watered / Fertilized / Pollinated — use the CropData module directly
+                    if (CropData != null)
+                    {
+                        var chunkPos  = WorldToChunkCoords(worldPos);
+                        int sectionId = GetSectionIdFromWorldPosition(worldPos);
+                        var chunkData = CropData.GetChunk(sectionId, chunkPos);
+
+                        if (chunkData != null)
+                        {
+                            if (td.isWatered)    chunkData.WaterTile(worldX, worldY);
+                            if (td.isFertilized)  chunkData.FertilizeTile(worldX, worldY);
+                            if (td.isPollinated)  chunkData.SetPollinated(worldX, worldY, true);
+
+                            if (td.pollenHarvestCount > 0)
+                            {
+                                for (int i = 0; i < td.pollenHarvestCount; i++)
+                                    chunkData.IncrementPollenHarvestCount(worldX, worldY);
+                            }
+                        }
+                    }
+                }
+
+                tilesApplied++;
+            }
+        }
+
+        Debug.Log($"[WorldDataManager] PopulateChunks done: {loadedChunks.Count} chunk(s), {tilesApplied} tile(s) restored.");
+    }
+
+
+
     // Public access to modules
     public CropDataModule      CropData      => cropModule;
     public StructureDataModule StructureData => structureModule;
