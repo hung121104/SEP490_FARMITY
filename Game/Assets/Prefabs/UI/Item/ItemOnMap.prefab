@@ -450,7 +450,7 @@ MonoBehaviour:
   stackSingle: {fileID: 2015346508630656874}
   pickupPromptText: {fileID: 7948739131610597}
   sortingLayerName: WalkInfront
-  sortingOrder: 10
+  sortingOrder: 0
   blinkSpeed: 4
   blinkMinAlpha: 0.25
   playerTag: PlayerEntity
@@ -546,7 +546,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 1
+  m_PresetInfoIsWorld: 0
 --- !u!114 &5112297421735182681
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1073,4 +1073,47 @@ export class GatewayController {
       throw this.rpcError(err);
     }
   }
+
+  // ── Game Config ────────────────────────────────────────────────────────────
+
+  /** GET /game-config/main-menu — public (no auth).
+   *  Returns { currentBackgroundUrl, version } or null if not set. */
+  @Get('game-config/main-menu')
+  async getMainMenuConfig() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-main-menu-config', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-config/main-menu — admin-only, multipart/form-data.
+   *  Accepts a "background" image file. Uploads to Cloudinary, then
+   *  persists the URL in the GameConfig singleton document. */
+  @Put('game-config/main-menu')
+  @UseInterceptors(
+    FileInterceptor('background', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async updateMainMenuBackground(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'A background image file is required (field name: "background")',
+      );
+    try {
+      const url = await this.cloudinaryService.uploadFile(
+        file,
+        'game-config',
+      );
+      return await firstValueFrom(
+        this.adminClient.send('update-main-menu-background', { url }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
 }

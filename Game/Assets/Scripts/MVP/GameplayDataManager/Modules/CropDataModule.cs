@@ -267,11 +267,7 @@ public class CropDataModule : IWorldDataModule
         chunk     = null;
 
         if (sectionId == -1)
-        {
-            if (showDebugLogs)
-                Debug.LogWarning($"[CropDataModule] World pos ({worldPos.x:F1},{worldPos.y:F1}) not in any active section.");
             return false;
-        }
 
         Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
         chunk = GetChunk(sectionId, chunkPos);

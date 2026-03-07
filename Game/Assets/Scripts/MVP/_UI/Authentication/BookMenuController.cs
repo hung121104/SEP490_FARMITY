@@ -61,13 +61,15 @@ public class BookMenuController : MonoBehaviour
 
     IEnumerator MoveBook()
     {
-        yield return new WaitForSeconds(delay * 0.8f);
+        yield return new WaitForSeconds(delay * 0.7f);
         Debug.Log("[BookMenu] enable book image");
         bookImage.enabled = true;
-        yield return new WaitForSeconds(delay * 0.2f);
+        yield return new WaitForSeconds(delay * 0.3f);
+        //scale down book
+        ScaleDownBook();
         Debug.Log("[BookMenu] finished delay");
         Debug.Log("[BookMenu] preparing to move book");
-        ScaleDownBook();
+        
         if (targetPosition == null)
         {
             Debug.LogWarning("[BookMenu] targetPosition is not assigned.");
@@ -78,13 +80,14 @@ public class BookMenuController : MonoBehaviour
         Vector3 startPos = book.transform.position;
         float elapsed = 0f;
 
-        // Move over a fixed duration using Lerp
+        // Move over a fixed duration using Lerp, stepped at 12fps
+        const float frameInterval = 1f / 24f;
         while (elapsed < moveDuration)
         {
-            elapsed += Time.deltaTime;
+            elapsed += frameInterval;
             float t = Mathf.Clamp01(elapsed / moveDuration);
             book.transform.position = Vector3.Lerp(startPos, moveTarget, t);
-            yield return null;
+            yield return new WaitForSeconds(frameInterval);
         }
 
         book.transform.position = moveTarget;
@@ -115,6 +118,7 @@ public class BookMenuController : MonoBehaviour
 
     public void ShowTitle()
     {
+        animator.SetTrigger(turnLToR);
     }
 
     /// <summary>
@@ -128,16 +132,18 @@ public class BookMenuController : MonoBehaviour
 
     private IEnumerator ScaleDown()
     {
+        yield return new WaitForSeconds(delay*.3f);
         Vector3 startScale = book.transform.localScale;
         Vector3 endScale = new Vector3(15f, 15f, 15f);
         float elapsed = 0f;
 
+        const float frameInterval = 1f / 24f;
         while (elapsed < scaleDuration)
         {
-            elapsed += Time.deltaTime;
+            elapsed += frameInterval;
             float t = Mathf.Clamp01(elapsed / scaleDuration);
             book.transform.localScale = Vector3.Lerp(startScale, endScale, t);
-            yield return null;
+            yield return new WaitForSeconds(frameInterval);
         }
 
         book.transform.localScale = endScale;
