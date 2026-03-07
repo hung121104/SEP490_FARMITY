@@ -19,5 +19,5 @@ MonoBehaviour:
   weaponPrefab: {fileID: 8171461803801935278, guid: 2349b768c2985ff419154dd4c82109e7, type: 3}
   damage: 13
   tier: 1
-  linkedSkill: {fileID: 0}
+  linkedSkill: {fileID: 11400000, guid: 924f36c670929fb479a5710124c17bd6, type: 2}
   weaponDescription: 

@@ -337,12 +337,16 @@ namespace CombatManager.Presenter
                 case CombatManager.Model.WeaponType.Sword:
                     WeaponSkillSwordSlash.Instance?.TryExecute();
                     break;
-                // case WeaponType.Spear:
-                //     WeaponSkillSpearThrust.Instance?.TryExecute();
-                //     break;
+
+                // ✅ Uncommented - Spear skill ready!
+                case CombatManager.Model.WeaponType.Spear:
+                    WeaponSkillSpearSpecial.Instance?.TryExecute();
+                    break;
+
                 // case WeaponType.Staff:
                 //     WeaponSkillStaffBolt.Instance?.TryExecute();
                 //     break;
+
                 default:
                     Debug.LogWarning($"[SkillHotbarPresenter] No weapon skill for: {weaponType}");
                     break;
@@ -361,6 +365,11 @@ namespace CombatManager.Presenter
             {
                 case CombatManager.Model.WeaponType.Sword:
                     cooldownPercent = WeaponSkillSwordSlash.Instance?.GetCooldownPercent() ?? 0f;
+                    break;
+
+                // ✅ Uncommented - Spear cooldown ready!
+                case CombatManager.Model.WeaponType.Spear:
+                    cooldownPercent = WeaponSkillSpearSpecial.Instance?.GetCooldownPercent() ?? 0f;
                     break;
             }
 

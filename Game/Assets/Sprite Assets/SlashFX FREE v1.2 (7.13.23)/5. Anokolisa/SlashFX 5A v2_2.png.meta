@@ -61,7 +61,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -75,7 +75,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -127,10 +127,10 @@ TextureImporter:
       name: SlashFX 5A v2_2_0
       rect:
         serializedVersion: 2
-        x: 632
-        y: 70
-        width: 65
-        height: 49
+        x: 400
+        y: 2
+        width: 200
+        height: 190
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -149,10 +149,10 @@ TextureImporter:
       name: SlashFX 5A v2_2_1
       rect:
         serializedVersion: 2
-        x: 823
-        y: 80
-        width: 34
-        height: 41
+        x: 600
+        y: 2
+        width: 200
+        height: 190
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -171,10 +171,10 @@ TextureImporter:
       name: SlashFX 5A v2_2_2
       rect:
         serializedVersion: 2
-        x: 1014
-        y: 114
-        width: 6
-        height: 8
+        x: 800
+        y: 2
+        width: 200
+        height: 190
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -193,10 +193,10 @@ TextureImporter:
       name: SlashFX 5A v2_2_3
       rect:
         serializedVersion: 2
-        x: 445
-        y: 67
-        width: 109
-        height: 41
+        x: 1000
+        y: 2
+        width: 200
+        height: 190
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -211,121 +211,11 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
-    - serializedVersion: 2
-      name: SlashFX 5A v2_2_4
-      rect:
-        serializedVersion: 2
-        x: 505
-        y: 61
-        width: 54
-        height: 11
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 9b7d3a908bc47bac0800000000000000
-      internalID: -3839515803990632519
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: SlashFX 5A v2_2_5
-      rect:
-        serializedVersion: 2
-        x: 698
-        y: 60
-        width: 46
-        height: 12
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: e83701f802ed03280800000000000000
-      internalID: -9065501818476268658
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: SlashFX 5A v2_2_6
-      rect:
-        serializedVersion: 2
-        x: 721
-        y: 65
-        width: 29
-        height: 35
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 983ab821dd1501230800000000000000
-      internalID: 3607473311464530825
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: SlashFX 5A v2_2_7
-      rect:
-        serializedVersion: 2
-        x: 894
-        y: 60
-        width: 44
-        height: 29
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: ba5292de6d8b5e100800000000000000
-      internalID: 136718596946077099
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: SlashFX 5A v2_2_8
-      rect:
-        serializedVersion: 2
-        x: 1113
-        y: 66
-        width: 17
-        height: 12
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: af009fb66b78be720800000000000000
-      internalID: 2876542004571472122
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: af2d9d4a71c1f2f429625600231dbaee
     internalID: 0
     vertices: []
     indices: 
@@ -339,11 +229,6 @@ TextureImporter:
       SlashFX 5A v2_2_1: 377473732701367692
       SlashFX 5A v2_2_2: -8860309782843058472
       SlashFX 5A v2_2_3: 5986250773617667200
-      SlashFX 5A v2_2_4: -3839515803990632519
-      SlashFX 5A v2_2_5: -9065501818476268658
-      SlashFX 5A v2_2_6: 3607473311464530825
-      SlashFX 5A v2_2_7: 136718596946077099
-      SlashFX 5A v2_2_8: 2876542004571472122
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
