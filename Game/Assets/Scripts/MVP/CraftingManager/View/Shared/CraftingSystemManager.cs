@@ -8,6 +8,10 @@ public class CraftingSystemManager : MonoBehaviour
     [SerializeField] private CraftingMainView craftingMainView;
     [SerializeField] private CookingMainView cookingMainView;
 
+    [Header("Panel IDs (must match UIBasePanel settings)")]
+    [SerializeField] private string craftingPanelId = "Crafting";
+    [SerializeField] private string cookingPanelId = "Cooking";
+
     [Header("Inventory Display")]
     [SerializeField] private CraftingInventoryAdapter craftingInventoryAdapter;
     [SerializeField] private CraftingInventoryAdapter cookingInventoryAdapter;
@@ -34,6 +38,7 @@ public class CraftingSystemManager : MonoBehaviour
     private void Start()
     {
        InitializeSystem();
+       SubscribeToPanelEvents();
     }
 
     private void SetupUIStructure()
@@ -44,6 +49,42 @@ public class CraftingSystemManager : MonoBehaviour
         cookingMainView?.Hide();
         
         Debug.Log("[CraftingSystemManager] UI structure setup complete");
+    }
+
+    private void SubscribeToPanelEvents()
+    {
+        if (UIPanelManager.Instance == null) return;
+
+        UIPanelManager.Instance.OnPanelOpened += HandlePanelOpened;
+        UIPanelManager.Instance.OnPanelClosed += HandlePanelClosed;
+    }
+
+    private void HandlePanelOpened(string id)
+    {
+        if (id == craftingPanelId)
+        {
+            craftingPresenter?.OpenCraftingUI();
+            craftingInventoryAdapter?.OnOpen();
+        }
+        else if (id == cookingPanelId)
+        {
+            cookingPresenter?.OpenCookingUI();
+            cookingInventoryAdapter?.OnOpen();
+        }
+    }
+
+    private void HandlePanelClosed(string id)
+    {
+        if (id == craftingPanelId)
+        {
+            craftingPresenter?.CloseCraftingUI();
+            craftingInventoryAdapter?.OnClose();
+        }
+        else if (id == cookingPanelId)
+        {
+            cookingPresenter?.CloseCookingUI();
+            cookingInventoryAdapter?.OnClose();
+        }
     }
 
 
@@ -244,8 +285,13 @@ public class CraftingSystemManager : MonoBehaviour
     /// </summary>
     public void OpenCraftingUI()
     {
-        craftingPresenter?.OpenCraftingUI();
-        craftingInventoryAdapter?.OnOpen();
+        if (UIPanelManager.Instance != null)
+            UIPanelManager.Instance.Open(craftingPanelId);
+        else
+        {
+            craftingPresenter?.OpenCraftingUI();
+            craftingInventoryAdapter?.OnOpen();
+        }
     }
 
     /// <summary>
@@ -253,8 +299,13 @@ public class CraftingSystemManager : MonoBehaviour
     /// </summary>
     public void CloseCraftingUI()
     {
-        craftingPresenter?.CloseCraftingUI();
-        craftingInventoryAdapter?.OnClose();
+        if (UIPanelManager.Instance != null)
+            UIPanelManager.Instance.Close(craftingPanelId);
+        else
+        {
+            craftingPresenter?.CloseCraftingUI();
+            craftingInventoryAdapter?.OnClose();
+        }
     }
 
     /// <summary>
@@ -262,8 +313,13 @@ public class CraftingSystemManager : MonoBehaviour
     /// </summary>
     public void OpenCookingUI()
     {
-        cookingPresenter?.OpenCookingUI();
-        cookingInventoryAdapter?.OnOpen();
+        if (UIPanelManager.Instance != null)
+            UIPanelManager.Instance.Open(cookingPanelId);
+        else
+        {
+            cookingPresenter?.OpenCookingUI();
+            cookingInventoryAdapter?.OnOpen();
+        }
     }
 
     /// <summary>
@@ -271,8 +327,13 @@ public class CraftingSystemManager : MonoBehaviour
     /// </summary>
     public void CloseCookingUI()
     {
-        cookingPresenter?.CloseCookingUI();
-        cookingInventoryAdapter?.OnClose();
+        if (UIPanelManager.Instance != null)
+            UIPanelManager.Instance.Close(cookingPanelId);
+        else
+        {
+            cookingPresenter?.CloseCookingUI();
+            cookingInventoryAdapter?.OnClose();
+        }
     }
 
     /// <summary>
@@ -343,6 +404,12 @@ public class CraftingSystemManager : MonoBehaviour
             cookingPresenter.OnItemCooked -= HandleItemCooked;
             cookingPresenter.OnCookFailed -= HandleCookFailed;
             cookingPresenter.Cleanup();
+        }
+
+        if (UIPanelManager.Instance != null)
+        {
+            UIPanelManager.Instance.OnPanelOpened -= HandlePanelOpened;
+            UIPanelManager.Instance.OnPanelClosed -= HandlePanelClosed;
         }
 
         Debug.Log("[CraftingSystemManager] Cleaned up");

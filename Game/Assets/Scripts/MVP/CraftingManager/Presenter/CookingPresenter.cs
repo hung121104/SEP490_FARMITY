@@ -279,7 +279,7 @@ public class CookingPresenter
         filterView.SetActiveCategory(CraftingCategory.General);
     }
 
-    private void RefreshRecipeList()
+    public void RefreshRecipeList()
     {
         if (recipeListView == null) return;
 
@@ -382,16 +382,8 @@ public class CookingPresenter
     /// </summary>
     public void OpenCookingUI()
     {
-        if (mainView == null)
-        {
-            Debug.LogError("[CookingPresenter] Main view is not set");
-            return;
-        }
-
-        mainView.Show();
         RefreshRecipeList();
-
-        Debug.Log("[CookingPresenter] Cooking UI opened");
+        Debug.Log("[CookingPresenter] Cooking UI data refreshed");
     }
 
     /// <summary>
@@ -399,13 +391,9 @@ public class CookingPresenter
     /// </summary>
     public void CloseCookingUI()
     {
-        if (mainView == null) return;
-
-        mainView.Hide();
         recipeDetailView?.HideRecipeDetail();
         selectedRecipeID = null;
-
-        Debug.Log("[CookingPresenter] Cooking UI closed");
+        Debug.Log("[CookingPresenter] Cooking UI cleaned up");
     }
 
     /// <summary>

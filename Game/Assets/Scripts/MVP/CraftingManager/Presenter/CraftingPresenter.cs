@@ -277,7 +277,7 @@ public class CraftingPresenter
         filterView.SetActiveCategory(CraftingCategory.General);
     }
 
-    private void RefreshRecipeList()
+    public void RefreshRecipeList()
     {
         if (recipeListView == null) return;
 
@@ -380,16 +380,8 @@ public class CraftingPresenter
     /// </summary>
     public void OpenCraftingUI()
     {
-        if (mainView == null)
-        {
-            Debug.LogError("[CraftingPresenter] Main view is not set");
-            return;
-        }
-
-        mainView.Show();
         RefreshRecipeList();
-
-        Debug.Log("[CraftingPresenter] Crafting UI opened");
+        Debug.Log("[CraftingPresenter] Crafting UI data refreshed");
     }
 
     /// <summary>
@@ -397,13 +389,9 @@ public class CraftingPresenter
     /// </summary>
     public void CloseCraftingUI()
     {
-        if (mainView == null) return;
-
-        mainView.Hide();
         recipeDetailView?.HideRecipeDetail();
         selectedRecipeID = null;
-
-        Debug.Log("[CraftingPresenter] Crafting UI closed");
+        Debug.Log("[CraftingPresenter] Crafting UI cleaned up");
     }
 
     /// <summary>
