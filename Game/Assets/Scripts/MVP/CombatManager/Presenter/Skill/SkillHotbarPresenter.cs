@@ -122,17 +122,25 @@ namespace CombatManager.Presenter
         {
             skillComponentsByName.Clear();
 
-            // Search under parent (CombatSystem) same as before
-            Transform root = transform.parent != null ? transform.parent : transform;
-            SkillPresenter[] allSkills = root.GetComponentsInChildren<SkillPresenter>(true);
+            // ✅ Search entire scene instead of just children
+            SkillPresenter[] allSkills = FindObjectsOfType<SkillPresenter>(true);
+
+            if (allSkills.Length == 0)
+            {
+                Debug.LogWarning("[SkillHotbarPresenter] No SkillPresenter found in scene! " +
+                                 "Make sure skill GameObjects are active or use includeInactive=true");
+                return;
+            }
 
             foreach (SkillPresenter skill in allSkills)
             {
                 string componentName = skill.GetType().Name;
+
                 if (!skillComponentsByName.ContainsKey(componentName))
                 {
                     skillComponentsByName[componentName] = skill;
-                    Debug.Log($"[SkillHotbarPresenter] Cached skill: {componentName}");
+                    Debug.Log($"[SkillHotbarPresenter] Cached skill: {componentName} " +
+                              $"on GameObject: {skill.gameObject.name}");
                 }
                 else
                 {
