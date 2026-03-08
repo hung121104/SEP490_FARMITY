@@ -213,13 +213,13 @@ namespace CombatManager.Presenter
 
         private void TryDropOnHotbar(SkillData skillData)
         {
-            // ✅ Uncommented now that SkillHotbarPresenter exists
             if (SkillHotbarPresenter.Instance == null) return;
 
             int hoveredSlot = SkillHotbarPresenter.Instance.GetHoveredSlotIndex();
             if (hoveredSlot < 0) return;
 
-            SkillManagerPresenter.Instance?.EquipSkill(hoveredSlot, skillData);
+            // ✅ Direct call to SkillHotbarPresenter - no more SkillManagerPresenter
+            SkillHotbarPresenter.Instance.EquipSkill(hoveredSlot, skillData);
             SkillHotbarPresenter.Instance.RefreshSlot(hoveredSlot);
 
             Debug.Log($"[SkillManagementPresenter] Dropped '{skillData?.skillName}' → Hotbar slot {hoveredSlot}");
@@ -231,18 +231,16 @@ namespace CombatManager.Presenter
 
         private void OnSkillSelected(SkillDisplayItemView item)
         {
-            if (SkillManagerPresenter.Instance == null) return;
+            // ✅ Direct call to SkillHotbarPresenter - no more SkillManagerPresenter
+            int slotCount = SkillHotbarPresenter.Instance?.GetSlotCount() ?? 0;
 
-            for (int i = 0; i < SkillManagerPresenter.Instance.GetSlotCount(); i++)
+            for (int i = 0; i < slotCount; i++)
             {
-                if (SkillManagerPresenter.Instance.IsSlotEmpty(i))
+                if (SkillHotbarPresenter.Instance.IsSlotEmpty(i))
                 {
-                    SkillManagerPresenter.Instance.EquipSkill(i, item.GetSkillData());
-
-                    // ✅ Uncommented now that SkillHotbarPresenter exists
-                    SkillHotbarPresenter.Instance?.RefreshSlot(i);
-
-                    Debug.Log($"[SkillManagementPresenter] Selected '{item.GetSkillData().skillName}' → auto-equip slot {i}");
+                    SkillHotbarPresenter.Instance.EquipSkill(i, item.GetSkillData());
+                    SkillHotbarPresenter.Instance.RefreshSlot(i);
+                    Debug.Log($"[SkillManagementPresenter] Auto-equipped '{item.GetSkillData().skillName}' → slot {i}");
                     return;
                 }
             }

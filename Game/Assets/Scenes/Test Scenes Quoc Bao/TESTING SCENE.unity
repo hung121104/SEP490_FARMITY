@@ -22182,6 +22182,11 @@ MonoBehaviour:
   weaponSkillSection: {fileID: 1143877774}
   weaponSkillSlotPrefab: {fileID: 1850482316954284577, guid: f2388b8580bd65e46afc277316a68afe, type: 3}
   weaponSkillKey: 114
+  initialSkills:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
 --- !u!1 &1818026973
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
 using CombatManager.Model;
@@ -28,14 +27,25 @@ namespace CombatManager.Presenter
         [SerializeField] private GameObject weaponSkillSlotPrefab;
         [SerializeField] private KeyCode weaponSkillKey = KeyCode.R;
 
+        [Header("Pre-assigned Skills (Optional)")]
+        [SerializeField] private SkillData[] initialSkills = new SkillData[4];
+
         #endregion
 
-        #region Runtime
+        #region Runtime - Skill Management (merged from SkillManagerPresenter)
+
+        // ✅ Merged from SkillManagerPresenter
+        private SkillData[] equippedSkillsData = new SkillData[4];
+        private SkillPresenterBase[] equippedSkillsComponents = new SkillPresenterBase[4];
+        private Dictionary<string, SkillPresenterBase> skillComponentsByName
+            = new Dictionary<string, SkillPresenterBase>();
+
+        #endregion
+
+        #region Runtime - Hotbar
 
         private ISkillHotbarService service;
         private List<SkillHotbarSlotView> slots = new List<SkillHotbarSlotView>();
-
-        // ✅ Spawned at runtime, not assigned in Inspector
         private WeaponSkillSlotView weaponSkillSlotView;
 
         #endregion
@@ -56,21 +66,19 @@ namespace CombatManager.Presenter
                 return;
             }
             Instance = this;
-
             service = new SkillHotbarService(model);
         }
 
         private void Start()
         {
             SpawnSlots();
-            SpawnWeaponSkillSlot(); // ✅ NEW
+            SpawnWeaponSkillSlot();
             service.Initialize();
-            RefreshAllSlots();
+
+            StartCoroutine(DelayedSkillSetup());
 
             CombatModePresenter.OnCombatModeChanged += OnCombatModeChanged;
-
             SetHotbarVisible(false);
-
             SubscribeToWeaponEvents();
 
             Debug.Log("[SkillHotbarPresenter] Initialized!");
@@ -88,6 +96,67 @@ namespace CombatManager.Presenter
         {
             CombatModePresenter.OnCombatModeChanged -= OnCombatModeChanged;
             UnsubscribeFromWeaponEvents();
+        }
+
+        #endregion
+
+        #region Skill Setup (merged from SkillManagerPresenter)
+
+        private IEnumerator DelayedSkillSetup()
+        {
+            // Wait for all SkillPresenters to Start()
+            yield return new WaitForSeconds(0.6f);
+
+            CacheAllSkillComponents();
+            LinkInitialSkills();
+            RefreshAllSlots();
+
+            Debug.Log("[SkillHotbarPresenter] Skill setup complete!");
+        }
+
+        /// <summary>
+        /// Find all SkillPresenter components in scene.
+        /// Merged from SkillManagerPresenter.CacheAllSkillComponents()
+        /// </summary>
+        private void CacheAllSkillComponents()
+        {
+            skillComponentsByName.Clear();
+
+            // Search under parent (CombatSystem) same as before
+            Transform root = transform.parent != null ? transform.parent : transform;
+            SkillPresenter[] allSkills = root.GetComponentsInChildren<SkillPresenter>(true);
+
+            foreach (SkillPresenter skill in allSkills)
+            {
+                string componentName = skill.GetType().Name;
+                if (!skillComponentsByName.ContainsKey(componentName))
+                {
+                    skillComponentsByName[componentName] = skill;
+                    Debug.Log($"[SkillHotbarPresenter] Cached skill: {componentName}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[SkillHotbarPresenter] Duplicate skill component: {componentName}");
+                }
+            }
+
+            Debug.Log($"[SkillHotbarPresenter] Cached {skillComponentsByName.Count} skill components");
+        }
+
+        /// <summary>
+        /// Link pre-assigned skills from Inspector.
+        /// Merged from SkillManagerPresenter.LinkInitialSkills()
+        /// </summary>
+        private void LinkInitialSkills()
+        {
+            for (int i = 0; i < initialSkills.Length && i < equippedSkillsData.Length; i++)
+            {
+                if (initialSkills[i] != null)
+                {
+                    EquipSkill(i, initialSkills[i]);
+                    Debug.Log($"[SkillHotbarPresenter] Linked initial skill slot {i}: {initialSkills[i].skillName}");
+                }
+            }
         }
 
         #endregion
@@ -118,13 +187,12 @@ namespace CombatManager.Presenter
                 SkillHotbarSlotView slotView = slotGO.GetComponent<SkillHotbarSlotView>();
                 if (slotView == null)
                 {
-                    Debug.LogError($"[SkillHotbarPresenter] SkillHotbarSlotView missing on prefab!");
+                    Debug.LogError("[SkillHotbarPresenter] SkillHotbarSlotView missing on prefab!");
                     Destroy(slotGO);
                     continue;
                 }
 
                 slotView.Initialize(i, model);
-
                 slotView.OnDroppedOnSlot        += OnSkillDroppedOnSlot;
                 slotView.OnSlotSwapRequested    += OnSlotSwapRequested;
                 slotView.OnSlotUnequipRequested += OnSlotUnequipRequested;
@@ -136,7 +204,6 @@ namespace CombatManager.Presenter
             }
         }
 
-        // ✅ NEW: Spawn weapon skill slot into WeaponSkillSection
         private void SpawnWeaponSkillSlot()
         {
             if (weaponSkillSection == null)
@@ -184,15 +251,75 @@ namespace CombatManager.Presenter
 
         private void TriggerSlot(int slotIndex)
         {
-            if (SkillManagerPresenter.Instance == null) return;
-            if (SkillManagerPresenter.Instance.IsSlotEmpty(slotIndex))
+            if (IsSlotEmpty(slotIndex))
             {
                 Debug.Log($"[SkillHotbarPresenter] Slot {slotIndex} is empty!");
                 return;
             }
 
-            SkillManagerPresenter.Instance.TriggerSkill(slotIndex);
-            Debug.Log($"[SkillHotbarPresenter] Triggered slot {slotIndex}");
+            SkillPresenterBase skill = equippedSkillsComponents[slotIndex];
+            if (skill == null)
+            {
+                Debug.LogWarning($"[SkillHotbarPresenter] No component for slot {slotIndex}!");
+                return;
+            }
+
+            skill.TriggerSkill();
+            Debug.Log($"[SkillHotbarPresenter] Triggered slot {slotIndex}: " +
+                      $"{equippedSkillsData[slotIndex]?.skillName}");
+        }
+
+        #endregion
+
+        #region Skill Equipment (merged from SkillManagerPresenter)
+
+        public void EquipSkill(int slotIndex, SkillData skillData)
+        {
+            if (!IsSlotIndexValid(slotIndex)) return;
+
+            equippedSkillsData[slotIndex] = skillData;
+
+            if (skillData != null)
+            {
+                string componentName = skillData.linkedComponentName;
+                if (skillComponentsByName.TryGetValue(componentName, out SkillPresenterBase component))
+                {
+                    equippedSkillsComponents[slotIndex] = component;
+                    Debug.Log($"[SkillHotbarPresenter] Equipped '{skillData.skillName}' → slot {slotIndex}");
+                }
+                else
+                {
+                    equippedSkillsComponents[slotIndex] = null;
+                    Debug.LogWarning($"[SkillHotbarPresenter] Component '{componentName}' not found!");
+                }
+            }
+            else
+            {
+                equippedSkillsComponents[slotIndex] = null;
+            }
+        }
+
+        public void UnequipSkill(int slotIndex)
+        {
+            if (!IsSlotIndexValid(slotIndex)) return;
+            equippedSkillsData[slotIndex] = null;
+            equippedSkillsComponents[slotIndex] = null;
+            Debug.Log($"[SkillHotbarPresenter] Unequipped slot {slotIndex}");
+        }
+
+        public void SwapSkills(int slotA, int slotB)
+        {
+            if (!IsSlotIndexValid(slotA) || !IsSlotIndexValid(slotB)) return;
+
+            SkillData tempData = equippedSkillsData[slotA];
+            equippedSkillsData[slotA] = equippedSkillsData[slotB];
+            equippedSkillsData[slotB] = tempData;
+
+            SkillPresenterBase tempComp = equippedSkillsComponents[slotA];
+            equippedSkillsComponents[slotA] = equippedSkillsComponents[slotB];
+            equippedSkillsComponents[slotB] = tempComp;
+
+            Debug.Log($"[SkillHotbarPresenter] Swapped slot {slotA} ↔ slot {slotB}");
         }
 
         #endregion
@@ -201,27 +328,22 @@ namespace CombatManager.Presenter
 
         private void OnSkillDroppedOnSlot(int slotIndex, SkillData skillData)
         {
-            if (SkillManagerPresenter.Instance == null) return;
-            SkillManagerPresenter.Instance.EquipSkill(slotIndex, skillData);
+            EquipSkill(slotIndex, skillData);
             RefreshSlot(slotIndex);
-            Debug.Log($"[SkillHotbarPresenter] Equipped '{skillData.skillName}' → slot {slotIndex}");
+            Debug.Log($"[SkillHotbarPresenter] Dropped '{skillData.skillName}' → slot {slotIndex}");
         }
 
         private void OnSlotSwapRequested(int slotA, int slotB)
         {
-            if (SkillManagerPresenter.Instance == null) return;
-            SkillManagerPresenter.Instance.SwapSkills(slotA, slotB);
+            SwapSkills(slotA, slotB);
             RefreshSlot(slotA);
             RefreshSlot(slotB);
-            Debug.Log($"[SkillHotbarPresenter] Swapped slot {slotA} ↔ slot {slotB}");
         }
 
         private void OnSlotUnequipRequested(int slotIndex)
         {
-            if (SkillManagerPresenter.Instance == null) return;
-            SkillManagerPresenter.Instance.UnequipSkill(slotIndex);
+            UnequipSkill(slotIndex);
             RefreshSlot(slotIndex);
-            Debug.Log($"[SkillHotbarPresenter] Unequipped slot {slotIndex}");
         }
 
         private void OnSlotHoverEnter(int slotIndex) => service.SetHoveredSlot(slotIndex);
@@ -234,8 +356,7 @@ namespace CombatManager.Presenter
         public void RefreshSlot(int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= slots.Count) return;
-            SkillData skillData = SkillManagerPresenter.Instance?.GetSkillData(slotIndex);
-            slots[slotIndex].RefreshDisplay(skillData);
+            slots[slotIndex].RefreshDisplay(equippedSkillsData[slotIndex]);
         }
 
         public void RefreshAllSlots()
@@ -252,7 +373,6 @@ namespace CombatManager.Presenter
         private void OnCombatModeChanged(bool isActive)
         {
             SetHotbarVisible(isActive);
-            Debug.Log($"[SkillHotbarPresenter] Combat mode: {isActive} → Hotbar visible: {isActive}");
         }
 
         private void SetHotbarVisible(bool visible)
@@ -267,17 +387,15 @@ namespace CombatManager.Presenter
 
         private void UpdateCooldownFills()
         {
-            if (SkillManagerPresenter.Instance == null) return;
-
             for (int i = 0; i < slots.Count; i++)
             {
-                SkillPresenterBase baseSkill = SkillManagerPresenter.Instance.GetSkillComponent(i);
-                if (baseSkill == null) { slots[i].UpdateCooldownFill(0f); continue; }
-
-                SkillPresenter skill = baseSkill as SkillPresenter;
+                SkillPresenterBase skill = equippedSkillsComponents[i];
                 if (skill == null) { slots[i].UpdateCooldownFill(0f); continue; }
 
-                float fill = skill.IsCoolingDown() ? 1f - skill.GetCooldownPercent() : 0f;
+                SkillPresenter sp = skill as SkillPresenter;
+                if (sp == null) { slots[i].UpdateCooldownFill(0f); continue; }
+
+                float fill = sp.IsCoolingDown() ? 1f - sp.GetCooldownPercent() : 0f;
                 slots[i].UpdateCooldownFill(fill);
             }
         }
@@ -311,7 +429,6 @@ namespace CombatManager.Presenter
 
             weaponSkillSlotView.SetSkill(weaponData.linkedSkill.skillIcon);
             weaponSkillSlotView.SetVisible(true);
-            Debug.Log($"[SkillHotbarPresenter] Weapon skill slot loaded: {weaponData.linkedSkill.skillName}");
         }
 
         private void OnWeaponUnequipped()
@@ -319,7 +436,6 @@ namespace CombatManager.Presenter
             if (weaponSkillSlotView == null) return;
             weaponSkillSlotView.SetEmpty();
             weaponSkillSlotView.SetVisible(false);
-            Debug.Log("[SkillHotbarPresenter] Weapon skill slot cleared");
         }
 
         private void HandleWeaponSkillInput()
@@ -337,16 +453,12 @@ namespace CombatManager.Presenter
                 case CombatManager.Model.WeaponType.Sword:
                     WeaponSkillSwordSpecial.Instance?.TryExecute();
                     break;
-
                 case CombatManager.Model.WeaponType.Spear:
                     WeaponSkillSpearSpecial.Instance?.TryExecute();
                     break;
-
-                // ✅ Uncommented - Staff skill ready!
                 case CombatManager.Model.WeaponType.Staff:
                     WeaponSkillStaffSpecial.Instance?.TryExecute();
                     break;
-
                 default:
                     Debug.LogWarning($"[SkillHotbarPresenter] No weapon skill for: {weaponType}");
                     break;
@@ -366,12 +478,9 @@ namespace CombatManager.Presenter
                 case CombatManager.Model.WeaponType.Sword:
                     cooldownPercent = WeaponSkillSwordSpecial.Instance?.GetCooldownPercent() ?? 0f;
                     break;
-
                 case CombatManager.Model.WeaponType.Spear:
                     cooldownPercent = WeaponSkillSpearSpecial.Instance?.GetCooldownPercent() ?? 0f;
                     break;
-
-                // ✅ Uncommented - Staff cooldown ready!
                 case CombatManager.Model.WeaponType.Staff:
                     cooldownPercent = WeaponSkillStaffSpecial.Instance?.GetCooldownPercent() ?? 0f;
                     break;
@@ -382,10 +491,28 @@ namespace CombatManager.Presenter
 
         #endregion
 
+        #region Helpers
+
+        private bool IsSlotIndexValid(int index)
+        {
+            if (index < 0 || index >= equippedSkillsData.Length)
+            {
+                Debug.LogWarning($"[SkillHotbarPresenter] Invalid slot index: {index}");
+                return false;
+            }
+            return true;
+        }
+
+        #endregion
+
         #region Public API
 
         public int GetHoveredSlotIndex() => service.GetHoveredSlotIndex();
         public bool IsInitialized() => service.IsInitialized();
+        public bool IsSlotEmpty(int slotIndex) => equippedSkillsData[slotIndex] == null;
+        public SkillData GetSkillData(int slotIndex) => equippedSkillsData[slotIndex];
+        public SkillPresenterBase GetSkillComponent(int slotIndex) => equippedSkillsComponents[slotIndex];
+        public int GetSlotCount() => equippedSkillsData.Length;
 
         #endregion
     }
