@@ -17,9 +17,19 @@ MonoBehaviour:
   skillID: 7
   skillIcon: {fileID: 2952482376178455717, guid: 2e0f1fd247fdde94d9bcd59fd3fa3c74, type: 3}
   skillColor: {r: 1, g: 1, b: 1, a: 1}
-  activationKey: 49
+  skillOwnership: 1
+  skillCategory: 1
+  requiredWeaponType: 0
   cooldown: 3
   diceTier: 6
   skillMultiplier: 1.5
-  skillRange: 5
-  linkedComponentName: 
+  projectilePrefab: {fileID: 2996777577814843754, guid: 361c72b4eb57a1243b47af566d1f9693, type: 3}
+  projectileSpeed: 10
+  projectileRange: 8
+  projectileKnockback: 5
+  slashVFXPrefab: {fileID: 0}
+  slashVFXDuration: 0.5
+  slashVFXSpawnOffset: 1.2
+  slashVFXPositionOffset: {x: 0, y: 0}
+  slashKnockbackForce: 5
+  damagePopupPrefab: {fileID: 0}

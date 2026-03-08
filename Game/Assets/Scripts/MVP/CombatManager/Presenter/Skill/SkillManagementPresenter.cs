@@ -215,14 +215,23 @@ namespace CombatManager.Presenter
         {
             if (SkillHotbarPresenter.Instance == null) return;
 
+            // ✅ Guard: weapon skills cannot be dragged to hotbar
+            if (skillData != null && skillData.IsWeaponSkill)
+            {
+                Debug.LogWarning($"[SkillManagementPresenter] " +
+                                 $"'{skillData.skillName}' is a WeaponSkill - " +
+                                 $"cannot drag to hotbar!");
+                return;
+            }
+
             int hoveredSlot = SkillHotbarPresenter.Instance.GetHoveredSlotIndex();
             if (hoveredSlot < 0) return;
 
-            // ✅ Direct call to SkillHotbarPresenter - no more SkillManagerPresenter
             SkillHotbarPresenter.Instance.EquipSkill(hoveredSlot, skillData);
             SkillHotbarPresenter.Instance.RefreshSlot(hoveredSlot);
 
-            Debug.Log($"[SkillManagementPresenter] Dropped '{skillData?.skillName}' → Hotbar slot {hoveredSlot}");
+            Debug.Log($"[SkillManagementPresenter] " +
+                      $"Dropped '{skillData?.skillName}' → Hotbar slot {hoveredSlot}");
         }
 
         #endregion
@@ -231,16 +240,24 @@ namespace CombatManager.Presenter
 
         private void OnSkillSelected(SkillDisplayItemView item)
         {
-            // ✅ Direct call to SkillHotbarPresenter - no more SkillManagerPresenter
-            int slotCount = SkillHotbarPresenter.Instance?.GetSlotCount() ?? 0;
+            // ✅ Guard: weapon skills cannot be auto-equipped to hotbar
+            if (item.GetSkillData().IsWeaponSkill)
+            {
+                Debug.LogWarning($"[SkillManagementPresenter] " +
+                                 $"'{item.GetSkillData().skillName}' is a WeaponSkill - " +
+                                 $"cannot equip to hotbar!");
+                return;
+            }
 
+            int slotCount = SkillHotbarPresenter.Instance?.GetSlotCount() ?? 0;
             for (int i = 0; i < slotCount; i++)
             {
                 if (SkillHotbarPresenter.Instance.IsSlotEmpty(i))
                 {
                     SkillHotbarPresenter.Instance.EquipSkill(i, item.GetSkillData());
                     SkillHotbarPresenter.Instance.RefreshSlot(i);
-                    Debug.Log($"[SkillManagementPresenter] Auto-equipped '{item.GetSkillData().skillName}' → slot {i}");
+                    Debug.Log($"[SkillManagementPresenter] " +
+                              $"Auto-equipped '{item.GetSkillData().skillName}' → slot {i}");
                     return;
                 }
             }

@@ -148,10 +148,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 48989963}
-  - {fileID: 833838873}
-  - {fileID: 475189202}
-  - {fileID: 1502195705}
+  - {fileID: 1506420933}
+  - {fileID: 1338126579}
   m_Father: {fileID: 438455340}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &46894831
@@ -290,81 +288,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 46894831}
   m_CullTransparentMesh: 1
---- !u!1 &48989962
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 48989963}
-  - component: {fileID: 48989964}
-  m_Layer: 0
-  m_Name: AirSlash
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &48989963
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 48989962}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -1680.5804, y: -37.458405, z: 0.7639626}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 10812222}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &48989964
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 48989962}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8cf3eaee3383814418f02a940f42d7c3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  model:
-    currentState: 0
-    isExecuting: 0
-    currentDiceRoll: 0
-    targetDirection: {x: 1, y: 0, z: 0}
-    skillTimer: 0
-    confirmKey: 101
-    cancelKey: 113
-    skillCooldown: 3
-    chargeDuration: 0.2
-    rollDisplayDuration: 0.4
-    skillTier: 6
-    skillMultiplier: 1.5
-    enemyLayers:
-      serializedVersion: 2
-      m_Bits: 0
-    blockAttackDamage: 0
-  skillCooldown: 3
-  chargeDuration: 0.2
-  rollDisplayDuration: 0.4
-  skillTier: 6
-  skillMultiplier: 1.5
-  enemyLayers:
-    serializedVersion: 2
-    m_Bits: 128
-  confirmKey: 101
-  cancelKey: 113
-  projectilePrefab: {fileID: 2996777577814843754, guid: 0228e8e4e652ae94e83f85676d3f128d, type: 3}
-  projectileSpeed: 10
-  projectileRange: 8
-  attackAnimationDuration: 0.5
 --- !u!1 &123946602
 GameObject:
   m_ObjectHideFlags: 0
@@ -2070,83 +1993,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 456082514}
   m_CullTransparentMesh: 1
---- !u!1 &475189201
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 475189202}
-  - component: {fileID: 475189203}
-  m_Layer: 0
-  m_Name: WeaponSkillSpearSpecial
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &475189202
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 475189201}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 10812222}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &475189203
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 475189201}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0db12a59e12509546ae5a57fb2f1b7f4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  model:
-    currentState: 0
-    isExecuting: 0
-    currentDiceRoll: 0
-    targetDirection: {x: 1, y: 0, z: 0}
-    skillTimer: 0
-    confirmKey: 101
-    cancelKey: 113
-    skillCooldown: 3
-    chargeDuration: 0.2
-    rollDisplayDuration: 0.4
-    skillTier: 6
-    skillMultiplier: 1.5
-    enemyLayers:
-      serializedVersion: 2
-      m_Bits: 0
-    blockAttackDamage: 0
-  skillCooldown: 3
-  chargeDuration: 0.3
-  rollDisplayDuration: 0.4
-  skillTier: 6
-  skillMultiplier: 2.5
-  enemyLayers:
-    serializedVersion: 2
-    m_Bits: 128
-  confirmKey: 101
-  cancelKey: 113
-  spearSpecialVFXPrefab: {fileID: 5107333870897779412, guid: 0481bbbf804bcf345bb4f651c214287c, type: 3}
-  vfxDuration: 0.5
-  vfxSpawnOffset: 0
-  vfxPositionOffset: {x: 0, y: 0}
-  knockbackForce: 7
-  damagePopupPrefab: {fileID: 0}
 --- !u!1 &488476552
 GameObject:
   m_ObjectHideFlags: 0
@@ -3259,83 +3105,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!1 &833838872
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 833838873}
-  - component: {fileID: 833838874}
-  m_Layer: 0
-  m_Name: 'WeaponSkillSwordSlash '
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &833838873
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 833838872}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 10812222}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &833838874
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 833838872}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b54ea2d63f6450d4aa7861db857032d0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  model:
-    currentState: 0
-    isExecuting: 0
-    currentDiceRoll: 0
-    targetDirection: {x: 1, y: 0, z: 0}
-    skillTimer: 0
-    confirmKey: 101
-    cancelKey: 113
-    skillCooldown: 3
-    chargeDuration: 0.2
-    rollDisplayDuration: 0.4
-    skillTier: 6
-    skillMultiplier: 1.5
-    enemyLayers:
-      serializedVersion: 2
-      m_Bits: 0
-    blockAttackDamage: 0
-  skillCooldown: 3
-  chargeDuration: 0.3
-  rollDisplayDuration: 0.4
-  skillTier: 6
-  skillMultiplier: 2
-  enemyLayers:
-    serializedVersion: 2
-    m_Bits: 128
-  confirmKey: 101
-  cancelKey: 113
-  swordSpecialVFXPrefab: {fileID: 5107333870897779412, guid: 1244261c77c709b43a4c449b37ae4157, type: 3}
-  vfxDuration: 0.5
-  vfxSpawnOffset: 1.2
-  vfxPositionOffset: {x: 0, y: 0}
-  knockbackForce: 5
-  damagePopupPrefab: {fileID: 0}
 --- !u!1 &835463492
 GameObject:
   m_ObjectHideFlags: 0
@@ -3804,9 +3573,6 @@ MonoBehaviour:
     isInitialized: 0
   availableSkills:
   - {fileID: 11400000, guid: 3f69bfaa32fb31f48a94e19bfbbeb93b, type: 2}
-  - {fileID: 11400000, guid: 284a45678e28cf041b6406f24cca9192, type: 2}
-  - {fileID: 11400000, guid: 0187c43eb1a027146beb4a470345a5e6, type: 2}
-  - {fileID: 11400000, guid: b182c8f3483f7f1498d392dcaab0cea7, type: 2}
 --- !u!1 &1143877773
 GameObject:
   m_ObjectHideFlags: 0
@@ -21149,6 +20915,77 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1334690481}
   m_CullTransparentMesh: 1
+--- !u!1 &1338126578
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1338126579}
+  - component: {fileID: 1338126580}
+  m_Layer: 0
+  m_Name: SlashSkillPresenter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1338126579
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1338126578}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 10812222}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1338126580
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1338126578}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db3e1457e37e8cb448de0dad4525d0a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model:
+    currentState: 0
+    isExecuting: 0
+    currentDiceRoll: 0
+    targetDirection: {x: 1, y: 0, z: 0}
+    skillTimer: 0
+    confirmKey: 101
+    cancelKey: 113
+    skillCooldown: 3
+    chargeDuration: 0.2
+    rollDisplayDuration: 0.4
+    skillTier: 6
+    skillMultiplier: 1.5
+    enemyLayers:
+      serializedVersion: 2
+      m_Bits: 0
+    blockAttackDamage: 0
+  skillCooldown: 3
+  chargeDuration: 0.2
+  rollDisplayDuration: 0.4
+  skillTier: 6
+  skillMultiplier: 1.5
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 128
+  confirmKey: 101
+  cancelKey: 113
 --- !u!1 &1349674084
 GameObject:
   m_ObjectHideFlags: 0
@@ -21445,7 +21282,7 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
---- !u!1 &1502195704
+--- !u!1 &1506420932
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -21453,22 +21290,22 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1502195705}
-  - component: {fileID: 1502195706}
+  - component: {fileID: 1506420933}
+  - component: {fileID: 1506420934}
   m_Layer: 0
-  m_Name: WeaponSkillStaffSpecial
+  m_Name: ProjectileSkillPresenter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1502195705
+--- !u!4 &1506420933
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1502195704}
+  m_GameObject: {fileID: 1506420932}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -21477,16 +21314,16 @@ Transform:
   m_Children: []
   m_Father: {fileID: 10812222}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1502195706
+--- !u!114 &1506420934
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1502195704}
+  m_GameObject: {fileID: 1506420932}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2c45cd3abfc4d6c43aed9718f089c8ec, type: 3}
+  m_Script: {fileID: 11500000, guid: c576cf9e848cb9d4389030263dbebadb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   model:
@@ -21507,19 +21344,15 @@ MonoBehaviour:
       m_Bits: 0
     blockAttackDamage: 0
   skillCooldown: 3
-  chargeDuration: 0.3
+  chargeDuration: 0.2
   rollDisplayDuration: 0.4
   skillTier: 6
-  skillMultiplier: 2
+  skillMultiplier: 1.5
   enemyLayers:
     serializedVersion: 2
     m_Bits: 128
   confirmKey: 101
   cancelKey: 113
-  projectilePrefab: {fileID: 2996777577814843754, guid: 361c72b4eb57a1243b47af566d1f9693, type: 3}
-  projectileSpeed: 10
-  projectileRange: 8
-  projectileKnockback: 5
 --- !u!1 &1512877386
 GameObject:
   m_ObjectHideFlags: 0
