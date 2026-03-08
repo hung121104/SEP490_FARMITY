@@ -35,6 +35,11 @@ public class CraftingInventoryAdapter : MonoBehaviour
     private InventoryGameView mainInventoryGameView;
     private bool isInitialized = false;
 
+    // Item detail tooltip state
+    private ItemPresenter currentItemPresenter;
+    private int currentTooltipSlot = -1;
+    private Vector2 lastKnownCursorPosition;
+
     #endregion
 
     #region Unity Lifecycle
@@ -118,6 +123,8 @@ public class CraftingInventoryAdapter : MonoBehaviour
         inventoryView.OnDropItemRequested += HandleDropItem;
         inventoryView.OnSortRequested += HandleSort;
         inventoryView.OnItemDeleteRequested += HandleItemDelete;
+        inventoryView.OnSlotHoverEnter += HandleSlotHoverEnter;
+        inventoryView.OnSlotHoverExit += HandleSlotHoverExit;
     }
 
     private void UnsubscribeFromViewInputEvents()
@@ -131,6 +138,8 @@ public class CraftingInventoryAdapter : MonoBehaviour
         inventoryView.OnDropItemRequested -= HandleDropItem;
         inventoryView.OnSortRequested -= HandleSort;
         inventoryView.OnItemDeleteRequested -= HandleItemDelete;
+        inventoryView.OnSlotHoverEnter -= HandleSlotHoverEnter;
+        inventoryView.OnSlotHoverExit -= HandleSlotHoverExit;
     }
 
     private int draggedSlot = -1;
@@ -138,6 +147,7 @@ public class CraftingInventoryAdapter : MonoBehaviour
     private void HandleSlotBeginDrag(int slotIndex)
     {
         mainInventoryGameView?.NotifyExternalAction();
+        HideCurrentItemDetail();
         var item = inventoryService.GetItemAtSlot(slotIndex);
         if (item != null)
         {
@@ -149,6 +159,7 @@ public class CraftingInventoryAdapter : MonoBehaviour
     private void HandleSlotDrag(Vector2 position)
     {
         mainInventoryGameView?.NotifyExternalAction();
+        lastKnownCursorPosition = position;
         inventoryView?.UpdateDragPreview(position);
     }
 
@@ -162,6 +173,11 @@ public class CraftingInventoryAdapter : MonoBehaviour
             {
                 HandleDropItem(draggedSlot);
             }
+            else
+            {
+                // Drag ended inside inventory without hitting a slot — show tooltip for original slot
+                ShowTooltipAfterDrop(draggedSlot);
+            }
         }
         inventoryView?.HideDragPreview();
         draggedSlot = -1;
@@ -173,6 +189,11 @@ public class CraftingInventoryAdapter : MonoBehaviour
         if (draggedSlot != -1 && draggedSlot != targetSlotIndex)
         {
             inventoryService.MoveItem(draggedSlot, targetSlotIndex);
+            ShowTooltipAfterDrop(targetSlotIndex);
+        }
+        else if (draggedSlot == targetSlotIndex)
+        {
+            ShowTooltipAfterDrop(targetSlotIndex);
         }
         draggedSlot = -1;
         inventoryView?.HideDragPreview();
@@ -195,6 +216,56 @@ public class CraftingInventoryAdapter : MonoBehaviour
     {
         mainInventoryGameView?.NotifyExternalAction();
         inventoryService.SortInventory();
+    }
+
+    private void HandleSlotHoverEnter(int slotIndex, Vector2 screenPosition)
+    {
+        lastKnownCursorPosition = screenPosition;
+        if (draggedSlot != -1) return;
+        if (itemDetailView == null || inventoryService == null) return;
+
+        var itemModel = inventoryService.GetItemAtSlot(slotIndex);
+        if (itemModel == null) return;
+
+        HideCurrentItemDetail();
+
+        currentTooltipSlot = slotIndex;
+        IItemService itemService = new ItemService(itemModel);
+        currentItemPresenter = new ItemPresenter(itemModel, itemService);
+        currentItemPresenter.SetView(itemDetailView);
+        currentItemPresenter.ShowItemDetailsAtPosition(screenPosition);
+    }
+
+    private void HandleSlotHoverExit(int slotIndex)
+    {
+        HideCurrentItemDetail();
+    }
+
+    private void HideCurrentItemDetail()
+    {
+        if (currentItemPresenter != null)
+        {
+            currentItemPresenter.HideItemDetails();
+            currentItemPresenter.RemoveView();
+            currentItemPresenter = null;
+        }
+        currentTooltipSlot = -1;
+    }
+
+    private void ShowTooltipAfterDrop(int slotIndex)
+    {
+        if (itemDetailView == null || inventoryService == null) return;
+
+        var itemModel = inventoryService.GetItemAtSlot(slotIndex);
+        if (itemModel == null) return;
+
+        HideCurrentItemDetail();
+
+        currentTooltipSlot = slotIndex;
+        IItemService itemService = new ItemService(itemModel);
+        currentItemPresenter = new ItemPresenter(itemModel, itemService);
+        currentItemPresenter.SetView(itemDetailView);
+        currentItemPresenter.ShowItemDetailsAtPosition(lastKnownCursorPosition);
     }
 
     private void HandleItemDelete(int slotIndex)
@@ -232,6 +303,7 @@ public class CraftingInventoryAdapter : MonoBehaviour
     public void OnClose()
     {
         draggedSlot = -1;
+        HideCurrentItemDetail();
         inventoryView?.HideDragPreview();
         inventoryView?.CancelAllActions();
         Debug.Log($"[{gameObject.name}] Closed.");
@@ -265,6 +337,7 @@ public class CraftingInventoryAdapter : MonoBehaviour
 
     private void Cleanup()
     {
+        HideCurrentItemDetail();
         UnsubscribeFromViewInputEvents();
 
         if (mainInventoryGameView != null && inventoryView != null)
