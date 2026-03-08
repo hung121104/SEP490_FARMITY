@@ -4,7 +4,7 @@ using System.Collections;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
-using CombatManager.SO; 
+using CombatManager.SO;
 
 namespace CombatManager.Presenter
 {
@@ -19,13 +19,8 @@ namespace CombatManager.Presenter
         [SerializeField] private GameObject verticalVFXPrefab;
         [SerializeField] private GameObject damagePopupPrefab;
 
-        [Header("Staff Projectile")]
+        [Header("Staff Projectile Prefab")]
         [SerializeField] private GameObject staffProjectilePrefab;
-        [SerializeField] private float staffProjectileSpeed = 10f;
-        [SerializeField] private float staffProjectileRange = 8f;
-        [SerializeField] private float staffKnockbackForce = 5f;
-        // TODO: Staff combo system - currently single shot
-        // Future: staffComboSteps[] with different projectile patterns
 
         [Header("Combat Settings")]
         [SerializeField] private LayerMask enemyLayers;
@@ -46,8 +41,10 @@ namespace CombatManager.Presenter
         private IStatsService statsService;
         private IDamageCalculatorService damageCalculator;
 
-        // Cached local player transform for staff projectile
         private Transform localPlayerTransform;
+
+        // ✅ Cache current weapon for GetCooldownPercent()
+        private WeaponDataSO currentWeaponCache;
 
         #region Unity Lifecycle
 
@@ -108,7 +105,6 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            // Cache for staff projectile use
             localPlayerTransform = playerObj.transform;
 
             Transform centerPoint = playerObj.transform.Find("CenterPoint");
@@ -191,11 +187,13 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            int strength = statsService.GetAttackDamage();
-            int weaponDamage = currentWeapon.damage;
-            int baseDamage = damageCalculator.CalculateBasicAttackDamage(strength, weaponDamage);
+            // ✅ Cache for GetCooldownPercent()
+            currentWeaponCache = currentWeapon;
 
-            // ✅ Route attack by weapon type
+            int strength    = statsService.GetAttackDamage();
+            int weaponDamage = currentWeapon.damage;
+            int baseDamage  = damageCalculator.CalculateBasicAttackDamage(strength, weaponDamage);
+
             switch (currentWeapon.weaponType)
             {
                 case WeaponType.Staff:
@@ -209,15 +207,14 @@ namespace CombatManager.Presenter
                     break;
             }
 
-            // Play weapon animation
             if (WeaponAnimationPresenter.Instance != null &&
                 WeaponAnimationPresenter.Instance.IsWeaponActive())
                 WeaponAnimationPresenter.Instance.PlayAttackAnimation();
 
             service.ExecuteAttack();
 
-            float cooldown = statsService.GetCooldownTime();
-            service.SetAttackCooldown(cooldown);
+            // ✅ Cooldown now from weapon, not statsService
+            service.SetAttackCooldown(currentWeapon.attackCooldown);
         }
 
         #endregion
@@ -237,15 +234,16 @@ namespace CombatManager.Presenter
             }
 
             int finalDamage = service.CalculateDamage(comboStep, baseDamage);
-            float knockbackForce = statsService.GetKnockbackForce();
 
-            SpawnSlashVFX(vfxPrefab, vfxDuration, finalDamage, knockbackForce, comboStep);
+            // ✅ Knockback now from weapon, not statsService
+            float knockback = currentWeapon.knockbackForce;
 
-            // ✅ Fix: use statsService.GetAttackDamage() instead of undefined 'strength'
-            Debug.Log($"[PlayerAttackPresenter] Melee: Step={comboStep}, " +
+            SpawnSlashVFX(vfxPrefab, vfxDuration, finalDamage, knockback, comboStep);
+
+            Debug.Log($"[PlayerAttackPresenter] Melee | Step={comboStep} | " +
                       $"Str={statsService.GetAttackDamage()} + WeaponDmg={currentWeapon.damage} " +
                       $"= Base={baseDamage} → Final={finalDamage} | " +
-                      $"Weapon={currentWeapon.weaponName}");
+                      $"Knockback={knockback} | Weapon={currentWeapon.weaponName}");
         }
 
         private void SpawnSlashVFX(GameObject vfxPrefab, float duration,
@@ -318,19 +316,18 @@ namespace CombatManager.Presenter
                 Quaternion.identity
             );
 
-            // ✅ Renamed: AirSlashProjectileModel → ProjectileModel
+            // ✅ All projectile stats now read from WeaponDataSO
             ProjectileModel projectileModel = new ProjectileModel
             {
-                direction      = direction,
-                speed          = staffProjectileSpeed,
-                maxRange       = staffProjectileRange,
-                damage         = baseDamage,
-                knockbackForce = staffKnockbackForce,
-                enemyLayers    = enemyLayers,
+                direction       = direction,
+                speed           = currentWeapon.projectileSpeed,
+                maxRange        = currentWeapon.projectileRange,
+                damage          = baseDamage,
+                knockbackForce  = currentWeapon.projectileKnockback,
+                enemyLayers     = enemyLayers,
                 playerTransform = localPlayerTransform
             };
 
-            // ✅ Renamed: AirSlashProjectilePresenter → ProjectilePresenter
             ProjectilePresenter projectilePresenter =
                 projectileGO.GetComponent<ProjectilePresenter>();
 
@@ -344,9 +341,11 @@ namespace CombatManager.Presenter
 
             projectilePresenter.Initialize(projectileModel);
 
-            Debug.Log($"[PlayerAttackPresenter] Staff projectile fired! " +
+            Debug.Log($"[PlayerAttackPresenter] Staff fired! " +
                       $"Damage={baseDamage} | Dir={direction} | " +
-                      $"Speed={staffProjectileSpeed} | Range={staffProjectileRange} | " +
+                      $"Speed={currentWeapon.projectileSpeed} | " +
+                      $"Range={currentWeapon.projectileRange} | " +
+                      $"Knockback={currentWeapon.projectileKnockback} | " +
                       $"Weapon={currentWeapon.weaponName}");
         }
 
@@ -357,8 +356,19 @@ namespace CombatManager.Presenter
         public bool IsInitialized() => service?.IsInitialized() ?? false;
         public bool CanAttack() => service?.CanAttack() ?? false;
         public int GetCurrentComboStep() => service?.GetCurrentComboStep() ?? 0;
-        public float GetCooldownPercent() =>
-            service?.GetCooldownPercent(statsService?.GetCooldownTime() ?? 1f) ?? 0f;
+
+        public float GetCooldownPercent()
+        {
+            if (service == null) return 0f;
+
+            // ✅ Use weapon cooldown as reference, fallback to statsService
+            float cooldownRef = currentWeaponCache != null
+                ? currentWeaponCache.attackCooldown
+                : statsService?.GetCooldownTime() ?? 1f;
+
+            return service.GetCooldownPercent(cooldownRef);
+        }
+
         public IPlayerAttackService GetService() => service;
 
         #endregion

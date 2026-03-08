@@ -82,7 +82,6 @@ public class RebindUIController : MonoBehaviour
         InputManager.Instance.DisablePlayerActions();
 
         _rebindOperation = _action.PerformInteractiveRebinding(bindingIndex)
-            .WithControlsExcluding("Mouse")       // ignore mouse – Attack uses mouse
             .WithCancelingThrough("<Keyboard>/escape")
             .OnMatchWaitForAnother(0.1f)
             .OnComplete(operation => FinishRebind())

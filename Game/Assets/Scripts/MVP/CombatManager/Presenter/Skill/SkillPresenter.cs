@@ -234,6 +234,19 @@ namespace CombatManager.Presenter
 
             OnAttackStart();
 
+            // ✅ Play weapon attack animation when skill executes
+            if (WeaponAnimationPresenter.Instance != null &&
+                WeaponAnimationPresenter.Instance.IsWeaponActive())
+            {
+                WeaponAnimationPresenter.Instance.PlayAttackAnimation();
+                Debug.Log($"[{GetType().Name}] Weapon attack animation triggered!");
+            }
+            else
+            {
+                Debug.LogWarning($"[{GetType().Name}] WeaponAnimationPresenter not found " +
+                                 $"or no weapon active - skipping animation");
+            }
+
             yield return new WaitForSeconds(0.1f);
 
             int strength = 0;
