@@ -11,9 +11,9 @@ GameObject:
   - component: {fileID: 372741990453722817}
   - component: {fileID: 1287363463556040799}
   - component: {fileID: 3652096954840313609}
-  - component: {fileID: -4902265167950414290}
-  - component: {fileID: -7106696124856517156}
   - component: {fileID: 2272456177918871505}
+  - component: {fileID: 5966640161715239488}
+  - component: {fileID: 1806382767243101563}
   m_Layer: 11
   m_Name: AirSlash_Projectile
   m_TagString: Bullet
@@ -118,31 +118,6 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 1
   m_Constraints: 0
---- !u!114 &-4902265167950414290
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2996777577814843754}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6db65188b0e380a4f916dfdfa602706a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &-7106696124856517156
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2996777577814843754}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c41bbd6e6b43cf446826deea8f9827b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  spriteRenderer: {fileID: 1287363463556040799}
 --- !u!60 &2272456177918871505
 PolygonCollider2D:
   m_ObjectHideFlags: 0
@@ -198,3 +173,28 @@ PolygonCollider2D:
       - {x: 1.4375, y: -0.125}
       - {x: 1.4375, y: 1.0625}
   m_UseDelaunayMesh: 0
+--- !u!114 &5966640161715239488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2996777577814843754}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec43e87e8a5a6d942b7d282eb5ae4d7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1806382767243101563
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2996777577814843754}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a901d48258feb3340a22f6eec0fb84be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spriteRenderer: {fileID: 1287363463556040799}

@@ -6,14 +6,15 @@ using CombatManager.View;
 namespace CombatManager.Presenter
 {
     /// <summary>
-    /// Presenter for AirSlash projectile.
-    /// Movement + hit detection via PolygonCollider2D trigger.
-    /// Sits on AirSlashProjectile prefab.
+    /// Presenter for all projectiles.
+    /// Renamed from AirSlashProjectilePresenter → ProjectilePresenter.
+    /// Handles movement + hit detection via PolygonCollider2D trigger.
+    /// Used by: AirSlash skill, Staff normal attack, Staff special skill.
     /// </summary>
-    public class AirSlashProjectilePresenter : MonoBehaviour
+    public class ProjectilePresenter : MonoBehaviour
     {
-        private AirSlashProjectileModel model;
-        private AirSlashProjectileView view;
+        private ProjectileModel model;
+        private ProjectileView view;
 
         private HashSet<Collider2D> alreadyHit = new HashSet<Collider2D>();
 
@@ -21,16 +22,15 @@ namespace CombatManager.Presenter
 
         private void Awake()
         {
-            view = GetComponent<AirSlashProjectileView>();
+            view = GetComponent<ProjectileView>();
             if (view == null)
-                view = gameObject.AddComponent<AirSlashProjectileView>();
+                view = gameObject.AddComponent<ProjectileView>();
 
-            // ✅ Ensure PolygonCollider2D is trigger
             PolygonCollider2D col = GetComponent<PolygonCollider2D>();
             if (col != null)
                 col.isTrigger = true;
             else
-                Debug.LogWarning("[AirSlashProjectile] PolygonCollider2D missing on prefab!");
+                Debug.LogWarning("[ProjectilePresenter] PolygonCollider2D missing on prefab!");
         }
 
         private void Update()
@@ -38,10 +38,8 @@ namespace CombatManager.Presenter
             if (model == null || !model.isInitialized || model.isDestroyed)
                 return;
 
-            // Move forward
             transform.position += model.direction * model.speed * Time.deltaTime;
 
-            // Check max range
             float distanceTravelled = Vector3.Distance(model.spawnPosition, transform.position);
             if (distanceTravelled >= model.maxRange)
             {
@@ -50,17 +48,14 @@ namespace CombatManager.Presenter
             }
         }
 
-        // ✅ NEW: Trigger instead of OverlapCircleAll
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (model == null || !model.isInitialized || model.isDestroyed)
                 return;
 
-            // Check enemy layer
             if ((model.enemyLayers.value & (1 << other.gameObject.layer)) == 0)
                 return;
 
-            // Prevent double hit
             if (alreadyHit.Contains(other)) return;
             alreadyHit.Add(other);
 
@@ -72,7 +67,7 @@ namespace CombatManager.Presenter
 
         #region Initialization
 
-        public void Initialize(AirSlashProjectileModel projectileModel)
+        public void Initialize(ProjectileModel projectileModel)
         {
             model = projectileModel;
             model.spawnPosition = transform.position;
@@ -88,7 +83,7 @@ namespace CombatManager.Presenter
                 rb.bodyType = RigidbodyType2D.Kinematic;
             }
 
-            Debug.Log($"[AirSlashProjectile] Initialized → " +
+            Debug.Log($"[ProjectilePresenter] Initialized → " +
                       $"Dir: {model.direction} | " +
                       $"Speed: {model.speed} | " +
                       $"Range: {model.maxRange} | " +
@@ -113,11 +108,11 @@ namespace CombatManager.Presenter
                     model.knockbackForce
                 );
 
-                Debug.Log($"[AirSlashProjectile] Hit: {enemy.name} | Damage: {model.damage}");
+                Debug.Log($"[ProjectilePresenter] Hit: {enemy.name} | Damage: {model.damage}");
                 return;
             }
 
-            Debug.LogWarning($"[AirSlashProjectile] Hit {enemy.name} " +
+            Debug.LogWarning($"[ProjectilePresenter] Hit {enemy.name} " +
                              $"but no EnemyPresenter found!");
         }
 
@@ -126,7 +121,7 @@ namespace CombatManager.Presenter
             if (model.isDestroyed) return;
             model.isDestroyed = true;
             Destroy(gameObject);
-            Debug.Log("[AirSlashProjectile] Destroyed");
+            Debug.Log("[ProjectilePresenter] Destroyed");
         }
 
         #endregion
@@ -135,8 +130,7 @@ namespace CombatManager.Presenter
 
         private void OnDrawGizmosSelected()
         {
-            // ✅ Gizmo now shows PolygonCollider2D shape automatically
-            // No manual gizmo needed - Unity shows polygon in editor
+            // PolygonCollider2D shape shown automatically in editor
         }
 
         #endregion

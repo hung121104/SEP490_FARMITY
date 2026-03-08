@@ -3,12 +3,12 @@ using UnityEngine;
 namespace CombatManager.Model
 {
     /// <summary>
-    /// Data model for AirSlash projectile.
-    /// Pure data - no logic.
-    /// hitRadius removed - now uses PolygonCollider2D trigger.
+    /// Data model for all projectiles.
+    /// Renamed from AirSlashProjectileModel → ProjectileModel.
+    /// Used by AirSlash skill, Staff normal attack, Staff special skill.
     /// </summary>
     [System.Serializable]
-    public class AirSlashProjectileModel
+    public class ProjectileModel
     {
         [Header("Movement")]
         public Vector3 direction;

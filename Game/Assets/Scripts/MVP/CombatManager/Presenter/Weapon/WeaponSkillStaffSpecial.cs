@@ -254,37 +254,35 @@ namespace CombatManager.Presenter
 
             if (localPlayerObj == null) return;
 
-            // Get aim direction from pointer
             Vector3 direction = Vector3.right;
             if (pointerPresenter != null)
                 direction = pointerPresenter.GetCurrentDirection();
 
-            // Spawn at player position - same as AirSlash ✅
             GameObject projectileGO = Instantiate(
                 projectilePrefab,
                 localPlayerObj.transform.position,
                 Quaternion.identity
             );
 
-            // Build model - exact same fields as AirSlashProjectileModel ✅
-            AirSlashProjectileModel projectileModel = new AirSlashProjectileModel
+            // ✅ Renamed: AirSlashProjectileModel → ProjectileModel
+            ProjectileModel projectileModel = new ProjectileModel
             {
-                direction       = direction.normalized,
-                speed           = projectileSpeed,
-                maxRange        = projectileRange,
-                damage          = damage,
-                knockbackForce  = knockbackForce,
-                enemyLayers     = enemyLayers,
+                direction      = direction.normalized,
+                speed          = projectileSpeed,
+                maxRange       = projectileRange,
+                damage         = damage,
+                knockbackForce = knockbackForce,
+                enemyLayers    = enemyLayers,
                 playerTransform = localPlayerObj.transform
             };
 
-            // Reuse AirSlashProjectilePresenter directly ✅
-            AirSlashProjectilePresenter projectilePresenter =
-                projectileGO.GetComponent<AirSlashProjectilePresenter>();
+            // ✅ Renamed: AirSlashProjectilePresenter → ProjectilePresenter
+            ProjectilePresenter projectilePresenter =
+                projectileGO.GetComponent<ProjectilePresenter>();
 
             if (projectilePresenter == null)
             {
-                Debug.LogWarning("[WeaponSkillStaffSpecial] AirSlashProjectilePresenter " +
+                Debug.LogWarning("[WeaponSkillStaffSpecial] ProjectilePresenter " +
                                  "missing on projectile prefab!");
                 Destroy(projectileGO);
                 return;

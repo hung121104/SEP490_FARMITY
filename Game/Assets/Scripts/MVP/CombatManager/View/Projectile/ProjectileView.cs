@@ -3,11 +3,11 @@ using UnityEngine;
 namespace CombatManager.View
 {
     /// <summary>
-    /// View for AirSlash projectile.
+    /// View for all projectiles.
+    /// Renamed from AirSlashProjectileView → ProjectileView.
     /// Handles rotation visual only.
-    /// Hit detection is in Presenter.
     /// </summary>
-    public class AirSlashProjectileView : MonoBehaviour
+    public class ProjectileView : MonoBehaviour
     {
         [Header("References")]
         [SerializeField] private SpriteRenderer spriteRenderer;

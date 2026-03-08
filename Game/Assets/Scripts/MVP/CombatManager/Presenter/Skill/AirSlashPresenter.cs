@@ -44,23 +44,25 @@ namespace CombatManager.Presenter
                 Quaternion.identity
             );
 
-            AirSlashProjectileModel projectileModel = new AirSlashProjectileModel
+            // ✅ Renamed: AirSlashProjectileModel → ProjectileModel
+            ProjectileModel projectileModel = new ProjectileModel
             {
-                direction       = direction.normalized,
-                speed           = projectileSpeed,
-                maxRange        = projectileRange,
-                damage          = damage,
-                knockbackForce  = GetKnockbackForce(),
-                enemyLayers     = enemyLayers,
+                direction      = direction.normalized,
+                speed          = projectileSpeed,
+                maxRange       = projectileRange,
+                damage         = damage,
+                knockbackForce = GetKnockbackForce(),
+                enemyLayers    = enemyLayers,
                 playerTransform = playerTransform
             };
 
-            AirSlashProjectilePresenter projectilePresenter =
-                projectileGO.GetComponent<AirSlashProjectilePresenter>();
+            // ✅ Renamed: AirSlashProjectilePresenter → ProjectilePresenter
+            ProjectilePresenter projectilePresenter =
+                projectileGO.GetComponent<ProjectilePresenter>();
 
             if (projectilePresenter == null)
             {
-                Debug.LogWarning("[AirSlash] AirSlashProjectilePresenter missing on prefab!");
+                Debug.LogWarning("[AirSlash] ProjectilePresenter missing on prefab!");
                 Destroy(projectileGO);
                 return;
             }

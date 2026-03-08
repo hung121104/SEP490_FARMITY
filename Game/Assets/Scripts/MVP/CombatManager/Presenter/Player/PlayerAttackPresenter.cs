@@ -309,7 +309,6 @@ namespace CombatManager.Presenter
 
             // TODO: Staff combo system - currently single shot per click
             // Future: add staffComboSteps[] for multi-projectile patterns
-            // e.g. step 1 = single, step 2 = double, step 3 = burst
 
             Vector3 direction = pointerPresenter.GetPointerDirection().normalized;
 
@@ -319,23 +318,25 @@ namespace CombatManager.Presenter
                 Quaternion.identity
             );
 
-            AirSlashProjectileModel projectileModel = new AirSlashProjectileModel
+            // ✅ Renamed: AirSlashProjectileModel → ProjectileModel
+            ProjectileModel projectileModel = new ProjectileModel
             {
-                direction       = direction,
-                speed           = staffProjectileSpeed,
-                maxRange        = staffProjectileRange,
-                damage          = baseDamage,
-                knockbackForce  = staffKnockbackForce,
-                enemyLayers     = enemyLayers,
+                direction      = direction,
+                speed          = staffProjectileSpeed,
+                maxRange       = staffProjectileRange,
+                damage         = baseDamage,
+                knockbackForce = staffKnockbackForce,
+                enemyLayers    = enemyLayers,
                 playerTransform = localPlayerTransform
             };
 
-            AirSlashProjectilePresenter projectilePresenter =
-                projectileGO.GetComponent<AirSlashProjectilePresenter>();
+            // ✅ Renamed: AirSlashProjectilePresenter → ProjectilePresenter
+            ProjectilePresenter projectilePresenter =
+                projectileGO.GetComponent<ProjectilePresenter>();
 
             if (projectilePresenter == null)
             {
-                Debug.LogWarning("[PlayerAttackPresenter] AirSlashProjectilePresenter " +
+                Debug.LogWarning("[PlayerAttackPresenter] ProjectilePresenter " +
                                  "missing on NA_Staff prefab!");
                 Destroy(projectileGO);
                 return;
