@@ -11,10 +11,9 @@ namespace CombatManager.Presenter
 {
     /// <summary>
     /// Presenter for SkillManagement panel.
-    /// Mirrors SkillManagementPanel from CombatSystem (kept for legacy).
-    /// Manages: panel open/close, skill grid population,
-    /// drag preview, drag-to-hotbar equip.
-    /// NO script on Canvas - only on manager GameObject.
+    /// No longer depends on SkillDatabasePresenter.
+    /// Owns playerSkills list directly via Inspector.
+    /// WeaponSkills are NOT shown here - they live in WeaponDataSO.linkedSkill.
     /// </summary>
     public class SkillManagementPresenter : MonoBehaviour
     {
@@ -31,10 +30,13 @@ namespace CombatManager.Presenter
 
         [Header("Prefabs")]
         [SerializeField] private GameObject skillDisplayItemPrefab;
-        [SerializeField] private GameObject skillDragPreviewPrefab;
 
         [Header("Buttons")]
         [SerializeField] private Button closeButton;
+
+        [Header("Player Skills")]
+        [Tooltip("Assign all PlayerSkill SO assets here. WeaponSkills stay in WeaponDataSO.")]
+        [SerializeField] private List<SkillData> playerSkills = new List<SkillData>();
 
         #endregion
 
@@ -42,11 +44,6 @@ namespace CombatManager.Presenter
 
         private ISkillManagementService service;
         private List<SkillDisplayItemView> displayItems = new List<SkillDisplayItemView>();
-
-        // Drag preview image that follows mouse
-        private RectTransform dragPreviewRect;
-        private Image dragPreviewImage;
-        private Canvas rootCanvas;
 
         #endregion
 
@@ -66,22 +63,31 @@ namespace CombatManager.Presenter
                 return;
             }
             Instance = this;
-
             service = new SkillManagementService(model);
         }
 
         private void Start()
         {
-            rootCanvas = GetComponentInParent<Canvas>();
             SetupCloseButton();
-            SpawnDragPreview();
-            StartCoroutine(DelayedInitialize());
 
-            // Subscribe to CombatMode
+            // ✅ Debug: check list before initialize
+            Debug.Log($"[SkillManagementPresenter] playerSkills count: {playerSkills.Count}");
+            foreach (var s in playerSkills)
+                Debug.Log($"[SkillManagementPresenter] → {s?.skillName} | " +
+                          $"ownership={s?.skillOwnership} | IsPlayerSkill={s?.IsPlayerSkill}");
+
+            service.Initialize(playerSkills);
+            
+            // ✅ Debug: check after filter
+            Debug.Log($"[SkillManagementPresenter] After filter: " +
+                      $"{service.GetAllSkills().Count} skills");
+
+            PopulateGrid();
+
             CombatModePresenter.OnCombatModeChanged += OnCombatModeChanged;
-
-            // Start hidden
             SetPanelVisible(false);
+
+            Debug.Log("[SkillManagementPresenter] Initialized!");
         }
 
         private void Update()
@@ -98,41 +104,13 @@ namespace CombatManager.Presenter
 
         #region Initialization
 
-        private IEnumerator DelayedInitialize()
-        {
-            // Wait for SkillDatabasePresenter
-            for (int i = 0; i < 50; i++)
-            {
-                if (SkillDatabasePresenter.Instance != null
-                    && SkillDatabasePresenter.Instance.IsInitialized())
-                {
-                    List<SkillData> allSkills = SkillDatabasePresenter.Instance.GetAllSkills();
-                    service.Initialize(allSkills);
-                    PopulateGrid();
-                    Debug.Log("[SkillManagementPresenter] Initialized!");
-                    yield break;
-                }
-                yield return null;
-            }
-
-            Debug.LogError("[SkillManagementPresenter] SkillDatabasePresenter not found!");
-        }
-
         private void SetupCloseButton()
         {
             if (closeButton != null)
             {
                 closeButton.onClick.RemoveAllListeners();
                 closeButton.onClick.AddListener(HidePanel);
-                Debug.Log("[SkillManagementPresenter] Close button setup");
             }
-        }
-
-        private void SpawnDragPreview()
-        {
-            // ✅ No longer needed - item itself moves during drag
-            // Preview prefab kept in Inspector but not used
-            Debug.Log("[SkillManagementPresenter] Drag handled by item itself (no preview needed)");
         }
 
         #endregion
@@ -153,13 +131,14 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            // Clear old items
             displayItems.Clear();
             foreach (Transform child in skillGridContainer)
                 Destroy(child.gameObject);
 
-            // Spawn one item per skill
-            foreach (SkillData skill in service.GetAllSkills())
+            var skills = service.GetAllSkills();
+            Debug.Log($"[SkillManagementPresenter] PopulateGrid: {skills.Count} skills to show");
+
+            foreach (SkillData skill in skills)
                 CreateSkillItem(skill);
 
             Debug.Log($"[SkillManagementPresenter] Populated {displayItems.Count} skill items");
@@ -173,14 +152,12 @@ namespace CombatManager.Presenter
             SkillDisplayItemView view = itemGO.GetComponent<SkillDisplayItemView>();
             if (view == null)
             {
-                Debug.LogError($"[SkillManagementPresenter] SkillDisplayItemView missing on prefab!");
+                Debug.LogError("[SkillManagementPresenter] SkillDisplayItemView missing on prefab!");
                 Destroy(itemGO);
                 return;
             }
 
             view.Initialize(skillData);
-
-            // Hook up drag events
             view.OnBeginDragEvent += OnSkillBeginDrag;
             view.OnDragEvent      += OnSkillDrag;
             view.OnEndDragEvent   += OnSkillEndDrag;
@@ -199,28 +176,23 @@ namespace CombatManager.Presenter
             Debug.Log($"[SkillManagementPresenter] Begin drag: {item.GetSkillData().skillName}");
         }
 
-        private void OnSkillDrag(SkillDisplayItemView item)
-        {
-            // Item moves itself - nothing needed here
-        }
+        private void OnSkillDrag(SkillDisplayItemView item) { }
 
         private void OnSkillEndDrag(SkillDisplayItemView item)
         {
             TryDropOnHotbar(item.GetSkillData());
             service.ClearDraggingSkill();
-            Debug.Log($"[SkillManagementPresenter] End drag: {item.GetSkillData().skillName}");
         }
 
         private void TryDropOnHotbar(SkillData skillData)
         {
             if (SkillHotbarPresenter.Instance == null) return;
 
-            // ✅ Guard: weapon skills cannot be dragged to hotbar
+            // ✅ Extra safety guard - service already filters but double check
             if (skillData != null && skillData.IsWeaponSkill)
             {
                 Debug.LogWarning($"[SkillManagementPresenter] " +
-                                 $"'{skillData.skillName}' is a WeaponSkill - " +
-                                 $"cannot drag to hotbar!");
+                                 $"'{skillData.skillName}' is WeaponSkill - cannot drop here!");
                 return;
             }
 
@@ -231,7 +203,7 @@ namespace CombatManager.Presenter
             SkillHotbarPresenter.Instance.RefreshSlot(hoveredSlot);
 
             Debug.Log($"[SkillManagementPresenter] " +
-                      $"Dropped '{skillData?.skillName}' → Hotbar slot {hoveredSlot}");
+                      $"Dropped '{skillData?.skillName}' → slot {hoveredSlot}");
         }
 
         #endregion
@@ -240,16 +212,9 @@ namespace CombatManager.Presenter
 
         private void OnSkillSelected(SkillDisplayItemView item)
         {
-            // ✅ Guard: weapon skills cannot be auto-equipped to hotbar
-            if (item.GetSkillData().IsWeaponSkill)
-            {
-                Debug.LogWarning($"[SkillManagementPresenter] " +
-                                 $"'{item.GetSkillData().skillName}' is a WeaponSkill - " +
-                                 $"cannot equip to hotbar!");
-                return;
-            }
+            if (SkillHotbarPresenter.Instance == null) return;
 
-            int slotCount = SkillHotbarPresenter.Instance?.GetSlotCount() ?? 0;
+            int slotCount = SkillHotbarPresenter.Instance.GetSlotCount();
             for (int i = 0; i < slotCount; i++)
             {
                 if (SkillHotbarPresenter.Instance.IsSlotEmpty(i))
@@ -298,10 +263,6 @@ namespace CombatManager.Presenter
         {
             foreach (var item in displayItems)
                 item?.ForceResetState();
-
-            if (dragPreviewRect != null)
-                dragPreviewRect.gameObject.SetActive(false);
-
             service.ClearDraggingSkill();
         }
 
@@ -324,19 +285,15 @@ namespace CombatManager.Presenter
 
         private void OnCombatModeChanged(bool isActive)
         {
-            // Hide panel when combat mode changes
-            if (service.IsPanelOpen())
-                HidePanel();
-
-            Debug.Log($"[SkillManagementPresenter] Combat mode changed: {isActive}");
+            if (service.IsPanelOpen()) HidePanel();
         }
 
         #endregion
 
         #region Public API
 
-        public bool IsPanelOpen() => service.IsPanelOpen();
-        public bool IsAnySkillDragging() => service.IsAnySkillDragging();
+        public bool IsPanelOpen()           => service.IsPanelOpen();
+        public bool IsAnySkillDragging()    => service.IsAnySkillDragging();
         public SkillData GetDraggingSkill() => service.GetDraggingSkill();
 
         #endregion
