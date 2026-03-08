@@ -459,13 +459,13 @@ namespace CombatManager.Presenter
             switch (weaponType)
             {
                 case CombatManager.Model.WeaponType.Sword:
-                    WeaponSkillSwordSpecial.Instance?.TryExecute();
+                    WeaponSkillSwordSpecial.Instance?.TriggerSkill(); // ✅ was TryExecute()
                     break;
                 case CombatManager.Model.WeaponType.Spear:
-                    WeaponSkillSpearSpecial.Instance?.TryExecute();
+                    WeaponSkillSpearSpecial.Instance?.TriggerSkill(); // ✅ was TryExecute()
                     break;
                 case CombatManager.Model.WeaponType.Staff:
-                    WeaponSkillStaffSpecial.Instance?.TryExecute();
+                    WeaponSkillStaffSpecial.Instance?.TriggerSkill(); // ✅ was TryExecute()
                     break;
                 default:
                     Debug.LogWarning($"[SkillHotbarPresenter] No weapon skill for: {weaponType}");
@@ -480,21 +480,27 @@ namespace CombatManager.Presenter
             var weaponType = WeaponEquipPresenter.Instance?.GetCurrentWeaponType()
                              ?? CombatManager.Model.WeaponType.None;
 
-            float cooldownPercent = 0f;
+            // ✅ Get the correct skill presenter based on weapon type
+            SkillPresenter weaponSkill = null;
             switch (weaponType)
             {
                 case CombatManager.Model.WeaponType.Sword:
-                    cooldownPercent = WeaponSkillSwordSpecial.Instance?.GetCooldownPercent() ?? 0f;
+                    weaponSkill = WeaponSkillSwordSpecial.Instance;
                     break;
                 case CombatManager.Model.WeaponType.Spear:
-                    cooldownPercent = WeaponSkillSpearSpecial.Instance?.GetCooldownPercent() ?? 0f;
+                    weaponSkill = WeaponSkillSpearSpecial.Instance;
                     break;
                 case CombatManager.Model.WeaponType.Staff:
-                    cooldownPercent = WeaponSkillStaffSpecial.Instance?.GetCooldownPercent() ?? 0f;
+                    weaponSkill = WeaponSkillStaffSpecial.Instance;
                     break;
             }
 
-            weaponSkillSlotView.UpdateCooldown(cooldownPercent);
+            // ✅ Same pattern as UpdateCooldownFills() - check IsCoolingDown() first!
+            float fill = (weaponSkill != null && weaponSkill.IsCoolingDown())
+                ? 1f - weaponSkill.GetCooldownPercent()
+                : 0f;
+
+            weaponSkillSlotView.UpdateCooldown(fill);
         }
 
         #endregion
