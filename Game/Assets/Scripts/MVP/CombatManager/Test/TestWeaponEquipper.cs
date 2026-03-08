@@ -12,26 +12,31 @@ namespace CombatManager.Test
     public class TestWeaponEquipper : MonoBehaviour
     {
         [Header("Test Weapons - Assign in Inspector")]
-        [SerializeField] private WeaponDataSO testSword;
-        [SerializeField] private WeaponDataSO testStaff;
+        [SerializeField] private WeaponDataSO testSwordBronze;
+        [SerializeField] private WeaponDataSO testSwordIron;
         [SerializeField] private WeaponDataSO testSpear;
+        [SerializeField] private WeaponDataSO testStaff;
 
         [Header("Hotkeys")]
-        [SerializeField] private KeyCode equipSwordKey = KeyCode.Alpha7;
-        [SerializeField] private KeyCode equipStaffKey = KeyCode.Alpha8;
-        [SerializeField] private KeyCode equipSpearKey = KeyCode.Alpha9;
-        [SerializeField] private KeyCode unequipKey = KeyCode.Alpha0;
+        [SerializeField] private KeyCode equipSwordBronzeKey = KeyCode.Alpha4;
+        [SerializeField] private KeyCode equipSwordIronKey   = KeyCode.Alpha5;
+        [SerializeField] private KeyCode equipSpearKey       = KeyCode.Alpha6;
+        [SerializeField] private KeyCode equipStaffKey       = KeyCode.Alpha7;
+        [SerializeField] private KeyCode unequipKey          = KeyCode.Alpha8;
 
         private void Update()
         {
-            if (Input.GetKeyDown(equipSwordKey))
-                TryEquip(testSword, "Sword");
+            if (Input.GetKeyDown(equipSwordBronzeKey))
+                TryEquip(testSwordBronze, "Sword Bronze");
 
-            if (Input.GetKeyDown(equipStaffKey))
-                TryEquip(testStaff, "Staff");
+            if (Input.GetKeyDown(equipSwordIronKey))
+                TryEquip(testSwordIron, "Sword Iron");
 
             if (Input.GetKeyDown(equipSpearKey))
                 TryEquip(testSpear, "Spear");
+
+            if (Input.GetKeyDown(equipStaffKey))
+                TryEquip(testStaff, "Staff");
 
             if (Input.GetKeyDown(unequipKey))
                 TryUnequip();
@@ -67,13 +72,13 @@ namespace CombatManager.Test
 
         private void OnGUI()
         {
-            // Debug overlay in Game view
-            GUILayout.BeginArea(new Rect(10, 10, 300, 120));
+            GUILayout.BeginArea(new Rect(10, 10, 300, 150));
             GUILayout.Label("=== TEST WEAPON EQUIPPER ===");
-            GUILayout.Label($"[{equipSwordKey}] Equip Sword");
-            GUILayout.Label($"[{equipStaffKey}] Equip Staff");
-            GUILayout.Label($"[{equipSpearKey}] Equip Spear");
-            GUILayout.Label($"[{unequipKey}] Unequip");
+            GUILayout.Label($"[{equipSwordBronzeKey}] Equip Sword Bronze");
+            GUILayout.Label($"[{equipSwordIronKey}]   Equip Sword Iron");
+            GUILayout.Label($"[{equipSpearKey}]   Equip Spear");
+            GUILayout.Label($"[{equipStaffKey}]   Equip Staff");
+            GUILayout.Label($"[{unequipKey}]   Unequip");
 
             if (WeaponEquipPresenter.Instance != null)
             {
