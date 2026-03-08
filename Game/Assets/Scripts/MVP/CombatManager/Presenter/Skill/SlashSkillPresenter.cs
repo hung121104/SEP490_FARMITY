@@ -12,7 +12,7 @@ namespace CombatManager.Presenter
     /// Attach ONE instance to CombatSystem GameObject.
     /// SkillHotbarPresenter finds this by SkillCategory.Slash.
     /// </summary>
-    public class SlashSkillPresenter : SkillPresenter
+    public class SlashSkillPresenter : SkillPatternPresenter  // ✅ was SkillPresenter
     {
         public static SlashSkillPresenter Instance { get; private set; }
 

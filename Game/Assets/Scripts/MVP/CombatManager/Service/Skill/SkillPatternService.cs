@@ -4,22 +4,19 @@ using CombatManager.Model;
 namespace CombatManager.Service
 {
     /// <summary>
-    /// Service layer for skill logic.
+    /// Service for the skill execution pattern.
     /// Handles cooldown tracking and trigger validation.
-    /// Injected into SkillPresenter.
+    /// Injected into SkillPatternPresenter.
+    /// Pattern = press → charge → roll → confirm/cancel → execute
     /// </summary>
-    public class SkillService : ISkillService
+    public class SkillPatternService : ISkillPatternService
     {
-        private SkillModel model;
+        private SkillPatternModel model;
 
-        #region Constructor
-
-        public SkillService(SkillModel model)
+        public SkillPatternService(SkillPatternModel model)
         {
             this.model = model;
         }
-
-        #endregion
 
         #region Cooldown
 
@@ -32,18 +29,12 @@ namespace CombatManager.Service
         public void StartCooldown()
         {
             model.skillTimer = model.skillCooldown;
-            Debug.Log($"[SkillService] Cooldown started: {model.skillCooldown}s");
+            Debug.Log($"[SkillPatternService] Cooldown started: {model.skillCooldown}s");
         }
 
-        public bool IsCoolingDown()
-        {
-            return model.skillTimer > 0f;
-        }
+        public bool IsCoolingDown() => model.skillTimer > 0f;
 
-        public float GetCooldownPercent()
-        {
-            return model.CooldownPercent;
-        }
+        public float GetCooldownPercent() => model.CooldownPercent;
 
         #endregion
 
@@ -60,16 +51,13 @@ namespace CombatManager.Service
 
         #region State
 
-        public void SetState(SkillState state)
+        public void SetState(SkillPatternState state)
         {
             model.currentState = state;
-            Debug.Log($"[SkillService] State → {state}");
+            Debug.Log($"[SkillPatternService] State → {state}");
         }
 
-        public SkillState GetState()
-        {
-            return model.currentState;
-        }
+        public SkillPatternState GetState() => model.currentState;
 
         #endregion
     }
