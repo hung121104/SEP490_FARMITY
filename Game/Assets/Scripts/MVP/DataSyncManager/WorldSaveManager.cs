@@ -56,6 +56,9 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
     private float _timer     = 0f;
     private bool  _isSaving  = false;
+
+    /// <summary>True while a save coroutine is running.</summary>
+    public bool IsSaving => _isSaving;
     private bool  _quitSent  = false;
 
     // ──────────────────────────────────────────────────── Unity lifecycle

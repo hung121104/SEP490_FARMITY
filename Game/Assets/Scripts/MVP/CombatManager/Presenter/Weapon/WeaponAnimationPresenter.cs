@@ -1,0 +1,283 @@
+using UnityEngine;
+using Photon.Pun;
+using System.Collections;
+using CombatManager.Model;
+using CombatManager.Service;
+using CombatManager.View;
+using CombatManager.SO;
+
+namespace CombatManager.Presenter
+{
+    /// <summary>
+    /// Presenter for Weapon Animation system.
+    /// Phase 3: Now accepts weapon prefab from WeaponDataSO.
+    /// Spawns correct prefab per weapon type.
+    /// </summary>
+    public class WeaponAnimationPresenter : MonoBehaviour
+    {
+        public static WeaponAnimationPresenter Instance { get; private set; }
+
+        [Header("Model")]
+        [SerializeField] private WeaponAnimationModel model = new WeaponAnimationModel();
+
+        [Header("Fallback Prefab (if weapon has no prefab assigned)")]
+        [SerializeField] private GameObject fallbackWeaponPrefab;
+
+        [Header("Position Settings")]
+        [SerializeField] private Vector3 anchorOffset = Vector3.zero;
+        [SerializeField] private Vector3 gripLocalOffset = Vector3.zero;
+
+        [Header("Rotation Settings")]
+        [Tooltip("If sword sprite points RIGHT at 0°, keep 0. If points UP, set -90.")]
+        [SerializeField] private float rotationOffsetDegrees = 0f;
+
+        private IWeaponAnimationService service;
+
+        // ✅ NEW: Track current weapon SO
+        private WeaponDataSO currentWeaponData;
+
+        #region Unity Lifecycle
+
+        private void Awake()
+        {
+            if (Instance == null)
+                Instance = this;
+            else
+            {
+                Debug.LogWarning("[WeaponAnimationPresenter] Duplicate instance found, destroying");
+                Destroy(gameObject);
+                return;
+            }
+        }
+
+        private void Start()
+        {
+            SubscribeToCombatModeEvents();
+            SubscribeToWeaponEquipEvents(); // ✅ NEW
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribeFromCombatModeEvents();
+            UnsubscribeFromWeaponEquipEvents(); // ✅ NEW
+
+            if (Instance == this)
+                Instance = null;
+        }
+
+        #endregion
+
+        #region Combat Mode Events
+
+        private void SubscribeToCombatModeEvents()
+        {
+            if (CombatModePresenter.Instance != null)
+                CombatModePresenter.Instance.RegisterCallback(OnCombatModeChanged);
+            else
+                Debug.LogWarning("[WeaponAnimationPresenter] CombatModePresenter.Instance not found");
+        }
+
+        private void UnsubscribeFromCombatModeEvents()
+        {
+            if (CombatModePresenter.Instance != null)
+                CombatModePresenter.Instance.UnregisterCallback(OnCombatModeChanged);
+        }
+
+        private void OnCombatModeChanged(bool isActive)
+        {
+            if (!isActive)
+                DespawnWeapon();
+
+            // ✅ Don't spawn here anymore - weapon equip event handles spawning
+            // OnCombatModeChanged only handles DESPAWN on combat OFF
+        }
+
+        #endregion
+
+        #region Weapon Equip Events - NEW
+
+        private void SubscribeToWeaponEquipEvents()
+        {
+            WeaponEquipPresenter.OnWeaponEquipped += OnWeaponEquipped;
+            WeaponEquipPresenter.OnWeaponUnequipped += OnWeaponUnequipped;
+        }
+
+        private void UnsubscribeFromWeaponEquipEvents()
+        {
+            WeaponEquipPresenter.OnWeaponEquipped -= OnWeaponEquipped;
+            WeaponEquipPresenter.OnWeaponUnequipped -= OnWeaponUnequipped;
+        }
+
+        private void OnWeaponEquipped(WeaponDataSO weaponData)
+        {
+            if (weaponData == null)
+            {
+                Debug.LogWarning("[WeaponAnimationPresenter] Equipped weapon data is null!");
+                return;
+            }
+
+            currentWeaponData = weaponData;
+
+            Debug.Log($"[WeaponAnimationPresenter] Weapon equipped: {weaponData.weaponName} " +
+                      $"({weaponData.weaponType}) → spawning prefab");
+
+            // Despawn old weapon first
+            DespawnWeapon();
+
+            // Reset service so it reinitializes with new prefab
+            service = null;
+            model.isInitialized = false;
+
+            // Spawn new weapon
+            StartCoroutine(SpawnWhenPlayerReady());
+        }
+
+        private void OnWeaponUnequipped()
+        {
+            currentWeaponData = null;
+            DespawnWeapon();
+            Debug.Log("[WeaponAnimationPresenter] Weapon unequipped → despawned");
+        }
+
+        #endregion
+
+        #region Initialization
+
+        private IEnumerator SpawnWhenPlayerReady()
+        {
+            float timeout = 5f;
+            float elapsed = 0f;
+
+            while (elapsed < timeout)
+            {
+                if (TryInitializeService())
+                {
+                    SpawnWeapon();
+                    yield break;
+                }
+
+                elapsed += 0.1f;
+                yield return new WaitForSeconds(0.1f);
+            }
+
+            Debug.LogError("[WeaponAnimationPresenter] Could not find local player/center point");
+        }
+
+        private bool TryInitializeService()
+        {
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+                mainCamera = FindObjectOfType<Camera>();
+
+            GameObject playerObj = FindLocalPlayerEntity();
+            if (playerObj == null)
+                return false;
+
+            Transform centerPoint = playerObj.transform.Find("CenterPoint");
+            if (centerPoint == null)
+                centerPoint = playerObj.transform;
+
+            // ✅ Use weapon prefab from WeaponDataSO first, fallback to inspector prefab
+            GameObject prefabToUse = null;
+
+            if (currentWeaponData != null && currentWeaponData.weaponPrefab != null)
+            {
+                prefabToUse = currentWeaponData.weaponPrefab;
+                Debug.Log($"[WeaponAnimationPresenter] Using weapon prefab: {prefabToUse.name} " +
+                          $"for {currentWeaponData.weaponType}");
+            }
+            else if (fallbackWeaponPrefab != null)
+            {
+                prefabToUse = fallbackWeaponPrefab;
+                Debug.LogWarning($"[WeaponAnimationPresenter] No weapon prefab in WeaponDataSO, " +
+                                 $"using fallback: {fallbackWeaponPrefab.name}");
+            }
+            else
+            {
+                Debug.LogError("[WeaponAnimationPresenter] No weapon prefab available!");
+                return false;
+            }
+
+            service = new WeaponAnimationService(model);
+            service.Initialize(
+                prefabToUse,
+                centerPoint,
+                mainCamera,
+                anchorOffset,
+                gripLocalOffset,
+                rotationOffsetDegrees
+            );
+
+            Debug.Log("[WeaponAnimationPresenter] Initialized successfully");
+            return true;
+        }
+
+        private GameObject FindLocalPlayerEntity()
+        {
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine)
+                    return go;
+            }
+
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine)
+                    return go;
+            }
+
+            GameObject fallback = GameObject.Find("PlayerEntity");
+            if (fallback != null)
+            {
+                Debug.LogWarning("[WeaponAnimationPresenter] Found PlayerEntity by name");
+                return fallback;
+            }
+
+            return null;
+        }
+
+        #endregion
+
+        #region Weapon Management
+
+        public void SpawnWeapon()
+        {
+            if (service == null || !service.IsInitialized())
+            {
+                Debug.LogWarning("[WeaponAnimationPresenter] Cannot spawn - service not initialized");
+                return;
+            }
+
+            service.SpawnWeapon();
+        }
+
+        public void DespawnWeapon()
+        {
+            service?.DespawnWeapon();
+        }
+
+        #endregion
+
+        #region Public API
+
+        public void PlayAttackAnimation()
+        {
+            service?.PlayAttackAnimation();
+        }
+
+        public bool IsWeaponActive() => service?.IsWeaponActive() ?? false;
+        public bool IsInitialized() => service?.IsInitialized() ?? false;
+        public Vector3 GetMouseDirection() => service?.CalculateMouseDirection() ?? Vector3.right;
+        public float GetRotationAngle(Vector3 direction) => service?.CalculateRotationAngle(direction) ?? 0f;
+        public GameObject GetPivotRoot() => service?.GetPivotRoot();
+        public Transform GetCenterPoint() => service?.GetCenterPoint();
+        public IWeaponAnimationService GetService() => service;
+
+        // ✅ NEW
+        public WeaponDataSO GetCurrentWeaponData() => currentWeaponData;
+
+        #endregion
+    }
+}

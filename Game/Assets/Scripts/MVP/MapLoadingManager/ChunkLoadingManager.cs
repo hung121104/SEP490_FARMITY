@@ -499,6 +499,15 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     }
     
     /// <summary>
+    /// Close the room when the master client leaves instead of transferring mastership.
+    /// </summary>
+    public override void OnMasterClientSwitched(Photon.Realtime.Player newMasterClient)
+    {
+        Debug.Log("[ChunkLoading] Master client left — closing room.");
+        PhotonNetwork.LeaveRoom();
+    }
+
+    /// <summary>
     /// Handle player leaving room
     /// </summary>
     public override void OnPlayerLeftRoom(Photon.Realtime.Player otherPlayer)
