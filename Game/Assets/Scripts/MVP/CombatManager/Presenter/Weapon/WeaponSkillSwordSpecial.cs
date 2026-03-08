@@ -108,6 +108,14 @@ namespace CombatManager.Presenter
                 Quaternion.Euler(0f, 0f, angle)
             );
 
+            // ✅ Same flip fix as normal attack
+            if (direction.x < 0)
+            {
+                Vector3 scale = vfxObj.transform.localScale;
+                scale.y *= -1;
+                vfxObj.transform.localScale = scale;
+            }
+
             SlashHitboxPresenter hitbox = vfxObj.GetComponent<SlashHitboxPresenter>();
             if (hitbox != null)
             {

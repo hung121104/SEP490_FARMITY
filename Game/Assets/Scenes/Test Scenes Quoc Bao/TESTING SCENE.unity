@@ -2114,23 +2114,39 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0db12a59e12509546ae5a57fb2f1b7f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cooldownDuration: 4
+  model:
+    currentState: 0
+    isExecuting: 0
+    currentDiceRoll: 0
+    targetDirection: {x: 1, y: 0, z: 0}
+    skillTimer: 0
+    confirmKey: 101
+    cancelKey: 113
+    skillCooldown: 3
+    chargeDuration: 0.2
+    rollDisplayDuration: 0.4
+    skillTier: 6
+    skillMultiplier: 1.5
+    enemyLayers:
+      serializedVersion: 2
+      m_Bits: 0
+    blockAttackDamage: 0
+  skillCooldown: 3
   chargeDuration: 0.3
+  rollDisplayDuration: 0.4
+  skillTier: 6
   skillMultiplier: 2.5
-  diceTier: 6
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 128
   confirmKey: 101
   cancelKey: 113
   spearSpecialVFXPrefab: {fileID: 5107333870897779412, guid: 0481bbbf804bcf345bb4f651c214287c, type: 3}
   vfxDuration: 0.5
   vfxSpawnOffset: 0
   vfxPositionOffset: {x: 0, y: 0}
-  enemyLayers:
-    serializedVersion: 2
-    m_Bits: 128
   knockbackForce: 7
   damagePopupPrefab: {fileID: 0}
-  statsPresenter: {fileID: 0}
-  pointerPresenter: {fileID: 0}
 --- !u!1 &488476552
 GameObject:
   m_ObjectHideFlags: 0
@@ -3287,23 +3303,39 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b54ea2d63f6450d4aa7861db857032d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cooldownDuration: 3
+  model:
+    currentState: 0
+    isExecuting: 0
+    currentDiceRoll: 0
+    targetDirection: {x: 1, y: 0, z: 0}
+    skillTimer: 0
+    confirmKey: 101
+    cancelKey: 113
+    skillCooldown: 3
+    chargeDuration: 0.2
+    rollDisplayDuration: 0.4
+    skillTier: 6
+    skillMultiplier: 1.5
+    enemyLayers:
+      serializedVersion: 2
+      m_Bits: 0
+    blockAttackDamage: 0
+  skillCooldown: 3
   chargeDuration: 0.3
+  rollDisplayDuration: 0.4
+  skillTier: 6
   skillMultiplier: 2
-  diceTier: 6
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 128
   confirmKey: 101
   cancelKey: 113
   swordSpecialVFXPrefab: {fileID: 5107333870897779412, guid: 1244261c77c709b43a4c449b37ae4157, type: 3}
   vfxDuration: 0.5
   vfxSpawnOffset: 1.2
   vfxPositionOffset: {x: 0, y: 0}
-  enemyLayers:
-    serializedVersion: 2
-    m_Bits: 128
   knockbackForce: 5
   damagePopupPrefab: {fileID: 0}
-  statsPresenter: {fileID: 0}
-  pointerPresenter: {fileID: 0}
 --- !u!1 &835463492
 GameObject:
   m_ObjectHideFlags: 0
@@ -21457,21 +21489,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c45cd3abfc4d6c43aed9718f089c8ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cooldownDuration: 5
+  model:
+    currentState: 0
+    isExecuting: 0
+    currentDiceRoll: 0
+    targetDirection: {x: 1, y: 0, z: 0}
+    skillTimer: 0
+    confirmKey: 101
+    cancelKey: 113
+    skillCooldown: 3
+    chargeDuration: 0.2
+    rollDisplayDuration: 0.4
+    skillTier: 6
+    skillMultiplier: 1.5
+    enemyLayers:
+      serializedVersion: 2
+      m_Bits: 0
+    blockAttackDamage: 0
+  skillCooldown: 3
   chargeDuration: 0.3
+  rollDisplayDuration: 0.4
+  skillTier: 6
   skillMultiplier: 2
-  diceTier: 6
+  enemyLayers:
+    serializedVersion: 2
+    m_Bits: 128
   confirmKey: 101
   cancelKey: 113
   projectilePrefab: {fileID: 2996777577814843754, guid: 361c72b4eb57a1243b47af566d1f9693, type: 3}
   projectileSpeed: 10
   projectileRange: 8
-  knockbackForce: 5
-  enemyLayers:
-    serializedVersion: 2
-    m_Bits: 128
-  statsPresenter: {fileID: 0}
-  pointerPresenter: {fileID: 0}
+  projectileKnockback: 5
 --- !u!1 &1512877386
 GameObject:
   m_ObjectHideFlags: 0
@@ -21995,9 +22043,6 @@ MonoBehaviour:
   verticalVFXPrefab: {fileID: 8171461803801935278, guid: c6fdd417ce7c04540be8aa6077fdfe75, type: 3}
   damagePopupPrefab: {fileID: 0}
   staffProjectilePrefab: {fileID: 2996777577814843754, guid: e6b7c2b9f03fde44f88cf4cf1ab958ce, type: 3}
-  staffProjectileSpeed: 15
-  staffProjectileRange: 8
-  staffKnockbackForce: 5
   enemyLayers:
     serializedVersion: 2
     m_Bits: 128

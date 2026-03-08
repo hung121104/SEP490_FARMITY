@@ -6,42 +6,43 @@ namespace CombatManager.SO
     [CreateAssetMenu(fileName = "Weapon_", menuName = "Combat/Weapon Data")]
     public class WeaponDataSO : ScriptableObject
     {
-        [Header("Identity")]
-        public string weaponName = "Unnamed Weapon";
+        [Header("Item Identity")]
         public string weaponId = "";
-        public WeaponType weaponType = WeaponType.None;
-
-        [Header("Visual")]
+        public string weaponName = "Unnamed Weapon";
+        [TextArea(2, 4)]
+        public string weaponDescription = "";
         public Sprite weaponIcon;
-        [Tooltip("Prefab with SpriteRenderer + Animator. One per weapon TYPE + TIER.")]
+
+        [Header("Item System")]
+        // ✅ Added for item hotbar compatibility
+        public string itemType = "Weapon";
+        public string itemCategory = "Equipment";
+        public bool isStackable = false;
+        public int maxStack = 1;
+
+        [Header("Weapon Identity")]
+        public WeaponType weaponType = WeaponType.None;
+        [Tooltip("Prefab with SpriteRenderer + Animator.")]
         public GameObject weaponPrefab;
 
         [Header("Stats")]
         public int damage = 10;
-        [Tooltip("1 = Bronze/Wooden, 2 = Iron, 3 = Steel/Crystal, 4 = Legendary")]
+        [Tooltip("1=Bronze/Wooden 2=Iron 3=Steel/Crystal 4=Legendary")]
         public int tier = 1;
+        // ✅ Added for item system compatibility
+        public int critChance = 5;
 
         [Header("Attack Behaviour")]
-        [Tooltip("Seconds between normal attacks. Lower = faster.")]
         public float attackCooldown = 0.5f;
-        [Tooltip("Force applied to enemy on hit.")]
         public float knockbackForce = 5f;
 
         [Header("Projectile Settings (Staff only)")]
-        [Tooltip("How fast the projectile travels.")]
         public float projectileSpeed = 10f;
-        [Tooltip("How far the projectile travels before despawning.")]
         public float projectileRange = 8f;
-        [Tooltip("Knockback force applied by projectile hit.")]
         public float projectileKnockback = 4f;
 
         [Header("Skill")]
-        [Tooltip("The skill unlocked when this weapon is equipped.")]
         public SkillData linkedSkill;
-
-        [Header("Description")]
-        [TextArea(2, 4)]
-        public string weaponDescription = "";
 
         #region Validation
 
