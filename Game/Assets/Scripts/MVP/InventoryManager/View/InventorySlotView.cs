@@ -23,6 +23,7 @@ public class InventorySlotView : MonoBehaviour,
 
     // State tracking
     private bool isHovering = false;
+    private bool isDragging = false;
 
     // Events
     public event Action<int> OnClickedRequested;
@@ -87,11 +88,30 @@ public class InventorySlotView : MonoBehaviour,
         UpdateHighlight();
     }
 
-    //Force reset hover state 
+    //Force reset hover and drag state 
     public void ForceResetState()
     {
         isHovering = false;
+        isDragging = false;
         UpdateHighlight();
+
+        // Restore slot visuals in case drag was interrupted
+        if (currentItem != null)
+        {
+            SetSlotVisuals(true);
+        }
+    }
+
+    /// <summary>
+    /// Show or hide the icon and quantity text in this slot.
+    /// </summary>
+    private void SetSlotVisuals(bool visible)
+    {
+        if (iconImage != null)
+            iconImage.enabled = visible && currentItem != null;
+
+        if (quantityText != null)
+            quantityText.enabled = visible && currentItem != null && currentItem.IsStackable && currentItem.Quantity > 1;
     }
 
     private void UpdateHighlight()
@@ -103,6 +123,7 @@ public class InventorySlotView : MonoBehaviour,
     }
 
     public int GetSlotIndex() => slotIndex;
+    public bool IsDragging => isDragging;
     #endregion
 
     public ItemModel GetCurrentItem() => currentItem;
@@ -118,16 +139,21 @@ public class InventorySlotView : MonoBehaviour,
     {
         if (currentItem != null)
         {
+            isDragging = true;
             // Hide highlight during drag
             isHovering = false;
             UpdateHighlight();
+
+            // Hide icon and quantity in slot while dragging
+            SetSlotVisuals(false);
+
             OnBeginDragRequested?.Invoke(slotIndex);
         }
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (currentItem != null)
+        if (isDragging)
         {
             OnDragRequested?.Invoke(eventData.position);
         }
@@ -135,8 +161,16 @@ public class InventorySlotView : MonoBehaviour,
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        if (currentItem != null)
+        if (isDragging)
         {
+            isDragging = false;
+
+            // Restore icon and quantity after drag ends
+            if (currentItem != null)
+            {
+                SetSlotVisuals(true);
+            }
+
             OnEndDragRequested?.Invoke();
         }
     }

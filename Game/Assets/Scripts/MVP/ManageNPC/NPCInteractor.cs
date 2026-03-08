@@ -1,9 +1,9 @@
-﻿using UnityEngine;
-using System.Collections.Generic;
+﻿    using UnityEngine;
+    using System.Collections.Generic;
 
 public class NPCInteractor : MonoBehaviour
 {
-    private PlayerMovement playerMovement;   
+    private PlayerMovement playerMovement;
     [SerializeField] private NPCDialogueView dialogueView;
     [SerializeField] private NPCDialogueModel dialogueModel;
     [Header("Input Settings")]
@@ -11,34 +11,340 @@ public class NPCInteractor : MonoBehaviour
     [Header("Option Keys")]
     [SerializeField]
     private List<KeyCode> optionKeys = new List<KeyCode>
-    {
-        KeyCode.Alpha1,
-        KeyCode.Alpha2,
-        KeyCode.Alpha3
-    };
+        {
+            KeyCode.Alpha1,
+            KeyCode.Alpha2,
+            KeyCode.Alpha3
+        };
+    [Header("Gameplay Systems")]
+    [SerializeField] private MonoBehaviour hotbarScript;
+    [Header("Relationship")]
+    [SerializeField] private NPCRelationshipModel relationshipModel;
+    [Header("Gift System")]
+    [SerializeField] private GiftDatabaseSO giftDatabase;
+    [Header("Inventory")]
+    [SerializeField] private InventoryGameView inventoryGameView;
+    [SerializeField] private InventoryView inventoryView;
+    [SerializeField] private GameObject inventoryMenuRoot;
+    [SerializeField] private SpriteRenderer spriteRenderer;
+
+    [Header("Quest System")]
+    [SerializeField] private QuestView questView;
+    [SerializeField] private QuestDatabase questDatabase;
+    [SerializeField] private int questIndex;
+    [SerializeField] private QuestLogController questLogController;
+
+    private IQuestService questService;
+    private QuestPresenter questPresenter;
+    private GiftPresenter giftPresenter;
+    private DialogueNode interactionNode;
+    private NPCState currentState = NPCState.Idle;
     private NPCDialoguePresenter presenter;
     private bool playerInRange;
+    private bool blockInteractOnce;
+    private enum NPCState
+    {
+        Idle,
+        InteractionMenu,
+        Dialogue,
+        Gift,
+        Quest,
+        SimpleDialogue
+    }
     private void Awake()
     {
+        inventoryGameView.GetInventoryService().OnInventoryChanged += UpdateQuestObjectives;
+        // Dialogue Service
         INPCDialogueService service = new NPCDialogueService(dialogueModel);
-        presenter = new NPCDialoguePresenter(service, dialogueView);
+
+        // Quest Service
+        questService = QuestManager.QuestService;
+
+        if (questDatabase != null &&
+         questDatabase.quests.Length > 0 &&
+         questIndex < questDatabase.quests.Length)
+        {
+            questPresenter = new QuestPresenter(
+             questView,
+            questService,
+             inventoryGameView.GetInventoryService(),
+             questDatabase.quests[questIndex],
+            dialogueModel.npcName,
+            dialogueModel.avatar
+                );
+        }
+    
+
+        // Dialogue Presenter
+        presenter = new NPCDialoguePresenter(
+            service,
+            dialogueView,
+            questPresenter
+        );
+
+        CreateInteractionNode();
+
     }
     private void Update()
     {
         if (!playerInRange) return;
-        // Dialogue not started yet
-        if (!presenter.IsDialogueActive())
+
+        // =====================
+        // IDLE → Press E to open menu
+        // =====================
+        if (currentState == NPCState.Idle)
         {
+            if (blockInteractOnce)
+            {
+                blockInteractOnce = false;
+                return;
+            }
+
             if (Input.GetKeyDown(interactKey))
             {
-                if (playerMovement != null)
-                    playerMovement.enabled = false;
-
-                presenter.StartDialogue();
+                ShowInteractionMenu();
             }
             return;
         }
-        // If text is typing → press E to skip
+
+        // =====================
+        // INTERACTION MENU
+        // =====================
+        if (currentState == NPCState.InteractionMenu)
+        {
+            HandleInteractionMenuInput();
+            return;
+        }
+
+        // =====================
+        // GIFT STATE
+        // =====================
+        if (currentState == NPCState.Gift)
+        {
+            giftPresenter?.Update();
+            return;
+        }
+
+        // =====================
+        // SIMPLE DIALOGUE
+        // =====================
+        if (currentState == NPCState.SimpleDialogue)
+        {
+            if (Input.GetKeyDown(interactKey))
+            {
+                dialogueView.Hide();
+                UnlockPlayer();
+                currentState = NPCState.Idle;
+                blockInteractOnce = true;
+            }
+
+            return;
+        }
+
+        // =====================
+        // DIALOGUE STATE
+        // =====================
+        if (currentState == NPCState.Dialogue)
+        {
+            HandleDialogueUpdate();
+            return;
+        }
+
+        // =====================
+        // QUEST STATE
+        // =====================
+        if (currentState == NPCState.Quest)
+        {
+            HandleOptionInput();
+            return;
+        }
+    }
+    private void HandleInteractionMenuInput()
+    {
+        for (int i = 0; i < interactionNode.options.Count; i++)
+        {
+            if (i < optionKeys.Count && Input.GetKeyDown(optionKeys[i]))
+            {
+                if (i == 0) // talk
+                {
+                    dialogueView.Hide();
+                    currentState = NPCState.Dialogue;
+                    presenter.StartDialogue();
+                }
+                else if (i == 1) // GIFT
+                {
+                    dialogueView.Hide();
+                    currentState = NPCState.Gift;
+                    StartGiftMode();
+                }
+                else if (i == 2) // QUEST
+                {
+                    dialogueView.Hide();
+
+                    QuestModel quest = questDatabase.quests[questIndex];
+
+                    // QUEST not taken
+                    if (!questService.HasQuest(quest.questId))
+                    {
+                        // nếu quest cuối đã xong
+                        if (string.IsNullOrEmpty(quest.nextQuestId) && questService.IsQuestTurnedIn(quest.questId))
+                        {
+                            ShowSimpleDialogue("Thanks, but I don’t have anything else for you to do.");
+                            return;
+                        }
+
+                        currentState = NPCState.Quest;
+                        questPresenter?.ShowQuest();
+                    }
+
+                    // QUEST doing active
+                    else if (questService.IsQuestActive(quest.questId))
+                    {
+                        var inventory = inventoryGameView.GetInventoryService();
+
+                        foreach (var obj in quest.objectives)
+                        {
+                            if (obj.type == ObjectiveType.CollectItem)
+                            {
+                                int count = inventory.GetItemCount(obj.itemId);
+
+                                questService.UpdateObjective(obj.objectiveId, count);
+                            }
+                        }
+
+                        // check if all objectives are completed
+                        if (questService.IsQuestCompleted(quest.questId))
+                        {
+                            bool success = questService.SubmitQuestItems(
+                                quest.questId,
+                                inventory
+                            );
+
+                            if (success)
+                            {
+                                questService.GiveReward(quest.questId, inventory);
+                                questService.CompleteQuest(quest.questId);
+
+                                // QUEST CHAIN
+                                if (!string.IsNullOrEmpty(quest.nextQuestId))
+                                {
+                                    int nextIndex = questDatabase.GetQuestIndex(quest.nextQuestId);
+
+                                    if (nextIndex != -1)
+                                    {
+                                        questIndex = nextIndex;
+
+                                        QuestModel nextQuest = questDatabase.quests[questIndex];
+
+                                        questPresenter = new QuestPresenter(
+                                            questView,
+                                            questService,
+                                            inventoryGameView.GetInventoryService(),
+                                            nextQuest,
+                                            dialogueModel.npcName,
+                                            dialogueModel.avatar
+                                        );
+                                    }
+
+                                    ShowSimpleDialogue("Thank you for bringing the items! Here is your reward.");
+                                }
+                                else
+                                {
+                                    ShowSimpleDialogue("Thank you for bringing the items! Here is your reward.");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            ShowSimpleDialogue(
+                                "Thanks for your help. Please come back when you're finished."
+                            );
+                        }
+                    }
+
+                   
+
+                    break;
+                }
+            }
+        }
+    }
+
+
+
+    private void StartGiftMode()
+    {
+        if (inventoryGameView == null || giftDatabase == null || inventoryView == null)
+        {
+            Debug.LogError("Missing reference in Gift setup!");
+            currentState = NPCState.Idle;
+            return;
+        }
+
+        if (hotbarScript != null)
+            hotbarScript.enabled = false;
+
+        if (inventoryMenuRoot != null)
+            inventoryMenuRoot.SetActive(true);
+
+        inventoryGameView.OpenInventory();
+
+        IGiftService giftService = new GiftService(giftDatabase);
+        var inventoryService = inventoryGameView.GetInventoryService();
+
+        giftPresenter = new GiftPresenter(
+            giftService,
+            inventoryService,
+            inventoryView,
+            dialogueView,
+            relationshipModel,
+            dialogueModel   
+        );
+
+        giftPresenter.OnGiftFinished += ExitGiftMode;
+
+        giftPresenter.OnRequestCloseInventory += () =>
+        {
+            inventoryGameView.CloseInventory();
+
+            if (inventoryMenuRoot != null)
+                inventoryMenuRoot.SetActive(false);
+        };
+
+        giftPresenter.StartGiftMode();
+    }
+    private void ExitGiftMode()
+    {
+        giftPresenter.StopGiftMode();
+        giftPresenter.OnGiftFinished -= ExitGiftMode;
+
+        inventoryGameView.CloseInventory();
+
+        if (hotbarScript != null)
+            hotbarScript.enabled = true;
+
+        UnlockPlayer();
+        currentState = NPCState.Idle;
+        blockInteractOnce = true;
+        dialogueView.Hide();
+    }
+    private void HandleDialogueUpdate()
+    {
+        if (!presenter.IsDialogueActive())
+        {
+            dialogueView.Hide();
+
+            if (hotbarScript != null)
+                hotbarScript.enabled = true;
+
+            UnlockPlayer();
+
+            currentState = NPCState.Idle;
+            blockInteractOnce = true;   
+
+            return;
+        }
+
         if (dialogueView.IsTyping())
         {
             if (Input.GetKeyDown(interactKey))
@@ -47,27 +353,74 @@ public class NPCInteractor : MonoBehaviour
             }
             return;
         }
-        // If current node has options
+
         if (dialogueView.IsShowingOptions())
         {
             HandleOptionInput();
             return;
         }
-        // Linear dialogue
+
         if (Input.GetKeyDown(interactKey))
         {
             presenter.Continue();
-
-            // If dialogue ended → unlock movement
-            if (!presenter.IsDialogueActive())
-            {
-                UnlockPlayer();
-            }
         }
     }
-   private void HandleOptionInput()
+    private void CreateInteractionNode()
+        {
+            interactionNode = new DialogueNode();
+            interactionNode.dialogueText = "What do you want to do?";
+
+        interactionNode.options = new List<DialogueOption>
+{
+    new DialogueOption { optionText = "Talk", nextNodeIndex = -1 },
+    new DialogueOption { optionText = "Send Gift", nextNodeIndex = -1 },
+    new DialogueOption { optionText = "Quest", nextNodeIndex = -1 }
+    };
+    }
+    private void ShowInteractionMenu()
+    {
+        if (playerMovement != null)
+            playerMovement.enabled = false;
+
+        if (hotbarScript != null)
+            hotbarScript.enabled = false;
+
+        currentState = NPCState.InteractionMenu;
+
+        dialogueView.ShowNode(
+            dialogueModel.npcName,
+            interactionNode,
+            dialogueModel.avatar
+        );
+    }
+    private void HandleOptionInput()
     {
         var node = presenter.GetCurrentNode();
+
+        // =====================
+        // QUEST OPTIONS
+        // =====================
+        if (currentState == NPCState.Quest)
+        {
+            if (Input.GetKeyDown(optionKeys[0])) // Accept
+            {
+                questPresenter.AcceptQuest();
+
+                dialogueView.Hide();
+                UnlockPlayer();
+                currentState = NPCState.Idle;
+            }
+            else if (Input.GetKeyDown(optionKeys[1])) // Back
+            {
+                ShowInteractionMenu();
+            }
+
+            return;
+        }
+
+        // =====================
+        // NORMAL DIALOGUE
+        // =====================
         if (node == null || node.options == null) return;
 
         for (int i = 0; i < node.options.Count; i++)
@@ -76,7 +429,6 @@ public class NPCInteractor : MonoBehaviour
             {
                 presenter.SelectOption(i);
 
-                // If dialogue ended after selecting option
                 if (!presenter.IsDialogueActive())
                 {
                     UnlockPlayer();
@@ -86,28 +438,69 @@ public class NPCInteractor : MonoBehaviour
             }
         }
     }
+
     private void OnTriggerEnter2D(Collider2D other)
-    {
-        if (!other.CompareTag("PlayerEntity")) return;
+        {
+            if (!other.CompareTag("PlayerEntity")) return;
 
-        playerInRange = true;
+            playerInRange = true;
 
-        // Get PlayerMovement from the player that entered
-        playerMovement = other.GetComponent<PlayerMovement>();
+            // Get PlayerMovement from the player that entered
+            playerMovement = other.GetComponent<PlayerMovement>();
+        
     }
     private void OnTriggerExit2D(Collider2D other)
     {
         if (!other.CompareTag("PlayerEntity")) return;
 
         playerInRange = false;
-        dialogueView.Hide();
+
+        if (dialogueView != null)
+            dialogueView.Hide();
+
+        if (hotbarScript != null)
+            hotbarScript.enabled = true;
 
         UnlockPlayer();
         playerMovement = null;
+        currentState = NPCState.Idle;
+    }
+    private void ShowSimpleDialogue(string message)
+    {
+        DialogueNode node = new DialogueNode();
+        node.dialogueText = message;
+        node.options = null;
+
+        dialogueView.ShowNode(
+            dialogueModel.npcName,
+            node,
+            dialogueModel.avatar
+        );
+
+        currentState = NPCState.SimpleDialogue;
+    }
+    private void UpdateQuestObjectives()
+    {
+        var inventory = inventoryGameView.GetInventoryService();
+
+        foreach (var quest in questService.GetActiveQuests())
+        {
+            foreach (var obj in quest.objectives)
+            {
+                if (obj.type == ObjectiveType.CollectItem)
+                {
+                    int count = inventory.GetItemCount(obj.itemId);
+
+                    obj.currentAmount = Mathf.Min(count, obj.requiredAmount);
+                }
+            }
+        }
+
+        QuestService.OnQuestUpdated?.Invoke();
     }
     private void UnlockPlayer()
-    {
-        if (playerMovement != null)
-            playerMovement.enabled = true;
+        {
+            if (playerMovement != null)
+                playerMovement.enabled = true;
+        }
     }
-}

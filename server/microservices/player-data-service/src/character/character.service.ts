@@ -87,6 +87,7 @@ export class CharacterService implements OnModuleInit {
   async upsertCharacter(
     worldId: string | Types.ObjectId,
     dto: UpsertCharacterDto,
+    options?: { session?: ClientSession },
   ): Promise<Character> {
     const worldOid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
     const accountOid = new Types.ObjectId(dto.accountId);
@@ -102,7 +103,7 @@ export class CharacterService implements OnModuleInit {
     const result = await this.characterModel.findOneAndUpdate(
       { worldId: worldOid, accountId: accountOid },
       { $set: update, $setOnInsert: { worldId: worldOid, accountId: accountOid, sectionIndex: dto.sectionIndex ?? 0 } },
-      { upsert: true, new: true },
+      { upsert: true, new: true, ...(options?.session ? { session: options.session } : {}) },
     );
     return result;
   }

@@ -40,48 +40,14 @@ public class WorldDataManager : MonoBehaviour
         { 
             SectionId = 0, 
             SectionName = "Section 1",
-            ChunkStartX = 0, 
-            ChunkStartY = 6, 
-            ChunksWidth = 5, 
+            ChunkStartX = -8, 
+            ChunkStartY = 2, 
+            ChunksWidth = 6, 
             ChunksHeight = 4,
             DebugColor = new Color(1f, 0.5f, 0.5f, 0.3f)
         },
         
-        // Section 2: 5×5 chunks at (0,0) = World pos (0,0) to (150,150)
-        new WorldSectionConfig 
-        { 
-            SectionId = 1, 
-            SectionName = "Section 2",
-            ChunkStartX = 0, 
-            ChunkStartY = 0, 
-            ChunksWidth = 5, 
-            ChunksHeight = 5,
-            DebugColor = new Color(0.5f, 1f, 0.5f, 0.3f)
-        },
         
-        // Section 3: 4×5 chunks at (5,0) = World pos (150,0) to (270,150)
-        new WorldSectionConfig 
-        { 
-            SectionId = 2, 
-            SectionName = "Section 3",
-            ChunkStartX = 5, 
-            ChunkStartY = 0, 
-            ChunksWidth = 4, 
-            ChunksHeight = 5,
-            DebugColor = new Color(0.5f, 0.5f, 1f, 0.3f)
-        },
-        
-        // Section 4: 4×3 chunks at (5,7) = World pos (150,210) to (270,300)
-        new WorldSectionConfig 
-        { 
-            SectionId = 3, 
-            SectionName = "Section 4",
-            ChunkStartX = 5, 
-            ChunkStartY = 7, 
-            ChunksWidth = 4, 
-            ChunksHeight = 3,
-            DebugColor = new Color(1f, 1f, 0.5f, 0.3f)
-        }
     };
     
     [Header("Debug")]
@@ -92,6 +58,8 @@ public class WorldDataManager : MonoBehaviour
     // Data modules
     private Dictionary<string, IWorldDataModule> modules = new Dictionary<string, IWorldDataModule>();
     private CropDataModule cropModule;
+    private StructureDataModule structureModule;
+    private InventoryDataModule inventoryModule;
     
     // Quick lookup: chunkPosition -> sectionId
     private Dictionary<Vector2Int, int> chunkToSectionMap = new Dictionary<Vector2Int, int>();
@@ -130,8 +98,97 @@ public class WorldDataManager : MonoBehaviour
         Debug.Log($"[WorldDataManager] World meta loaded: {worldName} | Day {day} | Gold {gold}");
     }
 
+    /// <summary>
+    /// Rebuilds all saved chunks into RAM from the API response.
+    /// Called by WorldDataBootstrapper once the GET /player-data/world response arrives.
+    ///
+    /// For each chunk the method:
+    ///   1. Derives the world-space origin of the chunk (chunkX * 30, chunkY * 30).
+    ///   2. Converts each local tile index (0–899) back to world XY using:
+    ///         localX = index % 30,  worldX = chunkX * 30 + localX
+    ///         localY = index / 30,  worldY = chunkY * 30 + localY
+    ///   3. Calls the appropriate WorldDataManager methods to recreate the tile state.
+    /// </summary>
+    public void PopulateChunks(System.Collections.Generic.List<ChunkResponseData> loadedChunks)
+    {
+        if (loadedChunks == null || loadedChunks.Count == 0) return;
+
+        int tilesApplied = 0;
+
+        foreach (var chunk in loadedChunks)
+        {
+            if (chunk.tiles == null || chunk.tiles.Count == 0) continue;
+
+            int originX = chunk.chunkX * chunkSizeTiles;   // world X of tile (0,0) in this chunk
+            int originY = chunk.chunkY * chunkSizeTiles;   // world Y of tile (0,0) in this chunk
+
+            foreach (var kvp in chunk.tiles)
+            {
+                // Parse the string key back to integer tile index
+                if (!int.TryParse(kvp.Key, out int localIndex)) continue;
+                TileResponseData td = kvp.Value;
+                if (td == null) continue;
+
+                int localX = localIndex % chunkSizeTiles;
+                int localY = localIndex / chunkSizeTiles;
+                int worldX = originX + localX;
+                int worldY = originY + localY;
+
+                var worldPos = new UnityEngine.Vector3(worldX, worldY, 0);
+
+                // ── Restore tilled ground ──
+                if (td.type == "tilled" || td.type == "crop")
+                {
+                    this.TillTileAtWorldPosition(worldPos);
+                }
+
+                // ── Restore crop ──
+                if (td.type == "crop" && !string.IsNullOrEmpty(td.plantId))
+                {
+                    this.PlantCropAtWorldPosition(worldPos, td.plantId);
+
+                    // Restore all crop sub-fields
+                    if (td.cropStage > 0)
+                        this.UpdateCropStage(worldPos, (byte)td.cropStage);
+
+                    if (td.totalAge > 0)
+                        this.UpdateCropAge(worldPos, td.totalAge);
+
+                    // Watered / Fertilized / Pollinated — use the CropData module directly
+                    if (CropData != null)
+                    {
+                        var chunkPos  = WorldToChunkCoords(worldPos);
+                        int sectionId = GetSectionIdFromWorldPosition(worldPos);
+                        var chunkData = CropData.GetChunk(sectionId, chunkPos);
+
+                        if (chunkData != null)
+                        {
+                            if (td.isWatered)    chunkData.WaterTile(worldX, worldY);
+                            if (td.isFertilized)  chunkData.FertilizeTile(worldX, worldY);
+                            if (td.isPollinated)  chunkData.SetPollinated(worldX, worldY, true);
+
+                            if (td.pollenHarvestCount > 0)
+                            {
+                                for (int i = 0; i < td.pollenHarvestCount; i++)
+                                    chunkData.IncrementPollenHarvestCount(worldX, worldY);
+                            }
+                        }
+                    }
+                }
+
+                tilesApplied++;
+            }
+        }
+
+        Debug.Log($"[WorldDataManager] PopulateChunks done: {loadedChunks.Count} chunk(s), {tilesApplied} tile(s) restored.");
+    }
+
+
+
     // Public access to modules
-    public CropDataModule CropData => cropModule;
+    public CropDataModule      CropData      => cropModule;
+    public StructureDataModule StructureData => structureModule;
+    public InventoryDataModule InventoryData => inventoryModule;
     
     private void Awake()
     {
@@ -202,19 +259,20 @@ public class WorldDataManager : MonoBehaviour
     
     private void InitializeModules()
     {
-        // Initialize Crop Module
+        // Crop Module
         cropModule = new CropDataModule();
         cropModule.Initialize(this);
         modules[cropModule.ModuleName] = cropModule;
-        
-        // Future modules can be added here:
-        // inventoryModule = new InventoryDataModule();
-        // inventoryModule.Initialize(this);
-        // modules[inventoryModule.ModuleName] = inventoryModule;
-        
-        // structureModule = new StructureDataModule();
-        // structureModule.Initialize(this);
-        // modules[structureModule.ModuleName] = structureModule;
+
+        // Structure Module
+        structureModule = new StructureDataModule();
+        structureModule.Initialize(this);
+        modules[structureModule.ModuleName] = structureModule;
+
+        // Inventory Module
+        inventoryModule = new InventoryDataModule();
+        inventoryModule.Initialize(this);
+        modules[inventoryModule.ModuleName] = inventoryModule;
     }
     
     #region Core Coordinate Utilities
@@ -283,15 +341,65 @@ public class WorldDataManager : MonoBehaviour
         }
         return null;
     }
-    
+
+    /// <summary>
+    /// Get all character IDs with cached inventory data
+    /// </summary>
+    public List<string> GetAllCharacterIds()
+    {
+        return inventoryModule != null
+            ? new List<string>(inventoryModule.GetAllCharacterIds())
+            : new List<string>();
+    }
+
+    /// <summary>
+    /// Get debug information about a character's inventory
+    /// </summary>
+    public CharacterInventoryDebugInfo GetCharacterInventoryDebugInfo(string characterId)
+    {
+        var info = new CharacterInventoryDebugInfo();
+
+        if (inventoryModule == null)
+        {
+            info.IsValid = false;
+            return info;
+        }
+
+        var inventory = inventoryModule.GetInventory(characterId);
+        if (inventory == null)
+        {
+            info.IsValid = false;
+            return info;
+        }
+
+        info.IsValid = true;
+        info.CharacterId = characterId;
+        info.OccupiedSlots = inventory.OccupiedSlotCount;
+        info.TotalItems = 0;
+        info.Items = new List<CharacterInventoryDebugInfo.ItemInfo>();
+
+        foreach (var slot in inventory.GetAllSlots())
+        {
+            info.TotalItems += slot.Quantity;
+            info.Items.Add(new CharacterInventoryDebugInfo.ItemInfo
+            {
+                SlotIndex = slot.SlotIndex,
+                ItemId = slot.ItemId,
+                Quantity = slot.Quantity
+            });
+        }
+
+        return info;
+    }
+
     #endregion
-    
+
     // NOTE: Crop-related methods moved to WorldDataManagerCropExtensions.cs
     // This keeps WorldDataManager focused on core coordination (SOLID principle)
     // Usage remains identical: WorldDataManager.Instance.PlantCropAtWorldPosition(...)
-    
+
     #region Statistics and Management
-    
+
     /// <summary>
     /// Get memory usage estimate in MB
     /// </summary>
@@ -312,16 +420,24 @@ public class WorldDataManager : MonoBehaviour
     {
         WorldDataStats stats = new WorldDataStats();
         stats.TotalSections = sectionConfigs.Count;
-        stats.TotalChunks = chunkToSectionMap.Count;
+        stats.TotalChunks   = chunkToSectionMap.Count;
         stats.MemoryUsageMB = GetMemoryUsageMB();
-        
-        // Get crop-specific stats
+
         var cropStats = cropModule.GetStats();
-        stats.LoadedChunks = (int)cropStats["LoadedChunks"];
-        stats.TotalCrops = (int)cropStats["TotalCrops"];
+        stats.LoadedChunks    = (int)cropStats["LoadedChunks"];
+        stats.TotalCrops      = (int)cropStats["TotalCrops"];
         stats.TotalTilledTiles = (int)cropStats["TotalTilledTiles"];
-        stats.ChunksWithCrops = (int)cropStats["ChunksWithCrops"];
-        
+        stats.ChunksWithCrops  = (int)cropStats["ChunksWithCrops"];
+
+        var structStats = structureModule.GetStats();
+        stats.TotalStructures      = (int)structStats["TotalStructures"];
+        stats.ChunksWithStructures = (int)structStats["ChunksWithStructures"];
+
+        var invStats = inventoryModule.GetStats();
+        stats.InventoryCharacters = (int)invStats["Characters"];
+        stats.InventoryOccupiedSlots = (int)invStats["OccupiedSlots"];
+        stats.InventoryTotalItems = (int)invStats["TotalItems"];
+
         return stats;
     }
     
@@ -329,22 +445,27 @@ public class WorldDataManager : MonoBehaviour
     {
         WorldDataStats stats = GetStats();
         
-        string log = $"=== World Data Statistics ===\n" +
+        string log = $"========== World Data Statistics ==========\n" +
                      $"Sections: {stats.TotalSections}\n" +
                      $"Total Chunks: {stats.TotalChunks}\n" +
-                     $"Loaded Chunks: {stats.LoadedChunks}\n" +
-                     $"Memory Usage: {stats.MemoryUsageMB:F2} MB\n\n";
-        
-        foreach (var kvp in modules)
-        {
-            log += $"--- {kvp.Key} ---\n";
-            var moduleStats = kvp.Value.GetStats();
-            foreach (var statKvp in moduleStats)
-            {
-                log += $"  {statKvp.Key}: {statKvp.Value}\n";
-            }
-            log += "\n";
-        }
+                     $"Loaded Chunks: {stats.LoadedChunks}\n\n" +
+                     
+                     $"--- Crops ---\n" +
+                     $"  Chunks with Crops: {stats.ChunksWithCrops}\n" +
+                     $"  Total Crops: {stats.TotalCrops}\n" +
+                     $"  Total Tilled Tiles: {stats.TotalTilledTiles}\n\n" +
+                     
+                     $"--- Structures ---\n" +
+                     $"  Total Structures: {stats.TotalStructures}\n" +
+                     $"  Chunks with Structures: {stats.ChunksWithStructures}\n\n" +
+                     
+                     $"--- Inventory ---\n" +
+                     $"  Cached Characters: {stats.InventoryCharacters}\n" +
+                     $"  Occupied Slots: {stats.InventoryOccupiedSlots}\n" +
+                     $"  Total Items: {stats.InventoryTotalItems}\n\n" +
+                     
+                     $"Memory Usage: {stats.MemoryUsageMB:F3} MB\n" +
+                     $"==========================================";
         
         Debug.Log(log);
     }
@@ -361,7 +482,7 @@ public class WorldDataManager : MonoBehaviour
             Debug.Log("[WorldDataManager] All data cleared");
         }
     }
-    
+         
     #endregion
     
     #region Debug Visualization
@@ -411,11 +532,40 @@ public class WorldDataManager : MonoBehaviour
 [System.Serializable]
 public struct WorldDataStats
 {
-    public int TotalSections;
-    public int TotalChunks;
-    public int LoadedChunks;
-    public int ChunksWithCrops;
-    public int TotalCrops;
-    public int TotalTilledTiles;
+    public int   TotalSections;
+    public int   TotalChunks;
+    public int   LoadedChunks;
+    // Crop
+    public int   ChunksWithCrops;
+    public int   TotalCrops;
+    public int   TotalTilledTiles;
+    // Structure
+    public int   TotalStructures;
+    public int   ChunksWithStructures;
+    // Inventory
+    public int   InventoryCharacters;
+    public int   InventoryOccupiedSlots;
+    public int   InventoryTotalItems;
     public float MemoryUsageMB;
+}
+
+/// <summary>
+/// Debug information structure for character inventory display in editor
+/// </summary>
+[System.Serializable]
+public struct CharacterInventoryDebugInfo
+{
+    public bool IsValid;
+    public string CharacterId;
+    public int OccupiedSlots;
+    public int TotalItems;
+    public List<ItemInfo> Items;
+    
+    [System.Serializable]
+    public struct ItemInfo
+    {
+        public byte SlotIndex;
+        public string ItemId;
+        public ushort Quantity;
+    }
 }

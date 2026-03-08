@@ -8,10 +8,10 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
     private PlayerMovementPresenter presenter;
     private Rigidbody2D rb;
     private Vector2 moveInput;
-    private Vector2 lastInput; // last non-zero direction for animator facing
-    private Animator animator;
+    private Vector2 lastInput;
+    private PlayerAnimationView animationView;   // ← animation separated here
     private PhotonView _photonView;
-    private SpriteRenderer spriteRenderer; // added for sprite flipping
+    private SpriteRenderer spriteRenderer;
     private Collider2D playerCollider;
 
     [SerializeField] private Camera playerCa;
@@ -21,13 +21,12 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
 
     void Awake()
     {
-        rb = GetComponent<Rigidbody2D>();
-        animator = GetComponent<Animator>();
-        _photonView = GetComponent<PhotonView>();
-        spriteRenderer = GetComponent<SpriteRenderer>(); // get SpriteRenderer for flipping
-        presenter = new PlayerMovementPresenter();
+        rb             = GetComponent<Rigidbody2D>();
+        animationView  = GetComponent<PlayerAnimationView>();
+        _photonView    = GetComponent<PhotonView>();
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        presenter      = new PlayerMovementPresenter();
         playerCollider = GetComponent<CapsuleCollider2D>();
-
     }
 
     void Start()
@@ -57,97 +56,55 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
         // Only read input and set movement for local player
         if (photonView.IsMine)
         {
-            // Read raw input from Unity's Input system (works without PlayerInput component)
-            // Requires Input Manager axes "Horizontal" and "Vertical" (default in Unity).
-            float rawX = Input.GetAxisRaw("Horizontal"); // keyboard
+            // Block input while an action (plow, water, attack) is running
+            if (animationView?.IsMovementLocked == true)
+            {
+                moveInput = Vector2.zero;
+                animationView?.UpdateLocomotion(Vector2.zero, lastInput);
+                return;
+            }
+
+            float rawX = Input.GetAxisRaw("Horizontal");
             float rawY = Input.GetAxisRaw("Vertical");
 
-            // Use presenter to calculate direction
             Vector2 direction = presenter.CalculateMovementDirection(rawX, rawY);
 
-            //Flip sprite based on horizontal movement
-            Flip(direction);
-
-            // Remember last non-zero direction for fallback facing when player stops
             if (direction != Vector2.zero)
                 lastInput = direction;
 
-            
+            animationView?.UpdateLocomotion(direction, lastInput);
 
-            // Update animator in a separate function for better debugging
-            UpdateAnimator(direction);
-
-            // Movement direction: use normalized direction
             moveInput = direction;
         }
     }
-    private void Flip(Vector2 direction)
-    {
-        // Flip sprite when moving left (direction.x < 0)
-        if (spriteRenderer != null)
-        {
-            if (direction.x < 0)
-                spriteRenderer.flipX = true;
-            else if (direction.x > 0)
-                spriteRenderer.flipX = false;
-            // if direction.x == 0, keep current flip state
-        }
-    }
 
-    // Separate function for animator logic to improve debugging
-    private void UpdateAnimator(Vector2 direction)
-    {
-        // Determine walking state using any non-zero movement direction
-        bool isWalking = direction.sqrMagnitude > 0f;
-        if (animator != null)
-        {
-            animator.SetBool("isWalking", isWalking);
 
-            if (isWalking)
-            {
-                // give animator original raw axes for rendering
-                animator.SetFloat("InputX", direction.x);
-                animator.SetFloat("InputY", direction.y);
-            }
-            else
-            {
-                // when stopped, use the last facing
-                animator.SetFloat("LastInputX", lastInput.x);
-                animator.SetFloat("LastInputY", lastInput.y);
-            }
-        }
-    }
 
     void FixedUpdate()
     {
         if (!photonView.IsMine || rb == null || presenter == null)
             return;
 
-        // Rigidbody2D uses velocity
+        if (animationView?.IsMovementLocked == true)
+
+        {
+            rb.linearVelocity = Vector2.zero;
+            return;
+        }
+
         rb.linearVelocity = presenter.calculatePlayerVelocity(moveInput, moveSpeed);
     }
 
-    // Sync animator parameters and sprite flip for multiplayer
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
         if (stream.IsWriting)
         {
-            // Send current local state
-            stream.SendNext(animator.GetBool("isWalking"));
-            stream.SendNext(animator.GetFloat("InputX"));
-            stream.SendNext(animator.GetFloat("InputY"));
-            stream.SendNext(animator.GetFloat("LastInputX"));
-            stream.SendNext(animator.GetFloat("LastInputY"));
+            if (animationView != null) animationView.WriteNetworkState(stream);
             stream.SendNext(spriteRenderer.flipX);
         }
         else
         {
-            // Receive and apply to remote player
-            animator.SetBool("isWalking", (bool)stream.ReceiveNext());
-            animator.SetFloat("InputX", (float)stream.ReceiveNext());
-            animator.SetFloat("InputY", (float)stream.ReceiveNext());
-            animator.SetFloat("LastInputX", (float)stream.ReceiveNext());
-            animator.SetFloat("LastInputY", (float)stream.ReceiveNext());
+            if (animationView != null) animationView.ReadNetworkState(stream);
             spriteRenderer.flipX = (bool)stream.ReceiveNext();
         }
     }

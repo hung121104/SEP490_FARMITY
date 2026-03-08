@@ -9,7 +9,8 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     [SerializeField] private GameObject detailPanel;
     [SerializeField] private RectTransform panelRectTransform;
     [SerializeField] private CanvasGroup canvasGroup;
-
+    [SerializeField] private GameObject giftReactionPanel;
+    
     [Header("Content")]
     [SerializeField] private Image itemIcon;
     [SerializeField] private TextMeshProUGUI itemNameText;
@@ -18,7 +19,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
 
     [Header("Buttons")]
     [SerializeField] private Button useButton;
-    [SerializeField] private Button dropButton;
 
     [Header("Animation")]
     [SerializeField] private float fadeInDuration = 0.2f;
@@ -68,9 +68,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     {
         if (useButton != null)
             useButton.onClick.AddListener(() => OnUseRequested?.Invoke());
-
-        if (dropButton != null)
-            dropButton.onClick.AddListener(() => OnDropRequested?.Invoke());
     }
 
     #endregion
@@ -122,6 +119,10 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
             canvasGroup.alpha = 0f;
 
         detailPanel.SetActive(false);
+
+        // Hide gift reaction
+        if (giftReactionPanel != null)
+            giftReactionPanel.SetActive(false);
     }
 
     public void SetPosition(Vector2 screenPosition)
@@ -187,15 +188,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
         {
             useButton.gameObject.SetActive(interactable);
             useButton.interactable = interactable;
-        }
-    }
-
-    public void SetDropButtonState(bool interactable)
-    {
-        if (dropButton != null)
-        {
-            dropButton.gameObject.SetActive(interactable);
-            dropButton.interactable = interactable;
         }
     }
 

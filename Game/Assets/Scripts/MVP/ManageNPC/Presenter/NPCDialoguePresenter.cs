@@ -2,13 +2,16 @@
 {
     private INPCDialogueService service;
     private NPCDialogueView view;
+    private QuestPresenter questPresenter;
 
     public NPCDialoguePresenter(
-        INPCDialogueService service,
-        NPCDialogueView view)
+      INPCDialogueService service,
+      NPCDialogueView view,
+      QuestPresenter questPresenter)
     {
         this.service = service;
         this.view = view;
+        this.questPresenter = questPresenter;
     }
 
     public void StartDialogue()
@@ -52,6 +55,15 @@
 
         if (node.options == null || index >= node.options.Count)
             return;
+
+        var option = node.options[index];
+
+        // QUEST OPTION
+        if (option.optionText == "Quest")
+        {
+            questPresenter.ShowQuest();
+            return;
+        }
 
         service.ChooseOption(index);
         ShowCurrentNode();

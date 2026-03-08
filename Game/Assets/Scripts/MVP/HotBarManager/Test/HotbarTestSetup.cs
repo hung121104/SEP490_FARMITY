@@ -1,5 +1,4 @@
-﻿
-using UnityEngine;
+﻿using UnityEngine;
 
 public class HotbarTestSetup : MonoBehaviour
 {
@@ -7,8 +6,9 @@ public class HotbarTestSetup : MonoBehaviour
     [SerializeField] private HotbarView hotbarView;
     [SerializeField] private InventoryGameView inventoryGameView;
 
-    [Header("Test Items")]
-    [SerializeField] private ItemDataSO[] testItems;
+    [Header("Test Items (Data-Driven)")]
+    [Tooltip("Item IDs from the catalog to add on start.")]
+    [SerializeField] private string[] testItemIds;
 
     [Header("Settings")]
     [SerializeField] private bool addItemsOnStart = true;
@@ -21,9 +21,7 @@ public class HotbarTestSetup : MonoBehaviour
     void Start()
     {
         if (addItemsOnStart)
-        {
             Invoke(nameof(AddTestItems), 1f);
-        }
     }
 
     void AddTestItems()
@@ -55,22 +53,21 @@ public class HotbarTestSetup : MonoBehaviour
             return;
         }
 
-        if (testItems != null && testItems.Length > 0)
+        if (testItemIds != null && testItemIds.Length > 0)
         {
-            for (int i = 0; i < testItems.Length && i < 9; i++)
+            for (int i = 0; i < testItemIds.Length && i < 9; i++)
             {
-                if (testItems[i] != null)
+                if (!string.IsNullOrEmpty(testItemIds[i]))
                 {
-                    bool success = inventoryService.AddItem(testItems[i], 1, testItemQuality);
+                    bool success = inventoryService.AddItem(testItemIds[i], 1, testItemQuality);
                     if (success)
-                    {
-                        Debug.Log("Added " + testItems[i].itemName + " to hotbar slot " + (i + 1));
-                    }
+                        Debug.Log("Added " + testItemIds[i] + " to hotbar slot " + (i + 1));
                 }
             }
             Debug.Log("Test items added");
         }
     }
+
 
     void Update()
     {

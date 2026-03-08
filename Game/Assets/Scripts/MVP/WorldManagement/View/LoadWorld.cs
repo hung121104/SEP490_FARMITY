@@ -8,11 +8,28 @@ public class LoadWorld : MonoBehaviourPunCallbacks
 {
     private void Start()
     {
-        if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
+        // Re-enable message queue in case it was disabled during scene transition
+        PhotonNetwork.IsMessageQueueRunning = true;
+
+        PhotonNetwork.PhotonServerSettings.AppSettings.FixedRegion = "hk";
+
+        if (PhotonNetwork.IsConnectedAndReady ||
+            PhotonNetwork.NetworkClientState == Photon.Realtime.ClientState.ConnectedToMasterServer)
         {
-            PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
+            // Already connected after leaving a room — jump straight to lobby.
+            // Do NOT touch AuthValues here; Photon already holds a valid token.
+            PhotonNetwork.JoinLobby();
         }
-        PhotonNetwork.ConnectUsingSettings();
+        else if (!PhotonNetwork.IsConnected)
+        {
+            // Fresh connection — safe to set AuthValues now.
+            if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
+            {
+                PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
+            }
+            PhotonNetwork.ConnectUsingSettings();
+        }
+        // else: still connecting — OnConnectedToMaster will fire automatically
     }
 
     public override void OnConnectedToMaster()
@@ -57,7 +74,8 @@ public class LoadWorld : MonoBehaviourPunCallbacks
             IsVisible = true, 
             IsOpen = true,
             CustomRoomProperties = customProps,
-            CustomRoomPropertiesForLobby = new string[] { "displayName" }
+            CustomRoomPropertiesForLobby = new string[] { "displayName" },
+            EmptyRoomTtl = 0,
         };
         
         PhotonNetwork.JoinOrCreateRoom(selectedId, roomOptions, TypedLobby.Default);

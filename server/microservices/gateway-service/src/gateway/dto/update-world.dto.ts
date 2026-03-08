@@ -1,3 +1,26 @@
+// ── Tile delta types (mirrored from player-data-service) ────────────────────
+
+export class TileDataDto {
+  type?: string;
+  plantId?: string | null;
+  cropStage?: number;
+  totalAge?: number;
+  pollenHarvestCount?: number;
+  isWatered?: boolean;
+  isFertilized?: boolean;
+  isPollinated?: boolean;
+}
+
+/** One dirty chunk's changed tiles.  key = local tile index "0"–"899". */
+export class ChunkDeltaDto {
+  chunkX: number;
+  chunkY: number;
+  sectionId: number;
+  tiles: Record<string, TileDataDto>;
+}
+
+// ── Main DTO ────────────────────────────────────────────────────────────────
+
 export class UpsertCharacterInWorldDto {
   _id?: string;
   accountId: string;
@@ -19,4 +42,10 @@ export class UpdateWorldDto {
 
   // Up to 4 characters
   characters?: UpsertCharacterInWorldDto[];
+
+  /**
+   * Tile deltas — only from dirty chunks.
+   * Forwarded transparently to player-data-service save-world handler.
+   */
+  deltas?: ChunkDeltaDto[];
 }

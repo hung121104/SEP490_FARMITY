@@ -1,8 +1,14 @@
-import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import {
+  Module,
+  NestModule,
+  MiddlewareConsumer,
+  RequestMethod,
+} from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { GatewayController } from './gateway.controller';
 import { AuthorizationMiddleware } from './authorization.middleware';
 import { AuthenticationMiddleware } from './authentication.middleware';
+import { GatewayCloudinaryService } from './cloudinary.service';
 
 @Module({
   imports: [
@@ -25,6 +31,7 @@ import { AuthenticationMiddleware } from './authentication.middleware';
     ]),
   ],
   controllers: [GatewayController],
+  providers: [GatewayCloudinaryService],
 })
 export class GatewayModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -36,7 +43,15 @@ export class GatewayModule implements NestModule {
         { path: 'auth/logout', method: RequestMethod.POST },
         { path: 'player-data/world', method: RequestMethod.ALL },
         { path: 'player-data/worlds', method: RequestMethod.ALL },
-        { path: 'player-data/worlds/:worldId/characters/:accountId', method: RequestMethod.GET },
+        {
+          path: 'player-data/worlds/:worldId/characters/:accountId',
+          method: RequestMethod.GET,
+        },
+        { path: 'player-data/dropped-items', method: RequestMethod.ALL },
+        {
+          path: 'player-data/dropped-items/:dropId',
+          method: RequestMethod.ALL,
+        },
         { path: 'blog/create', method: RequestMethod.POST },
         { path: 'blog/update/:id', method: RequestMethod.POST },
         { path: 'blog/delete/:id', method: RequestMethod.DELETE },
@@ -48,6 +63,13 @@ export class GatewayModule implements NestModule {
         { path: 'media/create', method: RequestMethod.POST },
         { path: 'media/update/:id', method: RequestMethod.POST },
         { path: 'media/delete/:id', method: RequestMethod.DELETE },
+        { path: 'game-data/items/create', method: RequestMethod.POST },
+        { path: 'game-data/items/:itemID', method: RequestMethod.PUT },
+        { path: 'game-data/items/:itemID', method: RequestMethod.DELETE },
+        { path: 'game-data/plants/create', method: RequestMethod.POST },
+        { path: 'game-data/plants/:plantId', method: RequestMethod.PUT },
+        { path: 'game-data/plants/:plantId', method: RequestMethod.DELETE },
+        { path: 'game-config/main-menu', method: RequestMethod.PUT },
       );
 
     // enforce admin only on admin routes
@@ -66,6 +88,13 @@ export class GatewayModule implements NestModule {
         { path: 'media/create', method: RequestMethod.POST },
         { path: 'media/update/:id', method: RequestMethod.POST },
         { path: 'media/delete/:id', method: RequestMethod.DELETE },
+        { path: 'game-data/items/create', method: RequestMethod.POST },
+        { path: 'game-data/items/:itemID', method: RequestMethod.PUT },
+        { path: 'game-data/items/:itemID', method: RequestMethod.DELETE },
+        { path: 'game-data/plants/create', method: RequestMethod.POST },
+        { path: 'game-data/plants/:plantId', method: RequestMethod.PUT },
+        { path: 'game-data/plants/:plantId', method: RequestMethod.DELETE },
+        { path: 'game-config/main-menu', method: RequestMethod.PUT },
       );
   }
 }

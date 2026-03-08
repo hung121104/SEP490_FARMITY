@@ -21,13 +21,25 @@ MonoBehaviour:
   m_OverrideGlobalSceneList: 1
   m_Scenes:
   - m_enabled: 1
+    m_path: Assets/Scenes/Game Scenes/AuthMenu/AuthScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Game Scenes/MainMenu/CreateWorldScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Game Scenes/MainMenu/MainMenuScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Game Scenes/MainMenu/OnlineWorldListScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Game Scenes/MainMenu/PlayerWorldListScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Game Scenes/GameCoreTestScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Game Scenes/LoadGameScene.unity
+  - m_enabled: 1
     m_path: Assets/Scenes/Game Scenes/LoadingScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Game Scenes/LobbyScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Game Scenes/MapLoaderTestScene.unity
-  - m_enabled: 1
-    m_path: Assets/Scenes/Game Scenes/GameCoreTestScene.unity
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using Photon.Pun;
+using System;
 using System.Collections.Generic;
 using System.Collections;
 
@@ -25,9 +26,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     [Tooltip("Show loaded chunks with crops")]
     public bool visualizeCrops = true;
     
-    [Header("Plant Data")]
-    [Tooltip("Array of all plant data ScriptableObjects indexed by CropTypeID")]
-    public PlantDataSO[] plantDatabase;
+    // Plant data is sourced from PlantCatalogService at runtime — no Inspector array needed.
     
     [Header("Tilled Tile Settings")]
     [Tooltip("TileBase to use for tilled tiles")]
@@ -61,7 +60,17 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     private float nextUpdateTime;
     private Transform localPlayerTransform;
     private TimeManagerView timeManager;
-    
+
+    // ── Events for other systems (e.g. DroppedItemManager) ──────────────────
+
+    /// <summary>Fired after a chunk has been loaded and its visuals spawned.</summary>
+    public event Action<Vector2Int> OnChunkLoaded;
+
+    /// <summary>Fired after a chunk has been unloaded and its visuals destroyed.</summary>
+    public event Action<Vector2Int> OnChunkUnloaded;
+
+    // ── Public Query ─────────────────────────────────────────────────────────
+  
     private void Start()
     {
         if (!PhotonNetwork.IsConnected)
@@ -103,6 +112,31 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     
     private IEnumerator FindLocalPlayer()
     {
+        // Wait for PlantCatalogService to finish loading sprites
+        while (PlantCatalogService.Instance == null || !PlantCatalogService.Instance.IsReady)
+        {
+            if (showDebugLogs)
+                Debug.Log("[ChunkLoading] Waiting for PlantCatalogService to be ready...");
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        // Wait for WorldDataBootstrapper to finish fetching and populating chunk data
+        // (master client only — non-masters skip this automatically via IsReady staying false)
+        float bootTimeout = 30f; // generous cap in case of slow network
+        float bootElapsed = 0f;
+        while (WorldDataBootstrapper.Instance != null && !WorldDataBootstrapper.Instance.IsReady)
+        {
+            if (showDebugLogs)
+                Debug.Log("[ChunkLoading] Waiting for WorldDataBootstrapper to be ready...");
+            yield return new WaitForSeconds(0.5f);
+            bootElapsed += 0.5f;
+            if (bootElapsed >= bootTimeout)
+            {
+                Debug.LogWarning("[ChunkLoading] Timed out waiting for WorldDataBootstrapper — proceeding without loaded chunk data.");
+                break;
+            }
+        }
+
         // Wait for local player to spawn
         while (localPlayerTransform == null)
         {
@@ -121,9 +155,10 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             yield return new WaitForSeconds(0.5f);
         }
         
-        // Initial load
+        // Initial load — chunk data in RAM is now fully populated from DB
         UpdatePlayerChunkPosition();
     }
+
     
     private void Update()
     {
@@ -238,7 +273,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     {
         // Check if chunk exists in any section
         int sectionId = -1;
-        CropChunkData chunk = null;
+        UnifiedChunkData chunk = null;
         
         foreach (var config in WorldDataManager.Instance.sectionConfigs)
         {
@@ -269,6 +304,9 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         {
             SpawnChunkVisuals(chunkPos, chunk);
         }
+
+        // Notify subscribers (e.g. DroppedItemManager)
+        OnChunkLoaded?.Invoke(chunkPos);
     }
     
     /// <summary>
@@ -279,6 +317,9 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         if (!currentlyLoadedChunks.Contains(chunkPos))
             return;
         
+        // Notify subscribers BEFORE removing (they may need to query state)
+        OnChunkUnloaded?.Invoke(chunkPos);
+
         currentlyLoadedChunks.Remove(chunkPos);
         
         // Note: We don't actually clear the chunk data, just mark as unloaded
@@ -316,12 +357,12 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     /// <summary>
     /// Spawn visual GameObjects for all crops and tilled tiles in a chunk
     /// </summary>
-    private void SpawnChunkVisuals(Vector2Int chunkPos, CropChunkData chunk)
+    private void SpawnChunkVisuals(Vector2Int chunkPos, UnifiedChunkData chunk)
     {
-        if (plantDatabase == null || plantDatabase.Length == 0)
+        if (PlantCatalogService.Instance == null || !PlantCatalogService.Instance.IsReady)
         {
             if (showDebugLogs)
-                Debug.LogWarning("[ChunkLoading] PlantDatabase not assigned or empty!");
+                Debug.LogWarning("[ChunkLoading] PlantCatalogService is not ready yet — skipping visual spawn for chunk.");
             return;
         }
         
@@ -362,33 +403,43 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             if (tile.HasCrop)
             {
                 // Get plant data for this crop type
-                PlantDataSO plantData = GetPlantData(tile.CropTypeID);
+                PlantData plantData = GetPlantData(tile.Crop.PlantId);
                 if (plantData == null)
                 {
                     if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] No plant data found for crop type {tile.CropTypeID} at ({tile.WorldX}, {tile.WorldY})");
+                        Debug.LogWarning($"[ChunkLoading] No plant data found for plant id '{tile.Crop.PlantId}' at ({tile.WorldX}, {tile.WorldY})");
                     continue;
                 }
                 
-                // Validate stage is within bounds
-                if (tile.CropStage >= plantData.GrowthStages.Count)
+                // Validate stage is within bounds (for normal plants)
+                if (!plantData.isHybrid && tile.Crop.CropStage >= plantData.growthStages.Count)
                 {
                     if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] Invalid crop stage {tile.CropStage} for {plantData.PlantName} at ({tile.WorldX}, {tile.WorldY})");
+                        Debug.LogWarning($"[ChunkLoading] Invalid crop stage {tile.Crop.CropStage} for {plantData.plantName} at ({tile.WorldX}, {tile.WorldY})");
                     continue;
                 }
                 
                 // Create crop visual GameObject
-                GameObject visual = new GameObject($"Crop_{plantData.PlantName}_{tile.WorldX}_{tile.WorldY}");
+                GameObject visual = new GameObject($"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}");
                 visual.transform.position = new Vector3(tile.WorldX, tile.WorldY+0.062f, 0);
                 
-                // Add sprite renderer with correct stage sprite
+                // Get sprite from catalog (handles hybrid delegation internally)
+                Sprite stageSprite = PlantCatalogService.Instance?.GetStageSprite(tile.Crop.PlantId, tile.Crop.CropStage);
+
+                if (stageSprite == null)
+                {
+                    if (showDebugLogs)
+                        Debug.LogWarning($"[ChunkLoading] '{plantData.plantName}' stage {tile.Crop.CropStage} has a null sprite in PlantCatalogService.");
+                    Destroy(visual);
+                    continue;
+                }
+
                 SpriteRenderer sr = visual.AddComponent<SpriteRenderer>();
-                sr.sprite = plantData.GrowthStages[tile.CropStage].stageSprite;
+                sr.sprite = stageSprite;
                 sr.sortingLayerName = "WalkInfront";
-                sr.sortingOrder = 1;
                 
                 visuals.Add(visual);
+
             }
         }
         
@@ -400,15 +451,14 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     }
     
     /// <summary>
-    /// Get plant data for a specific crop type ID
+    /// Get plant data by PlantId string
     /// </summary>
-    private PlantDataSO GetPlantData(ushort cropTypeID)
+    private PlantData GetPlantData(string plantId)
     {
-        if (plantDatabase == null || cropTypeID >= plantDatabase.Length)
-        {
-            return null;
-        }
-        return plantDatabase[cropTypeID];
+        PlantData plant = PlantCatalogService.Instance?.GetPlantData(plantId);
+        if (plant == null && showDebugLogs)
+            Debug.LogWarning($"[ChunkLoading] PlantId '{plantId}' not found in PlantCatalogService.");
+        return plant;
     }
     
     /// <summary>
@@ -448,6 +498,15 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         // Other players no longer need to know your chunk position
     }
     
+    /// <summary>
+    /// Close the room when the master client leaves instead of transferring mastership.
+    /// </summary>
+    public override void OnMasterClientSwitched(Photon.Realtime.Player newMasterClient)
+    {
+        Debug.Log("[ChunkLoading] Master client left — closing room.");
+        PhotonNetwork.LeaveRoom();
+    }
+
     /// <summary>
     /// Handle player leaving room
     /// </summary>
@@ -495,7 +554,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             
             if (config.ContainsChunk(chunkPos))
             {
-                CropChunkData chunk = WorldDataManager.Instance.GetChunk(config.SectionId, chunkPos);
+                UnifiedChunkData chunk = WorldDataManager.Instance.GetChunk(config.SectionId, chunkPos);
                 if (chunk != null)
                 {
                     SpawnChunkVisuals(chunkPos, chunk);
@@ -524,7 +583,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
 
             if (config.ContainsChunk(chunkPos))
             {
-                CropChunkData chunk = WorldDataManager.Instance.GetChunk(config.SectionId, chunkPos);
+                UnifiedChunkData chunk = WorldDataManager.Instance.GetChunk(config.SectionId, chunkPos);
                 if (chunk != null)
                 {
                     LoadChunk(chunkPos);

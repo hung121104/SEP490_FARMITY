@@ -9,10 +9,6 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
     [Header("Main Panel")]
     [SerializeField] private GameObject detailPanel;
 
-    [Header("Recipe Info")]
-    [SerializeField] private TextMeshProUGUI recipeNameText;
-    [SerializeField] private TextMeshProUGUI recipeDescriptionText;
-
     [Header("Result Item")]
     [SerializeField] private Image resultItemIcon;
     [SerializeField] private TextMeshProUGUI resultItemNameText;
@@ -32,25 +28,22 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
     [SerializeField] private string cannotCookText = "Cannot Cook";
     [SerializeField] private string lockedText = "Locked";
 
-    [Header("Cooking-specific UI (Optional)")]
-    [SerializeField] private Image recipeTypeIcon; // Icon hiển thị đây là cooking recipe
-    [SerializeField] private Sprite cookingIcon;
-
     // Events
-    public event Action<string, int> OnCraftRequested; // Vẫn dùng tên này cho interface consistency
+    public event Action<string, int> OnCraftRequested; 
     public event Action<int> OnAmountChanged;
 
     // State
     private RecipeModel currentRecipe;
     private bool canCook;
-    private Dictionary<ItemDataSO, int> currentMissingIngredients;
+    private Dictionary<string, int> currentMissingIngredients;
+    private List<IngredientSlotUI> ingredientSlots = new List<IngredientSlotUI>();
+    private int currentCookAmount = 1;
 
     public bool IsVisible => detailPanel != null && detailPanel.activeSelf;
 
     private void Awake()
     {
         SetupButtons();
-        SetupCookingIcon();
         HideRecipeDetail();
     }
 
@@ -64,18 +57,9 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         }
     }
 
-    private void SetupCookingIcon()
-    {
-        // Set cooking icon if available
-        if (recipeTypeIcon != null && cookingIcon != null)
-        {
-            recipeTypeIcon.sprite = cookingIcon;
-        }
-    }
-
     #region IRecipeDetailView Implementation
 
-    public void ShowRecipeDetail(RecipeModel recipe, bool canCraft, Dictionary<ItemDataSO, int> missingIngredients)
+    public void ShowRecipeDetail(RecipeModel recipe, bool canCraft, Dictionary<string, int> missingIngredients, int maxCraftableAmount)
     {
         if (recipe == null)
         {
@@ -85,13 +69,11 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
 
         currentRecipe = recipe;
         this.canCook = canCraft;
-        currentMissingIngredients = missingIngredients ?? new Dictionary<ItemDataSO, int>();
+        currentMissingIngredients = missingIngredients ?? new Dictionary<string, int>();
+        currentCookAmount = 1; // Reset to 1 when showing new recipe
 
         // Show panel
         detailPanel.SetActive(true);
-
-        // Display recipe info
-        DisplayRecipeInfo(recipe);
 
         // Display result item
         DisplayResultItem(recipe);
@@ -102,12 +84,9 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         // Update cook button
         UpdateCraftButton(canCraft);
 
-        // Reset amount
-        if (amountInput != null)
-        {
-            amountInput.SetMaxPossibleAmount(999); // Will be updated by presenter
-            amountInput.Reset();
-        }
+        // Set max amount from presenter (calculated from actual inventory)
+        SetMaxCookAmount(maxCraftableAmount);
+        if (amountInput != null) amountInput.Reset();
     }
 
     public void HideRecipeDetail()
@@ -156,43 +135,38 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
 
     #region Display Methods
 
-    private void DisplayRecipeInfo(RecipeModel recipe)
-    {
-        if (recipeNameText != null)
-        {
-            recipeNameText.text = recipe.RecipeName;
-        }
-
-        if (recipeDescriptionText != null)
-        {
-            recipeDescriptionText.text = recipe.Description;
-        }
-    }
-
     private void DisplayResultItem(RecipeModel recipe)
     {
         if (resultItemIcon != null)
         {
-            resultItemIcon.sprite = recipe.ResultItem.icon;
+            Sprite icon = ItemCatalogService.Instance?.GetCachedSprite(recipe.ResultItemId);
+            if (icon != null) resultItemIcon.sprite = icon;
         }
 
         if (resultItemNameText != null)
         {
-            resultItemNameText.text = recipe.ResultItem.itemName;
+            var resultData = ItemCatalogService.Instance?.GetItemData(recipe.ResultItemId);
+            resultItemNameText.text = resultData?.itemName ?? recipe.ResultItemId;
         }
 
-        if (resultQuantityText != null)
+        UpdateResultQuantity();
+    }
+
+    private void UpdateResultQuantity()
+    {
+        if (resultQuantityText != null && currentRecipe != null)
         {
-            resultQuantityText.text = $"x{recipe.ResultQuantity}";
+            int totalQuantity = currentRecipe.ResultQuantity * currentCookAmount;
+            resultQuantityText.text = $"x{totalQuantity}";
         }
     }
 
-    private void DisplayIngredients(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
+    private void DisplayIngredients(RecipeModel recipe, Dictionary<string, int> missingIngredients)
     {
         // Clear existing ingredient slots
         ClearIngredients();
 
-        if (recipe.Ingredients == null || recipe.Ingredients.Length == 0)
+        if (recipe.Ingredients == null || recipe.Ingredients.Count == 0)
         {
             Debug.LogWarning($"[CookingDetailView] Recipe {recipe.RecipeName} has no ingredients");
             return;
@@ -205,11 +179,18 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         }
     }
 
-    private void CreateIngredientSlot(ItemIngredient ingredient, Dictionary<ItemDataSO, int> missingIngredients)
+    private void CreateIngredientSlot(RecipeIngredient ingredient, Dictionary<string, int> missingIngredients)
     {
         if (ingredientSlotPrefab == null || ingredientsContainer == null)
         {
             Debug.LogError("[CookingDetailView] Missing ingredient prefab or container");
+            return;
+        }
+
+        ItemData itemData = ItemCatalogService.Instance?.GetItemData(ingredient.itemId);
+        if (itemData == null)
+        {
+            Debug.LogWarning($"[CookingDetailView] Could not resolve ItemData for id '{ingredient.itemId}'");
             return;
         }
 
@@ -218,11 +199,13 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
 
         if (slotUI != null)
         {
-            int missingAmount = missingIngredients.ContainsKey(ingredient.item)
-                ? missingIngredients[ingredient.item]
+            int missingAmount = missingIngredients != null && missingIngredients.ContainsKey(ingredient.itemId)
+                ? missingIngredients[ingredient.itemId]
                 : 0;
 
-            slotUI.Initialize(ingredient.item, ingredient.quantity, missingAmount);
+            int displayQuantity = ingredient.quantity * currentCookAmount;
+            slotUI.Initialize(itemData, displayQuantity, missingAmount);
+            ingredientSlots.Add(slotUI);
         }
     }
 
@@ -234,6 +217,8 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         {
             Destroy(child.gameObject);
         }
+        
+        ingredientSlots.Clear();
     }
 
     #endregion
@@ -251,6 +236,7 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
 
     private void HandleAmountChanged(int newAmount)
     {
+        UpdateQuantitiesDisplay(newAmount);
         OnAmountChanged?.Invoke(newAmount);
     }
 
@@ -266,8 +252,39 @@ public class CookingDetailView : MonoBehaviour, IRecipeDetailView
         if (amountInput != null)
         {
             amountInput.SetMaxPossibleAmount(maxAmount);
+            currentCookAmount = amountInput.CurrentAmount;
         }
     }
+
+    /// <summary>
+    /// Update ingredient quantities and result quantity based on cook amount
+    /// </summary>
+    private void UpdateQuantitiesDisplay(int amount)
+    {
+        if (currentRecipe == null) return;
+
+        currentCookAmount = amount;
+
+        // Update ingredient quantities
+        for (int i = 0; i < ingredientSlots.Count && i < currentRecipe.Ingredients.Count; i++)
+        {
+            var ingredient = currentRecipe.Ingredients[i];
+            int displayQuantity = ingredient.quantity * currentCookAmount;
+            
+            int missingAmount = currentMissingIngredients != null && currentMissingIngredients.ContainsKey(ingredient.itemId)
+                ? currentMissingIngredients[ingredient.itemId]
+                : 0;
+
+            ItemData itemData = ItemCatalogService.Instance?.GetItemData(ingredient.itemId);
+            if (itemData != null)
+                ingredientSlots[i].Initialize(itemData, displayQuantity, missingAmount);
+        }
+
+        // Update result quantity
+        UpdateResultQuantity();
+    }
+
+
 
     #endregion
 

@@ -60,7 +60,6 @@ public class CraftingPresenter
             recipeListView = mainView.RecipeListView;
             recipeDetailView = mainView.RecipeDetailView;
             filterView = mainView.FilterView;
-            notificationView = mainView.NotificationView;
 
             // Subscribe to events
             SubscribeToViewEvents();
@@ -89,11 +88,6 @@ public class CraftingPresenter
 
     private void SubscribeToViewEvents()
     {
-        if (mainView != null)
-        {
-            mainView.OnCloseRequested += HandleCloseRequested;
-        }
-
         if (recipeListView != null)
         {
             recipeListView.OnRecipeClicked += HandleRecipeClicked;
@@ -113,11 +107,6 @@ public class CraftingPresenter
 
     private void UnsubscribeFromViewEvents()
     {
-        if (mainView != null)
-        {
-            mainView.OnCloseRequested -= HandleCloseRequested;
-        }
-
         if (recipeListView != null)
         {
             recipeListView.OnRecipeClicked -= HandleRecipeClicked;
@@ -231,7 +220,7 @@ public class CraftingPresenter
             if (missingIngredients.Count > 0)
             {
                 string missingText = "Missing: " + string.Join(", ",
-                    missingIngredients.Select(kvp => $"{kvp.Key.itemName} x{kvp.Value}"));
+                    missingIngredients.Select(kvp => $"{kvp.Key} x{kvp.Value}"));
                 notificationView?.ShowNotification(missingText, NotificationType.Warning);
             }
             else
@@ -261,11 +250,6 @@ public class CraftingPresenter
         selectedRecipeID = null;
     }
 
-    private void HandleCloseRequested()
-    {
-        CloseCraftingUI();
-    }
-
     private void HandleAmountChanged(int newAmount)
     {
         // Could add logic here if needed
@@ -286,7 +270,6 @@ public class CraftingPresenter
             CraftingCategory.General,
             CraftingCategory.Tools,
             CraftingCategory.Materials,
-            CraftingCategory.Equipment,
             CraftingCategory.Furniture
         };
 
@@ -353,11 +336,8 @@ public class CraftingPresenter
         // Calculate max craftable amount
         int maxAmount = CalculateMaxCraftableAmount(recipe, missingIngredients);
 
-        // Show detail
-        recipeDetailView?.ShowRecipeDetail(recipe, canCraft, missingIngredients);
-
-        // Set max amount
-        recipeDetailView?.SetCraftAmount(1);
+        // Show detail and pass maxAmount to view
+        recipeDetailView?.ShowRecipeDetail(recipe, canCraft, missingIngredients, maxAmount);
 
         // Update selection in list
         recipeListView?.SetRecipeSelected(recipeID, true);
@@ -371,21 +351,19 @@ public class CraftingPresenter
         }
     }
 
-    private int CalculateMaxCraftableAmount(RecipeModel recipe, Dictionary<ItemDataSO, int> missingIngredients)
+    private int CalculateMaxCraftableAmount(RecipeModel recipe, Dictionary<string, int> missingIngredients)
     {
-        if (recipe == null || recipe.Ingredients == null || recipe.Ingredients.Length == 0)
+        if (recipe == null || recipe.Ingredients == null || recipe.Ingredients.Count == 0)
             return 0;
 
-        // If any ingredient is missing, can't craft
         if (missingIngredients != null && missingIngredients.Count > 0)
             return 0;
 
         int maxAmount = int.MaxValue;
 
-        // Calculate max based on each ingredient
         foreach (var ingredient in recipe.Ingredients)
         {
-            int availableAmount = inventoryService.GetItemCount(ingredient.item.itemID);
+            int availableAmount = inventoryService.GetItemCount(ingredient.itemId);
             int maxForThisIngredient = availableAmount / ingredient.quantity;
             maxAmount = Mathf.Min(maxAmount, maxForThisIngredient);
         }

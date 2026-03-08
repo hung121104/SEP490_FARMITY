@@ -13,6 +13,6 @@ async function bootstrap() {
   });
   app.useGlobalPipes(new ValidationPipe());
   await app.listen();
-  console.log(`Account TCP Microservice listening on port ${process.env.PORT || '8877'}`);
+  console.log(`Account TCP Microservice listening on port ${process.env.PORT || '8877'}`,process.env.MONGO_URI);
 }
 bootstrap();

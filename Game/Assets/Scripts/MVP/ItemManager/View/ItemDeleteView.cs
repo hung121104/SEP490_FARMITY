@@ -86,6 +86,14 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
 
         if (draggedSlot != null)
         {
+            // Validate that the slot is actually being dragged
+            if (!draggedSlot.IsDragging)
+            {
+                Debug.Log("[ItemDeleteView] Ignoring drop - slot is not actively being dragged");
+                SetHoverState(false);
+                return;
+            }
+
             var item = draggedSlot.GetCurrentItem();
 
             if (item != null)
@@ -111,10 +119,15 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
         //Check if accepting drops
         if (!acceptingDrops)
             return;
-        // Check if something is being dragged
+
+        // Check if something is genuinely being dragged (not a stale EventSystem reference)
         if (eventData.pointerDrag != null)
         {
-            SetHoverState(true);
+            var draggedSlot = eventData.pointerDrag.GetComponent<InventorySlotView>();
+            if (draggedSlot != null && draggedSlot.IsDragging)
+            {
+                SetHoverState(true);
+            }
         }
     }
 
@@ -150,6 +163,27 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
         // Scale animation
         StartCoroutine(AnimateScale(hovering ? originalScale * scaleMultiplier : originalScale));
     }
+
+    public void ResetVisualOnly()
+    {
+        StopAllCoroutines();
+
+        isHovering = false;
+
+        if (trashIconImage != null)
+            trashIconImage.color = normalColor;
+
+        if (canvasGroup != null)
+            canvasGroup.alpha = normalAlpha;
+
+        if (highlightEffect != null)
+            highlightEffect.SetActive(false);
+
+        transform.localScale = originalScale;
+
+        Debug.Log("[ItemDeleteView] Visual state reset (acceptingDrops unchanged)");
+    }
+
 
     // Reset to normal state 
     public void ForceResetState()
@@ -242,6 +276,7 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
     {
         gameObject.SetActive(true);
         acceptingDrops = true;
+        Debug.Log($"[DEBUG DeleteView] Hide() called\n{System.Environment.StackTrace}");
     }
 
     public void Hide()

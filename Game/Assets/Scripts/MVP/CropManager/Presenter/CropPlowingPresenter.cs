@@ -18,29 +18,23 @@ public class CropPlowingPresenter
     /// <param name="worldPosition">The world position where the player wants to plow</param>
     public void HandlePlowAction(Vector3 worldPosition)
     {
-        // Convert world position to tile position (using any tilemap for conversion)
-        Tilemap anyTilemap = Object.FindAnyObjectByType<Tilemap>();
-        if (anyTilemap == null)
+        // If there's a crop on this tile, remove it instead of plowing
+        if (WorldDataManager.Instance != null &&
+            WorldDataManager.Instance.HasCropAtWorldPosition(worldPosition))
         {
-            Debug.LogError("No tilemap found in scene!");
+            cropPlowingService.RemoveCropOnTile(worldPosition);
             return;
         }
-        
-        Vector3Int tilePosition = anyTilemap.WorldToCell(worldPosition);
-        
-        // Attempt to plow the tile
-        bool success = cropPlowingService.PlowTile(tilePosition, worldPosition);
-        
-        // Update the view based on the result
+
+        // PlowTile finds the correct Tilemap internally from the world position
+        bool success = cropPlowingService.PlowTile(Vector3Int.zero, worldPosition);
+
         if (success)
-        {
-            view.OnPlowSuccess(tilePosition);
-        }
+            view.OnPlowSuccess(Vector3Int.zero, worldPosition);
         else
-        {
-            view.OnPlowFailed(tilePosition);
-        }
+            view.OnPlowFailed(Vector3Int.zero);
     }
+
     
     /// <summary>
     /// Initializes the presenter and service with required references
