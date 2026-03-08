@@ -6,8 +6,9 @@ namespace CombatManager.Service
     /// </summary>
     public interface IDamageCalculatorService
     {
-        int CalculateSkillDamage(int diceRoll, int strength, float multiplier);
+        // weaponDamage = 0 default for backward compatibility
+        int CalculateSkillDamage(int diceRoll, int strength, float multiplier, int weaponDamage = 0);
         int CalculateBasicAttackDamage(int strength, int weaponDamage);
-        int CalculateWithDefense(int rawDamage, int defense); // For future use
+        int CalculateWithDefense(int rawDamage, int defense);
     }
 }

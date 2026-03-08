@@ -1,0 +1,366 @@
+using UnityEngine;
+using Photon.Pun;
+using System.Collections;
+using CombatManager.Model;
+using CombatManager.Service;
+using CombatManager.View;
+using CombatManager.SO; 
+
+namespace CombatManager.Presenter
+{
+    public class PlayerAttackPresenter : MonoBehaviour
+    {
+        [Header("Model")]
+        [SerializeField] private PlayerAttackModel model = new PlayerAttackModel();
+
+        [Header("VFX Prefabs - Melee")]
+        [SerializeField] private GameObject stabVFXPrefab;
+        [SerializeField] private GameObject horizontalVFXPrefab;
+        [SerializeField] private GameObject verticalVFXPrefab;
+        [SerializeField] private GameObject damagePopupPrefab;
+
+        [Header("Staff Projectile")]
+        [SerializeField] private GameObject staffProjectilePrefab;
+        [SerializeField] private float staffProjectileSpeed = 10f;
+        [SerializeField] private float staffProjectileRange = 8f;
+        [SerializeField] private float staffKnockbackForce = 5f;
+        // TODO: Staff combo system - currently single shot
+        // Future: staffComboSteps[] with different projectile patterns
+
+        [Header("Combat Settings")]
+        [SerializeField] private LayerMask enemyLayers;
+
+        [Header("VFX Position Offsets")]
+        [SerializeField] private Vector2 stabPositionOffset = Vector2.zero;
+        [SerializeField] private Vector2 horizontalPositionOffset = Vector2.zero;
+        [SerializeField] private Vector2 verticalPositionOffset = Vector2.zero;
+
+        [Header("VFX Spawn Settings")]
+        [SerializeField] private float vfxSpawnOffset = 1f;
+
+        [Header("Dependencies")]
+        [SerializeField] private StatsPresenter statsPresenter;
+        [SerializeField] private PlayerPointerPresenter pointerPresenter;
+
+        private IPlayerAttackService service;
+        private IStatsService statsService;
+        private IDamageCalculatorService damageCalculator;
+
+        // Cached local player transform for staff projectile
+        private Transform localPlayerTransform;
+
+        #region Unity Lifecycle
+
+        private void Start()
+        {
+            StartCoroutine(DelayedInitialize());
+        }
+
+        private void Update()
+        {
+            if (service == null || !service.IsInitialized())
+                return;
+
+            service.UpdateTimers(Time.deltaTime);
+            CheckAttackInput();
+        }
+
+        #endregion
+
+        #region Initialization
+
+        private IEnumerator DelayedInitialize()
+        {
+            yield return new WaitForSeconds(0.5f);
+            InitializeComponents();
+        }
+
+        private void InitializeComponents()
+        {
+            if (statsPresenter == null)
+                statsPresenter = FindObjectOfType<StatsPresenter>();
+
+            if (pointerPresenter == null)
+                pointerPresenter = FindObjectOfType<PlayerPointerPresenter>();
+
+            if (statsPresenter == null)
+            {
+                Debug.LogError("[PlayerAttackPresenter] StatsPresenter not found!");
+                enabled = false;
+                return;
+            }
+
+            if (pointerPresenter == null)
+            {
+                Debug.LogError("[PlayerAttackPresenter] PlayerPointerPresenter not found!");
+                enabled = false;
+                return;
+            }
+
+            statsService = statsPresenter.GetService();
+            damageCalculator = new DamageCalculatorService();
+
+            GameObject playerObj = FindLocalPlayerEntity();
+            if (playerObj == null)
+            {
+                Debug.LogError("[PlayerAttackPresenter] Local player not found!");
+                enabled = false;
+                return;
+            }
+
+            // Cache for staff projectile use
+            localPlayerTransform = playerObj.transform;
+
+            Transform centerPoint = playerObj.transform.Find("CenterPoint");
+            if (centerPoint == null)
+                centerPoint = playerObj.transform;
+
+            model.stabPositionOffset = stabPositionOffset;
+            model.horizontalPositionOffset = horizontalPositionOffset;
+            model.verticalPositionOffset = verticalPositionOffset;
+            model.vfxSpawnOffset = vfxSpawnOffset;
+
+            service = new PlayerAttackService(model);
+            service.Initialize(
+                playerObj.transform,
+                centerPoint,
+                stabVFXPrefab,
+                horizontalVFXPrefab,
+                verticalVFXPrefab,
+                damagePopupPrefab,
+                enemyLayers
+            );
+
+            Debug.Log("[PlayerAttackPresenter] Initialized successfully");
+        }
+
+        private GameObject FindLocalPlayerEntity()
+        {
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine) return go;
+            }
+
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine) return go;
+            }
+
+            GameObject fallback = GameObject.Find("PlayerEntity");
+            if (fallback != null)
+            {
+                Debug.LogWarning("[PlayerAttackPresenter] Found PlayerEntity by name");
+                return fallback;
+            }
+
+            return null;
+        }
+
+        #endregion
+
+        #region Input Handling
+
+        private void CheckAttackInput()
+        {
+            if (CombatModePresenter.Instance == null ||
+                !CombatModePresenter.Instance.IsCombatModeActive())
+                return;
+
+            if (WeaponEquipPresenter.Instance == null ||
+                !WeaponEquipPresenter.Instance.IsWeaponEquipped())
+                return;
+
+            if (Input.GetMouseButtonDown(0) && service.CanAttack())
+                ExecuteAttack();
+        }
+
+        #endregion
+
+        #region Attack Execution
+
+        private void ExecuteAttack()
+        {
+            if (service == null || !service.IsInitialized()) return;
+
+            var currentWeapon = WeaponEquipPresenter.Instance?.GetCurrentWeapon();
+            if (currentWeapon == null)
+            {
+                Debug.LogWarning("[PlayerAttackPresenter] No weapon equipped - attack blocked!");
+                return;
+            }
+
+            int strength = statsService.GetAttackDamage();
+            int weaponDamage = currentWeapon.damage;
+            int baseDamage = damageCalculator.CalculateBasicAttackDamage(strength, weaponDamage);
+
+            // ✅ Route attack by weapon type
+            switch (currentWeapon.weaponType)
+            {
+                case WeaponType.Staff:
+                    ExecuteStaffAttack(baseDamage, currentWeapon);
+                    break;
+
+                case WeaponType.Sword:
+                case WeaponType.Spear:
+                default:
+                    ExecuteMeleeAttack(baseDamage, currentWeapon);
+                    break;
+            }
+
+            // Play weapon animation
+            if (WeaponAnimationPresenter.Instance != null &&
+                WeaponAnimationPresenter.Instance.IsWeaponActive())
+                WeaponAnimationPresenter.Instance.PlayAttackAnimation();
+
+            service.ExecuteAttack();
+
+            float cooldown = statsService.GetCooldownTime();
+            service.SetAttackCooldown(cooldown);
+        }
+
+        #endregion
+
+        #region Melee Attack
+
+        private void ExecuteMeleeAttack(int baseDamage, WeaponDataSO currentWeapon)
+        {
+            int comboStep = service.GetCurrentComboStep();
+            GameObject vfxPrefab = service.GetVFXPrefab(comboStep);
+            float vfxDuration = service.GetVFXDuration(comboStep);
+
+            if (vfxPrefab == null)
+            {
+                Debug.LogWarning($"[PlayerAttackPresenter] VFX prefab missing for combo step {comboStep}");
+                return;
+            }
+
+            int finalDamage = service.CalculateDamage(comboStep, baseDamage);
+            float knockbackForce = statsService.GetKnockbackForce();
+
+            SpawnSlashVFX(vfxPrefab, vfxDuration, finalDamage, knockbackForce, comboStep);
+
+            // ✅ Fix: use statsService.GetAttackDamage() instead of undefined 'strength'
+            Debug.Log($"[PlayerAttackPresenter] Melee: Step={comboStep}, " +
+                      $"Str={statsService.GetAttackDamage()} + WeaponDmg={currentWeapon.damage} " +
+                      $"= Base={baseDamage} → Final={finalDamage} | " +
+                      $"Weapon={currentWeapon.weaponName}");
+        }
+
+        private void SpawnSlashVFX(GameObject vfxPrefab, float duration,
+                                    int damage, float knockback, int comboStep)
+        {
+            Transform centerPoint = service.GetCenterPoint();
+            Vector3 pointerDirection = pointerPresenter.GetPointerDirection();
+
+            float spawnOffset = service.GetVFXSpawnOffset();
+            Vector3 spawnPosition = centerPoint.position + pointerDirection * spawnOffset;
+
+            Vector2 positionOffset = service.GetPositionOffset(comboStep);
+            spawnPosition += (Vector3)positionOffset;
+            spawnPosition.z = centerPoint.position.z;
+
+            float angle = Mathf.Atan2(pointerDirection.y, pointerDirection.x) * Mathf.Rad2Deg;
+            Quaternion rotation = Quaternion.Euler(0f, 0f, angle);
+
+            GameObject vfxInstance = Instantiate(vfxPrefab, spawnPosition, rotation);
+
+            if (pointerDirection.x < 0)
+            {
+                Vector3 scale = vfxInstance.transform.localScale;
+                scale.y *= -1;
+                vfxInstance.transform.localScale = scale;
+            }
+
+            SlashHitboxPresenter hitboxPresenter = vfxInstance.GetComponent<SlashHitboxPresenter>();
+            if (hitboxPresenter == null)
+                hitboxPresenter = vfxInstance.AddComponent<SlashHitboxPresenter>();
+
+            hitboxPresenter.Initialize(
+                damage,
+                knockback,
+                service.GetEnemyLayers(),
+                service.GetPlayerTransform(),
+                service.GetDamagePopupPrefab(),
+                duration
+            );
+
+            Debug.Log($"[PlayerAttackPresenter] Melee VFX spawned at {spawnPosition}, angle={angle}°");
+        }
+
+        #endregion
+
+        #region Staff Projectile Attack
+
+        private void ExecuteStaffAttack(int baseDamage, WeaponDataSO currentWeapon)
+        {
+            if (staffProjectilePrefab == null)
+            {
+                Debug.LogWarning("[PlayerAttackPresenter] Staff projectile prefab not assigned!");
+                return;
+            }
+
+            if (localPlayerTransform == null)
+            {
+                Debug.LogWarning("[PlayerAttackPresenter] Local player transform missing!");
+                return;
+            }
+
+            // TODO: Staff combo system - currently single shot per click
+            // Future: add staffComboSteps[] for multi-projectile patterns
+
+            Vector3 direction = pointerPresenter.GetPointerDirection().normalized;
+
+            GameObject projectileGO = Instantiate(
+                staffProjectilePrefab,
+                localPlayerTransform.position,
+                Quaternion.identity
+            );
+
+            // ✅ Renamed: AirSlashProjectileModel → ProjectileModel
+            ProjectileModel projectileModel = new ProjectileModel
+            {
+                direction      = direction,
+                speed          = staffProjectileSpeed,
+                maxRange       = staffProjectileRange,
+                damage         = baseDamage,
+                knockbackForce = staffKnockbackForce,
+                enemyLayers    = enemyLayers,
+                playerTransform = localPlayerTransform
+            };
+
+            // ✅ Renamed: AirSlashProjectilePresenter → ProjectilePresenter
+            ProjectilePresenter projectilePresenter =
+                projectileGO.GetComponent<ProjectilePresenter>();
+
+            if (projectilePresenter == null)
+            {
+                Debug.LogWarning("[PlayerAttackPresenter] ProjectilePresenter " +
+                                 "missing on NA_Staff prefab!");
+                Destroy(projectileGO);
+                return;
+            }
+
+            projectilePresenter.Initialize(projectileModel);
+
+            Debug.Log($"[PlayerAttackPresenter] Staff projectile fired! " +
+                      $"Damage={baseDamage} | Dir={direction} | " +
+                      $"Speed={staffProjectileSpeed} | Range={staffProjectileRange} | " +
+                      $"Weapon={currentWeapon.weaponName}");
+        }
+
+        #endregion
+
+        #region Getters
+
+        public bool IsInitialized() => service?.IsInitialized() ?? false;
+        public bool CanAttack() => service?.CanAttack() ?? false;
+        public int GetCurrentComboStep() => service?.GetCurrentComboStep() ?? 0;
+        public float GetCooldownPercent() =>
+            service?.GetCooldownPercent(statsService?.GetCooldownTime() ?? 1f) ?? 0f;
+        public IPlayerAttackService GetService() => service;
+
+        #endregion
+    }
+}
