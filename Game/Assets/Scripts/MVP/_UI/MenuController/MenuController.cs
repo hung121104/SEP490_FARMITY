@@ -1,34 +1,50 @@
-using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
+/// <summary>
+/// Toggles the inventory/menu canvas via the New Input System.
+/// Replaces the legacy Input.GetKeyDown(useMenu) approach.
+/// </summary>
 public class MenuController : MonoBehaviour
 {
     public GameObject menuCanvas;
     public GameObject hotbarPanel;
     public InventoryGameView inventoryGameView;
-    public KeyCode useMenu = KeyCode.E;
+
+    private void OnEnable()
+    {
+        if (InputManager.Instance != null)
+            InputManager.Instance.OpenInventory.performed += OnToggleMenu;
+    }
+
+    private void OnDisable()
+    {
+        if (InputManager.Instance != null)
+            InputManager.Instance.OpenInventory.performed -= OnToggleMenu;
+    }
 
     void Start()
     {
         menuCanvas.SetActive(false);
     }
-    void Update()
+
+    private void OnToggleMenu(InputAction.CallbackContext ctx)
     {
-        if (Input.GetKeyDown(useMenu) && menuCanvas != null && hotbarPanel != null && inventoryGameView != null)
+        if (menuCanvas == null || hotbarPanel == null || inventoryGameView == null)
+            return;
+
+        hotbarPanel.SetActive(menuCanvas.activeSelf);
+
+        //Force cancel all ongoing actions in inventory when menu is toggled
+        menuCanvas.SetActive(!menuCanvas.activeSelf);
+
+        if (menuCanvas.activeSelf == false)
         {
-            hotbarPanel.SetActive(menuCanvas.activeSelf);
-
-            //Force cancel all ongoing actions in inventory when menu is toggled
-            menuCanvas.SetActive(!menuCanvas.activeSelf);
-
-            if (menuCanvas.activeSelf == false)
-            {
-                inventoryGameView.CloseInventory();
-            }
-            else 
-            { 
-                inventoryGameView.OpenInventory();
-            }         
+            inventoryGameView.CloseInventory();
+        }
+        else
+        {
+            inventoryGameView.OpenInventory();
         }
     }
 }

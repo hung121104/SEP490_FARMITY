@@ -1,5 +1,29 @@
 import { UpsertCharacterDto } from '../../character/dto/upsert-character.dto';
 
+// ── Tile delta types ────────────────────────────────────────────────────────
+
+export class TileDataDto {
+  type?: string;
+  plantId?: string | null;
+  cropStage?: number;
+  totalAge?: number;
+  pollenHarvestCount?: number;
+  isWatered?: boolean;
+  isFertilized?: boolean;
+  isPollinated?: boolean;
+}
+
+/** One chunk's worth of changed tiles.  tiles key = local tile index "0"–"899". */
+export class ChunkDeltaDto {
+  chunkX: number;
+  chunkY: number;
+  sectionId: number;
+  /** Only the tiles that changed; key = string(localTileIndex) */
+  tiles: Record<string, TileDataDto>;
+}
+
+// ── Main DTO ────────────────────────────────────────────────────────────────
+
 export class UpdateWorldDto {
   worldId: string;
   ownerId: string;
@@ -14,4 +38,10 @@ export class UpdateWorldDto {
 
   // Up to 4 characters to upsert
   characters?: UpsertCharacterDto[];
+
+  /**
+   * Tile deltas — only the chunks that changed since the last save.
+   * Backend merges these into the `chunks` collection atomically.
+   */
+  deltas?: ChunkDeltaDto[];
 }

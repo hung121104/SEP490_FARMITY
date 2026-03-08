@@ -8,6 +8,7 @@ public class QuestModel
     public string questId;
     public string questName;
     public string description;
+    public string nextQuestId;
     public QuestReward reward;
 
     public QuestStatus status;
@@ -19,7 +20,7 @@ public class QuestReward
 {
     public string itemId;
     public int quantity;
-    public Sprite icon;
+    
 }
 
 [Serializable]

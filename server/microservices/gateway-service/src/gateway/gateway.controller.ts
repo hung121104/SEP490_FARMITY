@@ -139,28 +139,16 @@ export class GatewayController {
     const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
     try {
+      // Forward to save-world which handles time + characters + tile deltas
+      // inside a MongoDB transaction (falls back gracefully on standalone).
       return await firstValueFrom(
-        this.playerDataClient.send('update-world', { ...body, ownerId }),
+        this.playerDataClient.send('save-world', { ...body, ownerId }),
       );
     } catch (err) {
-      const payload = err?.message ?? err;
-      let status = 500;
-      let message = 'Internal server error';
-      if (typeof payload === 'string') {
-        try {
-          const parsed = JSON.parse(payload);
-          status = parsed.status || status;
-          message = parsed.message || parsed.error || payload;
-        } catch {
-          message = payload;
-        }
-      } else if (payload && typeof payload === 'object') {
-        status = payload.status || payload.code || status;
-        message = payload.message || payload.error || JSON.stringify(payload);
-      }
-      throw new HttpException(message, status);
+      throw this.rpcError(err);
     }
   }
+
 
   @Delete('player-data/world')
   async deleteWorld(@Query('_id') _id: string, @Req() req: Request) {
@@ -1082,6 +1070,49 @@ export class GatewayController {
         this.playerDataClient.send('get-dropped-items', payload),
       );
     } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Config ────────────────────────────────────────────────────────────
+
+  /** GET /game-config/main-menu — public (no auth).
+   *  Returns { currentBackgroundUrl, version } or null if not set. */
+  @Get('game-config/main-menu')
+  async getMainMenuConfig() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-main-menu-config', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-config/main-menu — admin-only, multipart/form-data.
+   *  Accepts a "background" image file. Uploads to Cloudinary, then
+   *  persists the URL in the GameConfig singleton document. */
+  @Put('game-config/main-menu')
+  @UseInterceptors(
+    FileInterceptor('background', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async updateMainMenuBackground(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'A background image file is required (field name: "background")',
+      );
+    try {
+      const url = await this.cloudinaryService.uploadFile(
+        file,
+        'game-config',
+      );
+      return await firstValueFrom(
+        this.adminClient.send('update-main-menu-background', { url }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
     }
   }

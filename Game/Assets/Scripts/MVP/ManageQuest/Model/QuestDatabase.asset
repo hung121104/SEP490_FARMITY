@@ -16,10 +16,10 @@ MonoBehaviour:
   - questId: Q_1
     questName: Bing apple
     description: Give me five apples.
+    nextQuestId: 
     reward:
       itemId: 
       quantity: 0
-      icon: {fileID: 0}
     status: 1
     objectives:
     - objectiveId: 01
@@ -28,33 +28,33 @@ MonoBehaviour:
       itemId: 
       requiredAmount: 5
       currentAmount: 0
-  - questId: Q_2
-    questName: Bring gold
-    description: Give me five gold.
-    reward:
-      itemId: 
-      quantity: 0
-      icon: {fileID: 0}
-    status: 1
-    objectives:
-    - objectiveId: 02
-      description: Give me five gold.
-      type: 0
-      itemId: 
-      requiredAmount: 5
-      currentAmount: 0
-  - questId: Q_3
-    questName: Bring me iron hoe
-    description: Bring me one iron hoe
+  - questId: q_2
+    questName: Bring ingot
+    description: Give me one copper ingot
+    nextQuestId: q_3
     reward:
       itemId: gold_hoe
       quantity: 1
-      icon: {fileID: -1389515252460137257, guid: 5025ba1095e517b459a06251ce3b80f8, type: 3}
     status: 1
+    objectives:
+    - objectiveId: 02
+      description: Give me one copper ingot
+      type: 0
+      itemId: copper_ingot
+      requiredAmount: 1
+      currentAmount: 1
+  - questId: q_3
+    questName: Bring me iron hoe
+    description: Bring me one iron hoe
+    nextQuestId: 
+    reward:
+      itemId: gold_hoe
+      quantity: 1
+    status: 3
     objectives:
     - objectiveId: 03
       description: GIve me one iron hoe
       type: 0
       itemId: iron_hoe
       requiredAmount: 1
-      currentAmount: 0
+      currentAmount: 1

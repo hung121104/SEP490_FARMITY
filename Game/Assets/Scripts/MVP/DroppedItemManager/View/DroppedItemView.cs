@@ -334,8 +334,8 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     private void DrawPickupGizmo()
     {
         // Filled disc — shows the detection area
-        UnityEditor.Handles.color = gizmoColor;
 #if UNITY_EDITOR
+        UnityEditor.Handles.color = gizmoColor;
         UnityEditor.Handles.DrawSolidDisc(transform.position, Vector3.forward, pickupRadius);
 #endif
 

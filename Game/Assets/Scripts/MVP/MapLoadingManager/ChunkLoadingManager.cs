@@ -120,6 +120,23 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             yield return new WaitForSeconds(0.5f);
         }
 
+        // Wait for WorldDataBootstrapper to finish fetching and populating chunk data
+        // (master client only — non-masters skip this automatically via IsReady staying false)
+        float bootTimeout = 30f; // generous cap in case of slow network
+        float bootElapsed = 0f;
+        while (WorldDataBootstrapper.Instance != null && !WorldDataBootstrapper.Instance.IsReady)
+        {
+            if (showDebugLogs)
+                Debug.Log("[ChunkLoading] Waiting for WorldDataBootstrapper to be ready...");
+            yield return new WaitForSeconds(0.5f);
+            bootElapsed += 0.5f;
+            if (bootElapsed >= bootTimeout)
+            {
+                Debug.LogWarning("[ChunkLoading] Timed out waiting for WorldDataBootstrapper — proceeding without loaded chunk data.");
+                break;
+            }
+        }
+
         // Wait for local player to spawn
         while (localPlayerTransform == null)
         {
@@ -138,9 +155,10 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             yield return new WaitForSeconds(0.5f);
         }
         
-        // Initial load
+        // Initial load — chunk data in RAM is now fully populated from DB
         UpdatePlayerChunkPosition();
     }
+
     
     private void Update()
     {
@@ -419,7 +437,6 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 SpriteRenderer sr = visual.AddComponent<SpriteRenderer>();
                 sr.sprite = stageSprite;
                 sr.sortingLayerName = "WalkInfront";
-                sr.sortingOrder = 1;
                 
                 visuals.Add(visual);
 

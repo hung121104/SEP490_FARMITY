@@ -390,6 +390,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             options,
             SendOptions.SendReliable
         );
+
+        MarkDirty(worldX, worldY);
     }
     
     /// <summary>
@@ -439,6 +441,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             options,
             SendOptions.SendReliable
         );
+
+        MarkDirty(worldX, worldY);
     }
     
     /// <summary>
@@ -487,6 +491,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             options,
             SendOptions.SendReliable
         );
+
+        MarkDirty(worldX, worldY);
     }
     
     /// <summary>
@@ -536,6 +542,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             options,
             SendOptions.SendReliable
         );
+
+        MarkDirty(worldX, worldY);
     }
 
     /// <summary>
@@ -558,6 +566,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             options,
             SendOptions.SendReliable
         );
+
+        MarkDirty(worldX, worldY);
     }
 
     private void HandleTileTilled(object data)
@@ -625,6 +635,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             options,
             SendOptions.SendReliable
         );
+
+        MarkDirty(worldX, worldY);
     }
 
     private void HandlePollenHarvested(object data)
@@ -669,6 +681,21 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         // Start sending (SendWorldDataToPlayer will respect isSyncing)
         StartCoroutine(SendWorldDataToPlayer(targetActorNumber));
+    }
+
+    /// <summary>
+    /// Notify WorldSaveManager that a tile at (worldX, worldY) has changed.
+    /// Only runs on the MasterClient — non-masters skip silently.
+    /// </summary>
+    private void MarkDirty(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        int chunkX    = Mathf.FloorToInt(worldX / 30f);
+        int chunkY    = Mathf.FloorToInt(worldY / 30f);
+        int sectionId = WorldDataManager.Instance != null
+            ? WorldDataManager.Instance.GetSectionIdFromWorldPosition(new Vector3(worldX, worldY, 0))
+            : 0;
+        WorldSaveManager.TryMarkChunkDirty(chunkX, chunkY, sectionId);
     }
     
     #region Serialization Helpers
@@ -823,6 +850,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
         PhotonNetwork.RaiseEvent(CROP_CROSSBRED_EVENT, payload.ToArray(), opts, SendOptions.SendReliable);
+
+        MarkDirty(worldX, worldY);
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] BroadcastCropCrossbred ({worldX},{worldY}) → '{resultPlantId}' stage {startStage}");
