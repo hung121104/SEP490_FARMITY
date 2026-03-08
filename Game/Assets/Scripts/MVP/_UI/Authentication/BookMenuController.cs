@@ -48,7 +48,7 @@ public class BookMenuController : MonoBehaviour
     private void BindButtons()
     {
         if (openBookBtn != null) openBookBtn.onClick.AddListener(ShowBook);
-        if (closeBookBtn != null) closeBookBtn.onClick.AddListener(HideBook);
+        if (closeBookBtn != null) closeBookBtn.onClick.AddListener(TranstionIn);
         if (openLoginBtn != null) openLoginBtn.onClick.AddListener(ShowLogin);
         if (openRegisterBtn != null) openRegisterBtn.onClick.AddListener(ShowRegister);
         if (openTitleBtn != null) openTitleBtn.onClick.AddListener(ShowTitle);
@@ -63,20 +63,21 @@ public class BookMenuController : MonoBehaviour
         _movingCoroutine = StartCoroutine(MoveBook());
     }
 
-    [ContextMenu("hide book")]
-    public void HideBook()
+    [ContextMenu("Transtion In")]
+    public void TranstionIn()
     {
-        StartCoroutine(HideBookRoutine());
+        StartCoroutine(TranstionInRoutine());
     }
 
-    private IEnumerator HideBookRoutine()
+    private IEnumerator TranstionInRoutine()
     {
-        animator.SetTrigger(turnRToL);
         ScalingBook(scaleTarget);
         yield return _scalingCoroutine;
-        bookImage.enabled = false;
+       
         if (_movingCoroutine != null) StopCoroutine(_movingCoroutine);
         _movingCoroutine = StartCoroutine(MoveBook());
+        yield return _movingCoroutine;
+        bookImage.enabled = false;
         animator.SetTrigger(turnRToL);
     }
     IEnumerator MoveBook()

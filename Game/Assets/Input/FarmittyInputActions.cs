@@ -49,12 +49,12 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
                         { ""name"": ""HotbarSlot9"",   ""type"": ""Button"", ""id"": ""bbbb0009-0001-0001-0001-000000000001"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false }
                     ],
                     ""bindings"": [
-                        { ""name"": ""WASD"", ""id"": ""b0000001-0001-0001-0001-000000000001"", ""path"": """",                     ""action"": ""Move"", ""isComposite"": true,  ""isPartOfComposite"": false },
+                        { ""name"": ""WASD"", ""id"": ""b0000001-0001-0001-0001-000000000001"", ""path"": ""2DVector"",              ""action"": ""Move"", ""isComposite"": true,  ""isPartOfComposite"": false },
                         { ""name"": ""up"",   ""id"": ""b0000001-0001-0001-0001-000000000002"", ""path"": ""<Keyboard>/w"",          ""action"": ""Move"", ""isComposite"": false, ""isPartOfComposite"": true  },
                         { ""name"": ""down"", ""id"": ""b0000001-0001-0001-0001-000000000003"", ""path"": ""<Keyboard>/s"",          ""action"": ""Move"", ""isComposite"": false, ""isPartOfComposite"": true  },
                         { ""name"": ""left"", ""id"": ""b0000001-0001-0001-0001-000000000004"", ""path"": ""<Keyboard>/a"",          ""action"": ""Move"", ""isComposite"": false, ""isPartOfComposite"": true  },
                         { ""name"": ""right"",""id"": ""b0000001-0001-0001-0001-000000000005"", ""path"": ""<Keyboard>/d"",          ""action"": ""Move"", ""isComposite"": false, ""isPartOfComposite"": true  },
-                        { ""name"": ""Arrow Keys"", ""id"": ""b0000002-0001-0001-0001-000000000001"", ""path"": """",                ""action"": ""Move"", ""isComposite"": true,  ""isPartOfComposite"": false },
+                        { ""name"": ""Arrow Keys"", ""id"": ""b0000002-0001-0001-0001-000000000001"", ""path"": ""2DVector"",         ""action"": ""Move"", ""isComposite"": true,  ""isPartOfComposite"": false },
                         { ""name"": ""up"",   ""id"": ""b0000002-0001-0001-0001-000000000002"", ""path"": ""<Keyboard>/upArrow"",    ""action"": ""Move"", ""isComposite"": false, ""isPartOfComposite"": true  },
                         { ""name"": ""down"", ""id"": ""b0000002-0001-0001-0001-000000000003"", ""path"": ""<Keyboard>/downArrow"",  ""action"": ""Move"", ""isComposite"": false, ""isPartOfComposite"": true  },
                         { ""name"": ""left"", ""id"": ""b0000002-0001-0001-0001-000000000004"", ""path"": ""<Keyboard>/leftArrow"",  ""action"": ""Move"", ""isComposite"": false, ""isPartOfComposite"": true  },

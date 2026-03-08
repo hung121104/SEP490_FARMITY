@@ -172,7 +172,7 @@
                 {
                     "name": "WASD",
                     "id": "b0000001-0001-0001-0001-000000000001",
-                    "path": "",
+                    "path": "2DVector",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
@@ -227,7 +227,7 @@
                 {
                     "name": "Arrow Keys",
                     "id": "b0000002-0001-0001-0001-000000000001",
-                    "path": "",
+                    "path": "2DVector",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
