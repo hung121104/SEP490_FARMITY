@@ -12,7 +12,7 @@ namespace CombatManager.Presenter
     /// Attach ONE instance to CombatSystem GameObject.
     /// SkillHotbarPresenter finds this by SkillCategory.Projectile.
     /// </summary>
-    public class ProjectileSkillPresenter : SkillPresenter
+    public class ProjectileSkillPresenter : SkillPatternPresenter
     {
         public static ProjectileSkillPresenter Instance { get; private set; }
 
