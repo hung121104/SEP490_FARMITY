@@ -1,10 +1,22 @@
 fileFormatVersion: 2
-guid: 06d60124f75a32c40aded4f1d89fe51b
+guid: 6fe879303e0b3a343b37c128a43b4e73
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 741604640518714961
-    second: Walleye_0
+      213: -6320378044866599760
+    second: backgroundFishing_0
+  - first:
+      213: 1695436785756993401
+    second: backgroundFishing_1
+  - first:
+      213: -5039488798573898665
+    second: backgroundFishing_2
+  - first:
+      213: 5057268793914132358
+    second: backgroundFishing_3
+  - first:
+      213: 5993073289319910563
+    second: backgroundFishing_4
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -96,40 +108,27 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 4
-    buildTarget: WebGL
-    maxTextureSize: 2048
-    resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
-    allowsAlphaSplitting: 0
-    overridden: 0
-    ignorePlatformSupport: 0
-    androidETC2FallbackOverride: 0
-    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Walleye_0
+      name: backgroundFishing_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
-        width: 16
-        height: 16
+        y: 7
+        width: 680
+        height: 1529
       alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 305, y: 396, z: 201, w: 322}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 15636e9cd75ba4a00800000000000000
-      internalID: 741604640518714961
+      spriteID: 36e45198cdb5f254f9f3e9f64085e8ad
+      internalID: -6320378044866599760
       vertices: []
       indices: 
       edges: []
@@ -138,7 +137,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 19972d596b6bd374e828506fb1c405f6
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +147,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Walleye_0: 741604640518714961
+      backgroundFishing_0: -6320378044866599760
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

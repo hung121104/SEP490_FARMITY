@@ -3,75 +3,67 @@ using UnityEngine.Tilemaps;
 
 public class FishingService : IFishingService
 {
-    private readonly FishDatabase fishDatabase;
-    private readonly FishingModel fishingModel;
-    private readonly IInventoryService inventoryService;
+    private FishDatabase fishDatabase;
+    private IInventoryService inventoryService;
+    private FishingModel fishingModel;
 
-    // Constructor để tiêm (inject) các dependencies vào
-    public FishingService(FishDatabase fishDatabase, FishingModel fishingModel, IInventoryService inventoryService)
+    
+    public FishingService(FishDatabase database, IInventoryService inventory, FishingModel model)
     {
-        this.fishDatabase = fishDatabase;
-        this.fishingModel = fishingModel;
-        this.inventoryService = inventoryService;
+        this.fishDatabase = database;
+        this.inventoryService = inventory;
+        this.fishingModel = model;
     }
 
-    public bool IsFishingWater(Vector3 worldPosition)
+    public bool IsFishingWater(Vector3 targetPosition)
     {
-        // Sử dụng logic tìm Tilemap tương tự CropPlowingService của bạn
-        Tilemap[] tilemaps = Object.FindObjectsByType<Tilemap>(FindObjectsSortMode.None);
+        
+        Tilemap[] allTilemaps = UnityEngine.Object.FindObjectsByType<Tilemap>(FindObjectsSortMode.None);
 
-        foreach (Tilemap tilemap in tilemaps)
+        foreach (Tilemap map in allTilemaps)
         {
-            // Kiểm tra tên Tilemap theo đúng yêu cầu của bạn
-            if (tilemap.gameObject.name == "FishingTilemap")
+            
+            if (map.gameObject.name == "FishingTilemap")
             {
-                Vector3Int cellPos = tilemap.WorldToCell(worldPosition);
-                TileBase tile = tilemap.GetTile(cellPos);
+                
+                Vector3Int cellPos = map.WorldToCell(targetPosition);
 
-                // Nếu có tile ở vị trí này trên Fishingtiltemap, nghĩa là có thể câu
-                if (tile != null)
+                if (map.HasTile(cellPos))
                 {
-                    return true;
+                    return true; 
                 }
             }
         }
+        Debug.LogWarning($"[FishingService] Tọa độ {targetPosition} cant fishing here");
         return false;
     }
-
     public bool CatchFish()
     {
-        if (fishDatabase == null)
+        if (fishDatabase == null) return false;
+
+        string caughtFishID = fishDatabase.RollFishID();
+
+        if (string.IsNullOrEmpty(caughtFishID))
         {
-            Debug.LogError("[FishingService] FishDatabase is null!");
+            Debug.LogWarning("[FishingService] no fish!");
             return false;
         }
 
-        // 1. Quay số ngẫu nhiên để lấy cá
-        FishInfo caughtFish = fishDatabase.RollFish();
-
-        if (caughtFish == null) return false;
-
-        // 2. Lưu vào Model
-        fishingModel.lastCaughtFish = caughtFish;
-        Debug.Log($"[FishingService] Caught a {caughtFish.fishName}!");
-
-        // 3. Thêm vào Inventory
         if (inventoryService != null)
         {
-            // Sử dụng hàm AddItem từ IInventoryService của bạn
-            bool added = inventoryService.AddItem(caughtFish.itemID, 1);
+            bool added = inventoryService.AddItem(caughtFishID, 1);
             if (added)
             {
-                Debug.Log($"[FishingService] Added {caughtFish.fishName} to inventory.");
+                fishingModel.lastCaughtFishID = caughtFishID;
+                Debug.Log($"[FishingService] Fishing complete! Add '{caughtFishID}' to inventory.");
                 return true;
             }
             else
             {
-                Debug.LogWarning("[FishingService] Inventory is full!");
+                Debug.LogWarning("[FishingService] inventory full!");
                 return false;
             }
         }
-
         return false;
     }
 }

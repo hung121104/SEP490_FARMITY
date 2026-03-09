@@ -1,32 +1,29 @@
-﻿using UnityEngine;
-using System;
+﻿using System;
+using UnityEngine;
 
-public class FishingPresenter : IDisposable
+public class FishingPresenter
 {
-    private readonly IFishingView view;
-    private readonly IFishingService service;
-    private readonly FishingModel model;
+    private IFishingView view;
+    private IFishingService service;
+    private FishingModel model;
 
+    
     public FishingPresenter(IFishingView view, IFishingService service, FishingModel model)
     {
         this.view = view;
         this.service = service;
         this.model = model;
 
-        // 1. Lắng nghe lúc người chơi quăng cần
-        UseToolService.OnFishingRodRequested += HandleFishingRodUsed;
-
-        // 2. Lắng nghe kết quả từ Minigame View
+        
         this.view.OnMiniGameWon += HandleMiniGameWon;
         this.view.OnMiniGameLost += HandleMiniGameLost;
     }
 
-    private void HandleFishingRodUsed(ToolData tool, Vector3 targetPosition)
+    public void HandleFishingRodUsed(Vector3 targetPosition)
     {
         if (service.IsFishingWater(targetPosition))
         {
-            // Bắt đầu Fishing Mode: Mở UI minigame
-            view.StartMiniGame();
+            view.StartMiniGame(targetPosition);
         }
         else
         {
@@ -36,24 +33,29 @@ public class FishingPresenter : IDisposable
 
     private void HandleMiniGameWon()
     {
-        // Hoàn thành minigame -> Drop cá
-        bool success = service.CatchFish(); // Hàm này trong Service sẽ gọi lấy item và add inventory
-        if (success)
+        try
         {
-            view.ShowFishingSuccess(model.lastCaughtFish);
+           
+            bool success = service.CatchFish();
+
+            if (success)
+            {
+                view.ShowFishingSuccess(model.lastCaughtFishID);
+            }
+            else
+            {
+                view.ShowFishingFailed();
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("Lỗi hệ thống: " + e.Message);
+            view.ShowFishingSuccess("");
         }
     }
 
     private void HandleMiniGameLost()
     {
-        // Thất bại -> In ra debug
         view.ShowFishingFailed();
-    }
-
-    public void Dispose()
-    {
-        UseToolService.OnFishingRodRequested -= HandleFishingRodUsed;
-        this.view.OnMiniGameWon -= HandleMiniGameWon;
-        this.view.OnMiniGameLost -= HandleMiniGameLost;
     }
 }

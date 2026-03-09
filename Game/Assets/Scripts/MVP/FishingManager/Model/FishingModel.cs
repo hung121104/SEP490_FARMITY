@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -15,5 +15,6 @@ public class FishInfo
 
 public class FishingModel
 {
-    public FishInfo lastCaughtFish;
+
+    public string lastCaughtFishID;
 }

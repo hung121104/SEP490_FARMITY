@@ -9,7 +9,7 @@ public class FishingMiniGameView : MonoBehaviour
 
     public event Action OnMiniGameLost;
     [Header("UI References")]
-    // THÊM DÒNG NÀY: Trỏ đến object FishingMiniGame nằm trong Canvas
+    
     [SerializeField] GameObject miniGamePanel;
 
     [Header("UI References")]
@@ -17,7 +17,7 @@ public class FishingMiniGameView : MonoBehaviour
     [SerializeField] RectTransform bottomPivot;
     [SerializeField] RectTransform fish;
     [SerializeField] RectTransform hook;
-    [SerializeField] Image hookImage; // Thay SpriteRenderer bằng Image
+    [SerializeField] Image hookImage; 
     [SerializeField] RectTransform progressBarContainer;
 
     [Header("Game Logic")]
@@ -41,22 +41,22 @@ public class FishingMiniGameView : MonoBehaviour
     [SerializeField] float failTimer = 10f;
     private float currentFailTimer;
 
-    // Quản lý trạng thái chơi
+    
     private bool isPlaying = false;
 
     private void Awake()
     {
         if (miniGamePanel != null)
         {
-            miniGamePanel.SetActive(false); // Ép tắt UI lúc vừa vào game
+            miniGamePanel.SetActive(false); 
         }
     }   
     public void StartMiniGame()
     {
-        // BẬT giao diện lên
+        
         miniGamePanel.SetActive(true);
 
-        // Reset lại toàn bộ thông số mỗi khi quăng cần
+        
         hookProgress = 0f;
         hookPosition = 0.5f;
         fishPosition = 0.5f;
@@ -78,15 +78,15 @@ public class FishingMiniGameView : MonoBehaviour
 
     private void Resize()
     {
-        // UI chuẩn: Dùng localPosition để tính khoảng cách thay vì World Distance
+        
         float distance = Mathf.Abs(topPivot.localPosition.y - bottomPivot.localPosition.y);
 
-        // UI chuẩn: Dùng sizeDelta để đổi chiều cao thay vì dùng localScale gây méo hình
-        Vector2 newSize = hook.sizeDelta;
-        newSize.y = distance * hookSize;
-        hook.sizeDelta = newSize;
+      
+        //Vector2 newSize = hook.sizeDelta;
+        //newSize.y = distance * hookSize;
+        //hook.sizeDelta = newSize;
 
-        // Reset lại Scale về 1 để xóa bỏ lỗi kéo giãn hình ở ảnh 2
+        
         hook.localScale = Vector3.one;
         fish.localScale = Vector3.one;
     }
@@ -126,10 +126,10 @@ public class FishingMiniGameView : MonoBehaviour
     {
         isPlaying = false;
 
-        // TẮT giao diện đi
+        
         miniGamePanel.SetActive(false);
 
-        // Bắn sự kiện THUA cho FishingView và Presenter biết
+        
         OnMiniGameLost?.Invoke();
     }
 
@@ -137,31 +137,31 @@ public class FishingMiniGameView : MonoBehaviour
     {
         isPlaying = false;
 
-        // TẮT giao diện đi
+        
         miniGamePanel.SetActive(false);
 
-        // Bắn sự kiện THẮNG cho FishingView và Presenter biết
+       
         OnMiniGameWon?.Invoke();
     }
 
     void HookLogic()
     {
-        // 1. Nhấn giữ phím Space hoặc Chuột trái thì tạo lực kéo lên
+        
         if (Input.GetKey(KeyCode.Space) || Input.GetMouseButton(0))
         {
             hookPullVelocity += hookPullPower * Time.deltaTime;
         }
 
-        // 2. Trọng lực luôn kéo xuống
+       
         hookPullVelocity -= hoookGravityPower * Time.deltaTime;
 
-        // 3. THÊM MỚI: Lực cản của nước. Ép vận tốc từ từ trở về 0 để tạo độ "nặng" và mượt mà
+        
         hookPullVelocity = Mathf.Lerp(hookPullVelocity, 0f, 5f * Time.deltaTime);
 
-        // 4. ĐÃ FIX: Nhân thêm Time.deltaTime để vị trí di chuyển đều theo thời gian thực (không bị vọt)
+        
         hookPosition += hookPullVelocity * Time.deltaTime;
 
-        // 5. Chạm đáy hoặc đỉnh thì triệt tiêu vận tốc ngay lập tức (tránh bị dính tường)
+        
         if (hookPosition - hookSize / 2 <= 0f && hookPullVelocity < 0f)
         {
             hookPullVelocity = 0f;
@@ -171,10 +171,9 @@ public class FishingMiniGameView : MonoBehaviour
             hookPullVelocity = 0f;
         }
 
-        // 6. Giới hạn vị trí không cho lọt ra ngoài thanh
         hookPosition = Mathf.Clamp(hookPosition, hookSize / 2, 1 - hookSize / 2);
 
-        // 7. Cập nhật vị trí UI
+        
         hook.localPosition = Vector3.Lerp(bottomPivot.localPosition, topPivot.localPosition, hookPosition);
     }
 
@@ -188,7 +187,7 @@ public class FishingMiniGameView : MonoBehaviour
         }
         fishPosition = Mathf.SmoothDamp(fishPosition, fishDestination, ref fishSpeed, smoothMotion);
 
-        // UI chuẩn: Dùng localPosition thay vì position
+        
         fish.localPosition = Vector3.Lerp(bottomPivot.localPosition, topPivot.localPosition, fishPosition);
     }
 }

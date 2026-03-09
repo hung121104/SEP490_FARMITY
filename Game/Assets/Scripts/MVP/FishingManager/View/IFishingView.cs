@@ -1,12 +1,13 @@
 ﻿using System;
+using UnityEngine;
 
 public interface IFishingView
 {
     event Action OnMiniGameWon;
     event Action OnMiniGameLost;
 
+    void StartMiniGame(Vector3 targetPosition);
     void ShowCannotFishWarning();
-    void StartMiniGame();
-    void ShowFishingSuccess(FishInfo fish);
-    void ShowFishingFailed(); // 
+    void ShowFishingSuccess(string fishID);
+    void ShowFishingFailed();
 }

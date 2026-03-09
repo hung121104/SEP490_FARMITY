@@ -1,35 +1,40 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
+
+[System.Serializable]
+public class FishDropData
+{
+    public string itemID;
+    [Range(0f, 1f)]
+    public float catchChance;
+}
 
 [CreateAssetMenu(menuName = "Fishing/FishDatabase")]
 public class FishDatabase : ScriptableObject
 {
-    public List<FishInfo> fishes = new List<FishInfo>();
+    public List<FishDropData> fishes = new List<FishDropData>();
 
-    public FishInfo RollFish()
+    public string RollFishID()
     {
         if (fishes.Count == 0)
-            return null;
+            return string.Empty;
 
+        
         float totalWeight = 0f;
+        foreach (var fish in fishes) { totalWeight += fish.catchChance; }
 
-        foreach (var fish in fishes)
-        {
-            totalWeight += fish.catchChance;
-        }
-
+       
         float randomValue = Random.value * totalWeight;
-
         float cumulative = 0f;
 
+       
         foreach (var fish in fishes)
         {
             cumulative += fish.catchChance;
-
             if (randomValue <= cumulative)
-                return fish;
+                return fish.itemID;
         }
 
-        return fishes[0];
+        return fishes[0].itemID;
     }
 }

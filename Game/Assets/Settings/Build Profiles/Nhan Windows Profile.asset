@@ -23,10 +23,6 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Nhan/AuthMenu/AuthScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Nhan/LoadingScene.unity
-  - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Nhan/GameCoreTestScene.unity
-  - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Nhan/MainMenu/CreateWorldScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Nhan/MainMenu/MainMenuScene.unity
@@ -34,6 +30,10 @@ MonoBehaviour:
     m_path: Assets/Scenes/Test Scenes Nhan/MainMenu/OnlineWorldListScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Nhan/MainMenu/PlayerWorldListScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Nhan/LoadingScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Nhan/GameCoreTestScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Nhan/LoadGameScene.unity
   - m_enabled: 0
