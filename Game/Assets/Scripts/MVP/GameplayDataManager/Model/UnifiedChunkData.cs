@@ -64,6 +64,14 @@ public class UnifiedChunkData : BaseChunkData
     [NonSerialized]
     public Dictionary<long, TileSlot> tiles = new Dictionary<long, TileSlot>();
 
+    /// <summary>
+    /// World positions that were untilled (removed from tiles dict) since the last server save.
+    /// WorldSaveManager sends these as type="empty" so the server clears the old tilled state.
+    /// Cleared after each successful save.
+    /// </summary>
+    [NonSerialized]
+    public HashSet<(int wx, int wy)> PendingUntilledPositions = new HashSet<(int, int)>();
+
     private long GetKey(int worldX, int worldY) => GetWorldKey(worldX, worldY);
 
     // ══════════════════════════════════════════════════════════════════════
@@ -98,7 +106,12 @@ public class UnifiedChunkData : BaseChunkData
         if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.IsTilled) return false;
         slot.IsTilled = false;
         if (!slot.HasCrop && !slot.HasStructure)
+        {
             tiles.Remove(key);
+            // Track this position so BuildPayload can send type="empty" to overwrite
+            // the stale "tilled" record on the server.
+            PendingUntilledPositions.Add((worldX, worldY));
+        }
         else
             tiles[key] = slot;
         IsDirty = true;
@@ -606,6 +619,7 @@ public class UnifiedChunkData : BaseChunkData
     public override void Clear()
     {
         tiles.Clear();
+        PendingUntilledPositions.Clear();
         IsLoaded = false;
         IsDirty  = false;
     }

@@ -59,15 +59,15 @@ public class CropPlowingService : ICropPlowingService
     
     private Tilemap FindTilledTilemapFromTillable(Tilemap tillableTilemap)
     {
-        // Try to find TilledTilemap in the same parent (map section)
+        // Try to find TilledOverlayTilemap in the same parent (map section)
         Transform parent = tillableTilemap.transform.parent;
         if (parent != null)
         {
-            // Search for TilledTilemap as a sibling
+            // Search for TilledOverlayTilemap as a sibling
             for (int i = 0; i < parent.childCount; i++)
             {
                 Transform child = parent.GetChild(i);
-                if (child.name == "TillableTilemap")
+                if (child.name == "TilledOverlayTilemap")
                 {
                     Tilemap tilemap = child.GetComponent<Tilemap>();
                     if (tilemap != null)
@@ -145,11 +145,11 @@ public class CropPlowingService : ICropPlowingService
             return false;
         }
 
-        // Find the TilledTilemap in the same map section
-        Tilemap tilledTilemap = FindTilledTilemapFromTillable(tillableTilemap);
+        // Find the TilledOverlayTilemap for this world position
+        Tilemap tilledTilemap = FindTilemapAtPosition(worldPosition, "TilledOverlayTilemap");
         if (tilledTilemap == null)
         {
-            Debug.LogError("[CropPlowingService] TilledTilemap not found as sibling of TillableTilemap");
+            Debug.LogError("[CropPlowingService] TilledOverlayTilemap not found near world pos (" + worldPosition.x.ToString("F1") + ", " + worldPosition.y.ToString("F1") + ").");
             return false;
         }
 
@@ -191,6 +191,54 @@ public class CropPlowingService : ICropPlowingService
     
     // Kept for interface compatibility — WorldDataManager is the single source of truth.
     public void ClearTile(Vector3Int tilePosition) { }
+
+    /// <summary>
+    /// Untills an empty tilled tile. Removes the tilled state from chunk data and from the overlay tilemap.
+    /// </summary>
+    public bool UntillTile(Vector3 worldPosition)
+    {
+        if (WorldDataManager.Instance == null) return false;
+
+        if (!WorldDataManager.Instance.IsTilledAtWorldPosition(worldPosition))
+        {
+            if (showDebugLogs)
+                Debug.Log($"[CropPlowingService] UntillTile: tile at {worldPosition} is not tilled.");
+            return false;
+        }
+
+        bool untilled = WorldDataManager.Instance.UntillTileAtWorldPosition(worldPosition);
+        if (!untilled) return false;
+
+        // Remove visual tilled tile from overlay tilemap
+        Tilemap tilledTilemap = FindTilemapAtPosition(worldPosition, "TilledOverlayTilemap");
+        if (tilledTilemap != null)
+        {
+            Vector3Int cellPos = tilledTilemap.WorldToCell(worldPosition);
+            tilledTilemap.SetTile(cellPos, null);
+        }
+
+        if (showDebugLogs)
+            Debug.Log($"[CropPlowingService] ✓ Untilled tile at {worldPosition}.");
+
+        // Sync to other players
+        if (PhotonNetwork.IsConnected && syncManager != null)
+        {
+            int wx = Mathf.FloorToInt(worldPosition.x);
+            int wy = Mathf.FloorToInt(worldPosition.y);
+            syncManager.BroadcastTileUntilled(wx, wy);
+        }
+
+        // Refresh chunk visuals
+        ChunkLoadingManager chunkLoader = Object.FindAnyObjectByType<ChunkLoadingManager>();
+        if (chunkLoader != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPosition);
+            if (chunkLoader.IsChunkLoaded(chunkPos))
+                chunkLoader.RefreshChunkVisuals(chunkPos);
+        }
+
+        return true;
+    }
 
     /// <summary>
     /// Removes the crop at a tilled tile position. Used when the hoe is applied to an occupied tile.

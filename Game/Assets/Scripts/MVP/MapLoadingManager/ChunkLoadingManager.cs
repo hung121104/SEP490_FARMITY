@@ -33,7 +33,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     public TileBase tilledTile;
     
     [Tooltip("Name of the tilemap to place tilled tiles on")]
-    public string tilledTilemapName = "TillableTilemap";
+    public string tilledTilemapName = "TilledOverlayTilemap";
     
     [Header("Debug")]
     public bool showDebugLogs = true;

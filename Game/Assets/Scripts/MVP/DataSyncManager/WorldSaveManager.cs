@@ -153,6 +153,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
         if (saved)
         {
+            ClearPendingUntilledForDirtyChunks();
             _dirtyChunks.Clear();
             if (ShowDebugLogs) Debug.Log("[WorldSave] Auto-save sent successfully.");
         }
@@ -169,11 +170,19 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
     private bool OnWantsToQuit()
     {
+#if UNITY_EDITOR
+        // In the editor, stopping play mode triggers wantsToQuit but it is not a
+        // real application quit.  Attempting an async HTTP flush here races against
+        // Unity tearing down play-mode objects (DontDestroyOnLoad singletons become
+        // invalid) and always throws.  Skip the flush — data is not lost in the editor.
+        return true;
+#else
         if (_quitSent) return true;   // flush already done — allow quit
 
         _quitSent = true;
         _ = FlushAndQuitAsync();
         return false;                  // block OS quit until flush completes
+#endif
     }
 
     private async Task FlushAndQuitAsync()
@@ -190,7 +199,12 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     payload
                 );
 
-                if (success) Debug.Log("[WorldSave] Quit-flush complete.");
+                if (success)
+                {
+                    ClearPendingUntilledForDirtyChunks();
+                    _dirtyChunks.Clear();
+                    Debug.Log("[WorldSave] Quit-flush complete.");
+                }
                 else         Debug.LogWarning("[WorldSave] Quit-flush HTTP request failed — quitting anyway.");
             }
             else
@@ -205,6 +219,24 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
         // _quitSent is already true; this second call will now return true and proceed
         Application.Quit();
+    }
+
+    // ──────────────────────────────────────────────────── Helpers
+
+    /// <summary>
+    /// Clear PendingUntilledPositions on every dirty chunk after a successful save
+    /// so those positions are not re-sent on the next cycle.
+    /// Must be called before _dirtyChunks.Clear().
+    /// </summary>
+    private void ClearPendingUntilledForDirtyChunks()
+    {
+        var wdm = WorldDataManager.Instance;
+        if (wdm == null) return;
+        foreach (var (cx, cy, sid) in _dirtyChunks)
+        {
+            var chunkData = wdm.GetChunk(sid, new UnityEngine.Vector2Int(cx, cy));
+            chunkData?.PendingUntilledPositions.Clear();
+        }
     }
 
     // ──────────────────────────────────────────────────── Payload builder
@@ -289,6 +321,20 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     }
 
                     tileDict[localIndex.ToString()] = td;
+                }
+
+                // Include tiles that were untilled since the last save.
+                // They were removed from the in-memory dictionary so the loop above
+                // cannot see them, but the server still has them as "tilled".
+                // Sending type="empty" overwrites the stale DB record.
+                foreach (var (wx, wy) in chunkData.PendingUntilledPositions)
+                {
+                    int lx  = wx - chunkX * 30;
+                    int ly  = wy - chunkY * 30;
+                    int idx = lx + ly * 30;
+                    // Only add if not already overridden by the active-tile loop above
+                    if (!tileDict.ContainsKey(idx.ToString()))
+                        tileDict[idx.ToString()] = new WorldApi.TileDataDto { type = "empty" };
                 }
 
                 if (tileDict.Count > 0)

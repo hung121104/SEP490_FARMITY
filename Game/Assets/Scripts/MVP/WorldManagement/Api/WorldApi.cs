@@ -118,6 +118,7 @@ public static class WorldApi
                 req.SetRequestHeader("Authorization", "Bearer " + jwtToken);
 
             req.certificateHandler = new AcceptAllCertificatesHandler();
+            req.timeout = 10; // seconds — prevents permanent hang when server is unreachable
 
             yield return req.SendWebRequest();
 
@@ -173,6 +174,7 @@ public static class WorldApi
         if (!string.IsNullOrEmpty(jwtToken))
             req.SetRequestHeader("Authorization", "Bearer " + jwtToken);
         req.certificateHandler = new AcceptAllCertificatesHandler();
+        req.timeout = 10; // seconds — prevents permanent hang when server is unreachable
 
         // UnityWebRequest doesn't natively support async/await, so we wrap the operation.
         var tcs = new TaskCompletionSource<bool>();
