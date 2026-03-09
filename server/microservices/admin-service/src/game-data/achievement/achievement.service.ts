@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Achievement, AchievementDocument } from './achievement.schema';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementDto } from './dto/update-achievement.dto';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class AchievementService {
@@ -14,7 +15,7 @@ export class AchievementService {
   async create(dto: CreateAchievementDto): Promise<Achievement> {
     const existing = await this.achievementModel.findOne({ achievementId: dto.achievementId }).exec();
     if (existing) {
-      throw new ConflictException(`Achievement "${dto.achievementId}" already exists`);
+      throw new RpcException({ status: 409, message: `Achievement "${dto.achievementId}" already exists` });
     }
     return new this.achievementModel(dto).save();
   }
@@ -25,7 +26,7 @@ export class AchievementService {
 
   async findByAchievementId(achievementId: string): Promise<Achievement> {
     const doc = await this.achievementModel.findOne({ achievementId }).exec();
-    if (!doc) throw new NotFoundException(`Achievement "${achievementId}" not found`);
+    if (!doc) throw new RpcException({ status: 404, message: `Achievement "${achievementId}" not found` });
     return doc;
   }
 
@@ -33,13 +34,13 @@ export class AchievementService {
     const updated = await this.achievementModel
       .findOneAndUpdate({ achievementId }, { $set: dto }, { new: true })
       .exec();
-    if (!updated) throw new NotFoundException(`Achievement "${achievementId}" not found`);
+    if (!updated) throw new RpcException({ status: 404, message: `Achievement "${achievementId}" not found` });
     return updated;
   }
 
   async delete(achievementId: string): Promise<Achievement> {
     const deleted = await this.achievementModel.findOneAndDelete({ achievementId }).exec();
-    if (!deleted) throw new NotFoundException(`Achievement "${achievementId}" not found`);
+    if (!deleted) throw new RpcException({ status: 404, message: `Achievement "${achievementId}" not found` });
     return deleted;
   }
 }
