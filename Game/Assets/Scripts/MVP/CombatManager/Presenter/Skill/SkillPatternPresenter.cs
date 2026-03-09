@@ -7,20 +7,33 @@ using CombatManager.View;
 
 namespace CombatManager.Presenter
 {
-    public abstract class SkillPresenter : SkillPresenterBase
+    /// <summary>
+    /// Abstract base presenter for all skill types.
+    /// Defines and owns the skill execution PATTERN:
+    /// TriggerSkill() → Charge → DiceRoll → WaitConfirm/Cancel → Execute → Cooldown
+    /// 
+    /// Concrete skill presenters extend this:
+    /// → ProjectileSkillPresenter (SkillCategory.Projectile)
+    /// → SlashSkillPresenter      (SkillCategory.Slash)
+    /// → Future: AoESkillPresenter, BuffSkillPresenter etc.
+    /// 
+    /// Data is driven by SkillData SO via SetSkillData() in subclasses.
+    /// </summary>
+    public abstract class SkillPatternPresenter : SkillPatternBase
     {
         #region Serialized Fields
 
-        [Header("Model")]
-        [SerializeField] protected SkillModel model = new SkillModel();
+        [Header("Pattern Model")]
+        [SerializeField] protected SkillPatternModel model = new SkillPatternModel();
 
         [Header("Skill Settings")]
-        [SerializeField] protected float skillCooldown = 3f;
-        [SerializeField] protected float chargeDuration = 0.2f;
+        [SerializeField] protected float skillCooldown    = 3f;
+        [SerializeField] protected float chargeDuration   = 0.2f;
         [SerializeField] protected float rollDisplayDuration = 0.4f;
 
         [Header("Dice Settings")]
-        [SerializeField] protected CombatManager.Model.DiceTier skillTier = CombatManager.Model.DiceTier.D6;
+        [SerializeField] protected CombatManager.Model.DiceTier skillTier = 
+            CombatManager.Model.DiceTier.D6;
         [SerializeField] protected float skillMultiplier = 1.5f;
 
         [Header("Combat Settings")]
@@ -28,13 +41,13 @@ namespace CombatManager.Presenter
 
         [Header("Input Settings")]
         [SerializeField] protected KeyCode confirmKey = KeyCode.E;
-        [SerializeField] protected KeyCode cancelKey = KeyCode.Q;
+        [SerializeField] protected KeyCode cancelKey  = KeyCode.Q;
 
         #endregion
 
         #region Services
 
-        protected ISkillService skillService;
+        protected ISkillPatternService skillService;
         protected IDiceRollerService diceRollerService;
         protected IDamageCalculatorService damageCalculatorService;
 
@@ -80,20 +93,20 @@ namespace CombatManager.Presenter
 
         private void InitializeModel()
         {
-            model.skillCooldown = skillCooldown;
-            model.chargeDuration = chargeDuration;
+            model.skillCooldown      = skillCooldown;
+            model.chargeDuration     = chargeDuration;
             model.rollDisplayDuration = rollDisplayDuration;
-            model.skillTier = skillTier;
-            model.skillMultiplier = skillMultiplier;
-            model.enemyLayers = enemyLayers;
-            model.confirmKey = confirmKey;
-            model.cancelKey = cancelKey;
+            model.skillTier          = skillTier;
+            model.skillMultiplier    = skillMultiplier;
+            model.enemyLayers        = enemyLayers;
+            model.confirmKey         = confirmKey;
+            model.cancelKey          = cancelKey;
         }
 
         private void InitializeServices()
         {
-            skillService = new SkillService(model);
-            diceRollerService = new DiceRollerService();
+            skillService            = new SkillPatternService(model);
+            diceRollerService       = new DiceRollerService();
             damageCalculatorService = new DamageCalculatorService();
 
             Debug.Log($"[{GetType().Name}] Services initialized");
@@ -161,7 +174,7 @@ namespace CombatManager.Presenter
 
             mainCamera = Camera.main;
 
-            Debug.Log($"[{GetType().Name}] Player references set up from: {playerGO.name}");
+            Debug.Log($"[{GetType().Name}] Player references set from: {playerGO.name}");
         }
 
         #endregion
@@ -205,11 +218,11 @@ namespace CombatManager.Presenter
 
         #endregion
 
-        #region Skill Flow Coroutine
+        #region Skill Pattern Coroutine
 
         private IEnumerator ExecuteSkillSequence()
         {
-            skillService.SetState(SkillState.Charging);
+            skillService.SetState(SkillPatternState.Charging);
             OnChargeStart();
 
             yield return new WaitForSeconds(model.chargeDuration);
@@ -226,10 +239,9 @@ namespace CombatManager.Presenter
 
             yield return StartCoroutine(WaitForConfirmationRoutine());
 
-            if (!model.isExecuting)
-                yield break;
+            if (!model.isExecuting) yield break;
 
-            skillService.SetState(SkillState.Executing);
+            skillService.SetState(SkillPatternState.Executing);
             DisablePlayerSystems();
 
             OnAttackStart();
@@ -241,11 +253,6 @@ namespace CombatManager.Presenter
                 WeaponAnimationPresenter.Instance.PlayAttackAnimation();
                 Debug.Log($"[{GetType().Name}] Weapon attack animation triggered!");
             }
-            else
-            {
-                Debug.LogWarning($"[{GetType().Name}] WeaponAnimationPresenter not found " +
-                                 $"or no weapon active - skipping animation");
-            }
 
             yield return new WaitForSeconds(0.1f);
 
@@ -253,15 +260,11 @@ namespace CombatManager.Presenter
             if (statsPresenter != null)
                 strength = statsPresenter.GetService().GetTempStrength();
 
-            // ✅ Get weapon damage from WeaponEquipPresenter
             int weaponDamage = 0;
             var currentWeapon = WeaponEquipPresenter.Instance?.GetCurrentWeapon();
             if (currentWeapon != null)
                 weaponDamage = currentWeapon.damage;
-            else
-                Debug.LogWarning($"[{GetType().Name}] No weapon equipped for skill damage calculation!");
 
-            // ✅ New formula: weaponDamage + (roll-1) × strength × multiplier
             int finalDamage = damageCalculatorService.CalculateSkillDamage(
                 model.currentDiceRoll,
                 strength,
@@ -276,7 +279,7 @@ namespace CombatManager.Presenter
 
         private IEnumerator WaitForConfirmationRoutine()
         {
-            skillService.SetState(SkillState.WaitingConfirm);
+            skillService.SetState(SkillPatternState.WaitingConfirm);
             ShowIndicator();
 
             while (model.IsWaitingConfirm && model.isExecuting)
@@ -290,7 +293,7 @@ namespace CombatManager.Presenter
         private void ConfirmSkill()
         {
             if (!model.IsWaitingConfirm) return;
-            skillService.SetState(SkillState.Executing);
+            skillService.SetState(SkillPatternState.Executing);
             Debug.Log($"[{GetType().Name}] Skill CONFIRMED");
         }
 
@@ -299,7 +302,7 @@ namespace CombatManager.Presenter
             if (!model.isExecuting) return;
 
             model.isExecuting = false;
-            skillService.SetState(SkillState.Idle);
+            skillService.SetState(SkillPatternState.Idle);
             OnSkillCancelled();
             HideIndicator();
             DiceDisplayPresenter.Hide();
@@ -315,7 +318,7 @@ namespace CombatManager.Presenter
             EnablePlayerSystems();
 
             model.isExecuting = false;
-            skillService.SetState(SkillState.Idle);
+            skillService.SetState(SkillPatternState.Idle);
 
             Debug.Log($"[{GetType().Name}] Skill execution END");
         }
@@ -383,8 +386,7 @@ namespace CombatManager.Presenter
 
         #endregion
 
-        // ✅ SkillPresenterBase implementation - ONLY HERE, no duplicates!
-        #region SkillPresenterBase Implementation
+        #region SkillPatternBase Implementation
 
         public override bool IsExecuting => model.isExecuting;
 
@@ -412,9 +414,9 @@ namespace CombatManager.Presenter
 
         #endregion
 
-        #region Extra Public Getters
+        #region Public Getters
 
-        public SkillState GetCurrentState => model.currentState;
+        public SkillPatternState GetCurrentState => model.currentState;
         public CombatManager.Model.DiceTier GetSkillTier() => model.skillTier;
         public LayerMask GetEnemyLayers() => model.enemyLayers;
 
