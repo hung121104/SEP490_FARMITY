@@ -1,190 +1,77 @@
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Tilemaps;
-using Photon.Pun;
 
-/// <summary>
-/// Fishing gameplay service.
-/// Follows same architecture as CropPlowingService.
-/// Handles tilemap detection, fish rolling, inventory integration,
-/// and multiplayer sync.
-/// </summary>
 public class FishingService : IFishingService
 {
-    private readonly bool showDebugLogs;
-
-    private readonly ChunkDataSyncManager syncManager;
-
     private readonly FishDatabase fishDatabase;
+    private readonly FishingModel fishingModel;
+    private readonly IInventoryService inventoryService;
 
-    private readonly InventoryService inventoryService;
-
-    public FishingService(
-        FishDatabase fishDatabase,
-        InventoryService inventoryService,
-        ChunkDataSyncManager syncManager,
-        bool showDebugLogs = false)
+    // Constructor để tiêm (inject) các dependencies vào
+    public FishingService(FishDatabase fishDatabase, FishingModel fishingModel, IInventoryService inventoryService)
     {
         this.fishDatabase = fishDatabase;
+        this.fishingModel = fishingModel;
         this.inventoryService = inventoryService;
-        this.syncManager = syncManager;
-        this.showDebugLogs = showDebugLogs;
     }
 
-    public void Initialize()
+    public bool IsFishingWater(Vector3 worldPosition)
     {
-        if (fishDatabase == null)
-        {
-            Debug.LogError("[FishingService] FishDatabase not assigned!");
-        }
-    }
-
-    /// <summary>
-    /// Finds the fishing tilemap at a world position.
-    /// Works with chunk-based map sections.
-    /// </summary>
-    private Tilemap FindTilemapAtPosition(Vector3 worldPosition, string tilemapName)
-    {
+        // Sử dụng logic tìm Tilemap tương tự CropPlowingService của bạn
         Tilemap[] tilemaps = Object.FindObjectsByType<Tilemap>(FindObjectsSortMode.None);
 
         foreach (Tilemap tilemap in tilemaps)
         {
-            if (tilemap.gameObject.name == tilemapName)
+            // Kiểm tra tên Tilemap theo đúng yêu cầu của bạn
+            if (tilemap.gameObject.name == "FishingTilemap")
             {
                 Vector3Int cellPos = tilemap.WorldToCell(worldPosition);
+                TileBase tile = tilemap.GetTile(cellPos);
 
-                Vector3 cellWorldPos = tilemap.GetCellCenterWorld(cellPos);
-
-                float distance = Vector3.Distance(cellWorldPos, worldPosition);
-
-                if (distance < 10f)
+                // Nếu có tile ở vị trí này trên Fishingtiltemap, nghĩa là có thể câu
+                if (tile != null)
                 {
-                    return tilemap;
+                    return true;
                 }
             }
         }
-
-        return null;
+        return false;
     }
 
-    /// <summary>
-    /// Checks if the player can fish at this world position.
-    /// </summary>
-    public bool IsFishable(Vector3 worldPosition)
+    public bool CatchFish()
     {
-        Tilemap fishingTilemap = FindTilemapAtPosition(worldPosition, "FishingTilemap");
-
-        if (fishingTilemap == null)
+        if (fishDatabase == null)
         {
-            if (showDebugLogs)
-                Debug.LogWarning($"[FishingService] FishingTilemap not found at {worldPosition}");
-
+            Debug.LogError("[FishingService] FishDatabase is null!");
             return false;
         }
 
-        Vector3Int cellPos = fishingTilemap.WorldToCell(worldPosition);
+        // 1. Quay số ngẫu nhiên để lấy cá
+        FishInfo caughtFish = fishDatabase.RollFish();
 
-        TileBase tile = fishingTilemap.GetTile(cellPos);
+        if (caughtFish == null) return false;
 
-        return tile != null;
-    }
+        // 2. Lưu vào Model
+        fishingModel.lastCaughtFish = caughtFish;
+        Debug.Log($"[FishingService] Caught a {caughtFish.fishName}!");
 
-    /// <summary>
-    /// Starts fishing if tile is valid.
-    /// </summary>
-    public bool StartFishing(Vector3 worldPosition)
-    {
-        if (!IsPositionInActiveSection(worldPosition))
+        // 3. Thêm vào Inventory
+        if (inventoryService != null)
         {
-            Debug.LogWarning($"[FishingService] FAIL: Position {worldPosition} not in active section.");
-            return false;
-        }
-
-        if (!IsFishable(worldPosition))
-        {
-            Debug.LogWarning($"[FishingService] FAIL: Tile is not fishable at {worldPosition}");
-            return false;
-        }
-
-        if (showDebugLogs)
-        {
-            Debug.Log($"[FishingService] Fishing started at {worldPosition}");
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// Rolls a fish from database using weighted probability.
-    /// </summary>
-    public FishSO RollFish()
-    {
-        if (fishDatabase == null || fishDatabase.fishes.Count == 0)
-        {
-            Debug.LogError("[FishingService] FishDatabase empty!");
-            return null;
-        }
-
-        float totalWeight = 0f;
-
-        foreach (var fish in fishDatabase.fishes)
-        {
-            totalWeight += fish.catchChance;
-        }
-
-        float randomValue = Random.value * totalWeight;
-
-        float cumulative = 0f;
-
-        foreach (var fish in fishDatabase.fishes)
-        {
-            cumulative += fish.catchChance;
-
-            if (randomValue <= cumulative)
+            // Sử dụng hàm AddItem từ IInventoryService của bạn
+            bool added = inventoryService.AddItem(caughtFish.itemID, 1);
+            if (added)
             {
-                return fish;
+                Debug.Log($"[FishingService] Added {caughtFish.fishName} to inventory.");
+                return true;
+            }
+            else
+            {
+                Debug.LogWarning("[FishingService] Inventory is full!");
+                return false;
             }
         }
 
-        return fishDatabase.fishes[0];
-    }
-
-    /// <summary>
-    /// Adds the caught fish to player inventory.
-    /// </summary>
-    public void AddFishToInventory(FishSO fish)
-    {
-        if (fish == null)
-        {
-            Debug.LogWarning("[FishingService] Fish is null.");
-            return;
-        }
-
-        if (inventoryService == null)
-        {
-            Debug.LogError("[FishingService] InventoryService missing!");
-            return;
-        }
-
-        inventoryService.AddItem(fish.itemID, 1);
-
-        if (showDebugLogs)
-        {
-            Debug.Log($"[FishingService] Added fish to inventory: {fish.fishName}");
-        }
-    }
-
-    /// <summary>
-    /// Checks if world position is inside an active chunk section.
-    /// </summary>
-    public bool IsPositionInActiveSection(Vector3 worldPosition)
-    {
-        if (WorldDataManager.Instance == null)
-        {
-            Debug.LogError("[FishingService] WorldDataManager.Instance is null!");
-            return false;
-        }
-
-        return WorldDataManager.Instance.IsPositionInActiveSection(worldPosition);
+        return false;
     }
 }

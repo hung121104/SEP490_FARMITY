@@ -1,130 +1,46 @@
-using UnityEngine;
+﻿using UnityEngine;
+using System;
 
-public class FishingPresenter
+public class FishingPresenter : IDisposable
 {
-    FishingModel model;
-    FishingView view;
-    FishingService service;
-    FishingMiniGameController controller;
+    private readonly IFishingView view;
+    private readonly IFishingService service;
+    private readonly FishingModel model;
 
-    float gravity = 2f;
-    float jumpForce = 4f;
-
-    float zoneTarget;
-    float zoneSpeed = 0.6f;
-
-    public FishingPresenter(
-    FishingModel model,
-    FishingView view,
-    FishingService service,
-    FishingMiniGameController controller)
+    public FishingPresenter(IFishingView view, IFishingService service, FishingModel model)
     {
-        this.model = model;
         this.view = view;
         this.service = service;
-        this.controller = controller;
+        this.model = model;
 
-        zoneTarget = Random.value;
+        // Đăng ký lắng nghe sự kiện dùng cần câu từ UseToolService
+        UseToolService.OnFishingRodRequested += HandleFishingRodUsed;
     }
 
-    public void Start()
+    private void HandleFishingRodUsed(ToolData tool, Vector3 targetPosition)
     {
-        model.fishPosition = 0.5f;
-        model.zonePosition = 0.5f;
-        model.progress = 0;
-        model.failTimer = 0;
-        model.isFishing = true;
-
-        view.Show();
-        model.fishVelocity = 0;
-    }
-
-    public void Stop()
-    {
-        model.isFishing = false;
-        view.Hide();
-    }
-
-    public void Update(float dt)
-    {
-        if (!model.isFishing) return;
-
-        HandleInput(dt);
-        MoveFish(dt);
-        MoveZone(dt);
-        CheckProgress(dt);
-
-        view.SetFishPosition(model.fishPosition);
-        view.SetZonePosition(model.zonePosition);
-        view.SetProgress(model.progress);
-    }
-
-    void HandleInput(float dt)
-    {
-        if (Input.GetKey(KeyCode.Space) || Input.GetMouseButton(0))
+        // 1. Hỏi Service xem chỗ chuột click có phải Fishingtiltemap không
+        if (service.IsFishingWater(targetPosition))
         {
-            model.fishVelocity += jumpForce * dt;
-        }
-    }
+            // 2. Chỗ này câu được -> Bắt cá và add vào inventory
+            bool success = service.CatchFish();
 
-    void MoveFish(float dt)
-    {
-        model.fishVelocity -= gravity * dt;
-
-        model.fishPosition += model.fishVelocity * dt;
-
-        model.fishPosition = Mathf.Clamp01(model.fishPosition);
-    }
-
-    void MoveZone(float dt)
-    {
-        if (Mathf.Abs(model.zonePosition - zoneTarget) < 0.02f)
-        {
-            zoneTarget = Random.value;
-        }
-
-        model.zonePosition = Mathf.MoveTowards(
-            model.zonePosition,
-            zoneTarget,
-            zoneSpeed * dt
-        );
-    }
-
-    void CheckProgress(float dt)
-    {
-        float min = model.zonePosition;
-        float max = model.zonePosition + model.zoneSize;
-
-        bool inside = model.fishPosition > min && model.fishPosition < max;
-
-        if (inside)
-        {
-            model.progress += dt * 0.3f;
-            model.failTimer = 0;
+            if (success)
+            {
+                // Cập nhật View
+                view.ShowFishingSuccess(model.lastCaughtFish);
+            }
         }
         else
         {
-            model.failTimer += dt;
+            // 3. Không phải ô nước -> Báo lỗi ra View
+            view.ShowCannotFishWarning();
         }
+    }
 
-        model.progress = Mathf.Clamp01(model.progress);
-
-        if (model.failTimer > 2f)
-        {
-            Debug.Log("Fishing Failed");
-
-            controller.StopMiniGame();
-        }
-
-        if (model.progress >= 1f)
-        {
-            var fish = service.RollFish();
-
-            service.AddFishToInventory(fish);
-
-            Debug.Log("Caught fish: " + fish.fishName);
-
-            controller.StopMiniGame();
-        }
+    // Luôn nhớ hủy đăng ký sự kiện khi Presenter bị hủy để tránh memory leak
+    public void Dispose()
+    {
+        UseToolService.OnFishingRodRequested -= HandleFishingRodUsed;
     }
 }
