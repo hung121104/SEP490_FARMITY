@@ -222,7 +222,7 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            SkillPresenter presenter = GetPresenterByCategory(skillData.skillCategory);
+            SkillPatternPresenter presenter = GetPresenterByCategory(skillData.skillCategory);
             if (presenter == null)
             {
                 Debug.LogWarning($"[SkillHotbarPresenter] " +
@@ -284,7 +284,7 @@ namespace CombatManager.Presenter
         /// Find the correct presenter for a SkillCategory.
         /// No string matching - enum based! ✅
         /// </summary>
-        private SkillPresenter GetPresenterByCategory(SkillCategory category)
+        private SkillPatternPresenter GetPresenterByCategory(SkillCategory category)
         {
             switch (category)
             {
@@ -302,7 +302,7 @@ namespace CombatManager.Presenter
         /// <summary>
         /// Pass SkillData to the correct presenter before triggering.
         /// </summary>
-        private void SetPresenterData(SkillPresenter presenter, SkillData skillData)
+        private void SetPresenterData(SkillPatternPresenter presenter, SkillData skillData)
         {
             switch (presenter)
             {
@@ -389,12 +389,10 @@ namespace CombatManager.Presenter
                 SkillData skillData = equippedSkillsData[i];
                 if (skillData == null) { slots[i].UpdateCooldownFill(0f); continue; }
 
-                // ✅ Get cooldown from presenter by category
-                SkillPresenter presenter = GetPresenterByCategory(skillData.skillCategory);
+                SkillPatternPresenter presenter = 
+                    GetPresenterByCategory(skillData.skillCategory);
                 if (presenter == null) { slots[i].UpdateCooldownFill(0f); continue; }
 
-                // ✅ Only show cooldown if THIS skill is the one on cooldown
-                // Check if presenter's current skill matches this slot
                 SkillData presenterData = GetPresenterCurrentData(presenter);
                 bool isThisSkill = presenterData == skillData;
 
@@ -406,7 +404,7 @@ namespace CombatManager.Presenter
             }
         }
 
-        private SkillData GetPresenterCurrentData(SkillPresenter presenter)
+        private SkillData GetPresenterCurrentData(SkillPatternPresenter presenter)
         {
             switch (presenter)
             {
@@ -474,8 +472,7 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            // ✅ Find presenter by category - no more switch on WeaponType!
-            SkillPresenter presenter =
+            SkillPatternPresenter presenter =
                 GetPresenterByCategory(currentWeaponSkillData.skillCategory);
 
             if (presenter == null)
@@ -496,7 +493,7 @@ namespace CombatManager.Presenter
         {
             if (weaponSkillSlotView == null || currentWeaponSkillData == null) return;
 
-            SkillPresenter presenter =
+            SkillPatternPresenter presenter =
                 GetPresenterByCategory(currentWeaponSkillData.skillCategory);
 
             if (presenter == null)
@@ -541,7 +538,7 @@ namespace CombatManager.Presenter
         public int GetSlotCount()           => equippedSkillsData.Length;
 
         // ✅ Kept for SkillManagementPresenter compatibility
-        public SkillPresenterBase GetSkillComponent(int slotIndex)
+        public SkillPatternBase GetSkillComponent(int slotIndex)
         {
             SkillData skillData = equippedSkillsData[slotIndex];
             if (skillData == null) return null;
