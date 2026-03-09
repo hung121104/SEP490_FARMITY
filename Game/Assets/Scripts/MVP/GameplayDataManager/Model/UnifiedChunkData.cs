@@ -22,10 +22,10 @@ public class UnifiedChunkData : BaseChunkData
     {
         public string PlantId;          // plant identifier (from PlantDataSO.PlantId)
         public byte   CropStage;        // current growth stage index
-        public int    TotalAge;         // days since planting
+        public float  GrowthTimer;      // seconds accumulated toward next stage
         public byte   PollenHarvestCount; // pollen collections this flowering stage
-        public bool   IsWatered;        // watered this day
-        public bool   IsFertilized;     // fertilizer applied
+        public bool   IsWatered;        // watered flag (affects growth speed)
+        public bool   IsFertilized;     // fertilizer applied (affects growth speed)
         public bool   IsPollinated;     // hybrid already applied, prevents double cross
     }
 
@@ -237,21 +237,21 @@ public class UnifiedChunkData : BaseChunkData
         return true;
     }
 
-    public bool UpdateCropAge(int worldX, int worldY, int newAge)
+    public bool UpdateGrowthTimer(int worldX, int worldY, float newTimer)
     {
         long key = GetKey(worldX, worldY);
         if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.HasCrop) return false;
-        slot.Crop.TotalAge = newAge;
-        tiles[key]         = slot;
-        IsDirty            = true;
+        slot.Crop.GrowthTimer = newTimer;
+        tiles[key]            = slot;
+        IsDirty               = true;
         return true;
     }
 
-    public bool IncrementCropAge(int worldX, int worldY)
+    public bool AddGrowthTime(int worldX, int worldY, float deltaSeconds)
     {
         long key = GetKey(worldX, worldY);
         if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.HasCrop) return false;
-        slot.Crop.TotalAge++;
+        slot.Crop.GrowthTimer += deltaSeconds;
         tiles[key] = slot;
         IsDirty    = true;
         return true;
@@ -464,7 +464,7 @@ public class UnifiedChunkData : BaseChunkData
     // Format:
     //   Header: ChunkX(4) ChunkY(4) SectionId(4) Count(2)
     //   Per slot: WorldX(4) WorldY(4) flags(1)
-    //             [if HasCrop]       PlantIdLen(1) PlantId(N) CropStage(1) TotalAge(4)
+    //             [if HasCrop]       PlantIdLen(1) PlantId(N) CropStage(1) GrowthTimer(4)
     //                                PollenCount(1) IsWatered(1) IsFertilized(1) IsPollinated(1)
     //             [if HasStructure]  StructIdLen(1) StructId(N) PlacedDay(4)
     // flags byte: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure
@@ -497,7 +497,7 @@ public class UnifiedChunkData : BaseChunkData
                 bytes.Add((byte)plantIdBytes.Length);
                 bytes.AddRange(plantIdBytes);
                 bytes.Add(slot.Crop.CropStage);
-                bytes.AddRange(BitConverter.GetBytes(slot.Crop.TotalAge));
+                bytes.AddRange(BitConverter.GetBytes(slot.Crop.GrowthTimer));
                 bytes.Add(slot.Crop.PollenHarvestCount);
                 bytes.Add((byte)(slot.Crop.IsWatered    ? 1 : 0));
                 bytes.Add((byte)(slot.Crop.IsFertilized ? 1 : 0));
@@ -554,7 +554,7 @@ public class UnifiedChunkData : BaseChunkData
                 offset += plantIdLen;
 
                 slot.Crop.CropStage          = data[offset++];
-                slot.Crop.TotalAge           = BitConverter.ToInt32(data, offset); offset += 4;
+                slot.Crop.GrowthTimer        = BitConverter.ToSingle(data, offset); offset += 4;
                 slot.Crop.PollenHarvestCount = offset < data.Length ? data[offset++] : (byte)0;
                 slot.Crop.IsWatered          = offset < data.Length && data[offset++] == 1;
                 slot.Crop.IsFertilized       = offset < data.Length && data[offset++] == 1;

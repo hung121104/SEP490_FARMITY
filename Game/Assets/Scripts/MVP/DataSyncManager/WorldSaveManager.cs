@@ -277,7 +277,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                         td.type               = "crop";
                         td.plantId            = slot.Crop.PlantId;
                         td.cropStage          = slot.Crop.CropStage;
-                        td.totalAge           = slot.Crop.TotalAge;
+                        td.growthTimer        = slot.Crop.GrowthTimer;
                         td.pollenHarvestCount = slot.Crop.PollenHarvestCount;
                         td.isWatered          = slot.Crop.IsWatered;
                         td.isFertilized       = slot.Crop.IsFertilized;

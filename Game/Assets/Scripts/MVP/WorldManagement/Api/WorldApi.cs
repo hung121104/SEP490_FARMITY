@@ -23,7 +23,7 @@ public static class WorldApi
         [JsonProperty("type",               NullValueHandling = NullValueHandling.Ignore)] public string type;
         [JsonProperty("plantId",            NullValueHandling = NullValueHandling.Ignore)] public string plantId;
         [JsonProperty("cropStage",          NullValueHandling = NullValueHandling.Ignore)] public int?   cropStage;
-        [JsonProperty("totalAge",           NullValueHandling = NullValueHandling.Ignore)] public int?   totalAge;
+        [JsonProperty("growthTimer",        NullValueHandling = NullValueHandling.Ignore)] public float? growthTimer;
         [JsonProperty("pollenHarvestCount", NullValueHandling = NullValueHandling.Ignore)] public int?   pollenHarvestCount;
         [JsonProperty("isWatered",          NullValueHandling = NullValueHandling.Ignore)] public bool?  isWatered;
         [JsonProperty("isFertilized",       NullValueHandling = NullValueHandling.Ignore)] public bool?  isFertilized;

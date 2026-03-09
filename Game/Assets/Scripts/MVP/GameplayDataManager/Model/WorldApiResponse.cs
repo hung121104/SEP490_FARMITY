@@ -77,7 +77,7 @@ public class TileResponseData
     public string plantId;
 
     public int  cropStage;
-    public int  totalAge;
+    public float growthTimer;
     public int  pollenHarvestCount;
     public bool isWatered;
     public bool isFertilized;
