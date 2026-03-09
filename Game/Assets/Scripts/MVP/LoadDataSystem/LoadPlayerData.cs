@@ -1,7 +1,10 @@
+using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Networking;
 using Photon.Pun;
 using Photon.Realtime;
+using Newtonsoft.Json;
 
 public class LoadPlayerData : MonoBehaviourPunCallbacks
 {
@@ -10,11 +13,12 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
         StartCoroutine(WaitAndApplyAllPositions());
     }
 
-    // Called when a remote player joins — apply their saved position once their object is spawned
+    // Only the master needs to handle joining players — non-master clients self-load their own position.
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
         Debug.Log("player join room");
-        StartCoroutine(WaitAndApplyPositionForPlayer(newPlayer));
+        if (PhotonNetwork.IsMasterClient)
+            StartCoroutine(WaitAndApplyPositionForPlayer(newPlayer));
     }
 
     private IEnumerator WaitAndApplyPositionForPlayer(Player newPlayer)
@@ -91,7 +95,14 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
 
     private IEnumerator WaitAndApplyAllPositions()
     {
-        // Wait until WorldDataBootstrapper has finished the single API fetch
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            // Non-master: self-load position directly from API — don't depend on master.
+            yield return StartCoroutine(LoadOwnPositionFromServer());
+            yield break;
+        }
+
+        // Master: wait for WorldDataBootstrapper, then apply positions for all current players.
         yield return new WaitUntil(() =>
             WorldDataBootstrapper.Instance != null && WorldDataBootstrapper.Instance.IsReady);
 
@@ -107,7 +118,7 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
                 continue;
             }
 
-            string userId = view.Owner.UserId; // Use UserId, not NickName
+            string userId = view.Owner.UserId;
 
             if (!PlayerDataManager.Instance.players.Exists(p => p.accountId == userId))
             {
@@ -118,9 +129,93 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
             PlayerData data = PlayerDataManager.Instance.players.Find(p => p.accountId == userId);
             Vector3 loadedPos = new Vector3(data.positionX, data.positionY, player.transform.position.z);
 
-            // RPC only applies on the owner's client (SetLoadedPosition checks photonView.IsMine)
             view.RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
             Debug.Log($"[LoadPlayerData] Synced position for {userId}: {loadedPos}");
         }
+    }
+
+    // Each non-master client fetches its own saved position directly from the server.
+    // This is independent of the master's PlayerDataManager, fixing the case where
+    // the master's cached character list doesn't include the joining player.
+    private IEnumerator LoadOwnPositionFromServer()
+    {
+        string worldId = WorldSelectionManager.Instance?.SelectedWorldId;
+        string accountId = SessionManager.Instance?.UserId;
+        string jwt = SessionManager.Instance?.JwtToken;
+
+        if (string.IsNullOrEmpty(worldId) || string.IsNullOrEmpty(accountId) || string.IsNullOrEmpty(jwt))
+        {
+            Debug.LogWarning("[LoadPlayerData] Missing worldId, accountId, or JWT — cannot self-load position.");
+            yield break;
+        }
+
+        string url = $"{AppConfig.ApiBaseUrl.TrimEnd('/')}/player-data/world?_id={worldId}";
+        Debug.Log($"[LoadPlayerData] Non-master self-fetching position from: {url}");
+
+        using (UnityWebRequest req = UnityWebRequest.Get(url))
+        {
+            req.SetRequestHeader("Authorization", "Bearer " + jwt);
+            req.certificateHandler = new AcceptAllCertificatesHandler();
+            yield return req.SendWebRequest();
+
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning($"[LoadPlayerData] Position fetch failed: {req.responseCode} {req.error}");
+                yield break;
+            }
+
+            WorldApiResponse data;
+            try { data = JsonConvert.DeserializeObject<WorldApiResponse>(req.downloadHandler.text); }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[LoadPlayerData] Parse error: {ex.Message}");
+                yield break;
+            }
+
+            if (data?.characters == null)
+            {
+                Debug.LogWarning("[LoadPlayerData] No characters array in response.");
+                yield break;
+            }
+
+            WorldApiResponse.CharacterEntry myEntry = data.characters.Find(c => c.accountId == accountId);
+            if (myEntry == null)
+            {
+                Debug.LogWarning($"[LoadPlayerData] No saved position for accountId '{accountId}' in world '{worldId}'.");
+                yield break;
+            }
+
+            // Wait for the local player entity to be in the scene.
+            GameObject localPlayer = null;
+            float elapsed = 0f;
+            while (localPlayer == null && elapsed < 10f)
+            {
+                foreach (var go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+                {
+                    PhotonView pv = go.GetComponent<PhotonView>();
+                    if (pv != null && pv.IsMine) { localPlayer = go; break; }
+                }
+                if (localPlayer == null)
+                {
+                    yield return new WaitForSeconds(0.2f);
+                    elapsed += 0.2f;
+                }
+            }
+
+            if (localPlayer == null)
+            {
+                Debug.LogWarning("[LoadPlayerData] Timed out waiting for local PlayerEntity.");
+                yield break;
+            }
+
+            Vector3 loadedPos = new Vector3(myEntry.positionX, myEntry.positionY, localPlayer.transform.position.z);
+            localPlayer.GetComponent<PhotonView>().RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
+            Debug.Log($"[LoadPlayerData] Self-loaded position for '{accountId}': {loadedPos}");
+        }
+    }
+
+    private class AcceptAllCertificatesHandler : UnityEngine.Networking.CertificateHandler
+    {
+        protected override bool ValidateCertificate(byte[] certificateData) => true;
     }
 }

@@ -93,14 +93,14 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Response: `{ "ok": true }`
 
-### Admin Password Reset
+### Password Reset
 
-- **POST** `/auth/admin-reset/request`: Request OTP for password reset.
+- **POST** `/auth/reset/request`: Request OTP for password reset.
   - Body: `{ "email": "string" }`
   - Response: `{ "ok": true }`
-  - Note: Sends 6-digit OTP to admin email, valid for 2 minutes.
+  - Note: Sends 6-digit OTP to the account email, valid for 2 minutes.
 
-- **POST** `/auth/admin-reset/confirm`: Confirm OTP and set new password.
+- **POST** `/auth/reset/confirm`: Confirm OTP and set new password.
   - Body: `{ "email": "string", "otp": "string", "newPassword": "string" }`
   - Response: `{ "ok": true }`
 

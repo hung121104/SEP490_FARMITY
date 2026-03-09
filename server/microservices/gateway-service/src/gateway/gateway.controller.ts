@@ -30,13 +30,14 @@ import { UpdateNewsDto } from './dto/update-news.dto';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
 import { UploadSignatureDto } from './dto/upload-signature.dto';
-import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
-import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
+import { RequestResetDto } from './dto/request-admin-reset.dto';
+import { ConfirmResetDto } from './dto/confirm-admin-reset.dto';
 import { UpdateWorldDto } from './dto/update-world.dto';
 import { CreateItemDto } from './dto/create-item.dto';
 import { CreatePlantDto } from './dto/create-plant.dto';
 import { CreateCraftingRecipeDto } from './dto/create-crafting-recipe.dto';
 import { UpdateCraftingRecipeDto } from './dto/update-crafting-recipe.dto';
+import { VerifyRegistrationDto } from './dto/verify-registration.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { UpdatePlantDto } from './dto/update-plant.dto';
 import { GatewayCloudinaryService } from './cloudinary.service';
@@ -223,6 +224,17 @@ export class GatewayController {
     }
   }
 
+  @Post('auth/verify-registration')
+  async verifyRegistration(@Body() dto: VerifyRegistrationDto) {
+    try {
+      return await firstValueFrom(
+        this.authClient.send('verify-registration', dto),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   @Post('auth/login-ingame')
   async login(@Body() loginDto: any) {
     try {
@@ -398,22 +410,22 @@ export class GatewayController {
     return this.adminClient.send('delete-media', id);
   }
 
-  @Post('auth/admin-reset/request')
-  async adminResetRequest(@Body() dto: RequestAdminResetDto) {
+  @Post('auth/reset/request')
+  async resetRequest(@Body() dto: RequestResetDto) {
     try {
       return await firstValueFrom(
-        this.authClient.send('admin-reset-request', dto),
+        this.authClient.send('reset-request', dto),
       );
     } catch (err) {
       throw this.rpcError(err);
     }
   }
 
-  @Post('auth/admin-reset/confirm')
-  async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
+  @Post('auth/reset/confirm')
+  async resetConfirm(@Body() dto: ConfirmResetDto) {
     try {
       return await firstValueFrom(
-        this.authClient.send('admin-reset-confirm', dto),
+        this.authClient.send('reset-confirm', dto),
       );
     } catch (err) {
       throw this.rpcError(err);

@@ -22,20 +22,13 @@ public class BookMenuController : MonoBehaviour
     [Header("On start animation")]
     [SerializeField] private string onStartAnimationName = "turnRToL";
 
-    [Header("Canvas Groups")]
-    [SerializeField] private CanvasGroup loginCanvasGroup;
-    [SerializeField] private CanvasGroup registerCanvasGroup;
-    [SerializeField] private CanvasGroup titleCanvasGroup;
-
     [Header("Buttons")]
     [SerializeField] private Button openBookBtn;
     [SerializeField] private Button closeBookBtn;
-    [SerializeField] private Button openLoginBtn;
-    [SerializeField] private Button openRegisterBtn;
-    [SerializeField] private Button openTitleBtn;
 
-    private string turnRToL = "turnRToL";
-    private string turnLToR = "turnLToR";
+    [Header("Panel Controller")]
+    [SerializeField] private BookPanelController panelController;
+
     private Coroutine _scalingCoroutine;
     private Coroutine _movingCoroutine;
 
@@ -43,15 +36,26 @@ public class BookMenuController : MonoBehaviour
     {
         PlayOnstartAnimation(onStartAnimationName);
         BindButtons();
+
+        if (panelController != null)
+        {
+            panelController.OnPanelOpened += () => 
+            {
+                animator.ResetTrigger(BookAnimations.TurnRToL);
+                animator.SetTrigger(BookAnimations.TurnRToL);
+            };
+            panelController.OnShowTitle   += () =>
+            {
+                animator.ResetTrigger(BookAnimations.TurnRToL);
+                animator.SetTrigger(BookAnimations.TurnLToR);
+            };
+        }
     }
 
     private void BindButtons()
     {
         if (openBookBtn != null) openBookBtn.onClick.AddListener(ShowBook);
         if (closeBookBtn != null) closeBookBtn.onClick.AddListener(TranstionIn);
-        if (openLoginBtn != null) openLoginBtn.onClick.AddListener(ShowLogin);
-        if (openRegisterBtn != null) openRegisterBtn.onClick.AddListener(ShowRegister);
-        if (openTitleBtn != null) openTitleBtn.onClick.AddListener(ShowTitle);
     }
 
     [ContextMenu("show book")]
@@ -78,7 +82,7 @@ public class BookMenuController : MonoBehaviour
         _movingCoroutine = StartCoroutine(MoveBook());
         yield return _movingCoroutine;
         bookImage.enabled = false;
-        animator.SetTrigger(turnRToL);
+        animator.SetTrigger(BookAnimations.TurnRToL);
     }
     IEnumerator MoveBook()
     {
@@ -117,23 +121,6 @@ public class BookMenuController : MonoBehaviour
         _movingCoroutine = null;
     }
 
-
-    public void ShowLogin()
-    {
-        loginCanvasGroup.alpha = 1f;
-        loginCanvasGroup.interactable = true;
-        loginCanvasGroup.blocksRaycasts = true;
-        animator.SetTrigger(turnRToL);
-    }
-
-    public void ShowRegister()
-    {
-    }
-
-    public void ShowTitle()
-    {
-        animator.SetTrigger(turnLToR);
-    }
 
     /// <summary>
     /// Smoothly scales the book down to zero over <see cref="scaleDuration"/> seconds,
