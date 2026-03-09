@@ -4,10 +4,11 @@ using CombatManager.Model;
 namespace CombatManager.Service
 {
     /// <summary>
-    /// Interface for skill service.
-    /// Handles cooldown logic and skill trigger checks.
+    /// Interface for SkillPatternService.
+    /// Handles cooldown tracking and trigger validation
+    /// for the skill execution pattern.
     /// </summary>
-    public interface ISkillService
+    public interface ISkillPatternService
     {
         #region Cooldown
 
@@ -26,8 +27,8 @@ namespace CombatManager.Service
 
         #region State
 
-        void SetState(SkillState state);
-        SkillState GetState();
+        void SetState(SkillPatternState state);
+        SkillPatternState GetState();
 
         #endregion
     }

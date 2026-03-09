@@ -7,8 +7,8 @@ namespace CombatManager.Service
 {
     /// <summary>
     /// Service for SkillManagement system.
-    /// Mirrors SkillManagementPanel logic from CombatSystem (kept for legacy).
-    /// Pure logic - no MonoBehaviour.
+    /// No longer depends on SkillDatabase.
+    /// Receives skill list directly from SkillManagementPresenter.
     /// </summary>
     public class SkillManagementService : ISkillManagementService
     {
@@ -23,9 +23,11 @@ namespace CombatManager.Service
 
         public void Initialize(List<SkillData> skills)
         {
-            model.allSkills = skills;
+            // ✅ Filter: only PlayerSkills shown in management panel
+            model.allSkills = skills.FindAll(s => s != null && s.IsPlayerSkill);
             model.isInitialized = true;
-            Debug.Log($"[SkillManagementService] Initialized with {skills.Count} skills");
+            Debug.Log($"[SkillManagementService] Initialized with " +
+                      $"{model.allSkills.Count} player skills");
         }
 
         public bool IsInitialized() => model.isInitialized;
@@ -53,7 +55,6 @@ namespace CombatManager.Service
         }
 
         public SkillData GetDraggingSkill() => model.currentlyDraggingSkill;
-
         public bool IsAnySkillDragging() => model.currentlyDraggingSkill != null;
 
         #endregion

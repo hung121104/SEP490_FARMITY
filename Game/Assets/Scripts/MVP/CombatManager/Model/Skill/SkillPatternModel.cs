@@ -4,17 +4,18 @@ using CombatManager.Model;
 namespace CombatManager.Model
 {
     /// <summary>
-    /// Data model for all skills.
-    /// Stores state, settings, cooldown, dice info.
+    /// Data model for the Skill Pattern execution system.
+    /// Stores runtime state, cooldown, dice info and settings.
+    /// Used by SkillPatternPresenter and SkillPatternService.
     /// No logic - pure data container.
     /// </summary>
     [System.Serializable]
-    public class SkillModel
+    public class SkillPatternModel
     {
         #region Skill State
 
         [Header("Runtime State")]
-        public SkillState currentState = SkillState.Idle;
+        public SkillPatternState currentState = SkillPatternState.Idle;
         public bool isExecuting = false;
         public int currentDiceRoll = 0;
         public Vector3 targetDirection = Vector3.right;
@@ -51,35 +52,36 @@ namespace CombatManager.Model
 
         #region Constructor
 
-        public SkillModel()
+        public SkillPatternModel()
         {
-            currentState = SkillState.Idle;
-            isExecuting = false;
+            currentState    = SkillPatternState.Idle;
+            isExecuting     = false;
             currentDiceRoll = 0;
             targetDirection = Vector3.right;
-            skillTimer = 0f;
-            confirmKey = KeyCode.E;
-            cancelKey = KeyCode.Q;
+            skillTimer      = 0f;
+            confirmKey      = KeyCode.E;
+            cancelKey       = KeyCode.Q;
         }
 
         #endregion
 
         #region Helpers
 
-        public bool IsIdle => currentState == SkillState.Idle;
-        public bool IsCharging => currentState == SkillState.Charging;
-        public bool IsWaitingConfirm => currentState == SkillState.WaitingConfirm;
-        public bool IsExecutingState => currentState == SkillState.Executing;
-        public bool IsCoolingDown => skillTimer > 0f;
+        public bool IsIdle           => currentState == SkillPatternState.Idle;
+        public bool IsCharging       => currentState == SkillPatternState.Charging;
+        public bool IsWaitingConfirm => currentState == SkillPatternState.WaitingConfirm;
+        public bool IsExecutingState => currentState == SkillPatternState.Executing;
+        public bool IsCoolingDown    => skillTimer > 0f;
         public float CooldownPercent => Mathf.Clamp01(1f - (skillTimer / skillCooldown));
 
         #endregion
     }
 
     /// <summary>
-    /// Skill state enum in CombatManager namespace.
+    /// States of the skill execution pattern.
+    /// press → Charging → WaitingConfirm → Executing → Idle
     /// </summary>
-    public enum SkillState
+    public enum SkillPatternState
     {
         Idle,
         Charging,
