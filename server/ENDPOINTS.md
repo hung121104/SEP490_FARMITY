@@ -496,12 +496,12 @@ Depending on `itemType`, specific extra fields must be included:
     
     | Field name | Required | Description |
     |---|---|---|
-    | `stageSprites` | ✅ | Repeated file field — filenames **must** end with `_<stageIndex>` (e.g., `cabbage_0.png`, `cabbage_1.png`). Files can be uploaded in any order; gateway sorts by trailing index. Count must match `growthStages` entries. |
+    | `stageSprites` | ✅ | Repeated file field — files are assigned to stages by their order in the form (first file → stage 0, second → stage 1, etc.). Count must match `growthStages` entries. |
     | `hybridFlowerSprite` | Hybrid only | Sprite at `pollenStage` (sets `hybridFlowerIconUrl`) |
     | `hybridMatureSprite` | Hybrid only | Sprite at `pollenStage + 1` (sets `hybridMatureIconUrl`) |
   
   - **Text fields**: All other plant fields as form-data strings, except:
-    - `growthStages` — Send as **JSON string**, e.g., `[{"stageNum":0,"age":0},{"stageNum":1,"age":3}]`. `stageIconUrl` filled automatically from uploaded sprites.
+    - `growthStages` — Send as **JSON string**, e.g., `[{"stageNum":0,"growthDurationMinutes":0},{"stageNum":1,"growthDurationMinutes":30}]`. `stageIconUrl` filled automatically from uploaded sprites.
   - Response: Saved plant document including `_id` and all resolved `stageIconUrl` CDN URLs
   - Note: Returns `409 Conflict` if a plant with the same `plantId` already exists
 
@@ -528,7 +528,7 @@ Depending on `itemType`, specific extra fields must be included:
 
     | Field name | Description |
     |---|---|
-    | `stageSprites` | Repeated file field — replaces all stage sprites. Filenames must end with `_<stageIndex>`. Must be provided together with `growthStages` JSON and count must match. |
+    | `stageSprites` | Repeated file field — replaces all stage sprites. Assigned by form order. Must be provided together with `growthStages` JSON and count must match. |
     | `hybridFlowerSprite` | Replaces `hybridFlowerIconUrl` |
     | `hybridMatureSprite` | Replaces `hybridMatureIconUrl` |
 
@@ -548,7 +548,7 @@ Depending on `itemType`, specific extra fields must be included:
 |---|---|---|---|---|
 | `plantId` | string | ✅ | — | Unique game-side ID (e.g., `"plant_corn"`) |
 | `plantName` | string | ✅ | — | Display name |
-| `growthStages` | JSON string | ✅ | — | Stringified array of `{ stageNum, age }` objects (at least 1 entry). `stageIconUrl` set automatically from uploaded sprites. |
+| `growthStages` | JSON string | ✅ | — | Stringified array of `{ stageNum, growthDurationMinutes }` objects (at least 1 entry). `stageIconUrl` set automatically from uploaded sprites. |
 | `harvestedItemId` | string | ✅ | — | `itemID` of crop/item dropped on harvest (from ItemCatalog) |
 | `canProducePollen` | bool | — | `false` | Whether pollen can be collected |
 | `pollenStage` | int | — | `3` | Stage index at which pollen becomes collectible |
@@ -567,8 +567,8 @@ Depending on `itemType`, specific extra fields must be included:
 | Field | Type | Notes |
 |---|---|---|
 | `stageNum` | int | Stage index (0-based) |
-| `age` | int | Total in-game days to reach this stage |
-| `stageIconUrl` | string | **Auto-filled** by gateway — parsed from trailing index in sprite filename (e.g., `cabbage_2.png` → stage 2). Do not send manually. |
+| `growthDurationMinutes` | float | In-game minutes to grow through this stage (e.g., `60` = 1 in-game hour) |
+| `stageIconUrl` | string | **Auto-filled** by gateway — assigned from uploaded sprites by form order (1st file → stage 0, 2nd → stage 1, etc.). Do not send manually. |
 
 ---
 

@@ -6,7 +6,7 @@ export class TileDataDto {
   type?: string;
   plantId?: string | null;
   cropStage?: number;
-  totalAge?: number;
+  growthTimer?: number;
   pollenHarvestCount?: number;
   isWatered?: boolean;
   isFertilized?: boolean;
