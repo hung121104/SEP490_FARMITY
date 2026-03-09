@@ -41,6 +41,8 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { UpdatePlantDto } from './dto/update-plant.dto';
 import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
+import { CreateAchievementDto } from './dto/create-achievement.dto';
+import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
 
 @Controller()
 export class GatewayController {
@@ -1113,6 +1115,101 @@ export class GatewayController {
       );
     } catch (err) {
       if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Achievements (Admin) ────────────────────────────────────────
+
+  /** POST /game-data/achievements/create — create a new achievement definition (admin only) */
+  @Post('game-data/achievements/create')
+  async createAchievement(@Body() dto: CreateAchievementDto) {
+    try {
+      return await firstValueFrom(this.adminClient.send('create-achievement', dto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/achievements/all — list all achievement definitions */
+  @Get('game-data/achievements/all')
+  async getAllAchievements() {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-all-achievements', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/achievements/:achievementId — get one definition */
+  @Get('game-data/achievements/:achievementId')
+  async getAchievementById(@Param('achievementId') achievementId: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-achievement-by-id', achievementId));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/achievements/:achievementId — update a definition (admin only) */
+  @Put('game-data/achievements/:achievementId')
+  async updateAchievement(
+    @Param('achievementId') achievementId: string,
+    @Body() dto: any,
+  ) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('update-achievement', { achievementId, dto }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/achievements/:achievementId — delete a definition (admin only) */
+  @Delete('game-data/achievements/:achievementId')
+  async deleteAchievement(@Param('achievementId') achievementId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-achievement', achievementId),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Player Achievements ─────────────────────────────────────────────────────
+
+  /** GET /player-data/achievement — get all achievements with this player's progress */
+  @Get('player-data/achievement')
+  async getPlayerAchievements(@Req() req: Request) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('get-player-achievements', String(accountId)),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/achievement/progress — update progress on one requirement */
+  @Put('player-data/achievement/progress')
+  async updateAchievementProgress(
+    @Body() dto: UpdateAchievementProgressDto,
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('update-achievement-progress', {
+          ...dto,
+          accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
       throw this.rpcError(err);
     }
   }
