@@ -10,15 +10,17 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
    - [User Authentication](#user-authentication)
    - [Admin Authentication](#admin-authentication)
    - [Admin Password Reset](#admin-password-reset)
-2. [Content Management](#content-management)
+2. [Game Config](#game-config)
+   - [Main Menu](#main-menu)
+3. [Content Management](#content-management)
    - [Blog (Development Diary)](#blog-development-diary)
    - [News & Announcements](#news--announcements)
    - [Media Gallery](#media-gallery)
-3. [Game Data Management](#game-data-management)
+4. [Game Data Management](#game-data-management)
    - [Items Catalog](#items-catalog)
    - [Plants Catalog](#plants-catalog)
    - [Crafting Recipes](#crafting-recipes)
-4. [Player Data](#player-data)
+5. [Player Data](#player-data)
    - [World Management](#world-management)
    - [Character Management](#character-management)
 
@@ -103,6 +105,35 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 - **POST** `/auth/reset/confirm`: Confirm OTP and set new password.
   - Body: `{ "email": "string", "otp": "string", "newPassword": "string" }`
   - Response: `{ "ok": true }`
+
+## Game Config
+
+### Main Menu
+
+- **GET** `/game-config/main-menu`: Get the current main-menu background config (public).
+  - Response:
+    ```json
+    {
+      "currentBackgroundUrl": "string",
+      "version": "number"
+    }
+    ```
+  - Note: Returns `null` if no background has been set yet.
+
+- **PUT** `/game-config/main-menu`: Update the main-menu background image (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Fields:
+    - `background` *(file, required)* — Background image (max 10 MB). Uploaded to Cloudinary folder `game-config` automatically; `currentBackgroundUrl` set from the resulting `secure_url`.
+  - Response:
+    ```json
+    {
+      "currentBackgroundUrl": "string",
+      "version": "number"
+    }
+    ```
+
+---
 
 ## Content Management
 
