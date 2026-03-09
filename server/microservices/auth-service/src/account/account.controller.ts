@@ -4,8 +4,9 @@ import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
-import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
-import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
+import { RequestResetDto } from './dto/request-admin-reset.dto';
+import { ConfirmResetDto } from './dto/confirm-admin-reset.dto';
+import { VerifyRegistrationDto } from './dto/verify-registration.dto';
 
 @Controller()
 export class AccountController {
@@ -13,7 +14,12 @@ export class AccountController {
 
   @MessagePattern('register')
   async register(@Body() createAccountDto: CreateAccountDto) {
-    return this.accountService.create(createAccountDto);
+    return this.accountService.initiateRegistration(createAccountDto);
+  }
+
+  @MessagePattern('verify-registration')
+  async verifyRegistration(@Body() dto: VerifyRegistrationDto) {
+    return this.accountService.verifyRegistration(dto.email, dto.otp);
   }
 
   @MessagePattern('login-ingame')
@@ -56,15 +62,15 @@ export class AccountController {
     return this.accountService.logout(token);
   }
 
-  // Admin password reset request
-  @MessagePattern('admin-reset-request')
-  async adminResetRequest(@Body() dto: RequestAdminResetDto) {
-    return this.accountService.requestAdminPasswordReset(dto.email);
+  // Password reset request
+  @MessagePattern('reset-request')
+  async resetRequest(@Body() dto: RequestResetDto) {
+    return this.accountService.requestPasswordReset(dto.email);
   }
 
-  // Admin password reset confirmation
-  @MessagePattern('admin-reset-confirm')
-  async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
-    return this.accountService.confirmAdminPasswordReset(dto.email, dto.otp, dto.newPassword);
+  // Password reset confirmation
+  @MessagePattern('reset-confirm')
+  async resetConfirm(@Body() dto: ConfirmResetDto) {
+    return this.accountService.confirmPasswordReset(dto.email, dto.otp, dto.newPassword);
   }
 }

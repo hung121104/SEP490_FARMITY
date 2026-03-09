@@ -1,3 +1,3 @@
-export class RequestAdminResetDto {
+export class RequestResetDto {
   email: string;
 }
