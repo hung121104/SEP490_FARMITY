@@ -20,15 +20,17 @@ public class RegisterView : MonoBehaviour
     [Header("Feedback")]
     [SerializeField] private Text errorText;
 
-    [Header("OTP Verification Panel")]
-    [Tooltip("A panel (CanvasGroup) containing the OTP input and verify button. Hidden by default.")]
-    [SerializeField] private CanvasGroup otpPanel;
+    [Header("OTP Verification")]
     [SerializeField] private InputField otpField;
     [SerializeField] private Button verifyButton;
 
-    [Header("Navigation")]
-    [Tooltip("Scene to load after a successful registration (leave empty to just show a success message).")]
-    [SerializeField] private string successScene = "";
+    [Header("Panel Navigation")]
+    [Tooltip("BookPanelController that owns the OTP and Register canvas groups.")]
+    [SerializeField] private BookPanelController bookPanelController;
+    [Tooltip("Index of the OTP panel inside BookPanelController's Panels list.")]
+    [SerializeField] private int otpPanelIndex = 1;
+    [Tooltip("Index of the Register panel inside BookPanelController's Panels list.")]
+    [SerializeField] private int registerPanelIndex = 0;
 
     private RegisterPresenter presenter;
 
@@ -42,8 +44,6 @@ public class RegisterView : MonoBehaviour
 
         if (errorText != null)
             errorText.text = string.Empty;
-
-        HideOtpPanel();
     }
 
     // ── Data getters (called by presenter) ──────────────────────────────────
@@ -57,8 +57,7 @@ public class RegisterView : MonoBehaviour
 
     public void ShowOtpPanel()
     {
-        if (otpPanel != null)
-            otpPanel.Show();
+        bookPanelController?.ShowPanel(otpPanelIndex);
 
         if (errorText != null)
             errorText.text = "A verification code has been sent to your email.";
@@ -66,8 +65,7 @@ public class RegisterView : MonoBehaviour
 
     public void HideOtpPanel()
     {
-        if (otpPanel != null)
-            otpPanel.Hide();
+        bookPanelController?.ShowPanel(registerPanelIndex);
 
         if (otpField != null)
             otpField.text = string.Empty;
@@ -99,8 +97,5 @@ public class RegisterView : MonoBehaviour
             errorText.text = string.Empty;
 
         Debug.Log("[RegisterView] Registration and email verification successful!");
-
-        if (!string.IsNullOrEmpty(successScene))
-            SceneManager.LoadScene(successScene);
     }
 }

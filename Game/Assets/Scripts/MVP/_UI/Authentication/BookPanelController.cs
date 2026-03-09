@@ -1,23 +1,22 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class BookPanelController : MonoBehaviour
 {
-    [Header("Canvas Groups")]
-    [SerializeField] private CanvasGroup loginCanvasGroup;
-    [SerializeField] private CanvasGroup registerCanvasGroup;
+    [Header("Title Canvas Group (never hidden by panel logic)")]
     [SerializeField] private CanvasGroup titleCanvasGroup;
 
-    [Header("Buttons")]
-    [SerializeField] private Button openLoginBtn;
-    [SerializeField] private Button closeLoginBtn;
-    [SerializeField] private Button openRegisterBtn;
-    [SerializeField] private Button closeRegisterBtn;
+    [Header("Title Button")]
     [SerializeField] private Button openTitleBtn;
 
-    public event Action OnShowLogin;
-    public event Action OnShowRegister;
+    [Header("Panels")]
+    [SerializeField] private List<PanelEntry> panels = new List<PanelEntry>();
+
+    /// <summary>Fired when any panel open button is clicked.</summary>
+    public event Action OnPanelOpened;
+    /// <summary>Fired when any close button or the title button is clicked.</summary>
     public event Action OnShowTitle;
 
     private void Awake()
@@ -27,31 +26,43 @@ public class BookPanelController : MonoBehaviour
 
     private void BindButtons()
     {
-        if (openLoginBtn    != null) openLoginBtn.onClick.AddListener(ShowLogin);
-        if (closeLoginBtn   != null) closeLoginBtn.onClick.AddListener(ShowTitle);
-        if (openRegisterBtn != null) openRegisterBtn.onClick.AddListener(ShowRegister);
-        if (closeRegisterBtn != null) closeRegisterBtn.onClick.AddListener(ShowTitle);
-        if (openTitleBtn    != null) openTitleBtn.onClick.AddListener(ShowTitle);
+        if (openTitleBtn != null) openTitleBtn.onClick.AddListener(ShowTitle);
+
+        foreach (var entry in panels)
+        {
+            var captured = entry;
+            if (captured.openButton  != null) captured.openButton.onClick.AddListener(() => ShowPanel(captured));
+            if (captured.closeButton != null) captured.closeButton.onClick.AddListener(ShowTitle);
+        }
     }
 
-    public void ShowLogin()
+    private void ShowPanel(PanelEntry entry)
     {
-        registerCanvasGroup.Hide();
-        loginCanvasGroup.Show();
-        OnShowLogin?.Invoke();
+        // Hide every panel canvas group — titleCanvasGroup is never touched.
+        foreach (var p in panels)
+            if (p.canvasGroup != null) p.canvasGroup.Hide();
+
+        entry.canvasGroup?.Show();
+        OnPanelOpened?.Invoke();
     }
 
-    public void ShowRegister()
+    /// <summary>Show a panel by index programmatically (e.g. from a presenter).</summary>
+    public void ShowPanel(int index)
     {
-        loginCanvasGroup.Hide();
-        registerCanvasGroup.Show();
-        OnShowRegister?.Invoke();
+        if (index < 0 || index >= panels.Count) return;
+        ShowPanel(panels[index]);
     }
 
     public void ShowTitle()
     {
-        loginCanvasGroup.Hide();
-        registerCanvasGroup.Hide();
         OnShowTitle?.Invoke();
+    }
+
+    [Serializable]
+    public class PanelEntry
+    {
+        public CanvasGroup canvasGroup;
+        public Button openButton;
+        public Button closeButton;
     }
 }

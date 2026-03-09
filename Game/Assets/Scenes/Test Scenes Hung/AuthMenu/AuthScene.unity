@@ -601,8 +601,8 @@ GameObject:
   m_Component:
   - component: {fileID: 362392241}
   - component: {fileID: 362392242}
-  - component: {fileID: 362392243}
   - component: {fileID: 362392244}
+  - component: {fileID: 362392243}
   m_Layer: 0
   m_Name: UI_Mananger
   m_TagString: Untagged
@@ -674,14 +674,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7705dc9854986c54880d1e128c1fd6b6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  loginCanvasGroup: {fileID: 1822280572}
-  registerCanvasGroup: {fileID: 2088430725520229897}
   titleCanvasGroup: {fileID: 2063503560}
-  openLoginBtn: {fileID: 2027898063}
-  closeLoginBtn: {fileID: 740458324}
-  openRegisterBtn: {fileID: 295240720}
-  closeRegisterBtn: {fileID: 611285495534124013}
   openTitleBtn: {fileID: 0}
+  panels:
+  - canvasGroup: {fileID: 1822280572}
+    openButton: {fileID: 2027898063}
+    closeButton: {fileID: 740458324}
+  - canvasGroup: {fileID: 2088430725520229897}
+    openButton: {fileID: 295240720}
+    closeButton: {fileID: 611285495534124013}
+  - canvasGroup: {fileID: 669334418}
+    openButton: {fileID: 0}
+    closeButton: {fileID: 374635831}
 --- !u!1 &374635829
 GameObject:
   m_ObjectHideFlags: 0
@@ -1762,7 +1766,7 @@ MonoBehaviour:
   m_CaretColor: {r: 0.19607843, g: 0.19607843, b: 0.19607843, a: 1}
   m_CustomCaretColor: 0
   m_SelectionColor: {r: 0.65882355, g: 0.80784315, b: 1, a: 0.7529412}
-  m_Text: testuser
+  m_Text: duonghungnguyen111204@gmail.com
   m_CaretBlinkRate: 0.85
   m_CaretWidth: 1
   m_ReadOnly: 0
@@ -3003,10 +3007,11 @@ MonoBehaviour:
   emailField: {fileID: 1175431158}
   registerButton: {fileID: 4435240035463256157}
   errorText: {fileID: 0}
-  otpPanel: {fileID: 669334418}
   otpField: {fileID: 309154113}
   verifyButton: {fileID: 1819011745}
-  successScene: MainMenuScene
+  bookPanelController: {fileID: 362392244}
+  otpPanelIndex: 2
+  registerPanelIndex: 1
 --- !u!1 &2146418169
 GameObject:
   m_ObjectHideFlags: 0
@@ -3645,7 +3650,7 @@ MonoBehaviour:
   m_CaretColor: {r: 0.19607843, g: 0.19607843, b: 0.19607843, a: 1}
   m_CustomCaretColor: 0
   m_SelectionColor: {r: 0.65882355, g: 0.80784315, b: 1, a: 0.7529412}
-  m_Text: testuser
+  m_Text: duonghung
   m_CaretBlinkRate: 0.85
   m_CaretWidth: 1
   m_ReadOnly: 0

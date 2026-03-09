@@ -39,9 +39,16 @@ public class BookMenuController : MonoBehaviour
 
         if (panelController != null)
         {
-            panelController.OnShowLogin    += () => animator.SetTrigger(BookAnimations.TurnRToL);
-            panelController.OnShowRegister += () => animator.SetTrigger(BookAnimations.TurnRToL);
-            panelController.OnShowTitle    += () => animator.SetTrigger(BookAnimations.TurnLToR);
+            panelController.OnPanelOpened += () => 
+            {
+                animator.ResetTrigger(BookAnimations.TurnRToL);
+                animator.SetTrigger(BookAnimations.TurnRToL);
+            };
+            panelController.OnShowTitle   += () =>
+            {
+                animator.ResetTrigger(BookAnimations.TurnRToL);
+                animator.SetTrigger(BookAnimations.TurnLToR);
+            };
         }
     }
 
