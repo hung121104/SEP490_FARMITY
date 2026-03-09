@@ -13,34 +13,47 @@ public class FishingPresenter : IDisposable
         this.service = service;
         this.model = model;
 
-        // Đăng ký lắng nghe sự kiện dùng cần câu từ UseToolService
+        // 1. Lắng nghe lúc người chơi quăng cần
         UseToolService.OnFishingRodRequested += HandleFishingRodUsed;
+
+        // 2. Lắng nghe kết quả từ Minigame View
+        this.view.OnMiniGameWon += HandleMiniGameWon;
+        this.view.OnMiniGameLost += HandleMiniGameLost;
     }
 
     private void HandleFishingRodUsed(ToolData tool, Vector3 targetPosition)
     {
-        // 1. Hỏi Service xem chỗ chuột click có phải Fishingtiltemap không
         if (service.IsFishingWater(targetPosition))
         {
-            // 2. Chỗ này câu được -> Bắt cá và add vào inventory
-            bool success = service.CatchFish();
-
-            if (success)
-            {
-                // Cập nhật View
-                view.ShowFishingSuccess(model.lastCaughtFish);
-            }
+            // Bắt đầu Fishing Mode: Mở UI minigame
+            view.StartMiniGame();
         }
         else
         {
-            // 3. Không phải ô nước -> Báo lỗi ra View
             view.ShowCannotFishWarning();
         }
     }
 
-    // Luôn nhớ hủy đăng ký sự kiện khi Presenter bị hủy để tránh memory leak
+    private void HandleMiniGameWon()
+    {
+        // Hoàn thành minigame -> Drop cá
+        bool success = service.CatchFish(); // Hàm này trong Service sẽ gọi lấy item và add inventory
+        if (success)
+        {
+            view.ShowFishingSuccess(model.lastCaughtFish);
+        }
+    }
+
+    private void HandleMiniGameLost()
+    {
+        // Thất bại -> In ra debug
+        view.ShowFishingFailed();
+    }
+
     public void Dispose()
     {
         UseToolService.OnFishingRodRequested -= HandleFishingRodUsed;
+        this.view.OnMiniGameWon -= HandleMiniGameWon;
+        this.view.OnMiniGameLost -= HandleMiniGameLost;
     }
 }
