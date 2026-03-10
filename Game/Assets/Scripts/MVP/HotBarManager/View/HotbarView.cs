@@ -83,6 +83,9 @@ public class HotbarView : MonoBehaviour
         presenter.Initialize();
 
         isInitialized = true;
+        // OnEnable fired before Start and skipped subscription because InputManager wasn't
+        // ready. Now that everything is ready, subscribe to input for the first time.
+        SubscribeInputEvents();
         Debug.Log("HotbarView: Initialized successfully");
     }
 
@@ -91,6 +94,20 @@ public class HotbarView : MonoBehaviour
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     private void OnEnable()
+    {
+        // On the very first enable, InputManager may not be ready yet and isInitialized is
+        // still false.  Subscription is handled at the end of InitializeHotbarSystem() instead.
+        // For all subsequent re-enables (e.g. after inventory open/close) we subscribe here.
+        if (!isInitialized) return;
+        SubscribeInputEvents();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeInputEvents();
+    }
+
+    private void SubscribeInputEvents()
     {
         if (InputManager.Instance == null) return;
 
@@ -111,7 +128,7 @@ public class HotbarView : MonoBehaviour
             InputManager.Instance.UseItem.performed += OnUseItemPerformed;
     }
 
-    private void OnDisable()
+    private void UnsubscribeInputEvents()
     {
         if (InputManager.Instance == null) return;
 
