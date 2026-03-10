@@ -1981,8 +1981,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.750002, y: -20.4995}
-  m_SizeDelta: {x: 34, y: 73.203}
+  m_AnchoredPosition: {x: 0.750002, y: -20.124523}
+  m_SizeDelta: {x: 34, y: 67.953}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &90152821
 MonoBehaviour:
@@ -16858,7 +16858,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.000000059604645, y: 205.50053}
+  m_AnchoredPosition: {x: -0.000000059604645, y: 219.75056}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1054543473
@@ -19530,7 +19530,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.00000047683716, y: -193.5005}
+  m_AnchoredPosition: {x: -0.75000244, y: -219.00056}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1283333486
@@ -25101,7 +25101,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1654634580}
   m_Layer: 0
-  m_Name: Fishsing
+  m_Name: FishsingSystem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -25558,10 +25558,10 @@ MonoBehaviour:
   smoothMotion: 0.3
   hookSize: 0.2
   hookPower: 0.3
-  hookPullPower: 15
+  hookPullPower: 16
   hoookGravityPower: 7
   hookProgessDegradationPower: 0.15
-  failTimer: 6
+  failTimer: 7
 --- !u!1 &1678912145
 GameObject:
   m_ObjectHideFlags: 0

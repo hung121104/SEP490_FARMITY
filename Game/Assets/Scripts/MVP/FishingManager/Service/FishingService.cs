@@ -17,24 +17,41 @@ public class FishingService : IFishingService
 
     public bool IsFishingWater(Vector3 targetPosition)
     {
-        
+        GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
+        if (player == null)
+        {
+            Debug.LogError("[FishingService] Không tìm thấy Player! Hãy gắn Tag 'Player' cho nhân vật.");
+            return false;
+        }
+
+        Vector3 playerPos = player.transform.position;
+        Vector3 direction = (targetPosition - playerPos).normalized;
+
+      
+        float fixedLineLength = 2.5f;
+
+       
+        Vector3 bobberLandingPos = playerPos + (direction * fixedLineLength);
+
+       
         Tilemap[] allTilemaps = UnityEngine.Object.FindObjectsByType<Tilemap>(FindObjectsSortMode.None);
 
         foreach (Tilemap map in allTilemaps)
         {
-            
             if (map.gameObject.name == "FishingTilemap")
             {
                 
-                Vector3Int cellPos = map.WorldToCell(targetPosition);
+                Vector3Int cellPos = map.WorldToCell(bobberLandingPos);
 
                 if (map.HasTile(cellPos))
                 {
-                    return true; 
+                    return true;
                 }
             }
         }
-        Debug.LogWarning($"[FishingService] Tọa độ {targetPosition} cant fishing here");
+
+       
+        Debug.LogWarning($"[FishingService] Phao rớt trên bờ tại tọa độ {bobberLandingPos}. Cant fishing here!");
         return false;
     }
     public bool CatchFish()
