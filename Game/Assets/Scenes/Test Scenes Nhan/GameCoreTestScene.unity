@@ -16769,6 +16769,9 @@ MonoBehaviour:
   - pumpkin_seed
   - strawberry_seed
   - fishing_rod
+  - copper_rod
+  - iron_rod
+  - gold_rod
   quantityPerItem: 1
   qualityOverride: 0
   addItemKey: 116
@@ -25557,7 +25560,7 @@ MonoBehaviour:
   timerMutilicator: 1.5
   smoothMotion: 0.3
   hookSize: 0.2
-  hookPower: 0.3
+  hookPower: 0.4
   hookPullPower: 16
   hoookGravityPower: 7
   hookProgessDegradationPower: 0.15

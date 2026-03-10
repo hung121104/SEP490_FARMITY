@@ -15,6 +15,7 @@ public class FishInfo
 
 public class FishingModel
 {
-
+    public string currentRodID;
     public string lastCaughtFishID;
+    public bool isFishing = false;
 }

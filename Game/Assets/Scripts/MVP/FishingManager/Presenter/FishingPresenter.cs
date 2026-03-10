@@ -19,10 +19,17 @@ public class FishingPresenter
         this.view.OnMiniGameLost += HandleMiniGameLost;
     }
 
-    public void HandleFishingRodUsed(Vector3 targetPosition)
+    public void HandleFishingRodUsed(Vector3 targetPosition, string rodID)
     {
+        if (model.isFishing)
+        {
+            return;
+        }
+        model.currentRodID = rodID;
+
         if (service.IsFishingWater(targetPosition))
         {
+            model.isFishing = true;
             view.StartMiniGame(targetPosition);
         }
         else
@@ -33,6 +40,7 @@ public class FishingPresenter
 
     private void HandleMiniGameWon()
     {
+        model.isFishing = false;
         try
         {
            
@@ -56,6 +64,7 @@ public class FishingPresenter
 
     private void HandleMiniGameLost()
     {
+        model.isFishing = false;
         view.ShowFishingFailed();
     }
 }

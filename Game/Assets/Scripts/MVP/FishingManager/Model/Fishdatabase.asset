@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fishes:
   - itemID: fish_tuna
-    catchChance: 0.259
+    catchChance: 0.1
   - itemID: fish_goby
     catchChance: 0.403
   - itemID: fish_carp

@@ -41,7 +41,7 @@ public class FishingService : IFishingService
             if (map.gameObject.name == "FishingTilemap")
             {
                 
-                Vector3Int cellPos = map.WorldToCell(bobberLandingPos);
+                Vector3Int cellPos = map.WorldToCell(bobberLandingPos); 
 
                 if (map.HasTile(cellPos))
                 {
@@ -57,8 +57,26 @@ public class FishingService : IFishingService
     public bool CatchFish()
     {
         if (fishDatabase == null) return false;
+        float luckBonus = 0f;
 
-        string caughtFishID = fishDatabase.RollFishID();
+        switch (fishingModel.currentRodID)
+        {
+            case "copper_rod":
+                luckBonus = 0f;    
+                break;
+            case "iron_rod":
+                luckBonus = 0.1f;  
+                break;
+            case "gold_rod":
+                luckBonus = 0.2f;  
+                break;
+            default:
+                luckBonus = 0f;
+                break;
+        }
+
+        string caughtFishID = fishDatabase.RollFishID(luckBonus);
+        
 
         if (string.IsNullOrEmpty(caughtFishID))
         {
