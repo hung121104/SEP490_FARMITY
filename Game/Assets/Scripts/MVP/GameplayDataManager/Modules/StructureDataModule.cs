@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Manages structure placement data in the world.
-/// Operates on the same UnifiedChunkData instances as CropDataModule —
+/// Operates on the same UnifiedChunkData instances as CropDataModule â€”
 /// so a single chunk lookup shows both crops and structures.
 /// </summary>
 public class StructureDataModule : IWorldDataModule
@@ -13,7 +13,7 @@ public class StructureDataModule : IWorldDataModule
     private WorldDataManager manager;
     private bool showDebugLogs = true;
 
-    // Same chunk objects that CropDataModule uses — shared via WorldDataManager
+    // Same chunk objects that CropDataModule uses â€” shared via WorldDataManager
     private Dictionary<int, Dictionary<Vector2Int, UnifiedChunkData>> sections =
         new Dictionary<int, Dictionary<Vector2Int, UnifiedChunkData>>();
 
@@ -60,8 +60,6 @@ public class StructureDataModule : IWorldDataModule
         }
     }
 
-    // ── Chunk/Section access ──────────────────────────────────────────────
-
     public UnifiedChunkData GetChunk(int sectionId, Vector2Int chunkPos)
     {
         if (!sections.TryGetValue(sectionId, out var section)) return null;
@@ -74,12 +72,6 @@ public class StructureDataModule : IWorldDataModule
         return sections.TryGetValue(sectionId, out var section) ? section : null;
     }
 
-    // ── Placement ─────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Place a structure at the given world position.
-    /// Returns false if a crop is already present (mutual exclusion enforced by UnifiedChunkData).
-    /// </summary>
     public bool PlaceStructureAtWorldPosition(Vector3 worldPos, string structureId)
     {
         if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
@@ -90,7 +82,7 @@ public class StructureDataModule : IWorldDataModule
         {
             var config = manager.GetSectionConfig(sectionId);
             Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
-            Debug.Log($"[StructureDataModule] ✓ Placed '{structureId}' at ({wx},{wy}) [Chunk: {chunkPos}, Section: {config?.SectionName}]");
+            Debug.Log($"[StructureDataModule] “ Placed '{structureId}' at ({wx},{wy}) [Chunk: {chunkPos}, Section: {config?.SectionName}]");
         }
         return success;
     }
@@ -117,8 +109,6 @@ public class StructureDataModule : IWorldDataModule
         return chunk.TryGetStructure(wx, wy, out structure);
     }
 
-    // ── IWorldDataModule ──────────────────────────────────────────────────
-
     public void ClearAll()
     {
         foreach (var section in sections.Values)
@@ -135,7 +125,7 @@ public class StructureDataModule : IWorldDataModule
             foreach (var chunk in section.Values)
                 totalStructures += chunk.GetStructureCount();
 
-        float bytes = totalStructures * 30f; // avg structure slot size estimate
+        float bytes = totalStructures * 30f;
         bytes += sections.Count * 500f;
         return bytes / (1024f * 1024f);
     }
@@ -157,24 +147,19 @@ public class StructureDataModule : IWorldDataModule
 
         return new Dictionary<string, object>
         {
-            ["TotalChunks"]          = totalChunks,
-            ["TotalStructures"]      = totalStructures,
+            ["TotalChunks"] = totalChunks,
+            ["TotalStructures"] = totalStructures,
             ["ChunksWithStructures"] = chunksWithStructures,
-            ["MemoryUsageMB"]        = GetMemoryUsageMB()
+            ["MemoryUsageMB"] = GetMemoryUsageMB()
         };
     }
 
-    // ── Internal helper ───────────────────────────────────────────────────
-
-    private bool TryResolveChunk(Vector3 worldPos,
-                                  out UnifiedChunkData chunk,
-                                  out int wx, out int wy,
-                                  out int sectionId)
+    private bool TryResolveChunk(Vector3 worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId)
     {
-        wx        = Mathf.FloorToInt(worldPos.x);
-        wy        = Mathf.FloorToInt(worldPos.y);
+        wx = Mathf.FloorToInt(worldPos.x);
+        wy = Mathf.FloorToInt(worldPos.y);
         sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
-        chunk     = null;
+        chunk = null;
 
         if (sectionId == -1)
         {

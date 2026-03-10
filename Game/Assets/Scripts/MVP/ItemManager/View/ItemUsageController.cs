@@ -83,6 +83,12 @@ public class ItemUsageController : MonoBehaviour
                     CropBreedingView.OnBreedingResult -= OnResult;
                 break;
 
+            case ItemType.Structure:
+                // Toggle and placement handled entirely by StructureView via UseStructureService.OnStructureRequested
+                // (mirrors the CropPlantingView / UseSeedService pattern)
+                itemUsagePresenter.UseStructure(item, targetPosition);
+                break;
+
             default:
                 Debug.LogWarning("No handler for item type: " + item.itemType);
                 break;

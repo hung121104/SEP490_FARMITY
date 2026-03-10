@@ -348,6 +348,7 @@ MonoBehaviour:
   moveDuration: 0.5
   delay: 1.3
   scaleDuration: 0.5
+  scaleTarget: 15
   onStartAnimationName: turnRToL
   loginCanvasGroup: {fileID: 0}
   registerCanvasGroup: {fileID: 0}

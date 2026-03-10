@@ -35,6 +35,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private const byte TILE_UNTILLED_EVENT = 117;
     private const byte POLLEN_HARVESTED_EVENT  = 118;
     private const byte CROP_CROSSBRED_EVENT     = 119;
+    private const byte STRUCTURE_PLACED_EVENT  = 90;
+    private const byte STRUCTURE_REMOVED_EVENT = 91;
     
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
@@ -167,6 +169,14 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
             case CROP_CROSSBRED_EVENT:
                 HandleCropCrossbred(photonEvent.CustomData);
+                break;
+
+            case STRUCTURE_PLACED_EVENT:
+                HandleStructurePlaced(photonEvent.CustomData);
+                break;
+
+            case STRUCTURE_REMOVED_EVENT:
+                HandleStructureRemoved(photonEvent.CustomData);
                 break;
         }
     }
@@ -698,6 +708,105 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         WorldSaveManager.TryMarkChunkDirty(chunkX, chunkY, sectionId);
     }
     
+    // ── Structure sync ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Broadcast structure placed event to all other players.
+    /// </summary>
+    public void BroadcastStructurePlaced(int worldX, int worldY, string structureId)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY, structureId };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            STRUCTURE_PLACED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] BroadcastStructurePlaced '{structureId}' at ({worldX},{worldY})");
+    }
+
+    private void HandleStructurePlaced(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX         = (int)dataArray[0];
+        int worldY         = (int)dataArray[1];
+        string structureId = (string)dataArray[2];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        WorldDataManager.Instance.PlaceStructureAtWorldPosition(worldPos, structureId);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received structure placed: '{structureId}' at ({worldX},{worldY})");
+
+        // Refresh chunk visuals
+        if (chunkLoadingManager != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+        }
+    }
+
+    /// <summary>
+    /// Broadcast structure removed event to all other players.
+    /// </summary>
+    public void BroadcastStructureRemoved(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            STRUCTURE_REMOVED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] BroadcastStructureRemoved at ({worldX},{worldY})");
+    }
+
+    private void HandleStructureRemoved(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        WorldDataManager.Instance.RemoveStructureAtWorldPosition(worldPos);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received structure removed at ({worldX},{worldY})");
+
+        // Refresh chunk visuals
+        if (chunkLoadingManager != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+        }
+    }
+
     #region Serialization Helpers
     
     [System.Serializable]
