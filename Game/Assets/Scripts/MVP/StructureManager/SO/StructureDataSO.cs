@@ -10,7 +10,7 @@ using UnityEngine;
 public class StructureDataSO : ScriptableObject
 {
     [Header("Identity")]
-    [Tooltip("Must match the itemID field of the corresponding item in the item catalog JSON")]
+    [Tooltip("Must match the itemID field of the corresponding item")]
     public string StructureId;
 
     [Header("Prefab")]

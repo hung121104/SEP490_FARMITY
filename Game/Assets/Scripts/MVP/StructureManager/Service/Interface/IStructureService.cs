@@ -31,10 +31,10 @@ public interface IStructureService
     Vector2Int WorldToChunkCoords(Vector3 worldPosition);
 
     /// <summary>Broadcasts structure placed event over Photon.</summary>
-    void BroadcastStructurePlaced(int worldX, int worldY, string structureId);
+    //void BroadcastStructurePlaced(int worldX, int worldY, string structureId);
 
-    /// <summary>Broadcasts structure removed event over Photon.</summary>
-    void BroadcastStructureRemoved(int worldX, int worldY);
+    ///// <summary>Broadcasts structure removed event over Photon.</summary>
+    //void BroadcastStructureRemoved(int worldX, int worldY);
 
     /// <summary>Refreshes chunk visuals after data changes.</summary>
     void RefreshChunkVisuals(Vector2Int chunkPosition);

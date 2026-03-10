@@ -9,7 +9,6 @@ using Photon.Pun;
 public class StructureView : MonoBehaviourPunCallbacks
 {
     public static StructureView Instance { get; private set; }
-    private static Sprite fallbackSprite;
 
     [Header("Placement Settings")]
     [Tooltip("Maximum distance from the player to place a structure")]
@@ -45,6 +44,9 @@ public class StructureView : MonoBehaviourPunCallbacks
 
     // Active structure being placed (set externally via EnterPlacementMode)
     private StructureDataSO activeStructureData;
+
+    // Active item from inventory — used to resolve the sprite via ItemCatalogService
+    private ItemModel activeItemModel;
 
     // Pool reference
     private StructurePool structurePool;
@@ -104,7 +106,8 @@ public class StructureView : MonoBehaviourPunCallbacks
 
     private void UpdateActiveStructureFromHotbar()
     {
-        var currentItem = hotbarView?.GetCurrentItem()?.ItemData;
+        var currentItemModel = hotbarView?.GetCurrentItem();
+        var currentItem      = currentItemModel?.ItemData;
 
         if (currentItem != null && currentItem.itemType == ItemType.Structure)
         {
@@ -118,6 +121,7 @@ public class StructureView : MonoBehaviourPunCallbacks
                 if (activeStructureData != null && activeStructureData.StructureId == so.StructureId)
                     return;
 
+                activeItemModel = currentItemModel;
                 EnterPlacementMode(so);
                 return;
             }
@@ -163,7 +167,14 @@ public class StructureView : MonoBehaviourPunCallbacks
             else
                 ghostInstance = Instantiate(data.Prefab);
 
-            ghostRenderer = EnsureVisibleSprite(ghostInstance);
+            ghostRenderer = ghostInstance.GetComponentInChildren<SpriteRenderer>(true)
+                ?? ghostInstance.AddComponent<SpriteRenderer>();
+
+            // Apply sprite from item catalog (inventory icon)
+            Sprite itemSprite = activeItemModel?.Icon
+                ?? ItemCatalogService.Instance?.GetCachedSprite(data.StructureId);
+            if (itemSprite != null)
+                ghostRenderer.sprite = itemSprite;
 
             // Disable colliders on ghost to avoid physics interference
             foreach (var col in ghostInstance.GetComponentsInChildren<Collider2D>())
@@ -202,7 +213,8 @@ public class StructureView : MonoBehaviourPunCallbacks
         }
 
         activeStructureData = null;
-        OnStructurePlaced = null;
+        activeItemModel    = null;
+        OnStructurePlaced  = null;
     }
 
     /// <summary>Whether we are currently in placement mode.</summary>
@@ -274,7 +286,14 @@ public class StructureView : MonoBehaviourPunCallbacks
             obj = Instantiate(data.Prefab);
 
         obj.transform.position = worldPosition;
-        EnsureVisibleSprite(obj);
+        SpriteRenderer sr = obj.GetComponentInChildren<SpriteRenderer>(true)
+            ?? obj.AddComponent<SpriteRenderer>();
+
+        // Apply sprite from item catalog so the placed structure uses the inventory item image
+        Sprite itemSprite = ItemCatalogService.Instance?.GetCachedSprite(data.StructureId);
+        if (itemSprite != null)
+            sr.sprite = itemSprite;
+
         obj.SetActive(true);
 
         // Re-enable colliders for interaction
@@ -343,49 +362,5 @@ public class StructureView : MonoBehaviourPunCallbacks
 
         if (structurePool == null)
             structurePool = FindAnyObjectByType<StructurePool>();
-    }
-
-    public static SpriteRenderer EnsureVisibleSprite(GameObject target)
-    {
-        if (target == null) return null;
-
-        SpriteRenderer[] renderers = target.GetComponentsInChildren<SpriteRenderer>(true);
-        foreach (var renderer in renderers)
-        {
-            if (renderer != null && renderer.sprite != null)
-                return renderer;
-        }
-
-        SpriteRenderer fallbackRenderer = renderers.Length > 0 && renderers[0] != null
-            ? renderers[0]
-            : target.AddComponent<SpriteRenderer>();
-
-        fallbackRenderer.sprite = GetFallbackSprite();
-        fallbackRenderer.sortingLayerName = string.IsNullOrEmpty(fallbackRenderer.sortingLayerName)
-            ? "WalkInfront"
-            : fallbackRenderer.sortingLayerName;
-        fallbackRenderer.color = new Color(
-            fallbackRenderer.color.r <= 0f ? 1f : fallbackRenderer.color.r,
-            fallbackRenderer.color.g <= 0f ? 1f : fallbackRenderer.color.g,
-            fallbackRenderer.color.b <= 0f ? 1f : fallbackRenderer.color.b,
-            fallbackRenderer.color.a <= 0f ? 1f : fallbackRenderer.color.a);
-
-        return fallbackRenderer;
-    }
-
-    private static Sprite GetFallbackSprite()
-    {
-        if (fallbackSprite != null) return fallbackSprite;
-
-        // Create a solid white 32x32 sprite directly — visible as a ghost tile.
-        const int size = 32;
-        Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        Color[] pixels = new Color[size * size];
-        for (int i = 0; i < pixels.Length; i++)
-            pixels[i] = Color.white;
-        tex.SetPixels(pixels);
-        tex.Apply();
-        fallbackSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
-        return fallbackSprite;
     }
 }

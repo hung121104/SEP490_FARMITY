@@ -30453,7 +30453,7 @@ MonoBehaviour:
   unloadDelay: 5
   visualizeCrops: 1
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
-  tilledTilemapName: TillableTilemap
+  tilledTilemapName: TilledOverlayTilemap
   showDebugLogs: 0
   showLoadedChunksGizmos: 0
   enableDailyReload: 1

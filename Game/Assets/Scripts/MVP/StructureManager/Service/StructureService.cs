@@ -107,9 +107,9 @@ public class StructureService : IStructureService
         // Refresh visuals
         RefreshAffectedChunks(anchorX, anchorY, data.Width, data.Height);
 
-        // Network sync
-        if (PhotonNetwork.IsConnected && syncManager != null)
-            BroadcastStructurePlaced(anchorX, anchorY, data.StructureId);
+        // Network sync — TEMPORARILY DISABLED for local testing
+        // if (PhotonNetwork.IsConnected && syncManager != null)
+        //     BroadcastStructurePlaced(anchorX, anchorY, data.StructureId);
 
         return true;
     }
@@ -137,23 +137,24 @@ public class StructureService : IStructureService
 
         RefreshAffectedChunks(anchorX, anchorY, data.Width, data.Height);
 
-        if (PhotonNetwork.IsConnected && syncManager != null)
-            BroadcastStructureRemoved(anchorX, anchorY);
+        // Network sync — TEMPORARILY DISABLED for local testing
+        // if (PhotonNetwork.IsConnected && syncManager != null)
+        //     BroadcastStructureRemoved(anchorX, anchorY);
 
         return true;
     }
 
-    // ── Network Broadcasting ──────────────────────────────────────────────
+    // ── Network Broadcasting — TEMPORARILY DISABLED for local testing ─────
 
-    public void BroadcastStructurePlaced(int worldX, int worldY, string structureId)
-    {
-        syncManager.BroadcastStructurePlaced(worldX, worldY, structureId);
-    }
+    // public void BroadcastStructurePlaced(int worldX, int worldY, string structureId)
+    // {
+    //     syncManager.BroadcastStructurePlaced(worldX, worldY, structureId);
+    // }
 
-    public void BroadcastStructureRemoved(int worldX, int worldY)
-    {
-        syncManager.BroadcastStructureRemoved(worldX, worldY);
-    }
+    // public void BroadcastStructureRemoved(int worldX, int worldY)
+    // {
+    //     syncManager.BroadcastStructureRemoved(worldX, worldY);
+    // }
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
