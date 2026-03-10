@@ -9,12 +9,6 @@ using AchievementManager.Model;
 
 namespace AchievementManager.Service
 {
-    /// <summary>
-    /// Handles all HTTP calls for the achievement system.
-    /// Follows same pattern as DroppedItemApi + WorldApi.
-    /// Uses SessionManager.Instance.JwtToken for auth.
-    /// Uses AppConfig.ApiBaseUrl as base URL.
-    /// </summary>
     public class AchievementService : IAchievementService
     {
         private const string ACHIEVEMENT_ENDPOINT = "/player-data/achievement";
@@ -23,10 +17,6 @@ namespace AchievementManager.Service
 
         #region Fetch All Achievements
 
-        /// <summary>
-        /// GET /player-data/achievement
-        /// Returns full list with player progress.
-        /// </summary>
         public IEnumerator FetchAllAchievements(
             Action<List<AchievementData>> onSuccess,
             Action<string> onError)
@@ -43,7 +33,9 @@ namespace AchievementManager.Service
 
             using UnityWebRequest request = UnityWebRequest.Get(url);
             SetAuthHeader(request, token);
-            request.certificateHandler = new AcceptAllCertificatesHandler();
+
+            // ✅ Fix 1: Use BypassCertificateHandler inline instead
+            request.certificateHandler = new BypassCertificateHandler();
 
             yield return request.SendWebRequest();
 
@@ -55,7 +47,6 @@ namespace AchievementManager.Service
             {
                 yield return HandleError(
                     request,
-                    // Retry once on 500
                     () => RetryFetch(onSuccess, onError),
                     onError
                 );
@@ -100,10 +91,6 @@ namespace AchievementManager.Service
 
         #region Update Progress
 
-        /// <summary>
-        /// PUT /player-data/achievement/progress
-        /// Reports absolute progress total to server.
-        /// </summary>
         public IEnumerator UpdateProgress(
             UpdateProgressRequest progressRequest,
             Action<AchievementData> onSuccess,
@@ -123,9 +110,9 @@ namespace AchievementManager.Service
             Debug.Log($"[AchievementService] PUT {url} | Body: {json}");
 
             using UnityWebRequest request = new UnityWebRequest(url, "PUT");
-            request.uploadHandler   = new UploadHandlerRaw(body);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.certificateHandler = new AcceptAllCertificatesHandler();
+            request.uploadHandler      = new UploadHandlerRaw(body);
+            request.downloadHandler    = new DownloadHandlerBuffer();
+            request.certificateHandler = new BypassCertificateHandler();
             SetAuthHeader(request, token);
             SetJsonContentType(request);
 
@@ -139,7 +126,6 @@ namespace AchievementManager.Service
             {
                 yield return HandleError(
                     request,
-                    // Retry once on 500
                     () => RetryUpdate(progressRequest, onSuccess, onError),
                     onError
                 );
@@ -197,13 +183,6 @@ namespace AchievementManager.Service
             request.SetRequestHeader("Content-Type", "application/json");
         }
 
-        /// <summary>
-        /// Handles error responses by status code.
-        /// 401 → logout
-        /// 404 → not found (achievement deleted by admin)
-        /// 500 → retry once
-        /// others → silent fail
-        /// </summary>
         private IEnumerator HandleError(
             UnityWebRequest request,
             Func<IEnumerator> onRetry,
@@ -217,14 +196,15 @@ namespace AchievementManager.Service
             switch (statusCode)
             {
                 case 401:
-                    Debug.LogWarning("[AchievementService] Token expired - logging out!");
-                    SessionManager.Instance?.Logout();
+                    Debug.LogWarning("[AchievementService] Token expired - clearing session!");
+                    // ✅ Fix 2: ClearSession() not Logout()
+                    SessionManager.Instance?.ClearSession();
                     onError?.Invoke("Session expired - please login again");
                     break;
 
                 case 404:
-                    Debug.LogWarning("[AchievementService] Achievement not found on server " +
-                                     "- may have been deleted by admin");
+                    Debug.LogWarning("[AchievementService] Achievement not found - " +
+                                     "may have been deleted by admin");
                     onError?.Invoke($"Achievement not found: {statusCode}");
                     break;
 
@@ -245,5 +225,14 @@ namespace AchievementManager.Service
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// Bypasses SSL certificate validation for localhost/dev server.
+    /// Same approach as other services in the project.
+    /// </summary>
+    public class BypassCertificateHandler : CertificateHandler
+    {
+        protected override bool ValidateCertificate(byte[] certificateData) => true;
     }
 }
