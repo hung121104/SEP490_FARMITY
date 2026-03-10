@@ -30,6 +30,22 @@ public class FishingPresenter
         if (service.IsFishingWater(targetPosition))
         {
             model.isFishing = true;
+            // ép player dừng lại
+            GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
+            if (player != null)
+            {
+                Rigidbody2D rb = player.GetComponent<Rigidbody2D>();
+                if (rb != null)
+                {
+                    rb.linearVelocity = Vector2.zero;
+                }
+                Animator anim = player.GetComponent<Animator>();
+                if (anim != null)
+                { 
+                    anim.SetFloat("Speed", 0f);
+                    anim.SetBool("IsMoving", false);
+                }
+            }
             view.StartMiniGame(targetPosition);
         }
         else
