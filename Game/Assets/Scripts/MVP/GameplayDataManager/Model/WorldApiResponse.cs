@@ -37,7 +37,27 @@ public class WorldApiResponse
         public float positionX;
         public float positionY;
         public int sectionIndex;
+
+        /// <summary>
+        /// Saved inventory slots — key = slot index as string ("0"–"35").
+        /// Null/empty if no inventory was saved.
+        /// Requires Newtonsoft.Json for Dictionary deserialization.
+        /// </summary>
+        public Dictionary<string, InventorySlotResponse> inventory;
     }
+}
+
+// ───────────────────────────────────────────────────────────── Inventory DTO
+
+/// <summary>
+/// Mirrors the InventorySlotData sub-document in character.schema.ts.
+/// Used only for deserialization of the GET /player-data/world response.
+/// </summary>
+[Serializable]
+public class InventorySlotResponse
+{
+    public string itemId;
+    public int    quantity;
 }
 
 // ─────────────────────────────────────────────────────────────────── Chunk DTOs

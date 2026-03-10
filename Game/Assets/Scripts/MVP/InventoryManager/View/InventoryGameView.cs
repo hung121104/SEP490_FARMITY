@@ -130,7 +130,9 @@ public class InventoryGameView : MonoBehaviour
         if (presenter != null && !presenter.IsReadyToSync())
         {
             Debug.Log("[InventoryGameView] User performing action, deferring remote sync...");
-            return; // Sync will be retried on next OnInventoryChanged event
+            // Schedule a retry so the initial load is not permanently lost.
+            StartCoroutine(RetryRemoteInventorySync());
+            return;
         }
 
         // Delegate all Model mutations to Service — GameView never touches Model directly
@@ -140,6 +142,16 @@ public class InventoryGameView : MonoBehaviour
         }
 
         Debug.Log("[InventoryGameView] ✓ Remote inventory sync applied successfully");
+    }
+
+    /// <summary>
+    /// Waits until the action cooldown expires, then retries the remote sync.
+    /// Triggered when HandleRemoteInventoryChanged is called during a UI action.
+    /// </summary>
+    private System.Collections.IEnumerator RetryRemoteInventorySync()
+    {
+        yield return new WaitUntil(() => presenter == null || presenter.IsReadyToSync());
+        HandleRemoteInventoryChanged();
     }
 
     public void OpenInventory()

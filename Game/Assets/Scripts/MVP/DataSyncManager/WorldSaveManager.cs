@@ -132,6 +132,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
         bool hasContent = (payload.characters != null && payload.characters.Count > 0)
                        || (payload.deltas     != null && payload.deltas.Count     > 0)
+                       || (payload.inventoryDeltas != null && payload.inventoryDeltas.Count > 0)
                        || payload.day != null;
 
         if (!hasContent)
@@ -155,6 +156,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
         {
             ClearPendingUntilledForDirtyChunks();
             _dirtyChunks.Clear();
+            WorldDataManager.Instance?.InventoryData?.ClearAllDirtyFlags();
             if (ShowDebugLogs) Debug.Log("[WorldSave] Auto-save sent successfully.");
         }
         else
@@ -203,6 +205,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                 {
                     ClearPendingUntilledForDirtyChunks();
                     _dirtyChunks.Clear();
+                    WorldDataManager.Instance?.InventoryData?.ClearAllDirtyFlags();
                     Debug.Log("[WorldSave] Quit-flush complete.");
                 }
                 else         Debug.LogWarning("[WorldSave] Quit-flush HTTP request failed — quitting anyway.");
@@ -352,7 +355,89 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             if (deltas.Count > 0) request.deltas = deltas;
         }
 
+        // ── Inventory deltas — only dirty characters ──
+        var invModule = wdm?.InventoryData;
+        if (invModule != null)
+        {
+            var dirtyCharIds = invModule.GetDirtyCharacterIds();
+            if (ShowDebugLogs)
+                Debug.Log($"[WorldSave] Inventory check: {dirtyCharIds.Count} dirty character(s)");
+
+            if (dirtyCharIds.Count > 0)
+            {
+                var invDeltas = new List<WorldApi.PlayerInventoryDelta>();
+                foreach (var charId in dirtyCharIds)
+                {
+                    var inv = invModule.GetInventory(charId);
+                    if (inv == null)
+                    {
+                        if (ShowDebugLogs) Debug.LogWarning($"[WorldSave] Inventory null for charId='{charId}'");
+                        continue;
+                    }
+
+                    // Resolve accountId from characterId via PlayerDataManager
+                    string accountId = ResolveAccountId(charId);
+                    if (string.IsNullOrEmpty(accountId))
+                    {
+                        if (ShowDebugLogs) Debug.LogWarning($"[WorldSave] Could not resolve accountId for charId='{charId}'");
+                        continue;
+                    }
+
+                    var slots = new Dictionary<string, WorldApi.InventorySlotDelta>();
+
+                    // Send ALL slots (occupied → $set, empty → $unset on server).
+                    // This ensures items removed from the inventory since the last save
+                    // are deleted from the DB and do not reappear on the next game load.
+                    for (byte slotIdx = 0; slotIdx < inv.MaxSlots; slotIdx++)
+                    {
+                        if (inv.TryGetSlot(slotIdx, out InventorySlot slot) && !slot.IsEmpty)
+                        {
+                            slots[slotIdx.ToString()] = new WorldApi.InventorySlotDelta
+                            {
+                                itemId   = slot.ItemId,
+                                quantity = slot.Quantity
+                            };
+                        }
+                        else
+                        {
+                            // Empty slot: quantity 0 / null itemId tells the server to $unset this key.
+                            slots[slotIdx.ToString()] = new WorldApi.InventorySlotDelta
+                            {
+                                itemId   = null,
+                                quantity = 0
+                            };
+                        }
+                    }
+
+                    if (ShowDebugLogs)
+                        Debug.Log($"[WorldSave] Inventory delta: charId='{charId}' accountId='{accountId}' slots={slots.Count}");
+
+                    invDeltas.Add(new WorldApi.PlayerInventoryDelta
+                    {
+                        accountId = accountId,
+                        slots     = slots
+                    });
+                }
+                if (invDeltas.Count > 0) request.inventoryDeltas = invDeltas;
+            }
+        }
+        else
+        {
+            if (ShowDebugLogs) Debug.LogWarning("[WorldSave] InventoryDataModule is null!");
+        }
+
         return request;
+    }
+
+    /// <summary>
+    /// Map a MongoDB characterId (_id) back to the player's accountId
+    /// using PlayerDataManager's player list.
+    /// </summary>
+    private static string ResolveAccountId(string characterId)
+    {
+        if (PlayerDataManager.Instance == null) return null;
+        var data = PlayerDataManager.Instance.players.Find(p => p._id == characterId);
+        return string.IsNullOrEmpty(data.accountId) ? null : data.accountId;
     }
 
     // ──────────────────────────────────────────────────── Photon callbacks

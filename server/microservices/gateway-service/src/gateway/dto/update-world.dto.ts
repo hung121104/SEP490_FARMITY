@@ -19,6 +19,20 @@ export class ChunkDeltaDto {
   tiles: Record<string, TileDataDto>;
 }
 
+// ── Inventory delta types ────────────────────────────────────────────────────
+
+export class InventorySlotDeltaDto {
+  itemId: string;
+  quantity: number;
+}
+
+/** One player's changed inventory slots.  slots key = slot index "0"–"35". */
+export class PlayerInventoryDeltaDto {
+  accountId: string;
+  /** Only the slots that changed; key = string(slotIndex) */
+  slots: Record<string, InventorySlotDeltaDto>;
+}
+
 // ── Main DTO ────────────────────────────────────────────────────────────────
 
 export class UpsertCharacterInWorldDto {
@@ -48,4 +62,10 @@ export class UpdateWorldDto {
    * Forwarded transparently to player-data-service save-world handler.
    */
   deltas?: ChunkDeltaDto[];
+
+  /**
+   * Inventory deltas — only players whose inventory changed since last save.
+   * Forwarded transparently to player-data-service save-world handler.
+   */
+  inventoryDeltas?: PlayerInventoryDeltaDto[];
 }

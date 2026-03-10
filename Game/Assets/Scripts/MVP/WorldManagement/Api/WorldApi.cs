@@ -46,6 +46,26 @@ public static class WorldApi
         [JsonProperty("tiles")] public Dictionary<string, TileDataDto> tiles;
     }
 
+    // ── Inventory delta DTOs ─────────────────────────────────────────────────
+
+    [Serializable]
+    public class InventorySlotDelta
+    {
+        [JsonProperty("itemId")]   public string itemId;
+        [JsonProperty("quantity")] public int    quantity;
+    }
+
+    /// <summary>
+    /// One player's changed inventory slots.
+    /// Key of the slots dictionary = slot index as string ("0"–"35").
+    /// </summary>
+    [Serializable]
+    public class PlayerInventoryDelta
+    {
+        [JsonProperty("accountId")] public string accountId;
+        [JsonProperty("slots")]     public Dictionary<string, InventorySlotDelta> slots;
+    }
+
     // -------------------------------------------------------------------------
     //  Request model
     // -------------------------------------------------------------------------
@@ -71,6 +91,12 @@ public static class WorldApi
         /// </summary>
         [JsonProperty("deltas", NullValueHandling = NullValueHandling.Ignore)]
         public List<ChunkDeltaDto> deltas;
+
+        /// <summary>
+        /// Only dirty inventories are included.  Null / empty → no inventory changes to save.
+        /// </summary>
+        [JsonProperty("inventoryDeltas", NullValueHandling = NullValueHandling.Ignore)]
+        public List<PlayerInventoryDelta> inventoryDeltas;
 
         public class CharacterUpdate
         {
