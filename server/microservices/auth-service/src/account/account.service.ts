@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
 import { Account, AccountDocument } from './account.schema';
+import { UnverifiedAccount, UnverifiedAccountDocument } from './unverified-account.schema';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
@@ -13,33 +14,89 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
 import { ResetOtpTemplate } from './templates/reset-otp.template';
+import { RegisterOtpTemplate } from './templates/register-otp.template';
 
 @Injectable()
 export class AccountService {
   constructor(
     @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
+    @InjectModel(UnverifiedAccount.name) private unverifiedModel: Model<UnverifiedAccountDocument>,
     private jwtService: JwtService,
     private sessionService: SessionService,
     private configService: ConfigService,
   ) {}
 
-  async create(createAccountDto: CreateAccountDto): Promise<Account> {
-    const { password, ...rest } = createAccountDto;
-    const hashedPassword = await bcrypt.hash(password, 10);
+  // ── Step 1: Initiate registration (saves to UnverifiedAccount + sends OTP) ──
+  async initiateRegistration(createAccountDto: CreateAccountDto) {
+    const { username, email, password } = createAccountDto;
 
+    // Check if email or username already taken in the real Account collection
+    const existingByEmail = await this.accountModel.findOne({ email }).exec();
+    if (existingByEmail) {
+      throw new RpcException({ status: 400, message: 'Email already registered' });
+    }
+    const existingByUsername = await this.accountModel.findOne({ username }).exec();
+    if (existingByUsername) {
+      throw new RpcException({ status: 400, message: 'Username already taken' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const otp = this.generateOtp();
+    const verifyOtpHash = await bcrypt.hash(otp, 10);
+
+    // Upsert: if user re-registers before previous OTP expires, overwrite it
+    await this.unverifiedModel.findOneAndUpdate(
+      { email },
+      { username, passwordHash, verifyOtpHash, createdAt: new Date() },
+      { upsert: true, new: true },
+    );
+
+    await this.sendOtpEmail(
+      email,
+      username,
+      otp,
+      RegisterOtpTemplate,
+    );
+
+    return { status: 'pending_verification', message: 'OTP sent to your email' };
+  }
+
+  // ── Step 2: Verify OTP and create real Account ──
+  async verifyRegistration(email: string, otp: string) {
+    const pending = await this.unverifiedModel.findOne({ email }).exec();
+    if (!pending) {
+      throw new RpcException({ status: 400, message: 'No pending registration found. OTP may have expired.' });
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      throw new RpcException({ status: 400, message: 'Invalid OTP format' });
+    }
+
+    const isOtpValid = await bcrypt.compare(otp, pending.verifyOtpHash);
+    if (!isOtpValid) {
+      throw new RpcException({ status: 400, message: 'Invalid OTP' });
+    }
+
+    // Create the real account using the already-hashed password
     const account = new this.accountModel({
-      ...rest,
-      password: hashedPassword,
+      username: pending.username,
+      email: pending.email,
+      password: pending.passwordHash,
     });
 
     try {
-      return await account.save();
+      await account.save();
     } catch (error) {
       if (error.code === 11000) {
         throw new RpcException({ status: 400, message: 'Username or email already exists' });
       }
       throw new RpcException({ status: 500, message: 'Internal server error' });
     }
+
+    // Clean up the pending document
+    await this.unverifiedModel.deleteOne({ email });
+
+    return { ok: true, message: 'Email verified successfully. You can now log in.' };
   }
 
   async findById(id: string): Promise<Account | null> {
@@ -156,10 +213,10 @@ export class AccountService {
     return { ok: true };
   }
 
-  async requestAdminPasswordReset(email: string) {
-    const account = await this.accountModel.findOne({ email, isAdmin: true }).exec();
+  async requestPasswordReset(email: string) {
+    const account = await this.accountModel.findOne({ email }).exec();
     if (!account) {
-      throw new RpcException({ status: 400, message: 'Admin account not found' });
+      throw new RpcException({ status: 400, message: 'Account not found' });
     }
 
     const otp = this.generateOtp();
@@ -176,8 +233,8 @@ export class AccountService {
     return { ok: true };
   }
 
-  async confirmAdminPasswordReset(email: string, otp: string, newPassword: string) {
-    const account = await this.accountModel.findOne({ email, isAdmin: true }).exec();
+  async confirmPasswordReset(email: string, otp: string, newPassword: string) {
+    const account = await this.accountModel.findOne({ email }).exec();
     if (!account || !account.resetOtpHash || !account.resetOtpExpiresAt) {
       throw new RpcException({ status: 400, message: 'Invalid reset request' });
     }
@@ -212,7 +269,12 @@ export class AccountService {
     return String(num).padStart(6, '0');
   }
 
-  private async sendOtpEmail(email: string, username: string, otp: string) {
+  private async sendOtpEmail(
+    email: string,
+    username: string,
+    otp: string,
+    template: typeof ResetOtpTemplate | typeof RegisterOtpTemplate = ResetOtpTemplate,
+  ) {
     const host = this.configService.get<string>('MAIL_HOST');
     const port = Number(this.configService.get<string>('MAIL_PORT') || 587);
     const user = this.configService.get<string>('MAIL_USER');
@@ -231,9 +293,9 @@ export class AccountService {
       auth: { user, pass },
     });
 
-    const subject = ResetOtpTemplate.getSubject();
-    const text = ResetOtpTemplate.getText(username, otp);
-    const html = ResetOtpTemplate.getHtml(username, otp);
+    const subject = template.getSubject();
+    const text = template.getText(username, otp);
+    const html = template.getHtml(username, otp);
 
     await transporter.sendMail({ from, to: email, subject, text, html });
   }

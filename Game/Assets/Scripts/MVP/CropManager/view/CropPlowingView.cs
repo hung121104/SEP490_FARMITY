@@ -314,6 +314,10 @@ public class CropPlowingView : MonoBehaviour
 
         _lastMouseWorldPos = mouseWorldPos;  // store before snap
 
+        // Reset the mouse-hold timer so HandleMouseHoldPlow does NOT fire again
+        // in the same frame — preventing the double-action that was cancelling itself out.
+        _mouseHoldTimer = mouseHoldRepeatInterval;
+
         Vector2Int dummy = new Vector2Int(int.MinValue, int.MinValue);
         Vector3 snappedTile = CropTileSelector.GetDirectionalTile(
             playerTransform.position, mouseWorldPos, plowingRange, ref dummy);

@@ -22,9 +22,9 @@ export class TileData {
   @Prop({ default: 0 })
   cropStage: number;
 
-  /** Accumulated age in game-time minutes */
+  /** Accumulated growth time in real-time seconds toward next stage */
   @Prop({ default: 0 })
-  totalAge: number;
+  growthTimer: number;
 
   /** How many times pollen has been harvested this stage */
   @Prop({ default: 0 })

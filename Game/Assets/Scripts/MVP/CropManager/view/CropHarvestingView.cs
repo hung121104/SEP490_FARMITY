@@ -150,6 +150,14 @@ public class CropHarvestingView : MonoBehaviourPun
 
         if (harvestKey == KeyCode.Mouse0 && Camera.main != null && playerTransform != null)
         {
+            // If the player has pollen selected, never suppress the hotbar click —
+            // they intend to APPLY pollen, not collect it or harvest.
+            if (hotbarView.GetCurrentItem()?.ItemData is PollenData)
+            {
+                hotbarLeftClickField.SetValue(hotbarView, true);
+                return;
+            }
+
             Vector3 playerPos     = playerTransform.position;
             Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             Vector2Int dummyTile  = new Vector2Int(int.MinValue, int.MinValue);

@@ -23,7 +23,7 @@ public static class WorldApi
         [JsonProperty("type",               NullValueHandling = NullValueHandling.Ignore)] public string type;
         [JsonProperty("plantId",            NullValueHandling = NullValueHandling.Ignore)] public string plantId;
         [JsonProperty("cropStage",          NullValueHandling = NullValueHandling.Ignore)] public int?   cropStage;
-        [JsonProperty("totalAge",           NullValueHandling = NullValueHandling.Ignore)] public int?   totalAge;
+        [JsonProperty("growthTimer",        NullValueHandling = NullValueHandling.Ignore)] public float? growthTimer;
         [JsonProperty("pollenHarvestCount", NullValueHandling = NullValueHandling.Ignore)] public int?   pollenHarvestCount;
         [JsonProperty("isWatered",          NullValueHandling = NullValueHandling.Ignore)] public bool?  isWatered;
         [JsonProperty("isFertilized",       NullValueHandling = NullValueHandling.Ignore)] public bool?  isFertilized;
@@ -44,6 +44,26 @@ public static class WorldApi
 
         /// <summary>Only the tiles that changed; key = string(localTileIndex)</summary>
         [JsonProperty("tiles")] public Dictionary<string, TileDataDto> tiles;
+    }
+
+    // ── Inventory delta DTOs ─────────────────────────────────────────────────
+
+    [Serializable]
+    public class InventorySlotDelta
+    {
+        [JsonProperty("itemId")]   public string itemId;
+        [JsonProperty("quantity")] public int    quantity;
+    }
+
+    /// <summary>
+    /// One player's changed inventory slots.
+    /// Key of the slots dictionary = slot index as string ("0"–"35").
+    /// </summary>
+    [Serializable]
+    public class PlayerInventoryDelta
+    {
+        [JsonProperty("accountId")] public string accountId;
+        [JsonProperty("slots")]     public Dictionary<string, InventorySlotDelta> slots;
     }
 
     // -------------------------------------------------------------------------
@@ -71,6 +91,12 @@ public static class WorldApi
         /// </summary>
         [JsonProperty("deltas", NullValueHandling = NullValueHandling.Ignore)]
         public List<ChunkDeltaDto> deltas;
+
+        /// <summary>
+        /// Only dirty inventories are included.  Null / empty → no inventory changes to save.
+        /// </summary>
+        [JsonProperty("inventoryDeltas", NullValueHandling = NullValueHandling.Ignore)]
+        public List<PlayerInventoryDelta> inventoryDeltas;
 
         public class CharacterUpdate
         {
@@ -118,6 +144,7 @@ public static class WorldApi
                 req.SetRequestHeader("Authorization", "Bearer " + jwtToken);
 
             req.certificateHandler = new AcceptAllCertificatesHandler();
+            req.timeout = 10; // seconds — prevents permanent hang when server is unreachable
 
             yield return req.SendWebRequest();
 
@@ -173,6 +200,7 @@ public static class WorldApi
         if (!string.IsNullOrEmpty(jwtToken))
             req.SetRequestHeader("Authorization", "Bearer " + jwtToken);
         req.certificateHandler = new AcceptAllCertificatesHandler();
+        req.timeout = 10; // seconds — prevents permanent hang when server is unreachable
 
         // UnityWebRequest doesn't natively support async/await, so we wrap the operation.
         var tcs = new TaskCompletionSource<bool>();

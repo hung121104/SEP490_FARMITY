@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { Account, AccountSchema } from './account.schema';
 import { Session, SessionSchema } from './session.schema';
+import { UnverifiedAccount, UnverifiedAccountSchema } from './unverified-account.schema';
 import { AccountService } from './account.service';
 import { AccountController } from './account.controller';
 import { SessionService } from './session.service';
@@ -14,6 +15,7 @@ import { SessionService } from './session.service';
     MongooseModule.forFeature([
       { name: Account.name, schema: AccountSchema },
       { name: Session.name, schema: SessionSchema },
+      { name: UnverifiedAccount.name, schema: UnverifiedAccountSchema },
     ]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-secret-key',
