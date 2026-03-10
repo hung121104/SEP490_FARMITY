@@ -35,7 +35,9 @@ public class InventoryPresenter
     {
         model = inventoryModel;
         service = inventoryService;
-        lastActionTime = Time.time; // Initialize to current time so initial state is "ready to sync"
+        // Subtract cooldown so IsReadyToSync() returns true immediately at startup.
+        // (setting to Time.time would mean 0 seconds have elapsed — not ready yet.)
+        lastActionTime = Time.time - actionCooldownDuration;
 
         SubscribeToServiceEvents();
     }

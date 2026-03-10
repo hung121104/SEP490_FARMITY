@@ -8,8 +8,8 @@ export type PlantDocument = Plant & Document;
 export class PlantGrowthStage {
   /** Stage index (0-based). */
   stageNum: number;
-  /** Total in-game days required to reach this stage. */
-  age: number;
+  /** In-game minutes to grow through this stage. */
+  growthDurationMinutes: number;
   /** CDN URL of the sprite for this stage. */
   stageIconUrl: string;
 }
@@ -37,7 +37,7 @@ export class Plant {
     type: [
       {
         stageNum: { type: Number, required: true },
-        age: { type: Number, required: true },
+        growthDurationMinutes: { type: Number, required: true },
         stageIconUrl: { type: String, required: true },
       },
     ],

@@ -29,11 +29,11 @@ public interface ICropGrowthService
     // ── Growth mutations ──────────────────────────────────────────────────
 
     /// <summary>
-    /// Advances every crop in the world by one day, broadcasts stage changes to other clients,
-    /// and raises <see cref="OnCropStageChanged"/> for each crop that advances.
+    /// Called every frame. Advances all crops by deltaTime seconds,
+    /// applying watering/fertilizer speed multipliers per tile.
     /// </summary>
-    /// <param name="speedMultiplier">Growth-speed multiplier (1 = normal).</param>
-    void GrowAllCrops(float speedMultiplier);
+    /// <param name="deltaTime">Seconds elapsed since last tick (usually Time.deltaTime * speedMult).</param>
+    void TickGrowth(float deltaTime);
 
     /// <summary>
     /// Immediately advances the crop at (worldX, worldY) to the next stage.

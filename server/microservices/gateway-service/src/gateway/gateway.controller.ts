@@ -627,7 +627,7 @@ export class GatewayController {
    *
    *  Text fields:
    *    plantId, plantName, harvestedItemId  — required
-   *    growthStages  — JSON string: [{"stageNum":0,"age":0},{"stageNum":1,"age":3},…]
+   *    growthStages  — JSON string: [{"stageNum":0,"growthDurationMinutes":0},{"stageNum":1,"growthDurationMinutes":30},…]
    *                    stageIconUrl is injected automatically from the uploaded sprites.
    *    All other CreatePlantDto optional fields as plain strings.
    *
@@ -643,7 +643,7 @@ export class GatewayController {
   ) {
     try {
       // Parse growthStages JSON string sent as a form field
-      let stages: { stageNum: number; age: number; stageIconUrl?: string }[] =
+      let stages: { stageNum: number; growthDurationMinutes: number; stageIconUrl?: string }[] =
         [];
       if (body.growthStages) {
         try {
@@ -677,39 +677,14 @@ export class GatewayController {
         );
       }
 
-      // Sort stage files by the trailing number in the original filename
-      // e.g. "cabbage_0.png" → 0, "cabbage_2.png" → 2
-      const parseStageIndex = (filename: string): number => {
-        const match = filename.replace(/\.[^.]+$/, '').match(/(\d+)$/);
-        if (!match)
-          throw new BadRequestException(
-            `Stage sprite filename "${filename}" must end with a stage index, e.g. "cabbage_0.png"`,
-          );
-        return parseInt(match[1], 10);
-      };
-
-      const sortedStageFiles = [...stageFiles].sort(
-        (a, b) =>
-          parseStageIndex(a.originalname) - parseStageIndex(b.originalname),
-      );
-
-      // Validate that the parsed indices are 0..N-1 with no gaps
-      sortedStageFiles.forEach((f, i) => {
-        const idx = parseStageIndex(f.originalname);
-        if (idx !== i)
-          throw new BadRequestException(
-            `Stage sprite indices must be contiguous starting from 0. Got index ${idx} at position ${i}.`,
-          );
-      });
-
-      // Upload stage sprites sorted by index and inject stageIconUrl
+      // Use form order for stage sprites (first file → stage 0, second → stage 1, etc.)
       for (let i = 0; i < stages.length; i++) {
-        const publicId = sortedStageFiles[i].originalname.replace(
+        const publicId = stageFiles[i].originalname.replace(
           /\.[^.]+$/,
           '',
         );
         stages[i].stageIconUrl = await this.cloudinaryService.uploadFile(
-          sortedStageFiles[i],
+          stageFiles[i],
           'plant-sprites',
           publicId,
         );
@@ -851,7 +826,7 @@ export class GatewayController {
 
       // Re-parse growthStages if provided
       if (body.growthStages) {
-        let stages: { stageNum: number; age: number; stageIconUrl?: string }[];
+        let stages: { stageNum: number; growthDurationMinutes: number; stageIconUrl?: string }[];
         try {
           stages = JSON.parse(body.growthStages);
         } catch {
@@ -869,25 +844,14 @@ export class GatewayController {
               `Expected ${stages.length} stageSprites file(s), received ${stageFiles.length}`,
             );
           }
-          const parseStageIndex = (filename: string): number => {
-            const match = filename.replace(/\.[^.]+$/, '').match(/(\d+)$/);
-            if (!match)
-              throw new BadRequestException(
-                `Stage sprite filename "${filename}" must end with a stage index, e.g. "cabbage_0.png"`,
-              );
-            return parseInt(match[1], 10);
-          };
-          const sortedStageFiles = [...stageFiles].sort(
-            (a, b) =>
-              parseStageIndex(a.originalname) - parseStageIndex(b.originalname),
-          );
+          // Use form order for stage sprites (first file → stage 0, second → stage 1, etc.)
           for (let i = 0; i < stages.length; i++) {
-            const publicId = sortedStageFiles[i].originalname.replace(
+            const publicId = stageFiles[i].originalname.replace(
               /\.[^.]+$/,
               '',
             );
             stages[i].stageIconUrl = await this.cloudinaryService.uploadFile(
-              sortedStageFiles[i],
+              stageFiles[i],
               'plant-sprites',
               publicId,
             );

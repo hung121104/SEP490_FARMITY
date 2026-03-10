@@ -60,8 +60,8 @@ public class PlantData
 public class PlantGrowthStage
 {
     public int    stageNum;
-    /// <summary>Total age (days) required to reach this stage.</summary>
-    public int    age;
+    /// <summary>In-game minutes to grow through this stage.</summary>
+    public float  growthDurationMinutes;
     /// <summary>CDN URL of the sprite for this stage. Downloaded by PlantCatalogService.</summary>
     public string stageIconUrl;
 }

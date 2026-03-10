@@ -2,6 +2,7 @@ import {
   IsString,
   IsInt,
   IsBoolean,
+  IsNumber,
   IsOptional,
   IsArray,
   IsNotEmpty,
@@ -16,9 +17,9 @@ export class UpdatePlantGrowthStageDto {
   @Min(0)
   stageNum: number;
 
-  @IsInt()
+  @IsNumber()
   @Min(0)
-  age: number;
+  growthDurationMinutes: number;
 
   @IsString()
   @IsNotEmpty()
