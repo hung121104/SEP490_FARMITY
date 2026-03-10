@@ -834,7 +834,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     }
     
     // Wire format per tile entry:
-    //   WorldX(4) WorldY(4) flags(1) [if HasCrop: PlantIdLen(1) PlantId(N) Stage(1) TotalAge(4) PollenCount(1)]
+    //   WorldX(4) WorldY(4) flags(1) [if HasCrop: PlantIdLen(1) PlantId(N) Stage(1) GrowthTimer(4) PollenCount(1)]
     // flags: bit0=IsTilled, bit1=HasCrop
     private byte[] SerializeBatch(ChunkSyncData[] batch)
     {
@@ -871,7 +871,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     bytes.Add((byte)plantIdBytes.Length);                    // 1
                     bytes.AddRange(plantIdBytes);                            // N
                     bytes.Add(entry.Crop.CropStage);                        // 1
-                    bytes.AddRange(System.BitConverter.GetBytes(entry.Crop.TotalAge)); // 4
+                    bytes.AddRange(System.BitConverter.GetBytes(entry.Crop.GrowthTimer)); // 4
                     bytes.Add(entry.Crop.PollenHarvestCount);               // 1
                 }
             }
@@ -915,7 +915,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         ? System.Text.Encoding.UTF8.GetString(data, offset, plantIdLen) : string.Empty;
                     offset += plantIdLen;
                     entry.Crop.CropStage          = data[offset++];
-                    entry.Crop.TotalAge           = System.BitConverter.ToInt32(data, offset); offset += 4;
+                    entry.Crop.GrowthTimer        = System.BitConverter.ToSingle(data, offset); offset += 4;
                     entry.Crop.PollenHarvestCount = offset < data.Length ? data[offset++] : (byte)0;
                 }
 

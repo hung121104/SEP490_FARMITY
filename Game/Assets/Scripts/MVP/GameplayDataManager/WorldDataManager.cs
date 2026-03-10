@@ -151,8 +151,8 @@ public class WorldDataManager : MonoBehaviour
                     if (td.cropStage > 0)
                         this.UpdateCropStage(worldPos, (byte)td.cropStage);
 
-                    if (td.totalAge > 0)
-                        this.UpdateCropAge(worldPos, td.totalAge);
+                    if (td.growthTimer > 0f)
+                        this.UpdateGrowthTimer(worldPos, td.growthTimer);
 
                     // Watered / Fertilized / Pollinated — use the CropData module directly
                     if (CropData != null)

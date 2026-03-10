@@ -10,15 +10,17 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
    - [User Authentication](#user-authentication)
    - [Admin Authentication](#admin-authentication)
    - [Admin Password Reset](#admin-password-reset)
-2. [Content Management](#content-management)
+2. [Game Config](#game-config)
+   - [Main Menu](#main-menu)
+3. [Content Management](#content-management)
    - [Blog (Development Diary)](#blog-development-diary)
    - [News & Announcements](#news--announcements)
    - [Media Gallery](#media-gallery)
-3. [Game Data Management](#game-data-management)
+4. [Game Data Management](#game-data-management)
    - [Items Catalog](#items-catalog)
    - [Plants Catalog](#plants-catalog)
    - [Crafting Recipes](#crafting-recipes)
-4. [Player Data](#player-data)
+5. [Player Data](#player-data)
    - [World Management](#world-management)
    - [Character Management](#character-management)
 
@@ -93,16 +95,45 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Response: `{ "ok": true }`
 
-### Admin Password Reset
+### Password Reset
 
-- **POST** `/auth/admin-reset/request`: Request OTP for password reset.
+- **POST** `/auth/reset/request`: Request OTP for password reset.
   - Body: `{ "email": "string" }`
   - Response: `{ "ok": true }`
-  - Note: Sends 6-digit OTP to admin email, valid for 2 minutes.
+  - Note: Sends 6-digit OTP to the account email, valid for 2 minutes.
 
-- **POST** `/auth/admin-reset/confirm`: Confirm OTP and set new password.
+- **POST** `/auth/reset/confirm`: Confirm OTP and set new password.
   - Body: `{ "email": "string", "otp": "string", "newPassword": "string" }`
   - Response: `{ "ok": true }`
+
+## Game Config
+
+### Main Menu
+
+- **GET** `/game-config/main-menu`: Get the current main-menu background config (public).
+  - Response:
+    ```json
+    {
+      "currentBackgroundUrl": "string",
+      "version": "number"
+    }
+    ```
+  - Note: Returns `null` if no background has been set yet.
+
+- **PUT** `/game-config/main-menu`: Update the main-menu background image (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Fields:
+    - `background` *(file, required)* — Background image (max 10 MB). Uploaded to Cloudinary folder `game-config` automatically; `currentBackgroundUrl` set from the resulting `secure_url`.
+  - Response:
+    ```json
+    {
+      "currentBackgroundUrl": "string",
+      "version": "number"
+    }
+    ```
+
+---
 
 ## Content Management
 
@@ -465,12 +496,12 @@ Depending on `itemType`, specific extra fields must be included:
     
     | Field name | Required | Description |
     |---|---|---|
-    | `stageSprites` | ✅ | Repeated file field — filenames **must** end with `_<stageIndex>` (e.g., `cabbage_0.png`, `cabbage_1.png`). Files can be uploaded in any order; gateway sorts by trailing index. Count must match `growthStages` entries. |
+    | `stageSprites` | ✅ | Repeated file field — files are assigned to stages by their order in the form (first file → stage 0, second → stage 1, etc.). Count must match `growthStages` entries. |
     | `hybridFlowerSprite` | Hybrid only | Sprite at `pollenStage` (sets `hybridFlowerIconUrl`) |
     | `hybridMatureSprite` | Hybrid only | Sprite at `pollenStage + 1` (sets `hybridMatureIconUrl`) |
   
   - **Text fields**: All other plant fields as form-data strings, except:
-    - `growthStages` — Send as **JSON string**, e.g., `[{"stageNum":0,"age":0},{"stageNum":1,"age":3}]`. `stageIconUrl` filled automatically from uploaded sprites.
+    - `growthStages` — Send as **JSON string**, e.g., `[{"stageNum":0,"growthDurationMinutes":0},{"stageNum":1,"growthDurationMinutes":30}]`. `stageIconUrl` filled automatically from uploaded sprites.
   - Response: Saved plant document including `_id` and all resolved `stageIconUrl` CDN URLs
   - Note: Returns `409 Conflict` if a plant with the same `plantId` already exists
 
@@ -497,7 +528,7 @@ Depending on `itemType`, specific extra fields must be included:
 
     | Field name | Description |
     |---|---|
-    | `stageSprites` | Repeated file field — replaces all stage sprites. Filenames must end with `_<stageIndex>`. Must be provided together with `growthStages` JSON and count must match. |
+    | `stageSprites` | Repeated file field — replaces all stage sprites. Assigned by form order. Must be provided together with `growthStages` JSON and count must match. |
     | `hybridFlowerSprite` | Replaces `hybridFlowerIconUrl` |
     | `hybridMatureSprite` | Replaces `hybridMatureIconUrl` |
 
@@ -517,7 +548,7 @@ Depending on `itemType`, specific extra fields must be included:
 |---|---|---|---|---|
 | `plantId` | string | ✅ | — | Unique game-side ID (e.g., `"plant_corn"`) |
 | `plantName` | string | ✅ | — | Display name |
-| `growthStages` | JSON string | ✅ | — | Stringified array of `{ stageNum, age }` objects (at least 1 entry). `stageIconUrl` set automatically from uploaded sprites. |
+| `growthStages` | JSON string | ✅ | — | Stringified array of `{ stageNum, growthDurationMinutes }` objects (at least 1 entry). `stageIconUrl` set automatically from uploaded sprites. |
 | `harvestedItemId` | string | ✅ | — | `itemID` of crop/item dropped on harvest (from ItemCatalog) |
 | `canProducePollen` | bool | — | `false` | Whether pollen can be collected |
 | `pollenStage` | int | — | `3` | Stage index at which pollen becomes collectible |
@@ -536,8 +567,8 @@ Depending on `itemType`, specific extra fields must be included:
 | Field | Type | Notes |
 |---|---|---|
 | `stageNum` | int | Stage index (0-based) |
-| `age` | int | Total in-game days to reach this stage |
-| `stageIconUrl` | string | **Auto-filled** by gateway — parsed from trailing index in sprite filename (e.g., `cabbage_2.png` → stage 2). Do not send manually. |
+| `growthDurationMinutes` | float | In-game minutes to grow through this stage (e.g., `60` = 1 in-game hour) |
+| `stageIconUrl` | string | **Auto-filled** by gateway — assigned from uploaded sprites by form order (1st file → stage 0, 2nd → stage 1, etc.). Do not send manually. |
 
 ---
 
