@@ -238,14 +238,6 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             MasterRegisterCharacter(charId, maxSlots);
-
-            // Bootstrap data was already loaded from the server into InventoryDataModule by
-            // WorldDataBootstrapper.  Now that LocalCharacterId is resolved and the character
-            // is registered, fire OnInventoryChanged so InventoryGameView.HandleRemoteInventoryChanged
-            // copies the module data into the local InventoryModel and the UI renders the items.
-            // (Non-master clients receive this trigger via HandleSyncComplete after the Photon
-            // late-join sync; master never goes through that path, so we fire it manually here.)
-            OnInventoryChanged?.Invoke();
         }
         else
         {
