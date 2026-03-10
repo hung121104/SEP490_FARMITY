@@ -103,6 +103,28 @@ public class WorldDataBootstrapper : MonoBehaviour
             else
                 Debug.LogWarning("[WorldDataBootstrapper] PlayerDataManager not found in scene.");
 
+            // 1b. Populate saved inventories into InventoryDataModule
+            if (WorldDataManager.Instance?.InventoryData != null && data.characters != null)
+            {
+                foreach (var c in data.characters)
+                {
+                    if (c.inventory == null || c.inventory.Count == 0) continue;
+
+                    var inv = WorldDataManager.Instance.InventoryData
+                        .RegisterCharacter(c._id, 36);
+
+                    foreach (var kvp in c.inventory)
+                    {
+                        if (byte.TryParse(kvp.Key, out byte slot))
+                            inv.SetSlot(slot, kvp.Value.itemId, (ushort)kvp.Value.quantity);
+                    }
+
+                    inv.IsDirty = false; // just loaded — not dirty
+                }
+
+                Debug.Log($"[WorldDataBootstrapper] Loaded inventories for {data.characters.Count} character(s).");
+            }
+
             // 2. World meta (time, gold, etc.)
             if (WorldDataManager.Instance != null)
                 WorldDataManager.Instance.PopulateWorldMeta(data);

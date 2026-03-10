@@ -67,34 +67,31 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         // Subscribe to visual-refresh event
         growthService.OnCropStageChanged += OnCropStageChanged;
 
-        // Subscribe to day-change
-        if (timeManager != null)
-            timeManager.OnDayChanged += OnDayChanged;
-        else
-            Debug.LogError("[CropManagerView] TimeManagerView not found!");
-
         // Visual parent fallback
         if (cropVisualsParent == null)
             cropVisualsParent = new GameObject("CropVisuals").transform;
 
         if (showDebugLogs)
-            Debug.Log("[CropManagerView] Initialized.");
+            Debug.Log("[CropManagerView] Initialized (real-time growth mode).");
     }
 
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
-        if (timeManager != null) timeManager.OnDayChanged -= OnDayChanged;
         if (growthService != null) growthService.OnCropStageChanged -= OnCropStageChanged;
     }
 
-    // ── Day tick ──────────────────────────────────────────────────────────
-    private void OnDayChanged()
+    // ── Real-time growth tick ─────────────────────────────────────────
+    private void Update()
     {
         if (!enableGrowth) return;
         if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient) return;
+        if (timeManager == null) return;
 
-        growthService.GrowAllCrops(growthSpeedMultiplier);
+        // deltaTime * timeSpeed = in-game minutes elapsed this frame
+        // (same formula as TimeManagerView.AdvanceTime)
+        float gameMinutesDelta = Time.deltaTime * timeManager.timeSpeed * growthSpeedMultiplier;
+        growthService?.TickGrowth(gameMinutesDelta);
     }
 
     // ── Visual refresh (driven by service event) ──────────────────────────

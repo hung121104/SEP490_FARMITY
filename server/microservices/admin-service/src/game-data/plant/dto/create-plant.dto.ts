@@ -19,9 +19,9 @@ export class CreatePlantGrowthStageDto {
   @Min(0)
   stageNum: number;
 
-  @IsInt()
+  @IsNumber()
   @Min(0)
-  age: number;
+  growthDurationMinutes: number;
 
   @IsString()
   @IsNotEmpty()

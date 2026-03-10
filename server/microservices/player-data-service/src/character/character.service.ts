@@ -4,6 +4,7 @@ import { Model, Types, ClientSession } from 'mongoose';
 import { ClientProxy } from '@nestjs/microservices';
 import { Character, CharacterDocument } from './character.schema';
 import { UpsertCharacterDto } from './dto/upsert-character.dto';
+import { PlayerInventoryDeltaDto } from '../world/dto/update-world.dto';
 
 @Injectable()
 export class CharacterService implements OnModuleInit {
@@ -106,5 +107,52 @@ export class CharacterService implements OnModuleInit {
       { upsert: true, new: true, ...(options?.session ? { session: options.session } : {}) },
     );
     return result;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  //  applyInventoryDeltas
+  //
+  //  For each player's dirty inventory slots, apply targeted $set/$unset
+  //  operators on the Character document's `inventory` Map.
+  //  Same delta pattern as applyTileDeltas on Chunk.tiles.
+  // ────────────────────────────────────────────────────────────────────────────
+  async applyInventoryDeltas(
+    worldId: Types.ObjectId,
+    deltas: PlayerInventoryDeltaDto[],
+    opts: object,
+  ): Promise<void> {
+    for (const delta of deltas) {
+      if (!delta.slots || Object.keys(delta.slots).length === 0) continue;
+
+      const accountOid = new Types.ObjectId(delta.accountId);
+
+      // Separate slots into $set (occupied) and $unset (cleared)
+      const setFields: Record<string, any> = {};
+      const unsetFields: Record<string, any> = {};
+
+      for (const [slotIdx, slotData] of Object.entries(delta.slots)) {
+        if (slotData.itemId && slotData.quantity > 0) {
+          setFields[`inventory.${slotIdx}`] = {
+            itemId: slotData.itemId,
+            quantity: slotData.quantity,
+          };
+        } else {
+          // Slot was cleared — remove it from the Map
+          unsetFields[`inventory.${slotIdx}`] = '';
+        }
+      }
+
+      const updateOp: Record<string, any> = {};
+      if (Object.keys(setFields).length > 0) updateOp.$set = setFields;
+      if (Object.keys(unsetFields).length > 0) updateOp.$unset = unsetFields;
+
+      if (Object.keys(updateOp).length === 0) continue;
+
+      await this.characterModel.findOneAndUpdate(
+        { worldId, accountId: accountOid },
+        updateOp,
+        { ...opts },
+      ).exec();
+    }
   }
 }
