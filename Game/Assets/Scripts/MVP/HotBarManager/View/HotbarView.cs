@@ -83,6 +83,9 @@ public class HotbarView : MonoBehaviour
         presenter.Initialize();
 
         isInitialized = true;
+        // OnEnable fired before Start and skipped subscription because InputManager wasn't
+        // ready. Now that everything is ready, subscribe to input for the first time.
+        SubscribeInputEvents();
         Debug.Log("HotbarView: Initialized successfully");
     }
 
@@ -91,6 +94,20 @@ public class HotbarView : MonoBehaviour
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     private void OnEnable()
+    {
+        // On the very first enable, InputManager may not be ready yet and isInitialized is
+        // still false.  Subscription is handled at the end of InitializeHotbarSystem() instead.
+        // For all subsequent re-enables (e.g. after inventory open/close) we subscribe here.
+        if (!isInitialized) return;
+        SubscribeInputEvents();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeInputEvents();
+    }
+
+    private void SubscribeInputEvents()
     {
         if (InputManager.Instance == null) return;
 
@@ -106,12 +123,11 @@ public class HotbarView : MonoBehaviour
         if (enableScrollWheel)
             InputManager.Instance.ScrollItem.performed += OnScrollPerformed;
 
-        // Use item (left click)
-        if (enableLeftClick)
-            InputManager.Instance.UseItem.performed += OnUseItemPerformed;
+        // Use item (left click) — always subscribe; enableLeftClick is checked at fire time.
+        InputManager.Instance.UseItem.performed += OnUseItemPerformed;
     }
 
-    private void OnDisable()
+    private void UnsubscribeInputEvents()
     {
         if (InputManager.Instance == null) return;
 
@@ -125,8 +141,8 @@ public class HotbarView : MonoBehaviour
         if (enableScrollWheel)
             InputManager.Instance.ScrollItem.performed -= OnScrollPerformed;
 
-        if (enableLeftClick)
-            InputManager.Instance.UseItem.performed -= OnUseItemPerformed;
+        // Always unsubscribe unconditionally to match the unconditional subscribe above.
+        InputManager.Instance.UseItem.performed -= OnUseItemPerformed;
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -152,6 +168,7 @@ public class HotbarView : MonoBehaviour
     private void OnUseItemPerformed(InputAction.CallbackContext ctx)
     {
         if (!isInitialized) return;
+        if (!enableLeftClick) return;   // suppressed by CropHarvestingView when targeting a crop
         OnUseItemInput?.Invoke();
     }
 

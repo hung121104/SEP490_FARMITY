@@ -68,11 +68,13 @@ public class ItemUsageController : MonoBehaviour
                 break;
 
             case ItemType.Pollen:
+                Debug.Log($"[ItemUsageController] Pollen use requested: '{item.itemName}' (id={item.itemID}, type={item.GetType().Name}) at {targetPosition}");
                 // Fire the pollen event. CropBreedingView will raise OnBreedingResult
                 // synchronously with true/false — consume only on success.
                 void OnResult(bool success)
                 {
                     CropBreedingView.OnBreedingResult -= OnResult;
+                    Debug.Log($"[ItemUsageController] Pollen breeding result: {(success ? "SUCCESS" : "FAILED")}");
                     if (success)
                         presenter.ConsumeCurrentItem(1);
                 }
@@ -80,7 +82,13 @@ public class ItemUsageController : MonoBehaviour
                 bool eventFired = itemUsagePresenter.UsePollen(item, targetPosition);
                 // Guard: if the event was never fired (no CropBreedingView in scene), clean up
                 if (!eventFired)
+                {
+                    Debug.LogWarning($"[ItemUsageController] Pollen event was NOT fired. " +
+                        $"Item runtime type: {item.GetType().Name} (expected PollenData). " +
+                        $"Check: 1) Item has itemType=Pollen in catalog, " +
+                        $"2) CropBreedingView exists in scene and is enabled.");
                     CropBreedingView.OnBreedingResult -= OnResult;
+                }
                 break;
 
             default:
