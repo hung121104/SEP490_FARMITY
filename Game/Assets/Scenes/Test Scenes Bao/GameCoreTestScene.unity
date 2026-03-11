@@ -2636,8 +2636,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a33b62c8d508e474cb1a4540ed7f7b3b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  timeManagerView: {fileID: 0}
-  calendarView: {fileID: 2042913117}
 --- !u!1 &165221255
 GameObject:
   m_ObjectHideFlags: 0
@@ -2682,10 +2680,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e56deb32e3435847a148947bd0ca92b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  weaponAnimationPrefab: {fileID: 8171461803801935278, guid: 4b5b5aca2acdef84f88b92eed8b4ee9b, type: 3}
-  anchorOffset: {x: 0, y: -0.3, z: 0}
-  gripLocalOffset: {x: 0, y: 0, z: 0}
-  rotationOffsetDegrees: -125
 --- !u!1 &184064786
 GameObject:
   m_ObjectHideFlags: 0
@@ -3477,33 +3471,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ac37a9e85f155c4bad9acf06f88d1e1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  combatModeIcon: {fileID: 1590134349}
-  normalModeIcon: {fileID: 1723956071}
-  fadeDuration: 0.3
-  fadeCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
 --- !u!114 &226350698
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3516,7 +3483,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e691b20985e61504b829d7f1bcf53827, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  combatModeToggleKey: 308
 --- !u!1 &230577998
 GameObject:
   m_ObjectHideFlags: 0
@@ -4972,12 +4938,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b7a6653ca94cfa84b8d6d9528860ddaa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  knockbackDuration: 0.15
-  squashPixels: 0.05
-  stretchPixels: 0.05
-  waveDuration: 0.3
-  flashDuration: 0.2
-  flashCount: 2
 --- !u!1 &304451046
 GameObject:
   m_ObjectHideFlags: 0
@@ -5110,9 +5070,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea481ea6bcd0f564ab4ae3554d8e5309, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  healthBar: {fileID: 931200774}
-  healthBarEase: {fileID: 304451048}
-  healthText: {fileID: 725674715}
 --- !u!1 &310445850
 GameObject:
   m_ObjectHideFlags: 0
@@ -5642,9 +5599,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9cf184117d6489d488001cff6f4c7886, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pointerPrefab: {fileID: 4859915784430039372, guid: 1c815e6a711efb24c9523502ceaa96a0, type: 3}
-  orbitRadius: 1
-  initializationDelay: 0.5
 --- !u!1 &358415565
 GameObject:
   m_ObjectHideFlags: 0
@@ -5989,11 +5943,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dcfed210e3a12e64e8aeccb953f88627, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  equippedSkillsData:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
 --- !u!1 &383586771
 GameObject:
   m_ObjectHideFlags: 0
@@ -6958,9 +6907,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cb60c27380e7cf24d95dc286116399f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  arrowIndicatorPrefab: {fileID: 4900587605489990560, guid: 0ebf0c6053b6a3e4aa1f97c7c5dd92a7, type: 3}
-  coneIndicatorPrefab: {fileID: 2986158287961641804, guid: 33c72f42692de9d4db854bf44dcc1028, type: 3}
-  circleIndicatorPrefab: {fileID: 2986158287961641804, guid: 09a2107ef26c1614da7e1448e16df8df, type: 3}
 --- !u!1 &415694045
 GameObject:
   m_ObjectHideFlags: 0
@@ -8066,13 +8012,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b8c27db92b1d90428a7aba868be8054, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillHotbarCanvas: {fileID: 0}
-  slotReferences:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  defaultKeys: 31000000320000003300000034000000
 --- !u!1 &492618800
 GameObject:
   m_ObjectHideFlags: 0
@@ -12596,9 +12535,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51e41b3df382cfd48b6670a9d3b27e4e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  columns: 7
-  rows: 4
-  spacing: {x: 6, y: 6}
 --- !u!114 &781588637
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14396,25 +14332,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5947f284e1ffae46bab4c3961fb283e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillKey: 50
-  confirmKey: 101
-  cancelKey: 113
-  skillCooldown: 3
-  skillTier: 20
-  skillMultiplier: 1.5
-  chargeDuration: 0.2
-  rollDisplayDuration: 0.4
-  attackPoint: {fileID: 0}
-  enemyLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  anim: {fileID: 0}
-  blockAttackDamage: 0
-  projectilePrefab: {fileID: 2996777577814843754, guid: 5885c9173ba4c1a48a5331c87e689021, type: 3}
-  projectileSpeed: 20
-  projectileRange: 8
-  projectileHitRadius: 0.5
-  attackAnimationDuration: 0.5
 --- !u!1 &883494379
 GameObject:
   m_ObjectHideFlags: 0
@@ -19902,8 +19819,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e6a4a86923cb2374eaa633732bc93b3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridParent: {fileID: 781588635}
-  dayCellPrefab: {fileID: 3136700316219101634, guid: fd4398c00f9a4464a9c070d9579162fa, type: 3}
 --- !u!1 &1286536567
 GameObject:
   m_ObjectHideFlags: 0
@@ -24412,24 +24327,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 18b6bbf4ed9704c4a845f0be2b91f37c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  strength: 5
-  vitality: 10
-  attackRange: 1
-  knockbackForce: 50
-  cooldownTime: 0.25
-  easeSpeed: 1
-  strengthText: {fileID: 1644151349}
-  vitalityText: {fileID: 1321563768}
-  pointsText: {fileID: 957864769}
-  statsPanel: {fileID: 759280783}
-  toggleStatsKey: 99
-  increaseStrengthButton: {fileID: 1495161226}
-  decreaseStrengthButton: {fileID: 1491749135}
-  increaseVitalityButton: {fileID: 1056707583}
-  decreaseVitalityButton: {fileID: 2079348418}
-  applyButton: {fileID: 1374227033}
-  cancelButton: {fileID: 1426932643}
-  currentPoints: 0
 --- !u!114 &1624159901
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -24442,8 +24339,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc983ff3a9ae926428b13d503bab0f7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pointsToAdd: 10
-  givePointsKey: 112
 --- !u!1 &1630677573
 GameObject:
   m_ObjectHideFlags: 0
@@ -28027,12 +27922,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0bbb634e3a3d6cf428e18b43166380e4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  knockbackPushDistance: 3
-  squashPixels: 0.05
-  stretchPixels: 0.05
-  waveDuration: 0.4
-  flashDuration: 0.3
-  flashCount: 2
 --- !u!114 &1852395793
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -28045,12 +27934,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8f1bb32fa5a15343ba9778afbe8292e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  damageAmount: 10
-  knockbackForce: 10
-  damagePopupPrefab: {fileID: 6620676086198952409, guid: 26064304fbc9d04448d8b1e1d10f1876, type: 3}
-  damageThrottleTime: 0.5
-  playerSearchRetryInterval: 0.5
-  playerSearchTimeout: 10
 --- !u!114 &1852395794
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -28063,8 +27946,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ebc1f60c53593f429c33d1325ef4517, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  currentHealth: 200
-  maxHealth: 200
 --- !u!114 &1852395795
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -28077,8 +27958,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ffaa4be9be10a0642a14563dc353698f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  friction: 3
-  maxVelocity: 10
 --- !u!70 &1852395796
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -28572,24 +28451,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 30d3bdecc07720444b99b6e06b95f64d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stabVFXPrefab: {fileID: 6199919663397036256, guid: 8313347ebdd989f46ac96604ca60128a, type: 3}
-  horizontalVFXPrefab: {fileID: 5107333870897779412, guid: 8ac2ac1f8b0b0064db270b17c6fc75f1, type: 3}
-  verticalVFXPrefab: {fileID: 8171461803801935278, guid: 43fa7b267e0caad42aba8eb3f1be6d35, type: 3}
-  damagePopupPrefab: {fileID: 6620676086198952409, guid: 26064304fbc9d04448d8b1e1d10f1876, type: 3}
-  enemyLayers:
-    serializedVersion: 2
-    m_Bits: 128
-  comboResetTime: 2
-  stabMultiplier: 0.8
-  horizontalMultiplier: 1
-  verticalMultiplier: 1.5
-  vfxSpawnOffset: 0.2
-  stabDuration: 0.2
-  horizontalDuration: 0.3
-  verticalDuration: 0.4
-  stabPositionOffset: {x: 0, y: 0.25}
-  horizontalPositionOffset: {x: 0, y: 0.25}
-  verticalPositionOffset: {x: 0, y: 0}
 --- !u!1 &1869761422
 GameObject:
   m_ObjectHideFlags: 0
@@ -29370,15 +29231,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c57ea9d076bb60c48be30ee87a328566, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  d6Prefab: {fileID: 6620676086198952409, guid: 7d11ca176bb8f904fb4decef66e831e1, type: 3}
-  d8Prefab: {fileID: 6620676086198952409, guid: af68e074fe74e8e4d93b1969393b6d4c, type: 3}
-  d10Prefab: {fileID: 6620676086198952409, guid: 4f2e56057fc77044ebeb3863e52a9f6c, type: 3}
-  d12Prefab: {fileID: 6620676086198952409, guid: 228ca7fd4a1ced146986e5057b6037eb, type: 3}
-  d20Prefab: {fileID: 6620676086198952409, guid: c89bb2742dc059e42bf1157d67f61174, type: 3}
-  rollDisplayOffset: {x: 0, y: 1.8, z: 0}
-  rollAnimationDuration: 0.4
-  wobbleScale: 1.15
-  wobbleSpeed: 10
 --- !u!1 &1934862756
 GameObject:
   m_ObjectHideFlags: 0
@@ -29957,23 +29809,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77e4f37bc4ffb414195d46c97bcc5979, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillKey: 49
-  confirmKey: 101
-  cancelKey: 113
-  skillCooldown: 3
-  skillTier: 6
-  skillMultiplier: 1.5
-  chargeDuration: 0.2
-  rollDisplayDuration: 0.4
-  attackPoint: {fileID: 0}
-  enemyLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  anim: {fileID: 0}
-  blockAttackDamage: 0
-  movementDistance: 5
-  totalHits: 2
-  attackAnimationDuration: 0.6
 --- !u!1 &1971598072
 GameObject:
   m_ObjectHideFlags: 0
@@ -30816,6 +30651,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   defaultCapacity: 10
   maxSize: 50
+  defaultSimplePrefab: {fileID: 2204487346316466391, guid: 4cd27e6c78dae6340b8b850488c34994, type: 3}
   structureCatalog:
   - {fileID: 11400000, guid: 7c973bba67aec7e4eb8c1c3ffd9d4e93, type: 2}
 --- !u!1 &2066821487
@@ -32677,25 +32513,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 628fc278085fac348935a938cca23728, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  detectionRange: 6
-  attackRange: 1.5
-  fieldOfViewAngle: 120
-  playerLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  obstacleLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  moveSpeed: 2
-  chaseSpeed: 2
-  wanderSpeed: 1.5
-  wanderRange: 5
-  guardDuration: 2
-  guardLookDuration: 1
-  hitAlertDuration: 5
-  knockbackDuration: 0.3
-  animator: {fileID: 2137509539}
-  spriteRenderer: {fileID: 2137509547}
 --- !u!114 &2137509541
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32708,12 +32525,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0bbb634e3a3d6cf428e18b43166380e4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  knockbackPushDistance: 3
-  squashPixels: 0.05
-  stretchPixels: 0.05
-  waveDuration: 0.4
-  flashDuration: 0.3
-  flashCount: 2
 --- !u!114 &2137509542
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32726,12 +32537,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8f1bb32fa5a15343ba9778afbe8292e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  damageAmount: 10
-  knockbackForce: 10
-  damagePopupPrefab: {fileID: 6620676086198952409, guid: 26064304fbc9d04448d8b1e1d10f1876, type: 3}
-  damageThrottleTime: 0.5
-  playerSearchRetryInterval: 0.5
-  playerSearchTimeout: 10
 --- !u!114 &2137509543
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32744,8 +32549,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ebc1f60c53593f429c33d1325ef4517, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  currentHealth: 200
-  maxHealth: 200
 --- !u!114 &2137509544
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32758,8 +32561,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ffaa4be9be10a0642a14563dc353698f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  friction: 3
-  maxVelocity: 10
 --- !u!70 &2137509545
 CapsuleCollider2D:
   m_ObjectHideFlags: 0

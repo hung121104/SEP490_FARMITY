@@ -462,7 +462,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 {
                     string structId = tile.Structure.StructureId;
                     StructureDataSO structData = cachedStructurePool.GetStructureData(structId);
-                    if (structData != null && structData.Prefab != null)
+                    if (structData != null)
                     {
                         GameObject structObj = cachedStructurePool.Get(structId);
                         Vector3 structPos = new Vector3(tile.WorldX, tile.WorldY, 0f);
