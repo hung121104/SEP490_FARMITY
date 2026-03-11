@@ -25558,7 +25558,7 @@ MonoBehaviour:
   hookImage: {fileID: 217139702}
   progressBarContainer: {fileID: 872900493}
   timerMutilicator: 1.5
-  smoothMotion: 0.3
+  smoothMotion: 0.4
   hookSize: 0.2
   hookPower: 0.4
   hookPullPower: 16
