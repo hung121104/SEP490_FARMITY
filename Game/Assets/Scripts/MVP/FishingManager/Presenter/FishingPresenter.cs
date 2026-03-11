@@ -19,10 +19,33 @@ public class FishingPresenter
         this.view.OnMiniGameLost += HandleMiniGameLost;
     }
 
-    public void HandleFishingRodUsed(Vector3 targetPosition)
+    public void HandleFishingRodUsed(Vector3 targetPosition, string rodID)
     {
+        if (model.isFishing)
+        {
+            return;
+        }
+        model.currentRodID = rodID;
+
         if (service.IsFishingWater(targetPosition))
         {
+            model.isFishing = true;
+            // ép player dừng lại
+            GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
+            if (player != null)
+            {
+                Rigidbody2D rb = player.GetComponent<Rigidbody2D>();
+                if (rb != null)
+                {
+                    rb.linearVelocity = Vector2.zero;
+                }
+                Animator anim = player.GetComponent<Animator>();
+                if (anim != null)
+                { 
+                    anim.SetFloat("Speed", 0f);
+                    anim.SetBool("IsMoving", false);
+                }
+            }
             view.StartMiniGame(targetPosition);
         }
         else
@@ -33,6 +56,7 @@ public class FishingPresenter
 
     private void HandleMiniGameWon()
     {
+        model.isFishing = false;
         try
         {
            
@@ -56,6 +80,7 @@ public class FishingPresenter
 
     private void HandleMiniGameLost()
     {
+        model.isFishing = false;
         view.ShowFishingFailed();
     }
 }
