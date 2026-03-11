@@ -178,7 +178,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -192,7 +192,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -244,10 +244,10 @@ TextureImporter:
       name: fishing animation_0
       rect:
         serializedVersion: 2
-        x: 119
-        y: 55
-        width: 32
-        height: 27
+        x: 0
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -266,10 +266,10 @@ TextureImporter:
       name: fishing animation_1
       rect:
         serializedVersion: 2
-        x: 170
-        y: 55
-        width: 27
-        height: 28
+        x: 50
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -288,10 +288,10 @@ TextureImporter:
       name: fishing animation_2
       rect:
         serializedVersion: 2
-        x: 750
-        y: 51
-        width: 39
-        height: 27
+        x: 100
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -310,10 +310,10 @@ TextureImporter:
       name: fishing animation_3
       rect:
         serializedVersion: 2
-        x: 800
-        y: 51
-        width: 39
-        height: 27
+        x: 150
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -332,10 +332,10 @@ TextureImporter:
       name: fishing animation_4
       rect:
         serializedVersion: 2
-        x: 867
-        y: 55
-        width: 33
-        height: 28
+        x: 200
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -354,10 +354,10 @@ TextureImporter:
       name: fishing animation_5
       rect:
         serializedVersion: 2
-        x: 925
-        y: 77
-        width: 12
-        height: 7
+        x: 250
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -376,10 +376,10 @@ TextureImporter:
       name: fishing animation_6
       rect:
         serializedVersion: 2
-        x: 975
-        y: 76
-        width: 12
-        height: 7
+        x: 300
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -398,10 +398,10 @@ TextureImporter:
       name: fishing animation_7
       rect:
         serializedVersion: 2
-        x: 1025
-        y: 75
-        width: 12
-        height: 7
+        x: 350
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -420,10 +420,10 @@ TextureImporter:
       name: fishing animation_8
       rect:
         serializedVersion: 2
-        x: 24
-        y: 55
-        width: 15
-        height: 21
+        x: 400
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -442,10 +442,10 @@ TextureImporter:
       name: fishing animation_9
       rect:
         serializedVersion: 2
-        x: 74
-        y: 55
-        width: 15
-        height: 21
+        x: 450
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -464,10 +464,10 @@ TextureImporter:
       name: fishing animation_10
       rect:
         serializedVersion: 2
-        x: 199
-        y: 50
-        width: 40
-        height: 26
+        x: 500
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -486,10 +486,10 @@ TextureImporter:
       name: fishing animation_11
       rect:
         serializedVersion: 2
-        x: 250
-        y: 51
-        width: 39
-        height: 25
+        x: 550
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -508,10 +508,10 @@ TextureImporter:
       name: fishing animation_12
       rect:
         serializedVersion: 2
-        x: 300
-        y: 51
-        width: 39
-        height: 25
+        x: 600
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -530,10 +530,10 @@ TextureImporter:
       name: fishing animation_13
       rect:
         serializedVersion: 2
-        x: 350
-        y: 51
-        width: 39
-        height: 25
+        x: 650
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -552,10 +552,10 @@ TextureImporter:
       name: fishing animation_14
       rect:
         serializedVersion: 2
-        x: 400
-        y: 51
-        width: 39
-        height: 25
+        x: 700
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -574,10 +574,10 @@ TextureImporter:
       name: fishing animation_15
       rect:
         serializedVersion: 2
-        x: 450
-        y: 51
-        width: 39
-        height: 25
+        x: 750
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -596,10 +596,10 @@ TextureImporter:
       name: fishing animation_16
       rect:
         serializedVersion: 2
-        x: 500
-        y: 51
-        width: 39
-        height: 25
+        x: 800
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -618,10 +618,10 @@ TextureImporter:
       name: fishing animation_17
       rect:
         serializedVersion: 2
-        x: 550
-        y: 51
-        width: 39
-        height: 25
+        x: 850
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -640,10 +640,10 @@ TextureImporter:
       name: fishing animation_18
       rect:
         serializedVersion: 2
-        x: 600
-        y: 51
-        width: 39
-        height: 25
+        x: 900
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -662,10 +662,10 @@ TextureImporter:
       name: fishing animation_19
       rect:
         serializedVersion: 2
-        x: 650
-        y: 51
-        width: 39
-        height: 25
+        x: 950
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -684,10 +684,10 @@ TextureImporter:
       name: fishing animation_20
       rect:
         serializedVersion: 2
-        x: 700
-        y: 51
-        width: 39
-        height: 25
+        x: 1000
+        y: 44
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -706,10 +706,10 @@ TextureImporter:
       name: fishing animation_21
       rect:
         serializedVersion: 2
-        x: 922
-        y: 55
-        width: 19
-        height: 21
+        x: 0
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -728,10 +728,10 @@ TextureImporter:
       name: fishing animation_22
       rect:
         serializedVersion: 2
-        x: 972
-        y: 55
-        width: 19
-        height: 21
+        x: 50
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -750,10 +750,10 @@ TextureImporter:
       name: fishing animation_23
       rect:
         serializedVersion: 2
-        x: 1022
-        y: 55
-        width: 19
-        height: 21
+        x: 100
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -772,10 +772,10 @@ TextureImporter:
       name: fishing animation_24
       rect:
         serializedVersion: 2
-        x: 99
-        y: 11
-        width: 32
-        height: 27
+        x: 150
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -794,10 +794,10 @@ TextureImporter:
       name: fishing animation_25
       rect:
         serializedVersion: 2
-        x: 153
-        y: 11
-        width: 27
-        height: 28
+        x: 200
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -816,10 +816,10 @@ TextureImporter:
       name: fishing animation_26
       rect:
         serializedVersion: 2
-        x: 761
-        y: 7
-        width: 39
-        height: 27
+        x: 250
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -838,10 +838,10 @@ TextureImporter:
       name: fishing animation_27
       rect:
         serializedVersion: 2
-        x: 811
-        y: 7
-        width: 39
-        height: 27
+        x: 300
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -860,10 +860,10 @@ TextureImporter:
       name: fishing animation_28
       rect:
         serializedVersion: 2
-        x: 850
-        y: 11
-        width: 33
-        height: 28
+        x: 350
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -882,10 +882,10 @@ TextureImporter:
       name: fishing animation_29
       rect:
         serializedVersion: 2
-        x: 913
-        y: 33
-        width: 12
-        height: 7
+        x: 400
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -904,10 +904,10 @@ TextureImporter:
       name: fishing animation_30
       rect:
         serializedVersion: 2
-        x: 963
-        y: 32
-        width: 12
-        height: 7
+        x: 450
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -926,10 +926,10 @@ TextureImporter:
       name: fishing animation_31
       rect:
         serializedVersion: 2
-        x: 1013
-        y: 31
-        width: 12
-        height: 7
+        x: 500
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -948,10 +948,10 @@ TextureImporter:
       name: fishing animation_32
       rect:
         serializedVersion: 2
-        x: 11
-        y: 11
-        width: 15
-        height: 21
+        x: 550
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -970,10 +970,10 @@ TextureImporter:
       name: fishing animation_33
       rect:
         serializedVersion: 2
-        x: 61
-        y: 11
-        width: 15
-        height: 21
+        x: 600
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -992,10 +992,10 @@ TextureImporter:
       name: fishing animation_34
       rect:
         serializedVersion: 2
-        x: 211
-        y: 6
-        width: 40
-        height: 26
+        x: 650
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1014,10 +1014,10 @@ TextureImporter:
       name: fishing animation_35
       rect:
         serializedVersion: 2
-        x: 261
-        y: 7
-        width: 39
-        height: 25
+        x: 700
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1036,10 +1036,10 @@ TextureImporter:
       name: fishing animation_36
       rect:
         serializedVersion: 2
-        x: 311
-        y: 7
-        width: 39
-        height: 25
+        x: 750
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1058,10 +1058,10 @@ TextureImporter:
       name: fishing animation_37
       rect:
         serializedVersion: 2
-        x: 361
-        y: 7
-        width: 39
-        height: 25
+        x: 800
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -1080,19 +1080,19 @@ TextureImporter:
       name: fishing animation_38
       rect:
         serializedVersion: 2
-        x: 411
-        y: 7
-        width: 39
-        height: 25
+        x: 850
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 740558d95d78008a0800000000000000
+      spriteID: f5ae04393407a6b44b474baff7621eb9
       internalID: -6340918923797114809
       vertices: []
       indices: 
@@ -1102,19 +1102,19 @@ TextureImporter:
       name: fishing animation_39
       rect:
         serializedVersion: 2
-        x: 461
-        y: 7
-        width: 39
-        height: 25
+        x: 900
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 14367fa60194d4da0800000000000000
+      spriteID: 8917dbdb733014f4ba13aa4c31290144
       internalID: -5959026397078396095
       vertices: []
       indices: 
@@ -1124,19 +1124,19 @@ TextureImporter:
       name: fishing animation_40
       rect:
         serializedVersion: 2
-        x: 511
-        y: 7
-        width: 39
-        height: 25
+        x: 950
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: e996c1d7156827a60800000000000000
+      spriteID: 987f49fb327c5bc409344ddfc03159fd
       internalID: 7670340799914863006
       vertices: []
       indices: 
@@ -1146,152 +1146,20 @@ TextureImporter:
       name: fishing animation_41
       rect:
         serializedVersion: 2
-        x: 561
-        y: 7
-        width: 39
-        height: 25
+        x: 1000
+        y: 0
+        width: 50
+        height: 44
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 363bc104d8ff645c0800000000000000
+      spriteID: 599b5ac82e2671d4bac6b402d345f932
       internalID: -4231413817736907933
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: fishing animation_42
-      rect:
-        serializedVersion: 2
-        x: 611
-        y: 7
-        width: 39
-        height: 25
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 7270deb4422f74a80800000000000000
-      internalID: -8482545135422470361
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: fishing animation_43
-      rect:
-        serializedVersion: 2
-        x: 661
-        y: 7
-        width: 39
-        height: 25
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: ec5e92d3d8817cbf0800000000000000
-      internalID: -304247454928607794
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: fishing animation_44
-      rect:
-        serializedVersion: 2
-        x: 711
-        y: 7
-        width: 39
-        height: 25
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: b6049b564dc7fb740800000000000000
-      internalID: 5169988148926169195
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: fishing animation_45
-      rect:
-        serializedVersion: 2
-        x: 909
-        y: 11
-        width: 19
-        height: 21
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 9e7cb2b75e74c7830800000000000000
-      internalID: 4070207214175635433
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: fishing animation_46
-      rect:
-        serializedVersion: 2
-        x: 959
-        y: 11
-        width: 19
-        height: 21
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: e230e4c439ee0ab70800000000000000
-      internalID: 8908382379346625326
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: fishing animation_47
-      rect:
-        serializedVersion: 2
-        x: 1009
-        y: 11
-        width: 19
-        height: 21
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 7501a80b6b1c35a90800000000000000
-      internalID: -7326299178411618217
       vertices: []
       indices: 
       edges: []
@@ -1300,7 +1168,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 7813f4271bd8ddf4aaeb302b7dbd92a4
     internalID: 0
     vertices: []
     indices: 
@@ -1347,12 +1215,6 @@ TextureImporter:
       fishing animation_4: -5432805849850156067
       fishing animation_40: 7670340799914863006
       fishing animation_41: -4231413817736907933
-      fishing animation_42: -8482545135422470361
-      fishing animation_43: -304247454928607794
-      fishing animation_44: 5169988148926169195
-      fishing animation_45: 4070207214175635433
-      fishing animation_46: 8908382379346625326
-      fishing animation_47: -7326299178411618217
       fishing animation_5: -4977787095553491190
       fishing animation_6: -7389069125914330680
       fishing animation_7: -4634758033442309613
