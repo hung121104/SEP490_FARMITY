@@ -28,7 +28,6 @@ namespace AchievementManager.Presenter
 
         #region Initialization
 
-        // ✅ Fix 1: Track initialization state
         public bool IsInitialized { get; private set; } = false;
 
         public void Initialize(
@@ -36,6 +35,13 @@ namespace AchievementManager.Presenter
             IAchievementService service,
             AchievementPresenter presenter)
         {
+            // ✅ Allow re-initialize only if not already done
+            if (IsInitialized)
+            {
+                Debug.Log("[AchievementTrackerPresenter] Already initialized - skipped");
+                return;
+            }
+
             this.model     = model;
             this.service   = service;
             this.presenter = presenter;

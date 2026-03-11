@@ -57,6 +57,11 @@ namespace AchievementManager.Presenter
             if (tracker == null)
                 tracker = gameObject.AddComponent<AchievementTrackerPresenter>();
 
+            // ✅ Fix: Initialize tracker immediately in Awake
+            // Don't wait for fetch - tracker needs to be ready ASAP
+            // model.isLoaded = false so tracker will guard itself
+            tracker.Initialize(model, service, this);
+
             Debug.Log("[AchievementPresenter] Components initialized");
         }
 
@@ -64,13 +69,6 @@ namespace AchievementManager.Presenter
 
         #region Login - Called Externally
 
-        /// <summary>
-        /// Call this from AuthenticatePresenter AFTER login success.
-        /// Replaces SessionManager.OnLoginSuccess event (doesn't exist).
-        /// 
-        /// In AuthenticatePresenter, after SetAuthenticationData():
-        /// → AchievementPresenter.Instance?.OnLoginSuccess();
-        /// </summary>
         public void OnLoginSuccess()
         {
             Debug.Log("[AchievementPresenter] Login detected → fetching achievements...");
@@ -108,8 +106,6 @@ namespace AchievementManager.Presenter
                 onSuccess: OnFetchSuccess,
                 onError:   OnFetchError
             );
-
-            model.isFetching = false;
         }
 
         private void OnFetchSuccess(List<AchievementData> achievements)
@@ -118,18 +114,17 @@ namespace AchievementManager.Presenter
                 model.UpsertAchievement(data);
 
             model.isLoaded   = true;
-            model.isFetching = false; // ✅ Fix 2: reset isFetching
+            model.isFetching = false;
 
-            // Restore counters first
+            // ✅ Restore counters AFTER model is loaded
             tracker.RestoreCountersFromServer(achievements);
 
-            // ✅ Fix 1: Only initialize tracker ONCE
-            if (!tracker.IsInitialized)
-                tracker.Initialize(model, service, this);
+            // ✅ No tracker.Initialize() here anymore - already done in Awake!
 
             panelView?.RefreshIfOpen(model.GetAllAchievements());
 
             Debug.Log($"[AchievementPresenter] Loaded {achievements.Count} achievements ✅");
+            Debug.Log($"[AchievementPresenter] Tracker ready: {tracker.IsInitialized} | Model loaded: {model.isLoaded}");
         }
 
         private void OnFetchError(string error)
