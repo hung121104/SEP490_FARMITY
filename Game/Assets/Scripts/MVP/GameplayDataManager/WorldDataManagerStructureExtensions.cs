@@ -2,7 +2,6 @@ using UnityEngine;
 
 /// <summary>
 /// Extension methods for WorldDataManager — Structure operations.
-/// Mirrors WorldDataManagerCropExtensions for structure placement/removal.
 /// </summary>
 public static class WorldDataManagerStructureExtensions
 {

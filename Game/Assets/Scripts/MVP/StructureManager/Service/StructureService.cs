@@ -68,6 +68,14 @@ public class StructureService : IStructureService
                         Debug.LogWarning($"[StructureService] Tile ({anchorX + dx},{anchorY + dy}) already has a structure.");
                     return false;
                 }
+
+                // 5. Must not be on tilled soil
+                if (WorldDataManager.Instance.IsTilledAtWorldPosition(tileWorld))
+                {
+                    if (showDebugLogs)
+                        Debug.LogWarning($"[StructureService] Tile ({anchorX + dx},{anchorY + dy}) is tilled soil.");
+                    return false;
+                }
             }
         }
 
