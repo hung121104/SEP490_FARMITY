@@ -54,6 +54,14 @@ namespace AchievementManager.View
             Hide(); // Start hidden
         }
 
+        private void Update()
+        {
+            if (IsOpen && Input.GetKeyDown(KeyCode.Escape))
+            {
+                AchievementPresenter.Instance?.ClosePanel();
+            }
+        }
+
         #endregion
 
         #region Button Setup
