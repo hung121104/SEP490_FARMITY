@@ -21,6 +21,9 @@ public class StructureView : MonoBehaviourPunCallbacks
     public string playerCameraTag = "MainCamera";
 
     [Header("Ghost Preview")]
+    [Tooltip("Assign a dedicated GameObject here to use as ghost preview instead of the object pool.")]
+    [SerializeField] private GameObject ghostPreview;
+
     [Tooltip("Color tint when placement is valid")]
     public Color validColor   = new Color(0f, 1f, 0f, 0.5f);
 
@@ -147,7 +150,7 @@ public class StructureView : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Enter placement mode for the given structure type.
-    /// Shows the ghost preview and starts listening for placement clicks.
+    /// Shows the ghost preview (ghostPreview) and starts listening for placement clicks.
     /// </summary>
     public void EnterPlacementMode(StructureDataSO data)
     {
@@ -159,57 +162,51 @@ public class StructureView : MonoBehaviourPunCallbacks
 
         activeStructureData = data;
 
-        // Use pool if available, otherwise instantiate
-        if (data.Prefab != null)
+        if (ghostPreview == null)
         {
-            if (structurePool != null)
-                ghostInstance = structurePool.Get(data.StructureId);
-            else
-                ghostInstance = Instantiate(data.Prefab);
-
-            ghostRenderer = ghostInstance.GetComponentInChildren<SpriteRenderer>(true)
-                ?? ghostInstance.AddComponent<SpriteRenderer>();
-
-            // Apply sprite from item catalog (inventory icon)
-            Sprite itemSprite = activeItemModel?.Icon
-                ?? ItemCatalogService.Instance?.GetCachedSprite(data.StructureId);
-            if (itemSprite != null)
-                ghostRenderer.sprite = itemSprite;
-
-            // Disable colliders on ghost to avoid physics interference
-            foreach (var col in ghostInstance.GetComponentsInChildren<Collider2D>())
-                col.enabled = false;
-
-            ghostInstance.SetActive(true);
+            Debug.LogWarning("[StructureView] ghostPreview is not assigned — ghost preview will not display.");
+            return;
         }
+
+        ghostInstance = ghostPreview;
+
+        ghostRenderer = ghostInstance.GetComponentInChildren<SpriteRenderer>(true)
+            ?? ghostInstance.AddComponent<SpriteRenderer>();
+
+        // Update sprite to match current item
+        Sprite itemSprite = activeItemModel?.Icon
+            ?? ItemCatalogService.Instance?.GetCachedSprite(data.StructureId);
+        if (itemSprite != null)
+            ghostRenderer.sprite = itemSprite;
+
+        // Disable colliders so ghost does not interfere with physics
+        foreach (var col in ghostInstance.GetComponentsInChildren<Collider2D>())
+            col.enabled = false;
+
+        ghostInstance.SetActive(true);
 
         if (showDebugLogs)
             Debug.Log($"[StructureView] Entered placement mode: {data.name}");
     }
 
     /// <summary>
-    /// Exit placement mode — hide and return the ghost to pool.
+    /// Exit placement mode — hide the ghost preview object.
     /// </summary>
     public void ExitPlacementMode()
     {
         if (ghostInstance != null)
         {
-            // Reset ghost color before returning to pool so it doesn't leak
-            // the semi-transparent tint into a future real-structure instance.
+            // Reset tint and hide — never pool or destroy the override object
             if (ghostRenderer != null)
                 ghostRenderer.color = Color.white;
 
-            // Re-enable colliders before returning to pool
             foreach (var col in ghostInstance.GetComponentsInChildren<Collider2D>())
                 col.enabled = true;
 
-            if (structurePool != null && activeStructureData != null)
-                structurePool.Release(activeStructureData.StructureId, ghostInstance);
-            else
-                Destroy(ghostInstance);
+            ghostInstance.SetActive(false);
 
-            ghostInstance  = null;
-            ghostRenderer  = null;
+            ghostInstance = null;
+            ghostRenderer = null;
         }
 
         activeStructureData = null;
@@ -262,6 +259,9 @@ public class StructureView : MonoBehaviourPunCallbacks
             if (showDebugLogs)
                 Debug.Log($"[StructureView] Structure placed at {currentSnappedPos}");
 
+            // Spawn the real structure GameObject on the map (View responsibility)
+            SpawnPlacedStructure(activeStructureData, currentSnappedPos);
+
             // Consume one item from hotbar — mirrors CropPlantingView pattern
             hotbarView?.GetPresenter()?.ConsumeCurrentItem(1);
 
@@ -293,6 +293,8 @@ public class StructureView : MonoBehaviourPunCallbacks
         Sprite itemSprite = ItemCatalogService.Instance?.GetCachedSprite(data.StructureId);
         if (itemSprite != null)
             sr.sprite = itemSprite;
+
+        sr.sortingLayerName = "WalkInfront";
 
         obj.SetActive(true);
 

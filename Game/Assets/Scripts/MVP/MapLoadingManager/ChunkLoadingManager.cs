@@ -441,6 +441,25 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 visuals.Add(visual);
 
             }
+
+            // If tile has a structure, spawn the structure visual
+            if (tile.HasStructure)
+            {
+                var structurePool = FindAnyObjectByType<StructurePool>();
+                if (structurePool != null)
+                {
+                    StructureDataSO structData = structurePool.GetStructureData(tile.Structure.StructureId);
+                    if (structData != null)
+                    {
+                        Vector3 structPos = new Vector3(tile.WorldX, tile.WorldY, 0f);
+                        StructureView.Instance?.SpawnPlacedStructure(structData, structPos);
+                    }
+                    else if (showDebugLogs)
+                    {
+                        Debug.LogWarning($"[ChunkLoading] No structure data found for '{tile.Structure.StructureId}' at ({tile.WorldX}, {tile.WorldY})");
+                    }
+                }
+            }
         }
         
         chunkVisuals[chunkPos] = visuals;

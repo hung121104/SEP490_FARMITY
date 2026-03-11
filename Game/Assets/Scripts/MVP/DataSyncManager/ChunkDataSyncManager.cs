@@ -211,7 +211,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         WorldDataManager manager = WorldDataManager.Instance;
         List<ChunkSyncData> allChunkData = new List<ChunkSyncData>();
         
-        // Collect all chunks with crops or tilled tiles
+        // Collect all chunks with crops, tilled tiles, or structures
         foreach (var config in manager.sectionConfigs)
         {
             if (!config.IsActive) continue;
@@ -222,7 +222,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             foreach (var chunkPair in section)
             {
                 UnifiedChunkData chunk = chunkPair.Value;
-                if (chunk.GetCropCount() == 0 && chunk.GetTilledCount() == 0) continue; // Skip empty chunks
+                if (chunk.GetCropCount() == 0 && chunk.GetTilledCount() == 0 && chunk.GetStructureCount() == 0) continue; // Skip truly empty chunks
 
                 var allSlots = chunk.GetAllTiles();
                 var entries  = new SyncTileEntry[allSlots.Count];
@@ -231,11 +231,13 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     var slot = allSlots[ei];
                     entries[ei] = new SyncTileEntry
                     {
-                        WorldX   = slot.WorldX,
-                        WorldY   = slot.WorldY,
-                        IsTilled = slot.IsTilled,
-                        HasCrop  = slot.HasCrop,
-                        Crop     = slot.Crop
+                        WorldX       = slot.WorldX,
+                        WorldY       = slot.WorldY,
+                        IsTilled     = slot.IsTilled,
+                        HasCrop      = slot.HasCrop,
+                        Crop         = slot.Crop,
+                        HasStructure = slot.HasStructure,
+                        StructureId  = slot.HasStructure ? slot.Structure.StructureId : null
                     };
                 }
                 ChunkSyncData syncData = new ChunkSyncData
@@ -332,7 +334,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 continue;
             }
             
-            // Clear existing data and load synced tiles (tilled and crops)
+            // Clear existing data and load synced tiles (tilled, crops, and structures)
             chunk.Clear();
 
             foreach (var entry in chunkData.Tiles)
@@ -349,15 +351,21 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     for (byte p = 0; p < entry.Crop.PollenHarvestCount; p++)
                         chunk.IncrementPollenHarvestCount(entry.WorldX, entry.WorldY);
                 }
+
+                // Restore structure data
+                if (entry.HasStructure && !string.IsNullOrEmpty(entry.StructureId))
+                {
+                    chunk.PlaceStructure(entry.StructureId, entry.WorldX, entry.WorldY);
+                }
             }
 
-                // Ensure visuals are spawned for this chunk on the client
-                if (chunkLoadingManager != null)
-                {
-                    chunkLoadingManager.EnsureChunkLoaded(chunkPos);
-                    // Refresh visuals to apply tilled tiles and crops
-                    chunkLoadingManager.RefreshChunkVisuals(chunkPos);
-                }
+            // Ensure visuals are spawned for this chunk on the client
+            if (chunkLoadingManager != null)
+            {
+                chunkLoadingManager.EnsureChunkLoaded(chunkPos);
+                // Refresh visuals to apply tilled tiles, crops, and structures
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+            }
         }
         
         if (showDebugLogs)
@@ -750,6 +758,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received structure placed: '{structureId}' at ({worldX},{worldY})");
 
+        // Spawn the visual GameObject on this client
+        SpawnStructureVisual(structureId, worldPos);
+
         // Refresh chunk visuals
         if (chunkLoadingManager != null)
         {
@@ -793,6 +804,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         int worldY = (int)dataArray[1];
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
+
+        // Despawn the visual GameObject before removing data
+        DespawnStructureVisual(worldPos);
+
         WorldDataManager.Instance.RemoveStructureAtWorldPosition(worldPos);
 
         if (showDebugLogs)
@@ -804,6 +819,60 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
             if (chunkLoadingManager.IsChunkLoaded(chunkPos))
                 chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+        }
+    }
+
+    // ── Structure visual helpers ──────────────────────────────────────────
+
+    /// <summary>
+    /// Spawn a structure visual GameObject when a remote player places one.
+    /// </summary>
+    private void SpawnStructureVisual(string structureId, Vector3 worldPos)
+    {
+        var structurePool = FindAnyObjectByType<StructurePool>();
+        if (structurePool == null) return;
+
+        StructureDataSO dataSO = structurePool.GetStructureData(structureId);
+        if (dataSO == null) return;
+
+        StructureView.Instance?.SpawnPlacedStructure(dataSO, worldPos);
+    }
+
+    /// <summary>
+    /// Despawn the structure visual at worldPos when a remote player removes one.
+    /// Finds the structure GameObject by position and returns it to the pool.
+    /// </summary>
+    private void DespawnStructureVisual(Vector3 worldPos)
+    {
+        // Find the structure visual at this position
+        // Structures are named "Structure_<id>" and positioned exactly at world coords
+        int wx = Mathf.FloorToInt(worldPos.x);
+        int wy = Mathf.FloorToInt(worldPos.y);
+
+        // Look up the structureId from data BEFORE it's removed
+        string structureId = null;
+        if (WorldDataManager.Instance.TryGetStructureAtWorldPosition(worldPos, out var structData))
+            structureId = structData.StructureId;
+
+        if (string.IsNullOrEmpty(structureId)) return;
+
+        var structurePool = FindAnyObjectByType<StructurePool>();
+        // Search for the GameObject at this position
+        GameObject[] candidates = GameObject.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+        foreach (var go in candidates)
+        {
+            if (go.name.StartsWith($"Structure_{structureId}"))
+            {
+                Vector3 goPos = go.transform.position;
+                if (Mathf.FloorToInt(goPos.x) == wx && Mathf.FloorToInt(goPos.y) == wy)
+                {
+                    if (structurePool != null)
+                        structurePool.Release(structureId, go);
+                    else
+                        Destroy(go);
+                    return;
+                }
+            }
         }
     }
 
@@ -831,11 +900,15 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         public bool IsTilled;
         public bool HasCrop;
         public UnifiedChunkData.CropTileData Crop;
+        public bool   HasStructure;
+        public string StructureId;
     }
     
     // Wire format per tile entry:
-    //   WorldX(4) WorldY(4) flags(1) [if HasCrop: PlantIdLen(1) PlantId(N) Stage(1) GrowthTimer(4) PollenCount(1)]
-    // flags: bit0=IsTilled, bit1=HasCrop
+    //   WorldX(4) WorldY(4) flags(1)
+    //   [if HasCrop:      PlantIdLen(1) PlantId(N) Stage(1) GrowthTimer(4) PollenCount(1)]
+    //   [if HasStructure:  StructIdLen(1) StructId(N)]
+    // flags: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure
     private byte[] SerializeBatch(ChunkSyncData[] batch)
     {
         var bytes = new System.Collections.Generic.List<byte>();
@@ -859,8 +932,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 bytes.AddRange(System.BitConverter.GetBytes(entry.WorldY));  // 4
 
                 byte flags = 0;
-                if (entry.IsTilled) flags |= 1;
-                if (entry.HasCrop)  flags |= 2;
+                if (entry.IsTilled)     flags |= 1;
+                if (entry.HasCrop)      flags |= 2;
+                if (entry.HasStructure) flags |= 4;
                 bytes.Add(flags);                                            // 1
 
                 if (entry.HasCrop)
@@ -873,6 +947,15 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     bytes.Add(entry.Crop.CropStage);                        // 1
                     bytes.AddRange(System.BitConverter.GetBytes(entry.Crop.GrowthTimer)); // 4
                     bytes.Add(entry.Crop.PollenHarvestCount);               // 1
+                }
+
+                if (entry.HasStructure)
+                {
+                    byte[] structIdBytes = string.IsNullOrEmpty(entry.StructureId)
+                        ? System.Array.Empty<byte>()
+                        : System.Text.Encoding.UTF8.GetBytes(entry.StructureId);
+                    bytes.Add((byte)structIdBytes.Length);                   // 1
+                    bytes.AddRange(structIdBytes);                           // N
                 }
             }
         }
@@ -905,8 +988,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 entry.WorldY = System.BitConverter.ToInt32(data, offset); offset += 4;
 
                 byte flags   = data[offset++];
-                entry.IsTilled = (flags & 1) != 0;
-                entry.HasCrop  = (flags & 2) != 0;
+                entry.IsTilled     = (flags & 1) != 0;
+                entry.HasCrop      = (flags & 2) != 0;
+                entry.HasStructure = (flags & 4) != 0;
 
                 if (entry.HasCrop)
                 {
@@ -917,6 +1001,14 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     entry.Crop.CropStage          = data[offset++];
                     entry.Crop.GrowthTimer        = System.BitConverter.ToSingle(data, offset); offset += 4;
                     entry.Crop.PollenHarvestCount = offset < data.Length ? data[offset++] : (byte)0;
+                }
+
+                if (entry.HasStructure)
+                {
+                    int structIdLen = offset < data.Length ? data[offset++] : 0;
+                    entry.StructureId = structIdLen > 0
+                        ? System.Text.Encoding.UTF8.GetString(data, offset, structIdLen) : string.Empty;
+                    offset += structIdLen;
                 }
 
                 chunk.Tiles[j] = entry;
