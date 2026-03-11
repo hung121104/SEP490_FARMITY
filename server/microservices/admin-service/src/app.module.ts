@@ -9,6 +9,7 @@ import { ItemModule } from './game-data/item/item.module';
 import { PlantModule } from './game-data/plant/plant.module';
 import { CraftingRecipeModule } from './game-data/crafting-recipe/crafting-recipe.module';
 import { GameConfigModule } from './game-config/game-config.module';
+import { SkinConfigModule } from './game-data/skin-config/skin-config.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { GameConfigModule } from './game-config/game-config.module';
     PlantModule,
     CraftingRecipeModule,
     GameConfigModule,
+    SkinConfigModule,
   ],
 })
 export class AppModule {}
