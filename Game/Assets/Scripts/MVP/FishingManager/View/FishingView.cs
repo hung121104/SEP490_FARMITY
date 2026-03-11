@@ -1,18 +1,18 @@
 ﻿using System;
 using System.Collections;
 using UnityEngine;
-using Photon.Pun; // Bắt buộc phải có để dùng mạng
+using Photon.Pun; 
 
-// Đổi MonoBehaviour thành MonoBehaviourPun
+
 public class FishingView : MonoBehaviourPun, IFishingView
 {
     public event Action OnMiniGameWon;
     public event Action OnMiniGameLost;
 
     [Header("References")]
+    private Coroutine castRoutine; 
+    private bool isWaitingForFish = false; 
     public FishingMiniGameView miniGameView;
-
-    // Biến lưu hướng quay mặt để lúc thu cần nhân vật không bị quay ngược lại
     private float lastFacingX = 1f;
 
     private void Awake()
@@ -28,8 +28,29 @@ public class FishingView : MonoBehaviourPun, IFishingView
             miniGameView.gameObject.SetActive(false);
         }
     }
+    private void Update()
+    {
+        if (isWaitingForFish && Input.GetMouseButtonDown(0))
+        {
+            CancelFishingEarly();
+        }
+    }
 
-    // --- 1. TỰ ĐỘNG TÌM PLAYER LÀ LOCAL CLIENT ---
+    private void CancelFishingEarly()
+    {
+        isWaitingForFish = false; 
+
+        
+        if (castRoutine != null)
+        {
+            StopCoroutine(castRoutine);
+            castRoutine = null;
+        }
+        Debug.Log("[FishingView] Player cancel fishing!");
+
+        OnMiniGameLost?.Invoke();
+    }
+
     private PlayerMovement GetLocalPlayer()
     {
         PlayerMovement[] allPlayers = UnityEngine.Object.FindObjectsByType<PlayerMovement>(FindObjectsSortMode.None);
@@ -57,42 +78,59 @@ public class FishingView : MonoBehaviourPun, IFishingView
         }
     }
 
-    
+
     public void StartMiniGame(Vector3 targetPosition)
     {
-        // Khóa di chuyển
         SetPlayerMovementState(false);
-
-        // Chạy Coroutine quăng cần
-        StartCoroutine(CastRodRoutine(targetPosition));
+        if (castRoutine != null) StopCoroutine(castRoutine);
+        castRoutine = StartCoroutine(CastRodRoutine(targetPosition));
     }
 
     private IEnumerator CastRodRoutine(Vector3 targetPosition)
     {
+        isWaitingForFish = false; 
         PlayerMovement localPlayer = GetLocalPlayer();
 
+        // --- 1. CastRod ---
         if (localPlayer != null)
         {
             Animator anim = localPlayer.GetComponent<Animator>();
             if (anim != null)
             {
-                // Tính toán hướng (-1 là trái, 1 là phải) dựa vào vị trí click chuột
                 lastFacingX = targetPosition.x >= localPlayer.transform.position.x ? 1f : -1f;
-
-                // Truyền vào Blend Tree (Dùng ActionX và ActionY theo đúng ảnh của bạn)
                 anim.SetFloat("ActionX", lastFacingX);
                 anim.SetFloat("ActionY", 0f);
-                anim.SetTrigger("CastRod");
 
-                
+                anim.SetTrigger("CastRod");
                 photonView.RPC(nameof(RPC_SyncFishingAnimation), RpcTarget.Others, "CastRod", lastFacingX, PhotonNetwork.LocalPlayer.ActorNumber);
             }
         }
 
-        
         yield return new WaitForSeconds(1.5f);
 
-        Debug.Log("[FishingView] Bắt đầu câu cá, mở UI MiniGame!");
+        // --- 2. WaitFishing ---
+        if (localPlayer != null)
+        {
+            Animator anim = localPlayer.GetComponent<Animator>();
+            if (anim != null)
+            {
+                anim.SetTrigger("WaitFishing");
+                photonView.RPC(nameof(RPC_SyncFishingAnimation), RpcTarget.Others, "WaitFishing", lastFacingX, PhotonNetwork.LocalPlayer.ActorNumber);
+            }
+        }
+
+        // allow player to cancel fishing while waiting
+        isWaitingForFish = true;
+
+        float waitTime = UnityEngine.Random.Range(1f, 4f);
+        Debug.Log($"[FishingView] Waiting for {waitTime:F1} second...");
+        yield return new WaitForSeconds(waitTime);
+
+        // catch fish successfully, close the chance to cancel
+        isWaitingForFish = false;
+
+        // --- 3. OPEN MINIGAME ---
+        Debug.Log("[FishingView] catching! Open UI MiniGame!");
         miniGameView.gameObject.SetActive(true);
         miniGameView.StartMiniGame();
     }
@@ -147,7 +185,7 @@ public class FishingView : MonoBehaviourPun, IFishingView
         }
     }   
 
-    // --- 4. NHẬN TÍN HIỆU ĐỒNG BỘ TỪ MÁY KHÁC ---
+    // --- sync ---
     [PunRPC]
     private void RPC_SyncFishingAnimation(string triggerName, float facingX, int ownerActorNumber)
     {
@@ -160,7 +198,6 @@ public class FishingView : MonoBehaviourPun, IFishingView
                 Animator anim = player.GetComponent<Animator>();
                 if (anim != null)
                 {
-                    // Cập nhật hướng xoay mặt và chạy trigger
                     anim.SetFloat("ActionX", facingX);
                     anim.SetFloat("ActionY", 0f);
                     anim.SetTrigger(triggerName);
