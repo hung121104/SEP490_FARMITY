@@ -758,10 +758,6 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received structure placed: '{structureId}' at ({worldX},{worldY})");
 
-        // Spawn the visual GameObject on this client
-        SpawnStructureVisual(structureId, worldPos);
-
-        // Refresh chunk visuals
         if (chunkLoadingManager != null)
         {
             Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
@@ -823,20 +819,6 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     }
 
     // ── Structure visual helpers ──────────────────────────────────────────
-
-    /// <summary>
-    /// Spawn a structure visual GameObject when a remote player places one.
-    /// </summary>
-    private void SpawnStructureVisual(string structureId, Vector3 worldPos)
-    {
-        var structurePool = FindAnyObjectByType<StructurePool>();
-        if (structurePool == null) return;
-
-        StructureDataSO dataSO = structurePool.GetStructureData(structureId);
-        if (dataSO == null) return;
-
-        StructureView.Instance?.SpawnPlacedStructure(dataSO, worldPos);
-    }
 
     /// <summary>
     /// Despawn the structure visual at worldPos when a remote player removes one.

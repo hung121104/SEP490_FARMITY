@@ -51,6 +51,13 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     // Visual crop objects: chunkPos -> list of GameObjects
     private Dictionary<Vector2Int, List<GameObject>> chunkVisuals = new Dictionary<Vector2Int, List<GameObject>>();
     
+    // Structure visuals tracked separately so they can be returned to the pool
+    private Dictionary<Vector2Int, List<(string structureId, GameObject go)>> chunkStructureVisuals
+        = new Dictionary<Vector2Int, List<(string, GameObject)>>();
+    
+    // Cached pool reference (avoids FindAnyObjectByType every tile)
+    private StructurePool cachedStructurePool;
+    
     // Track tilled tiles per chunk for cleanup: chunkPos -> list of tile positions
     private Dictionary<Vector2Int, List<Vector3Int>> chunkTilledTiles = new Dictionary<Vector2Int, List<Vector3Int>>();
     
@@ -328,7 +335,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         if (showDebugLogs)
             Debug.Log($"[ChunkLoading] Unloaded chunk ({chunkPos.x}, {chunkPos.y})");
         
-        // Destroy visuals
+        // Destroy crop visuals
         if (chunkVisuals.ContainsKey(chunkPos))
         {
             foreach (GameObject visual in chunkVisuals[chunkPos])
@@ -338,6 +345,9 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             }
             chunkVisuals.Remove(chunkPos);
         }
+        
+        // Return structure visuals to pool
+        ReleaseChunkStructures(chunkPos);
         
         // Clear tilled tiles from tilemap
         if (chunkTilledTiles.ContainsKey(chunkPos))
@@ -442,17 +452,36 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
 
             }
 
-            // If tile has a structure, spawn the structure visual
+            // If tile has a structure, spawn the structure visual via pool
             if (tile.HasStructure)
             {
-                var structurePool = FindAnyObjectByType<StructurePool>();
-                if (structurePool != null)
+                if (cachedStructurePool == null)
+                    cachedStructurePool = FindAnyObjectByType<StructurePool>();
+
+                if (cachedStructurePool != null)
                 {
-                    StructureDataSO structData = structurePool.GetStructureData(tile.Structure.StructureId);
-                    if (structData != null)
+                    string structId = tile.Structure.StructureId;
+                    StructureDataSO structData = cachedStructurePool.GetStructureData(structId);
+                    if (structData != null && structData.Prefab != null)
                     {
+                        GameObject structObj = cachedStructurePool.Get(structId);
                         Vector3 structPos = new Vector3(tile.WorldX, tile.WorldY, 0f);
-                        StructureView.Instance?.SpawnPlacedStructure(structData, structPos);
+                        structObj.transform.position = structPos;
+
+                        SpriteRenderer sr = structObj.GetComponentInChildren<SpriteRenderer>(true)
+                            ?? structObj.AddComponent<SpriteRenderer>();
+                        Sprite itemSprite = ItemCatalogService.Instance?.GetCachedSprite(structId);
+                        if (itemSprite != null)
+                            sr.sprite = itemSprite;
+                        sr.sortingLayerName = "WalkInfront";
+
+                        structObj.SetActive(true);
+                        foreach (var col in structObj.GetComponentsInChildren<Collider2D>())
+                            col.enabled = true;
+
+                        if (!chunkStructureVisuals.ContainsKey(chunkPos))
+                            chunkStructureVisuals[chunkPos] = new List<(string, GameObject)>();
+                        chunkStructureVisuals[chunkPos].Add((structId, structObj));
                     }
                     else if (showDebugLogs)
                     {
@@ -555,7 +584,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         if (!currentlyLoadedChunks.Contains(chunkPos))
             return;
         
-        // Destroy old visuals
+        // Destroy old crop visuals
         if (chunkVisuals.ContainsKey(chunkPos))
         {
             foreach (GameObject visual in chunkVisuals[chunkPos])
@@ -566,7 +595,10 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             chunkVisuals.Remove(chunkPos);
         }
         
-        // Find chunk data
+        // Return old structure visuals to pool
+        ReleaseChunkStructures(chunkPos);
+        
+        // Find chunk data and re-spawn
         foreach (var config in WorldDataManager.Instance.sectionConfigs)
         {
             if (!config.IsActive) continue;
@@ -581,6 +613,28 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 break;
             }
         }
+    }
+
+    /// <summary>
+    /// Returns all structure GameObjects for the given chunk back to the pool.
+    /// </summary>
+    private void ReleaseChunkStructures(Vector2Int chunkPos)
+    {
+        if (!chunkStructureVisuals.ContainsKey(chunkPos))
+            return;
+
+        if (cachedStructurePool == null)
+            cachedStructurePool = FindAnyObjectByType<StructurePool>();
+
+        foreach (var (structureId, go) in chunkStructureVisuals[chunkPos])
+        {
+            if (go == null) continue;
+            if (cachedStructurePool != null)
+                cachedStructurePool.Release(structureId, go);
+            else
+                Destroy(go);
+        }
+        chunkStructureVisuals.Remove(chunkPos);
     }
 
     /// <summary>

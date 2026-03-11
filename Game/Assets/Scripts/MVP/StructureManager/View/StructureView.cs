@@ -45,7 +45,7 @@ public class StructureView : MonoBehaviourPunCallbacks
     private GameObject     ghostInstance;
     private SpriteRenderer ghostRenderer;
 
-    // Active structure being placed (set externally via EnterPlacementMode)
+    // Active structure being placed 
     private StructureDataSO activeStructureData;
 
     // Active item from inventory — used to resolve the sprite via ItemCatalogService
@@ -54,7 +54,7 @@ public class StructureView : MonoBehaviourPunCallbacks
     // Pool reference
     private StructurePool structurePool;
 
-    // HotbarView reference for item consumption (mirrors CropPlantingView pattern)
+    // HotbarView reference for item consumption
     private HotbarView hotbarView;
 
     // Snapped grid position for the current frame
@@ -104,8 +104,6 @@ public class StructureView : MonoBehaviourPunCallbacks
     }
 
     // ── Auto-activate ghost when a Structure item is selected in hotbar ──────
-    // Mirrors CropPlowingView / CropPlantingView: preview shows while the item
-    // is held, and disappears when the player switches to a different slot.
 
     private void UpdateActiveStructureFromHotbar()
     {
@@ -259,61 +257,12 @@ public class StructureView : MonoBehaviourPunCallbacks
             if (showDebugLogs)
                 Debug.Log($"[StructureView] Structure placed at {currentSnappedPos}");
 
-            // Spawn the real structure GameObject on the map (View responsibility)
-            SpawnPlacedStructure(activeStructureData, currentSnappedPos);
-
             // Consume one item from hotbar — mirrors CropPlantingView pattern
             hotbarView?.GetPresenter()?.ConsumeCurrentItem(1);
 
             // Notify external listeners (optional)
             OnStructurePlaced?.Invoke();
         }
-    }
-
-    // ── Structure Spawning (Pool) ─────────────────────────────────────────
-
-    /// <summary>
-    /// Spawns a real (non-ghost) structure GameObject from the pool at the given position.
-    /// </summary>
-    public void SpawnPlacedStructure(StructureDataSO data, Vector3 worldPosition)
-    {
-        if (data == null || data.Prefab == null) return;
-
-        GameObject obj;
-        if (structurePool != null)
-            obj = structurePool.Get(data.StructureId);
-        else
-            obj = Instantiate(data.Prefab);
-
-        obj.transform.position = worldPosition;
-        SpriteRenderer sr = obj.GetComponentInChildren<SpriteRenderer>(true)
-            ?? obj.AddComponent<SpriteRenderer>();
-
-        // Apply sprite from item catalog so the placed structure uses the inventory item image
-        Sprite itemSprite = ItemCatalogService.Instance?.GetCachedSprite(data.StructureId);
-        if (itemSprite != null)
-            sr.sprite = itemSprite;
-
-        sr.sortingLayerName = "WalkInfront";
-
-        obj.SetActive(true);
-
-        // Re-enable colliders for interaction
-        foreach (var col in obj.GetComponentsInChildren<Collider2D>())
-            col.enabled = true;
-    }
-
-    /// <summary>
-    /// Returns a placed structure to the pool (called on demolish or chunk unload).
-    /// </summary>
-    public void DespawnStructure(StructureDataSO data, GameObject obj)
-    {
-        if (obj == null) return;
-
-        if (structurePool != null && data != null)
-            structurePool.Release(data.StructureId, obj);
-        else
-            Destroy(obj);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
