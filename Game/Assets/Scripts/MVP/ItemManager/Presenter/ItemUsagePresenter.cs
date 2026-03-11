@@ -40,5 +40,11 @@ public class ItemUsagePresenter
         Debug.Log("[ItemUsage] UsePollen");
         return service.UsePollen(item, pos);
     }
+
+    public bool UseStructure(ItemData item, Vector3 pos)
+    {
+        Debug.Log("[ItemUsage] UseStructure");
+        return service.UseStructure(item, pos);
+    }
 }
 

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b0018690889467449a3984a7f9820e4, type: 3}
+  m_Name: CraftingTable
+  m_EditorClassIdentifier: 
+  StructureId: item_wooden_crafting_table
+  Prefab: {fileID: 2204487346316466391, guid: 8fb4099573c0581469eb0f81049f712e, type: 3}
+  Width: 1
+  Height: 1
+  InteractionType: 2
+  MaxHealth: 3
+  StorageSlots: 0
+  DoubleChestLeftSprite: {fileID: 0}
+  DoubleChestRightSprite: {fileID: 0}
