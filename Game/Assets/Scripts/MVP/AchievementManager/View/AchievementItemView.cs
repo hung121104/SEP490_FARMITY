@@ -1,17 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 using AchievementManager.Model;
 
 namespace AchievementManager.View
 {
-    /// <summary>
-    /// Prefab component for a single achievement item.
-    /// Spawned by AchievementPanelView for each achievement.
-    /// Shows: name, description, requirements with progress bars.
-    /// Shows ACHIEVED badge if completed.
-    /// </summary>
     public class AchievementItemView : MonoBehaviour
     {
         #region Serialized Fields
@@ -24,7 +17,7 @@ namespace AchievementManager.View
         [SerializeField] private GameObject achievedBadge;
         [SerializeField] private TextMeshProUGUI achievedAtText;
 
-        [Header("Requirements Container")]
+        [Header("Requirements")]
         [SerializeField] private Transform requirementsContainer;
         [SerializeField] private GameObject requirementRowPrefab;
 
@@ -32,22 +25,16 @@ namespace AchievementManager.View
 
         #region Public API
 
-        /// <summary>
-        /// Populate this item with achievement data.
-        /// Called by AchievementPanelView when spawning.
-        /// </summary>
         public void Populate(AchievementData data)
         {
             if (data == null) return;
 
-            // Header
             if (nameText != null)
                 nameText.text = data.name;
 
             if (descriptionText != null)
                 descriptionText.text = data.description;
 
-            // Achieved badge
             if (achievedBadge != null)
                 achievedBadge.SetActive(data.isAchieved);
 
@@ -58,7 +45,6 @@ namespace AchievementManager.View
                     achievedAtText.text = FormatDate(data.achievedAt);
             }
 
-            // Requirements
             PopulateRequirements(data);
         }
 
@@ -70,7 +56,6 @@ namespace AchievementManager.View
         {
             if (requirementsContainer == null || requirementRowPrefab == null) return;
 
-            // Clear old rows
             foreach (Transform child in requirementsContainer)
                 Destroy(child.gameObject);
 
@@ -82,9 +67,12 @@ namespace AchievementManager.View
                 AchievementRequirementRowView rowView =
                     row.GetComponent<AchievementRequirementRowView>();
 
-                if (rowView != null)
-                    rowView.Populate(data.requirements[i], data.GetDisplayProgress(i),
-                                     data.GetProgressRatio(i), data.isAchieved);
+                rowView?.Populate(
+                    data.requirements[i],
+                    data.GetDisplayProgress(i),
+                    data.GetProgressRatio(i),
+                    data.isAchieved
+                );
             }
         }
 

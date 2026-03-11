@@ -3,17 +3,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using AchievementManager.Model;
-using AchievementManager.Presenter; 
+using AchievementManager.Presenter;
 
 namespace AchievementManager.View
 {
-    /// <summary>
-    /// Panel container for all achievement items.
-    /// Opened via UI button (no hotkey).
-    /// On open: triggers refresh from server.
-    /// Spawns AchievementItemView prefab per achievement.
-    /// Separates achieved vs in-progress sections.
-    /// </summary>
     public class AchievementPanelView : MonoBehaviour
     {
         #region Serialized Fields
@@ -21,9 +14,8 @@ namespace AchievementManager.View
         [Header("Panel")]
         [SerializeField] private GameObject panelRoot;
 
-        [Header("Containers")]
+        [Header("Container")]
         [SerializeField] private Transform inProgressContainer;
-        [SerializeField] private Transform achievedContainer;
 
         [Header("Prefab")]
         [SerializeField] private GameObject achievementItemPrefab;
@@ -41,7 +33,6 @@ namespace AchievementManager.View
         #region Runtime State
 
         public bool IsOpen { get; private set; } = false;
-
         private List<GameObject> spawnedItems = new List<GameObject>();
 
         #endregion
@@ -51,15 +42,13 @@ namespace AchievementManager.View
         private void Start()
         {
             SetupButtons();
-            Hide(); // Start hidden
+            Hide();
         }
 
         private void Update()
         {
             if (IsOpen && Input.GetKeyDown(KeyCode.Escape))
-            {
                 AchievementPresenter.Instance?.ClosePanel();
-            }
         }
 
         #endregion
@@ -110,11 +99,6 @@ namespace AchievementManager.View
 
         #region Populate
 
-        /// <summary>
-        /// Populate panel with fresh achievement list.
-        /// Separates in-progress vs achieved.
-        /// Called by AchievementPresenter after fetch.
-        /// </summary>
         public void Populate(List<AchievementData> achievements)
         {
             ShowLoading(false);
@@ -130,18 +114,9 @@ namespace AchievementManager.View
 
             foreach (AchievementData data in achievements)
             {
-                // Choose container: achieved vs in-progress
-                Transform container = data.isAchieved
-                    ? achievedContainer
-                    : inProgressContainer;
+                if (inProgressContainer == null || achievementItemPrefab == null) continue;
 
-                // Fallback to inProgress if achieved container missing
-                if (container == null)
-                    container = inProgressContainer;
-
-                if (container == null || achievementItemPrefab == null) continue;
-
-                GameObject item = Instantiate(achievementItemPrefab, container);
+                GameObject item = Instantiate(achievementItemPrefab, inProgressContainer);
                 AchievementItemView itemView = item.GetComponent<AchievementItemView>();
                 itemView?.Populate(data);
 
@@ -151,10 +126,6 @@ namespace AchievementManager.View
             Debug.Log($"[AchievementPanelView] Populated {achievements.Count} achievements");
         }
 
-        /// <summary>
-        /// Refresh UI only if panel is currently open.
-        /// Called silently after progress updates.
-        /// </summary>
         public void RefreshIfOpen(List<AchievementData> achievements)
         {
             if (!IsOpen) return;
@@ -169,7 +140,6 @@ namespace AchievementManager.View
         {
             foreach (GameObject item in spawnedItems)
                 if (item != null) Destroy(item);
-
             spawnedItems.Clear();
         }
 
