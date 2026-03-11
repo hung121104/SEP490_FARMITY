@@ -10,6 +10,7 @@ import { PlantModule } from './game-data/plant/plant.module';
 import { CraftingRecipeModule } from './game-data/crafting-recipe/crafting-recipe.module';
 import { GameConfigModule } from './game-config/game-config.module';
 import { AchievementModule } from './game-data/achievement/achievement.module';
+import { SkinConfigModule } from './game-data/skin-config/skin-config.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AchievementModule } from './game-data/achievement/achievement.module';
     CraftingRecipeModule,
     GameConfigModule,
     AchievementModule,
+    SkinConfigModule,
   ],
 })
 export class AppModule {}

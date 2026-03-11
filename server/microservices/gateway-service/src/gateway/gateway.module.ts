@@ -75,6 +75,9 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/achievements/create', method: RequestMethod.POST },
         { path: 'game-data/achievements/:achievementId', method: RequestMethod.PUT },
         { path: 'game-data/achievements/:achievementId', method: RequestMethod.DELETE },
+        { path: 'game-data/skin-configs', method: RequestMethod.POST },
+        { path: 'game-data/skin-configs/:configId', method: RequestMethod.PUT },
+        { path: 'game-data/skin-configs/:configId', method: RequestMethod.DELETE },
       );
 
     // enforce admin only on admin routes
@@ -103,6 +106,9 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/achievements/create', method: RequestMethod.POST },
         { path: 'game-data/achievements/:achievementId', method: RequestMethod.PUT },
         { path: 'game-data/achievements/:achievementId', method: RequestMethod.DELETE },
+        { path: 'game-data/skin-configs', method: RequestMethod.POST },
+        { path: 'game-data/skin-configs/:configId', method: RequestMethod.PUT },
+        { path: 'game-data/skin-configs/:configId', method: RequestMethod.DELETE },
       );
   }
 }

@@ -536,7 +536,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         if (!currentlyLoadedChunks.Contains(chunkPos))
             return;
         
-        // Destroy old visuals
+        // Destroy old crop visuals
         if (chunkVisuals.ContainsKey(chunkPos))
         {
             foreach (GameObject visual in chunkVisuals[chunkPos])
@@ -545,6 +545,21 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                     Destroy(visual);
             }
             chunkVisuals.Remove(chunkPos);
+        }
+
+        // Clear tilled tile cells from the Tilemap before re-spawning.
+        // Without this, untilled tiles remain painted on the Tilemap because
+        // SpawnChunkVisuals only adds currently-tilled positions — it never
+        // removes ones that were tilled on the previous draw call.
+        if (chunkTilledTiles.ContainsKey(chunkPos))
+        {
+            Tilemap tilledTilemap = FindTilemap(tilledTilemapName);
+            if (tilledTilemap != null)
+            {
+                foreach (Vector3Int tilePos in chunkTilledTiles[chunkPos])
+                    tilledTilemap.SetTile(tilePos, null);
+            }
+            chunkTilledTiles.Remove(chunkPos);
         }
         
         // Find chunk data
