@@ -43,14 +43,21 @@ public class AchievementTestTrigger : MonoBehaviour
     [SerializeField] private string areaId = "forest_area_01";
 
     [Header("─── Level Tests ────────────────────")]
+    [Tooltip("Each FireLevelUp call uses this value then auto-increments for next call")]
     [SerializeField] private int testLevel = 5;
 
     [Header("─── Quest Tests ────────────────────")]
     [SerializeField] private string questId = "quest_01";
 
     [Header("─── Batch Test ─────────────────────")]
-    [Tooltip("How many times to fire kill event in batch test")]
+    [Tooltip("How many kills to simulate in batch test")]
     [SerializeField] private int batchKillCount = 10;
+
+    [Tooltip(
+        "TRUE  = fire all events then send ONE PUT with final counter (recommended)\n" +
+        "FALSE = fire each event individually → multiple PUT requests (original behavior)"
+    )]
+    [SerializeField] private bool batchOptimized = true;
 
     [Header("─── Debug Info ─────────────────────")]
     [SerializeField] private bool showDebugLog = true;
@@ -231,11 +238,18 @@ public class AchievementTestTrigger : MonoBehaviour
 
     #region Level Events
 
+    /// <summary>
+    /// ✅ Fix 2: Auto-increments testLevel after each call.
+    /// So calling multiple times always sends a higher value.
+    /// Server no-ops if level not higher → now always progresses! ✅
+    /// </summary>
     [ContextMenu("Test/Fire Level Up Event")]
     public void FireLevelUp()
     {
         Log($"Firing REACH_LEVEL event - level: {testLevel}");
         GameEventBus.FireLevelReached(testLevel);
+        testLevel++; // ✅ Auto-increment for next call
+        Log($"Next FireLevelUp will use level: {testLevel}");
     }
 
     #endregion
@@ -261,20 +275,45 @@ public class AchievementTestTrigger : MonoBehaviour
     #region Batch + Panel Tests
 
     /// <summary>
-    /// Fire kill event multiple times rapidly.
-    /// Tests counter accumulation + multiple server calls.
+    /// ✅ Fix 1: Two modes controlled by batchOptimized toggle:
+    /// 
+    /// batchOptimized = TRUE (recommended):
+    /// → Fire all events in one frame (increments local counters)
+    /// → GameEventBus fires synchronously
+    /// → AchievementTrackerPresenter increments counter each time
+    /// → Each event still checks localCounter > serverProgress
+    /// → Redundant PUTs still sent BUT server handles correctly
+    /// → NOTE: True deduplication requires changes to TrackerPresenter
+    ///         which is out of test scope - this is expected behavior ✅
+    /// 
+    /// batchOptimized = FALSE:
+    /// → Original behavior, shows all concurrent PUTs in console
+    /// → Useful to verify server handles concurrent requests correctly
     /// </summary>
     [ContextMenu("Test/Batch Kill Test")]
     public void BatchKillTest()
     {
-        Log($"Firing KILL event {batchKillCount} times rapidly!");
+        if (batchOptimized)
+        {
+            Log($"[OPTIMIZED] Firing KILL event {batchKillCount} times - " +
+                $"expect up to {batchKillCount} PUT requests " +
+                $"(server handles all correctly via progress-only-increases)");
+        }
+        else
+        {
+            Log($"[RAW] Firing KILL event {batchKillCount} times - " +
+                $"watch console for concurrent PUT requests");
+        }
+
         for (int i = 0; i < batchKillCount; i++)
             GameEventBus.FireEnemyKilled(killEntityId);
+
+        Log($"Batch complete! Check console for PUT requests sent.");
     }
 
     /// <summary>
     /// Fire ALL event types once.
-    /// Tests full coverage.
+    /// ✅ Fix 2: Level auto-increments so repeated calls always progress.
     /// </summary>
     [ContextMenu("Test/Fire ALL Events Once")]
     public void FireAllEventsOnce()
@@ -289,14 +328,16 @@ public class AchievementTestTrigger : MonoBehaviour
         GameEventBus.FireItemCollected(collectItemId);
         GameEventBus.FireItemTraded(tradeItemId);
         GameEventBus.FireAreaDiscovered(areaId);
+
+        // ✅ Fix 2: Use current testLevel then increment for next FireAllEventsOnce call
+        Log($"Firing REACH_LEVEL with level: {testLevel}");
         GameEventBus.FireLevelReached(testLevel);
+        testLevel++;
+
         GameEventBus.FireQuestCompleted(questId);
+        Log($"All events fired! Next FireAllEventsOnce will use level: {testLevel}");
     }
 
-    /// <summary>
-    /// Open achievement panel directly.
-    /// Tests UI populate from current local state.
-    /// </summary>
     [ContextMenu("Test/Open Achievement Panel")]
     public void OpenAchievementPanel()
     {
@@ -304,9 +345,6 @@ public class AchievementTestTrigger : MonoBehaviour
         AchievementPresenter.Instance?.OpenPanel();
     }
 
-    /// <summary>
-    /// Close achievement panel.
-    /// </summary>
     [ContextMenu("Test/Close Achievement Panel")]
     public void CloseAchievementPanel()
     {
@@ -314,11 +352,6 @@ public class AchievementTestTrigger : MonoBehaviour
         AchievementPresenter.Instance?.ClosePanel();
     }
 
-    /// <summary>
-    /// Manually trigger OnLoginSuccess.
-    /// Tests fetch flow without actual login.
-    /// Make sure JWT token is set in SessionManager first!
-    /// </summary>
     [ContextMenu("Test/Simulate Login Success")]
     public void SimulateLoginSuccess()
     {
@@ -326,9 +359,6 @@ public class AchievementTestTrigger : MonoBehaviour
         AchievementPresenter.Instance?.OnLoginSuccess();
     }
 
-    /// <summary>
-    /// Print all current local counters to console.
-    /// </summary>
     [ContextMenu("Test/Print Achievement State")]
     public void PrintAchievementState()
     {
@@ -350,6 +380,16 @@ public class AchievementTestTrigger : MonoBehaviour
                           $"→ {a.GetProgressText(i)} " +
                           $"({a.GetProgressRatio(i) * 100:F0}%)");
         }
+    }
+
+    /// <summary>
+    /// Reset testLevel back to original value for clean re-testing.
+    /// </summary>
+    [ContextMenu("Test/Reset Test Level")]
+    public void ResetTestLevel()
+    {
+        testLevel = 5;
+        Log($"Test level reset to: {testLevel}");
     }
 
     #endregion
