@@ -594,6 +594,21 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             }
             chunkVisuals.Remove(chunkPos);
         }
+
+        // Clear tilled tile cells from the Tilemap before re-spawning.
+        // Without this, untilled tiles remain painted on the Tilemap because
+        // SpawnChunkVisuals only adds currently-tilled positions — it never
+        // removes ones that were tilled on the previous draw call.
+        if (chunkTilledTiles.ContainsKey(chunkPos))
+        {
+            Tilemap tilledTilemap = FindTilemap(tilledTilemapName);
+            if (tilledTilemap != null)
+            {
+                foreach (Vector3Int tilePos in chunkTilledTiles[chunkPos])
+                    tilledTilemap.SetTile(tilePos, null);
+            }
+            chunkTilledTiles.Remove(chunkPos);
+        }
         
         // Return old structure visuals to pool
         ReleaseChunkStructures(chunkPos);

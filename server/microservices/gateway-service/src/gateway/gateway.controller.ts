@@ -1092,4 +1092,69 @@ export class GatewayController {
       throw this.rpcError(err);
     }
   }
+
+  // ── Skin Catalog (Paper Doll) ──────────────────────────────────────────────
+
+  /**
+   * GET /game-data/skin-configs — public (no auth required).
+   * Query param `layer` is optional (e.g. ?layer=tool).
+   * Unity SkinCatalogManager calls this on startup.
+   */
+  @Get('game-data/skin-configs')
+  async getSkinCatalog(@Query('layer') layer?: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-skin-catalog', { layer }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * POST /game-data/skin-configs — admin-only.
+   * Body: { configId, spritesheetUrl, cellSize?, displayName, layer? }
+   */
+  @Post('game-data/skin-configs')
+  async createSkinConfig(@Body() body: any) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('create-skin-config', body),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * PUT /game-data/skin-configs/:configId — admin-only.
+   * Body: { spritesheetUrl?, cellSize?, displayName?, layer? }
+   */
+  @Put('game-data/skin-configs/:configId')
+  async updateSkinConfig(
+    @Param('configId') configId: string,
+    @Body() body: any,
+  ) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('update-skin-config', { configId, ...body }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * DELETE /game-data/skin-configs/:configId — admin-only.
+   */
+  @Delete('game-data/skin-configs/:configId')
+  async deleteSkinConfig(@Param('configId') configId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-skin-config', { configId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
 }

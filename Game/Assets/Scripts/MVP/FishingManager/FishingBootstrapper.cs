@@ -43,7 +43,8 @@ public class FishingBootstrapper : MonoBehaviour
     {
         if (presenter != null)
         {
-            presenter.HandleFishingRodUsed(targetPosition);
+            presenter.HandleFishingRodUsed(targetPosition, toolData.itemID);
+            
         }
     }
 }

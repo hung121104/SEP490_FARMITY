@@ -528,11 +528,11 @@ Depending on `itemType`, specific extra fields must be included:
 
     | Field name | Description |
     |---|---|
-    | `stageSprites` | Repeated file field — replaces all stage sprites. Assigned by form order. Must be provided together with `growthStages` JSON and count must match. |
-    | `hybridFlowerSprite` | Replaces `hybridFlowerIconUrl` |
-    | `hybridMatureSprite` | Replaces `hybridMatureIconUrl` |
+    | `stageSprites` | Repeated file field — replaces all stage sprites. Assigned by form order (1st file → stage 0, etc.). Must be sent together with a `growthStages` JSON body field; file count must match stage count. When omitted, each stage in the `growthStages` JSON **must include its existing `stageIconUrl`** (Mongoose requires the field). |
+    | `hybridFlowerSprite` | Replaces `hybridFlowerIconUrl`. Can be sent independently without `growthStages`. |
+    | `hybridMatureSprite` | Replaces `hybridMatureIconUrl`. Can be sent independently without `growthStages`. |
 
-  - **Optional text fields**: Any subset of plant fields (all optional). `growthStages` as JSON string if replacing stages.
+  - **Optional text fields**: Any subset of plant fields (all optional). `growthStages` as JSON string if replacing stages. When updating stage data without uploading new sprites, each stage entry must include `stageIconUrl` (copy existing CDN URL) to pass Mongoose validation.
   - Response: Updated plant document
   - Note: Returns `404` if plant not found
 
@@ -548,7 +548,7 @@ Depending on `itemType`, specific extra fields must be included:
 |---|---|---|---|---|
 | `plantId` | string | ✅ | — | Unique game-side ID (e.g., `"plant_corn"`) |
 | `plantName` | string | ✅ | — | Display name |
-| `growthStages` | JSON string | ✅ | — | Stringified array of `{ stageNum, growthDurationMinutes }` objects (at least 1 entry). `stageIconUrl` set automatically from uploaded sprites. |
+| `growthStages` | JSON string | ✅ | — | Stringified array of `{ stageNum, growthDurationMinutes }` objects (at least 1 entry). On create, omit `stageIconUrl` — filled automatically from uploaded sprites. On update, include `stageIconUrl` in each entry if not uploading new sprites. |
 | `harvestedItemId` | string | ✅ | — | `itemID` of crop/item dropped on harvest (from ItemCatalog) |
 | `canProducePollen` | bool | — | `false` | Whether pollen can be collected |
 | `pollenStage` | int | — | `3` | Stage index at which pollen becomes collectible |
@@ -568,7 +568,7 @@ Depending on `itemType`, specific extra fields must be included:
 |---|---|---|
 | `stageNum` | int | Stage index (0-based) |
 | `growthDurationMinutes` | float | In-game minutes to grow through this stage (e.g., `60` = 1 in-game hour) |
-| `stageIconUrl` | string | **Auto-filled** by gateway — assigned from uploaded sprites by form order (1st file → stage 0, 2nd → stage 1, etc.). Do not send manually. |
+| `stageIconUrl` | string | **Auto-filled** by gateway from `stageSprites` uploads (assigned by form order: 1st file → stage 0, 2nd → stage 1, etc.). On **create**, do not include in the JSON (gateway injects it). On **update without sprites**, include the existing CDN URL in each stage object — Mongoose requires the field. |
 
 ---
 

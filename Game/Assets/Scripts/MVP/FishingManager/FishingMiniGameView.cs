@@ -178,16 +178,28 @@ public class FishingMiniGameView : MonoBehaviour
     }
 
     void FishLogic()
+
     {
+
         fishTimer -= Time.deltaTime;
+
         if (fishTimer < 0f)
+
         {
+
             fishTimer = UnityEngine.Random.value * timerMutilicator;
+
             fishDestination = UnityEngine.Random.value;
+
         }
+
         fishPosition = Mathf.SmoothDamp(fishPosition, fishDestination, ref fishSpeed, smoothMotion);
 
-        
+
+
+
+
         fish.localPosition = Vector3.Lerp(bottomPivot.localPosition, topPivot.localPosition, fishPosition);
+
     }
 }
