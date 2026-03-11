@@ -123,9 +123,8 @@ public class HotbarView : MonoBehaviour
         if (enableScrollWheel)
             InputManager.Instance.ScrollItem.performed += OnScrollPerformed;
 
-        // Use item (left click)
-        if (enableLeftClick)
-            InputManager.Instance.UseItem.performed += OnUseItemPerformed;
+        // Use item (left click) — always subscribe; enableLeftClick is checked at fire time.
+        InputManager.Instance.UseItem.performed += OnUseItemPerformed;
     }
 
     private void UnsubscribeInputEvents()
@@ -142,8 +141,8 @@ public class HotbarView : MonoBehaviour
         if (enableScrollWheel)
             InputManager.Instance.ScrollItem.performed -= OnScrollPerformed;
 
-        if (enableLeftClick)
-            InputManager.Instance.UseItem.performed -= OnUseItemPerformed;
+        // Always unsubscribe unconditionally to match the unconditional subscribe above.
+        InputManager.Instance.UseItem.performed -= OnUseItemPerformed;
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -169,6 +168,7 @@ public class HotbarView : MonoBehaviour
     private void OnUseItemPerformed(InputAction.CallbackContext ctx)
     {
         if (!isInitialized) return;
+        if (!enableLeftClick) return;   // suppressed by CropHarvestingView when targeting a crop
         OnUseItemInput?.Invoke();
     }
 

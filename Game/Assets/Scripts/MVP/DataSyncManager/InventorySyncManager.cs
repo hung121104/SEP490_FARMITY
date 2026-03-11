@@ -238,6 +238,11 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             MasterRegisterCharacter(charId, maxSlots);
+            // WorldDataBootstrapper already populated saved slot data into InventoryDataModule
+            // before this point (DoRegisterLocalPlayerInventory waits on IsReady).
+            // Fire OnInventoryChanged so InventoryGameView.HandleRemoteInventoryChanged()
+            // copies that authoritative data into the local InventoryModel and refreshes the UI.
+            OnInventoryChanged?.Invoke();
         }
         else
         {

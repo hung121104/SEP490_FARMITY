@@ -276,7 +276,7 @@ public class SkinCatalogManager : MonoBehaviour
                 sprites[index++] = Sprite.Create(
                     sheet,
                     rect,
-                    new Vector2(0.5f, 0f),          // Bottom-Center pivot
+                    new Vector2(0.5f, 0.065f),          // Bottom-Center pivot
                     pixelsPerUnit: 16,
                     extrude: 0,
                     meshType: SpriteMeshType.FullRect);
