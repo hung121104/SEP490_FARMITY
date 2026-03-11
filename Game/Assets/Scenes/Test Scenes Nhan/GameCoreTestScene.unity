@@ -25558,7 +25558,7 @@ MonoBehaviour:
   hookImage: {fileID: 217139702}
   progressBarContainer: {fileID: 872900493}
   timerMutilicator: 1.5
-  smoothMotion: 0.3
+  smoothMotion: 0.4
   hookSize: 0.2
   hookPower: 0.4
   hookPullPower: 16
@@ -30849,7 +30849,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -520, y: 338.33334}
+  m_AnchoredPosition: {x: -526, y: 454.33334}
   m_SizeDelta: {x: 610.9034, y: 369.1981}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2107652487
@@ -30881,7 +30881,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 2
+  m_PixelsPerUnitMultiplier: 3
 --- !u!222 &2107652488
 CanvasRenderer:
   m_ObjectHideFlags: 0
