@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// Unity-side static definition for a single structure type.
-/// Holds all data that CANNOT live in the JSON item catalog (Prefabs, Sprites, size).
+/// Holds all data that CANNOT live in the JSON item catalog (Prefabs, Sprites).
 /// Create one asset per structure variant via:
 ///   Create > Scriptable Objects > StructureDataSO
 /// </summary>
@@ -16,13 +16,6 @@ public class StructureDataSO : ScriptableObject
     [Header("Prefab")]
     [Tooltip("The prefab instantiated for this structure (managed by StructurePool)")]
     public GameObject Prefab;
-
-    [Header("Size (in grid tiles)")]
-    [Tooltip("Width of this structure in tiles")]
-    [Min(1)] public int Width = 1;
-
-    [Tooltip("Height of this structure in tiles")]
-    [Min(1)] public int Height = 1;
 
     [Header("Interaction")]
     [Tooltip("What happens when the player interacts with this structure")]

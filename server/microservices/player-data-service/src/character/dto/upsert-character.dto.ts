@@ -4,4 +4,10 @@ export class UpsertCharacterDto {
   positionX: number;
   positionY: number;
   sectionIndex?: number;
+
+  // Appearance config IDs (paper-doll layers) — optional on save
+  hairConfigId?: string;
+  outfitConfigId?: string;
+  hatConfigId?: string;
+  toolConfigId?: string;
 }

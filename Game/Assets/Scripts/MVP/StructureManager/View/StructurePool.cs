@@ -144,8 +144,6 @@ public class StructurePool : MonoBehaviour
         var so = ScriptableObject.CreateInstance<StructureDataSO>();
         so.StructureId     = structureId;
         so.Prefab          = null;  // null → EnsurePool will use CreateDynamicPool
-        so.Width           = 1;
-        so.Height          = 1;
         so.InteractionType = StructureInteractionType.None;
         so.MaxHealth       = 3;
         so.name            = $"DynamicSO_{structureId}";

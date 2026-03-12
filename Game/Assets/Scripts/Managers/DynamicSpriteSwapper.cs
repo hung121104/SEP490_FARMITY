@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -40,6 +41,18 @@ public class DynamicSpriteSwapper : MonoBehaviour
     private string _cachedConfigId;
     private Sprite[] _cachedSprites;
 
+    /// configIds that returned no sprites from the catalog — logged once each.
+    private readonly HashSet<string> _warnedMissing = new HashSet<string>();
+
+    /// The last frame index this swapper successfully applied.
+    /// Other layer swappers on the same character read this as a fallback
+    /// when they can't parse the master sprite name themselves.
+    public int CurrentFrameIndex { get; private set; } = -1;
+
+    // Reference to the DynamicSpriteSwapper on the masterRenderer's GameObject
+    // (i.e. the body layer), cached at Start to avoid per-frame GetComponent.
+    private DynamicSpriteSwapper _masterBodySwapper;
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -65,11 +78,34 @@ public class DynamicSpriteSwapper : MonoBehaviour
         _ownRenderer = GetComponent<SpriteRenderer>();
     }
 
+    private void Start()
+    {
+        // Cache the body layer swapper so sibling layers can read its frame index.
+        // Skip self-reference (body layer's masterRenderer == its own renderer).
+        if (masterRenderer != null)
+        {
+            var candidate = masterRenderer.GetComponent<DynamicSpriteSwapper>();
+            if (candidate != null && candidate != this)
+                _masterBodySwapper = candidate;
+        }
+    }
+
     private void LateUpdate()
     {
-        // Guard: both renderers and a valid config ID must be present
+        // Guard: both renderers must be present
         if (_ownRenderer == null || masterRenderer == null) return;
-        if (string.IsNullOrEmpty(configId)) return;
+
+        // Explicit clear when nothing is equipped (empty configId = intentional unequip)
+        if (string.IsNullOrEmpty(configId))
+        {
+            if (_ownRenderer.sprite != null)
+            {
+                _ownRenderer.sprite = null;
+                _lastAppliedIndex   = -1;
+            }
+            return;
+        }
+
         if (!SkinCatalogManager.Instance?.IsReady ?? true) return;
 
         // 1 — Parse frame index from master sprite name
@@ -78,26 +114,42 @@ public class DynamicSpriteSwapper : MonoBehaviour
 
         if (!TryParseFrameIndex(masterSprite.name, out int frameIndex))
         {
-            // Master sprite name doesn't contain a trailing integer — skip silently.
-            return;
+            // Sprite name has no trailing integer — fall back to the body layer's
+            // last known frame index (written by its own swapper in LateUpdate).
+            if (_masterBodySwapper != null && _masterBodySwapper.CurrentFrameIndex >= 0)
+                frameIndex = _masterBodySwapper.CurrentFrameIndex;
+            else
+                return; // body frame not known yet — wait
         }
 
-        // 2 — Avoid unnecessary work if nothing changed
-        if (frameIndex == _lastAppliedIndex && configId == _cachedConfigId) return;
+        // 2 — Avoid unnecessary work if nothing changed.
+        // EXCEPTION: when masterRenderer == ownRenderer (body layer), the Animator
+        // overwrites the sprite every Update, so we MUST re-apply the catalog sprite
+        // each LateUpdate regardless of whether the frame index is the same.
+        bool sameRenderer = ReferenceEquals(masterRenderer, _ownRenderer);
+        if (!sameRenderer && frameIndex == _lastAppliedIndex && configId == _cachedConfigId) return;
 
         // 3 — Refresh sprite array cache when configId changes
         if (configId != _cachedConfigId)
         {
-            _cachedSprites  = SkinCatalogManager.Instance.GetSprites(configId);
-            _cachedConfigId = configId;
-            _lastAppliedIndex = -1; // force re-apply with new sheet
-        }
+            _cachedSprites    = SkinCatalogManager.Instance.GetSprites(configId);
+            _lastAppliedIndex = -1;
 
-        if (_cachedSprites == null || _cachedSprites.Length == 0)
-        {
-            // Sheet hasn't loaded yet or configId is unknown — hide layer
-            _ownRenderer.sprite = null;
-            return;
+            if (_cachedSprites == null || _cachedSprites.Length == 0)
+            {
+                // configId is not in the server skin catalog.
+                // Do NOT null the renderer — the body layer stays visible via the Animator
+                // and overlay layers keep their last valid sprite.
+                // Do NOT commit _cachedConfigId so we retry when configId changes.
+                if (_warnedMissing.Add(configId))
+                    Debug.LogWarning(
+                        $"[DynamicSpriteSwapper] '{configId}' not found in skin catalog " +
+                        $"on '{gameObject.name}'. " +
+                        "Add a skin-config entry with a valid spritesheet URL in the Admin panel.");
+                return;
+            }
+
+            _cachedConfigId = configId; // commit only when real sprites exist
         }
 
         // 4 — Clamp so we never go out of bounds even if sheet sizes differ
@@ -112,6 +164,7 @@ public class DynamicSpriteSwapper : MonoBehaviour
 
         _ownRenderer.sprite   = _cachedSprites[clampedIndex];
         _lastAppliedIndex     = frameIndex;
+        CurrentFrameIndex     = frameIndex;
     }
 
     // ── Private Helpers ───────────────────────────────────────────────────────
@@ -175,6 +228,7 @@ public class DynamicSpriteSwapper : MonoBehaviour
         _cachedConfigId   = null;
         _cachedSprites    = null;
         _lastAppliedIndex = -1;
+        _warnedMissing.Clear();
     }
 
 #if UNITY_EDITOR

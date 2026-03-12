@@ -11,6 +11,7 @@ import { CraftingRecipeModule } from './game-data/crafting-recipe/crafting-recip
 import { GameConfigModule } from './game-config/game-config.module';
 import { AchievementModule } from './game-data/achievement/achievement.module';
 import { SkinConfigModule } from './game-data/skin-config/skin-config.module';
+import { MaterialModule } from './game-data/material/material.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SkinConfigModule } from './game-data/skin-config/skin-config.module';
     GameConfigModule,
     AchievementModule,
     SkinConfigModule,
+    MaterialModule,
   ],
 })
 export class AppModule {}

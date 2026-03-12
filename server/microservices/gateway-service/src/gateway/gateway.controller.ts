@@ -1210,33 +1210,78 @@ export class GatewayController {
 
   /**
    * POST /game-data/skin-configs — admin-only.
-   * Body: { configId, spritesheetUrl, cellSize?, displayName, layer? }
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — required.
+   * Text fields: configId, displayName, cellSize?, layer?
    */
   @Post('game-data/skin-configs')
-  async createSkinConfig(@Body() body: any) {
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async createSkinConfig(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'A spritesheet file is required (field name: "spritesheet")',
+      );
     try {
+      const spritesheetUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'skin-spritesheets',
+        body.configId || undefined,
+      );
+      const dto = {
+        configId: body.configId,
+        displayName: body.displayName,
+        spritesheetUrl,
+        cellSize: body.cellSize !== undefined ? Number(body.cellSize) : undefined,
+        layer: body.layer,
+      };
       return await firstValueFrom(
-        this.adminClient.send('create-skin-config', body),
+        this.adminClient.send('create-skin-config', dto),
       );
     } catch (err) {
+      if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
     }
   }
 
   /**
    * PUT /game-data/skin-configs/:configId — admin-only.
-   * Body: { spritesheetUrl?, cellSize?, displayName?, layer? }
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — optional; omit to keep existing URL.
+   * Text fields: displayName?, cellSize?, layer?
    */
   @Put('game-data/skin-configs/:configId')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
   async updateSkinConfig(
     @Param('configId') configId: string,
+    @UploadedFile() file: Express.Multer.File,
     @Body() body: any,
   ) {
     try {
+      const patch: Record<string, any> = {};
+      if (body.displayName !== undefined) patch.displayName = body.displayName;
+      if (body.cellSize !== undefined) patch.cellSize = Number(body.cellSize);
+      if (body.layer !== undefined) patch.layer = body.layer;
+
+      if (file) {
+        patch.spritesheetUrl = await this.cloudinaryService.uploadFile(
+          file,
+          'skin-spritesheets',
+          configId,
+        );
+      }
+
       return await firstValueFrom(
-        this.adminClient.send('update-skin-config', { configId, ...body }),
+        this.adminClient.send('update-skin-config', { configId, ...patch }),
       );
     } catch (err) {
+      if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
     }
   }
@@ -1249,6 +1294,147 @@ export class GatewayController {
     try {
       return await firstValueFrom(
         this.adminClient.send('delete-skin-config', { configId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Material Catalog ──────────────────────────────────────────────────────────
+
+  /**
+   * GET /game-data/materials/catalog — public.
+   * Unity MaterialCatalogService calls this on startup.
+   * Returns { materials: MaterialEntry[] } sorted by materialTier.
+   */
+  @Get('game-data/materials/catalog')
+  async getMaterialCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-material-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * GET /game-data/materials — public, flat array.
+   */
+  @Get('game-data/materials')
+  async getAllMaterials() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-materials', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * GET /game-data/materials/:materialId — public.
+   */
+  @Get('game-data/materials/:materialId')
+  async getMaterialById(@Param('materialId') materialId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-material-by-id', { materialId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * POST /game-data/materials — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — required.
+   * Text fields: materialId, materialName, materialTier?, cellSize?, description?
+   * The spritesheet is uploaded to Cloudinary folder 'material-spritesheets'.
+   */
+  @Post('game-data/materials')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async createMaterial(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'A spritesheet file is required (field name: "spritesheet")',
+      );
+    try {
+      const spritesheetUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'material-spritesheets',
+        body.materialId || undefined,
+      );
+      const dto = {
+        materialId:    body.materialId,
+        materialName:  body.materialName,
+        spritesheetUrl,
+        materialTier:  body.materialTier  !== undefined ? Number(body.materialTier)  : undefined,
+        cellSize:      body.cellSize      !== undefined ? Number(body.cellSize)      : undefined,
+        description:   body.description,
+      };
+      return await firstValueFrom(
+        this.adminClient.send('create-material', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * PUT /game-data/materials/:materialId — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — optional.
+   * Text fields: materialName?, materialTier?, cellSize?, description?
+   */
+  @Put('game-data/materials/:materialId')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async updateMaterial(
+    @Param('materialId') materialId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const patch: Record<string, any> = { materialId };
+      if (body.materialName  !== undefined) patch.materialName  = body.materialName;
+      if (body.materialTier  !== undefined) patch.materialTier  = Number(body.materialTier);
+      if (body.cellSize      !== undefined) patch.cellSize      = Number(body.cellSize);
+      if (body.description   !== undefined) patch.description   = body.description;
+
+      if (file) {
+        patch.spritesheetUrl = await this.cloudinaryService.uploadFile(
+          file,
+          'material-spritesheets',
+          materialId,
+        );
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('update-material', patch),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * DELETE /game-data/materials/:materialId — admin-only.
+   */
+  @Delete('game-data/materials/:materialId')
+  async deleteMaterial(@Param('materialId') materialId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-material', { materialId }),
       );
     } catch (err) {
       throw this.rpcError(err);

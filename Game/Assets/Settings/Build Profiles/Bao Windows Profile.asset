@@ -23,8 +23,6 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Bao/AuthMenu/AuthScene.unity
   - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/LoadingScene.unity
-  - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Bao/LoadGameScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Bao/LobbyScene.unity

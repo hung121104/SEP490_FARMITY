@@ -78,6 +78,9 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/skin-configs', method: RequestMethod.POST },
         { path: 'game-data/skin-configs/:configId', method: RequestMethod.PUT },
         { path: 'game-data/skin-configs/:configId', method: RequestMethod.DELETE },
+        { path: 'game-data/materials', method: RequestMethod.POST },
+        { path: 'game-data/materials/:materialId', method: RequestMethod.PUT },
+        { path: 'game-data/materials/:materialId', method: RequestMethod.DELETE },
       );
 
     // enforce admin only on admin routes
@@ -109,6 +112,9 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/skin-configs', method: RequestMethod.POST },
         { path: 'game-data/skin-configs/:configId', method: RequestMethod.PUT },
         { path: 'game-data/skin-configs/:configId', method: RequestMethod.DELETE },
+        { path: 'game-data/materials', method: RequestMethod.POST },
+        { path: 'game-data/materials/:materialId', method: RequestMethod.PUT },
+        { path: 'game-data/materials/:materialId', method: RequestMethod.DELETE },
       );
   }
 }
