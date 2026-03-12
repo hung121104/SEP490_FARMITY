@@ -31,12 +31,16 @@ public class PlayerDataManager : MonoBehaviour
 		{
 			players.Add(new PlayerData
 			{
-				_id          = c._id,
-				worldId      = c.worldId,
-				accountId    = c.accountId,
-				positionX    = c.positionX,
-				positionY    = c.positionY,
-				sectionIndex = c.sectionIndex
+				_id            = c._id,
+				worldId        = c.worldId,
+				accountId      = c.accountId,
+				positionX      = c.positionX,
+				positionY      = c.positionY,
+				sectionIndex   = c.sectionIndex,
+				hairConfigId   = c.hairConfigId,
+				outfitConfigId = c.outfitConfigId,
+				hatConfigId    = c.hatConfigId,
+				toolConfigId   = c.toolConfigId,
 			});
 		}
 		Debug.Log($"[PlayerDataManager] Populated {players.Count} characters.");

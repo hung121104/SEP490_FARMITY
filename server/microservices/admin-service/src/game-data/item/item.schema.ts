@@ -55,6 +55,11 @@ export class Item {
   @Prop({ default: false })
   isRareItem: boolean;
 
+  /** SkinCatalogManager configId for the item's paper-doll spritesheet
+   *  (e.g. "gold_hoe", "copper_watering_can"). Empty/null = no sprite layer. */
+  @Prop({ default: '' })
+  skinConfigId: string;
+
   @Prop({ type: [String], default: [] })
   npcPreferenceNames: string[];
 
@@ -78,8 +83,9 @@ export class Item {
   @Prop()
   toolPower?: number;
 
+  /** References a Material document by materialId (e.g. 'mat_copper'). */
   @Prop()
-  toolMaterial?: number;
+  toolMaterialId?: string;
 
   // ── itemType: 3 – Pollen ───────────────────────────────────────────────────
 
@@ -126,8 +132,9 @@ export class Item {
   @Prop()
   attackSpeed?: number;
 
+  /** References a Material document by materialId (e.g. 'mat_steel'). */
   @Prop()
-  weaponMaterial?: number;
+  weaponMaterialId?: string;
 
   // ── itemType: 7 – Fish ─────────────────────────────────────────────────────
 

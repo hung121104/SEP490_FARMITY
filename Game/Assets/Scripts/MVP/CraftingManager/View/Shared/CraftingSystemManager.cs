@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class CraftingSystemManager : MonoBehaviour
@@ -24,8 +25,6 @@ public class CraftingSystemManager : MonoBehaviour
     private CraftingPresenter craftingInInventoryPresenter; //For crafting inventory tab
     private CookingPresenter cookingPresenter;
 
-    private bool isCraftingInInventoryActive = true;
-
     private void Awake()
     {
         SetupUIStructure();
@@ -33,7 +32,7 @@ public class CraftingSystemManager : MonoBehaviour
 
     private void Start()
     {
-       InitializeSystem();
+        InitializeSystem();
     }
 
     private void SetupUIStructure()
@@ -300,6 +299,12 @@ public class CraftingSystemManager : MonoBehaviour
     {
         craftingService?.UnlockRecipe(recipeID);
     }
+
+    /// <summary>Returns true if the standalone Crafting UI is currently open.</summary>
+    public bool IsCraftingUIOpen() => craftingPresenter != null && craftingPresenter.IsUIOpen();
+
+    /// <summary>Returns true if the Cooking UI is currently open.</summary>
+    public bool IsCookingUIOpen() => cookingPresenter != null && cookingPresenter.IsUIOpen();
 
     /// <summary>
     /// Get crafting service for external use
