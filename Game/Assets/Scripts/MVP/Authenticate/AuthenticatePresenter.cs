@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Threading.Tasks;
 using UnityEngine.SceneManagement;  // Add this for scene loading
 using Photon.Pun;  // Add this for Photon integration
+using AchievementManager.Presenter;
 
 public class AuthenticatePresenter
 {
@@ -34,6 +35,9 @@ public class AuthenticatePresenter
             Debug.Log("Login successful, loading next scene");
             // Load the scene containing ConnectToServer (replace "ConnectScene" with your actual scene name)
             SceneManager.LoadScene("MainMenuScene");
+
+            // After SessionManager.Instance.SetAuthenticationData(...):
+            AchievementPresenter.Instance?.OnLoginSuccess();
         }
         else
         {
