@@ -51,9 +51,19 @@ public class NPCInteractor : MonoBehaviour
         Quest,
         SimpleDialogue
     }
-    private void Awake()
+    private void Start()
     {
-        inventoryGameView.GetInventoryService().OnInventoryChanged += UpdateQuestObjectives;
+        
+        var inventoryService = inventoryGameView.GetInventoryService();
+
+        if (inventoryService != null)
+        {
+            inventoryService.OnInventoryChanged += UpdateQuestObjectives;
+        }
+        else
+        {
+            Debug.LogError($"[NPCInteractor] InventoryService trên {inventoryGameView.name} bị null! Hãy kiểm tra lại InventoryManager.");
+        }
         // Dialogue Service
         INPCDialogueService service = new NPCDialogueService(dialogueModel);
 
