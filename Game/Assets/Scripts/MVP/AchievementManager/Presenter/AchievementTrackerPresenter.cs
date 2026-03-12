@@ -62,11 +62,10 @@ namespace AchievementManager.Presenter
             GameEventBus.OnItemTraded     += (id, count) => HandleEvent("TRADE", id, count);
             GameEventBus.OnAreaDiscovered += (id, count) => HandleEvent("DISCOVER", id, count);
             GameEventBus.OnQuestCompleted += (id, count) => HandleEvent("QUEST_COMPLETE", id, count);
-            // ✅ Fix: OnLevelReached is Action<int,int> → (level, count)
             GameEventBus.OnLevelReached   += (level, count) => HandleLevelEvent(level);
         }
 
-        private void OnDestroy()
+        private void UnsubscribeFromEvents()
         {
             GameEventBus.OnCropHarvested  -= (id, count) => HandleEvent("HARVEST", id, count);
             GameEventBus.OnEnemyKilled    -= (id, count) => HandleEvent("KILL", id, count);
@@ -79,6 +78,78 @@ namespace AchievementManager.Presenter
             GameEventBus.OnAreaDiscovered -= (id, count) => HandleEvent("DISCOVER", id, count);
             GameEventBus.OnQuestCompleted -= (id, count) => HandleEvent("QUEST_COMPLETE", id, count);
             GameEventBus.OnLevelReached   -= (level, count) => HandleLevelEvent(level);
+        }
+
+        #endregion
+
+        #region Unity Lifecycle
+
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused && pendingAchievementIds.Count > 0)
+            {
+                Debug.Log("[AchievementTrackerPresenter] App paused → force flush!");
+                ForceFlush();
+            }
+        }
+
+        private void OnApplicationQuit()
+        {
+            if (pendingAchievementIds.Count > 0)
+            {
+                Debug.Log("[AchievementTrackerPresenter] App quit → force flush!");
+                ForceFlush();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (pendingAchievementIds.Count > 0)
+            {
+                Debug.Log("[AchievementTrackerPresenter] Destroyed → force flush!");
+                ForceFlush();
+            }
+
+            UnsubscribeFromEvents();
+        }
+
+        #endregion
+
+        #region Force Flush
+
+        /// <summary>
+        /// Immediately send all pending progress WITHOUT waiting for debounce.
+        /// Called on app pause, quit, or scene destroy.
+        /// </summary>
+        public void ForceFlush()
+        {
+            if (pendingAchievementIds.Count == 0) return;
+
+            if (debounceCoroutine != null)
+            {
+                StopCoroutine(debounceCoroutine);
+                debounceCoroutine = null;
+            }
+
+            HashSet<string> toFlush = new HashSet<string>(pendingAchievementIds);
+            pendingAchievementIds.Clear();
+
+            presenter?.StartCoroutine(ForceFlushCoroutine(toFlush));
+        }
+
+        private IEnumerator ForceFlushCoroutine(HashSet<string> toFlush)
+        {
+            Debug.Log($"[AchievementTrackerPresenter] Force flushing {toFlush.Count} achievements...");
+
+            foreach (string achievementId in toFlush)
+            {
+                AchievementData achievement = model.GetAchievement(achievementId);
+                if (achievement == null || achievement.isAchieved) continue;
+
+                yield return SendProgressToServer(achievement);
+            }
+
+            Debug.Log("[AchievementTrackerPresenter] Force flush complete ✅");
         }
 
         #endregion
@@ -132,10 +203,8 @@ namespace AchievementManager.Presenter
                 {
                     AchievementRequirement req = achievement.requirements[i];
 
-                    // ✅ Fix: use req.type (not req.eventType)
                     if (!IsEventMatchingRequirement(req, eventType, entityId)) continue;
 
-                    // ✅ Fix: progress lives in achievement.progress[i], not req.currentProgress
                     int localProgress  = GetLocalProgress(req);
                     int serverProgress = achievement.progress != null && i < achievement.progress.Count
                         ? achievement.progress[i]
@@ -200,14 +269,12 @@ namespace AchievementManager.Presenter
 
                 if (localProgress <= serverProgress) continue;
 
-                // ✅ Fix: use correct UpdateProgressRequest constructor (achievementId, requirementIndex, progress)
                 UpdateProgressRequest request = new UpdateProgressRequest(
                     achievement.achievementId,
                     i,
                     localProgress
                 );
 
-                // ✅ Fix: IAchievementService.UpdateProgress takes (request, onSuccess, onError) positionally
                 yield return service.UpdateProgress(
                     request,
                     (updated) => OnProgressSuccess(updated, isAchievedBefore),
@@ -243,7 +310,6 @@ namespace AchievementManager.Presenter
                 {
                     AchievementRequirement req = achievement.requirements[i];
 
-                    // ✅ Fix: use req.type (not req.eventType), progress from achievement.progress[i]
                     int serverProgress = achievement.progress != null && i < achievement.progress.Count
                         ? achievement.progress[i]
                         : 0;
@@ -273,7 +339,6 @@ namespace AchievementManager.Presenter
             string eventType,
             string entityId)
         {
-            // ✅ Fix: use req.type (not req.eventType)
             if (req.type != eventType) return false;
             if (!string.IsNullOrEmpty(req.entityId) && req.entityId != entityId) return false;
             return true;
@@ -281,7 +346,6 @@ namespace AchievementManager.Presenter
 
         private int GetLocalProgress(AchievementRequirement req)
         {
-            // ✅ Fix: use req.type (not req.eventType)
             return string.IsNullOrEmpty(req.entityId)
                 ? model.GetCounter(req.type)
                 : model.GetCounter($"{req.type}_{req.entityId}");
