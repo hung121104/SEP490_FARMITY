@@ -2815,7 +2815,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31a19414c41e5ae4aae2af33fee712f6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ShowMaskGraphic: 0
+  m_ShowMaskGraphic: 1
 --- !u!114 &166800233
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4035,7 +4035,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   panelRoot: {fileID: 49670879}
   inProgressContainer: {fileID: 1233939063}
-  achievedContainer: {fileID: 0}
   achievementItemPrefab: {fileID: 8921796703043059680, guid: 04564cbf6c68adb4287cfe6e795b70e0, type: 3}
   closeButton: {fileID: 762493590}
   refreshButton: {fileID: 1894291511}
@@ -5779,6 +5778,7 @@ MonoBehaviour:
   craftingInventoryAdapter: {fileID: 1786776223}
   cookingInventoryAdapter: {fileID: 1348603935}
   craftingInInventoryAdapter: {fileID: 435592459}
+  pickupKey: 102
 --- !u!1 &314174206
 GameObject:
   m_ObjectHideFlags: 0
@@ -16968,7 +16968,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 1085, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &990199668
 MonoBehaviour:
@@ -16990,9 +16990,9 @@ MonoBehaviour:
   m_ChildAlignment: 7
   m_Spacing: 200
   m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
+  m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
+  m_ChildControlHeight: 1
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
@@ -21856,6 +21856,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1233939063}
   - component: {fileID: 1233939064}
+  - component: {fileID: 1233939065}
   m_Layer: 5
   m_Name: InProgressContainer
   m_TagString: Untagged
@@ -21877,9 +21878,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 990199667}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 542.5, y: 0}
   m_SizeDelta: {x: 1084, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1233939064
@@ -21902,12 +21903,26 @@ MonoBehaviour:
   m_ChildAlignment: 7
   m_Spacing: 200
   m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
+  m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
+  m_ChildControlHeight: 1
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!114 &1233939065
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1233939062}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3245ec927659c4140ac4f8d17403cc18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_HorizontalFit: 0
+  m_VerticalFit: 2
 --- !u!1 &1240703305
 GameObject:
   m_ObjectHideFlags: 0
@@ -25407,10 +25422,10 @@ RectTransform:
   m_Father: {fileID: 166800231}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.00027471813}
-  m_SizeDelta: {x: 0, y: 0}
-  m_Pivot: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 542.5, y: -0.00024414062}
+  m_SizeDelta: {x: 1085, y: 0}
+  m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1529200510
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25442,12 +25457,12 @@ MonoBehaviour:
     m_Right: 0
     m_Top: 0
     m_Bottom: 0
-  m_ChildAlignment: 7
+  m_ChildAlignment: 1
   m_Spacing: 200
   m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
+  m_ChildForceExpandHeight: 0
+  m_ChildControlWidth: 1
+  m_ChildControlHeight: 1
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
