@@ -274,12 +274,25 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             string accountId = rawId as string;
             if (string.IsNullOrEmpty(accountId)) continue;
 
-            characters.Add(new WorldApi.UpdateWorldRequest.CharacterUpdate
+            var charUpdate = new WorldApi.UpdateWorldRequest.CharacterUpdate
             {
                 accountId = accountId,
                 positionX = go.transform.position.x,
                 positionY = go.transform.position.y,
-            });
+            };
+
+            // Include appearance configIds if PlayerAppearanceSync is present
+            var appearance = go.GetComponent<PlayerAppearanceSync>();
+            if (appearance != null)
+            {
+                var (hair, outfit, hat, tool) = appearance.GetCurrentAppearance();
+                charUpdate.hairConfigId   = string.IsNullOrEmpty(hair)   ? null : hair;
+                charUpdate.outfitConfigId = string.IsNullOrEmpty(outfit) ? null : outfit;
+                charUpdate.hatConfigId    = string.IsNullOrEmpty(hat)    ? null : hat;
+                charUpdate.toolConfigId   = string.IsNullOrEmpty(tool)   ? null : tool;
+            }
+
+            characters.Add(charUpdate);
         }
         if (characters.Count > 0) request.characters = characters;
 

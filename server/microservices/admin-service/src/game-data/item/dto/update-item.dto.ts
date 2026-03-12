@@ -106,8 +106,8 @@ export class UpdateItemDto {
   toolPower?: number;
 
   @IsOptional()
-  @IsInt()
-  toolMaterial?: number;
+  @IsString()
+  toolMaterialId?: string;
 
   // ── Pollen (itemType: 3) ───────────────────────────────────────────────────
 
@@ -158,8 +158,8 @@ export class UpdateItemDto {
   attackSpeed?: number;
 
   @IsOptional()
-  @IsInt()
-  weaponMaterial?: number;
+  @IsString()
+  weaponMaterialId?: string;
 
   // ── Fish (itemType: 7) ─────────────────────────────────────────────────────
 

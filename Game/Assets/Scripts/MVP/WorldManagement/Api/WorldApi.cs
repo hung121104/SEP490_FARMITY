@@ -104,6 +104,11 @@ public static class WorldApi
             [JsonProperty("positionX")]  public float  positionX;
             [JsonProperty("positionY")]  public float  positionY;
             [JsonProperty("sectionIndex", NullValueHandling = NullValueHandling.Ignore)] public int? sectionIndex;
+
+            [JsonProperty("hairConfigId",   NullValueHandling = NullValueHandling.Ignore)] public string hairConfigId;
+            [JsonProperty("outfitConfigId", NullValueHandling = NullValueHandling.Ignore)] public string outfitConfigId;
+            [JsonProperty("hatConfigId",    NullValueHandling = NullValueHandling.Ignore)] public string hatConfigId;
+            [JsonProperty("toolConfigId",   NullValueHandling = NullValueHandling.Ignore)] public string toolConfigId;
         }
     }
 

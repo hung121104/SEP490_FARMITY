@@ -100,6 +100,10 @@ export class CharacterService implements OnModuleInit {
     if (dto.sectionIndex !== undefined) {
       update.sectionIndex = dto.sectionIndex;
     }
+    if (dto.hairConfigId   !== undefined) update.hairConfigId   = dto.hairConfigId;
+    if (dto.outfitConfigId !== undefined) update.outfitConfigId = dto.outfitConfigId;
+    if (dto.hatConfigId    !== undefined) update.hatConfigId    = dto.hatConfigId;
+    if (dto.toolConfigId   !== undefined) update.toolConfigId   = dto.toolConfigId;
 
     const result = await this.characterModel.findOneAndUpdate(
       { worldId: worldOid, accountId: accountOid },

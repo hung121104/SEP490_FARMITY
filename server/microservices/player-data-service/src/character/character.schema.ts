@@ -46,6 +46,20 @@ export class Character {
    */
   @Prop({ type: Map, of: InventorySlotDataSchema, default: () => new Map() })
   inventory: Map<string, InventorySlotData>;
+
+  // ── Appearance config IDs (paper-doll layers) ──
+
+  @Prop({ default: '' })
+  hairConfigId: string;
+
+  @Prop({ default: '' })
+  outfitConfigId: string;
+
+  @Prop({ default: '' })
+  hatConfigId: string;
+
+  @Prop({ default: '' })
+  toolConfigId: string;
 }
 
 export const CharacterSchema = SchemaFactory.createForClass(Character);
