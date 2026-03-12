@@ -91,6 +91,17 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
 
         targetView.RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
         Debug.Log($"[LoadPlayerData] Applied position for joining player '{playerId}': {loadedPos}");
+
+        // Restore saved appearance via Custom Properties so all clients see it
+        var appearance = targetView.GetComponent<PlayerAppearanceSync>();
+        if (appearance != null)
+        {
+            targetView.RPC("RPC_RestoreAppearance", targetView.Owner,
+                data.hairConfigId   ?? "",
+                data.outfitConfigId ?? "",
+                data.hatConfigId    ?? "",
+                data.toolConfigId   ?? "");
+        }
     }
 
     private IEnumerator WaitAndApplyAllPositions()
@@ -131,6 +142,17 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
 
             view.RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
             Debug.Log($"[LoadPlayerData] Synced position for {userId}: {loadedPos}");
+
+            // Restore saved appearance for this player
+            var appearanceSync = player.GetComponent<PlayerAppearanceSync>();
+            if (appearanceSync != null)
+            {
+                view.RPC("RPC_RestoreAppearance", view.Owner,
+                    data.hairConfigId   ?? "",
+                    data.outfitConfigId ?? "",
+                    data.hatConfigId    ?? "",
+                    data.toolConfigId   ?? "");
+            }
         }
     }
 
@@ -211,6 +233,17 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
             Vector3 loadedPos = new Vector3(myEntry.positionX, myEntry.positionY, localPlayer.transform.position.z);
             localPlayer.GetComponent<PhotonView>().RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
             Debug.Log($"[LoadPlayerData] Self-loaded position for '{accountId}': {loadedPos}");
+
+            // Restore saved appearance — broadcast via Custom Properties
+            var appearance = localPlayer.GetComponent<PlayerAppearanceSync>();
+            if (appearance != null)
+            {
+                appearance.SetAll(
+                    myEntry.hairConfigId   ?? "",
+                    myEntry.outfitConfigId ?? "",
+                    myEntry.hatConfigId    ?? "",
+                    myEntry.toolConfigId   ?? "");
+            }
         }
     }
 

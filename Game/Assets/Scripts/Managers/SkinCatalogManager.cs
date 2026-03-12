@@ -273,13 +273,18 @@ public class SkinCatalogManager : MonoBehaviour
                     cellSize,
                     cellSize);
 
-                sprites[index++] = Sprite.Create(
+                var sprite = Sprite.Create(
                     sheet,
                     rect,
                     new Vector2(0.5f, 0.065f),          // Bottom-Center pivot
                     pixelsPerUnit: 16,
                     extrude: 0,
                     meshType: SpriteMeshType.FullRect);
+
+                // Name with trailing index so TryParseFrameIndex always works,
+                // even when another layer has already replaced the body sprite.
+                sprite.name = $"{configId}_{index}";
+                sprites[index++] = sprite;
             }
         }
 

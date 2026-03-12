@@ -38,13 +38,39 @@ public class ItemUsageController : MonoBehaviour
         itemUsagePresenter = new ItemUsagePresenter(new ItemUsageService(new UseToolService()));
 
         presenter.OnItemUsed += HandleItemUsed;
+        presenter.OnSelectedItemChanged += HandleSelectedItemChanged;
         isSubscribed = true;
         Debug.Log("ItemUsageController: Subscribed to Hotbar");
+    }
+
+    private void HandleSelectedItemChanged(ItemData item)
+    {
+        if (item is ToolData tool)
+        {
+            string configId = GetToolMaterialConfigId(tool.toolMaterial);
+            if (!string.IsNullOrEmpty(configId))
+            {
+                var localPlayer = FindLocalPlayer();
+                if (localPlayer == null) return;
+                var sync = localPlayer.GetComponent<PlayerAppearanceSync>();
+                if (sync != null) sync.SetTool(configId);
+                return;
+            }
+        }
+
+        // No tool selected — clear the tool layer
+        var lp = FindLocalPlayer();
+        if (lp == null) return;
+        var s = lp.GetComponent<PlayerAppearanceSync>();
+        if (s != null) s.SetTool("");
     }
 
     private void HandleItemUsed(ItemData item, Vector3 targetPosition, int inventorySlotIndex)
     {
         Debug.Log("ItemUsageController: Using " + item.itemName + " at " + targetPosition);
+
+        // Update tool layer sprite before the action plays
+        SyncToolAppearance(item);
 
         switch (item.itemType)
         {
@@ -100,6 +126,66 @@ public class ItemUsageController : MonoBehaviour
     private void OnDestroy()
     {
         if (presenter != null && isSubscribed)
+        {
             presenter.OnItemUsed -= HandleItemUsed;
+            presenter.OnSelectedItemChanged -= HandleSelectedItemChanged;
+        }
+    }
+
+    /// <summary>
+    /// Updates the tool paper-doll layer to match the item being used.
+    /// Derives the configId from the tool's material (e.g. ToolMaterial.Gold → "gold_tool")
+    /// so one spritesheet per material covers all tool types.
+    /// </summary>
+    private void SyncToolAppearance(ItemData item)
+    {
+        if (item is not ToolData tool) return;
+
+        string configId = GetToolMaterialConfigId(tool.toolMaterial);
+        if (string.IsNullOrEmpty(configId)) return;
+
+        var localPlayer = FindLocalPlayer();
+        if (localPlayer == null) return;
+
+        var sync = localPlayer.GetComponent<PlayerAppearanceSync>();
+        if (sync != null)
+            sync.SetTool(configId);
+    }
+
+    /// <summary>
+    /// Maps ToolMaterial enum → SkinCatalog configId.
+    /// Each material has ONE spritesheet that covers all tool animations.
+    /// </summary>
+    private static string GetToolMaterialConfigId(ToolMaterial material)
+    {
+        return material switch
+        {
+            ToolMaterial.Basic   => "basic_tool",
+            ToolMaterial.Copper  => "copper_tool",
+            ToolMaterial.Steel   => "steel_tool",
+            ToolMaterial.Gold    => "gold_tool",
+            ToolMaterial.Diamond => "diamond_tool",
+            _                   => null,
+        };
+    }
+
+    private static GameObject _cachedLocalPlayer;
+
+    private static GameObject FindLocalPlayer()
+    {
+        // Validate cache — destroyed objects pass != null in some editor contexts
+        if (_cachedLocalPlayer != null && _cachedLocalPlayer) return _cachedLocalPlayer;
+        _cachedLocalPlayer = null;
+
+        foreach (var go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            var pv = go.GetComponent<Photon.Pun.PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                _cachedLocalPlayer = go;
+                return go;
+            }
+        }
+        return null;
     }
 }

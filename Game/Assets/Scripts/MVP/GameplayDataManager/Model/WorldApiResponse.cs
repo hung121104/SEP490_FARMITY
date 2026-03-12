@@ -38,6 +38,12 @@ public class WorldApiResponse
         public float positionY;
         public int sectionIndex;
 
+        // Appearance config IDs (paper-doll layers)
+        public string hairConfigId;
+        public string outfitConfigId;
+        public string hatConfigId;
+        public string toolConfigId;
+
         /// <summary>
         /// Saved inventory slots — key = slot index as string ("0"–"35").
         /// Null/empty if no inventory was saved.

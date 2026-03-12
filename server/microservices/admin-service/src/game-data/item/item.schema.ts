@@ -55,6 +55,11 @@ export class Item {
   @Prop({ default: false })
   isRareItem: boolean;
 
+  /** SkinCatalogManager configId for the item's paper-doll spritesheet
+   *  (e.g. "gold_hoe", "copper_watering_can"). Empty/null = no sprite layer. */
+  @Prop({ default: '' })
+  skinConfigId: string;
+
   @Prop({ type: [String], default: [] })
   npcPreferenceNames: string[];
 
