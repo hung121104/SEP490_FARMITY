@@ -1,32 +1,27 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using TMPro;
 
 /// <summary>
 /// Attached to the CookingTable prefab.
-/// Listens for the Interact action (E key via InputManager) while the player
-/// is inside the trigger collider, then toggles the Cooking UI.
+/// Uses mouse click to toggle the Cooking UI when the player
+/// is inside the trigger collider and hovering over the table.
 /// Auto-closes when the player genuinely leaves the trigger zone.
 /// </summary>
 public class CookingTableStructure : MonoBehaviour, IInteractable
 {
-
     [Header("Debug")]
     [SerializeField] private bool showDebugLogs = false;
 
     private CraftingSystemManager craftingSystemManager;
     private Collider2D _triggerCollider;
 
-
-
     // Overlap counter instead of a plain bool.
     // Handles Unity physics wakeup events that may fire Enter/Exit repeatedly.
     private int _overlapCount = 0;
     private bool PlayerInRange => _overlapCount > 0;
 
-    // Guard against double-subscribing.
-    private bool _inputSubscribed = false;
+    // Track mouse hover state
+    private bool _isMouseHovering = false;
 
     private void Awake()
     {
@@ -36,14 +31,10 @@ public class CookingTableStructure : MonoBehaviour, IInteractable
     private void Start()
     {
         craftingSystemManager = FindFirstObjectByType<CraftingSystemManager>();
-        SubscribeInput();
-
-
     }
 
     private void OnEnable()
     {
-        SubscribeInput();
         StartCoroutine(VisibilityCheckRoutine());
     }
 
@@ -57,26 +48,8 @@ public class CookingTableStructure : MonoBehaviour, IInteractable
 
     private void OnDisable()
     {
-        UnsubscribeInput();
         _overlapCount = 0;
-    }
-
-    private void OnDestroy() => UnsubscribeInput();
-
-    private void SubscribeInput()
-    {
-        if (_inputSubscribed) return;
-        if (InputManager.Instance == null) return;
-        InputManager.Instance.Interact.performed += OnInteract;
-        _inputSubscribed = true;
-    }
-
-    private void UnsubscribeInput()
-    {
-        if (!_inputSubscribed) return;
-        if (InputManager.Instance != null)
-            InputManager.Instance.Interact.performed -= OnInteract;
-        _inputSubscribed = false;
+        _isMouseHovering = false;
     }
 
     // ── Trigger zone ────────────────────────────────────────────────────
@@ -149,11 +122,21 @@ public class CookingTableStructure : MonoBehaviour, IInteractable
         }
     }
 
-    // ── Input callback ──────────────────────────────────────────────────
+    // ── Mouse Click / Hover callback ────────────────────────────────────
 
-    private void OnInteract(InputAction.CallbackContext ctx)
+    private void OnMouseEnter()
     {
-        if (!PlayerInRange) return;
+        _isMouseHovering = true;
+    }
+
+    private void OnMouseExit()
+    {
+        _isMouseHovering = false;
+    }
+
+    private void OnMouseDown()
+    {
+        if (!PlayerInRange || !_isMouseHovering) return;
         if (craftingSystemManager == null) return;
 
         // Toggle: close if already open, open if closed.
