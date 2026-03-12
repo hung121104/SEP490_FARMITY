@@ -31,52 +31,46 @@ public class StructureService : IStructureService
         int anchorX = Mathf.FloorToInt(worldPosition.x);
         int anchorY = Mathf.FloorToInt(worldPosition.y);
 
-        for (int dx = 0; dx < data.Width; dx++)
+        Vector3 tileWorld = new Vector3(anchorX, anchorY, 0f);
+
+        // 1. Must be inside an active section
+        if (!IsPositionInActiveSection(tileWorld))
         {
-            for (int dy = 0; dy < data.Height; dy++)
-            {
-                Vector3 tileWorld = new Vector3(anchorX + dx, anchorY + dy, 0f);
+            if (showDebugLogs)
+                Debug.LogWarning($"[StructureService] Tile ({anchorX},{anchorY}) not in active section.");
+            return false;
+        }
 
-                // 1. Must be inside an active section
-                if (!IsPositionInActiveSection(tileWorld))
-                {
-                    if (showDebugLogs)
-                        Debug.LogWarning($"[StructureService] Tile ({anchorX + dx},{anchorY + dy}) not in active section.");
-                    return false;
-                }
+        // 2. Must be on buildable ground (TillableTilemap check)
+        if (!IsBuildableGround(tileWorld))
+        {
+            if (showDebugLogs)
+                Debug.LogWarning($"[StructureService] Tile ({anchorX},{anchorY}) is not buildable ground.");
+            return false;
+        }
 
-                // 2. Must be on buildable ground (TillableTilemap check)
-                if (!IsBuildableGround(tileWorld))
-                {
-                    if (showDebugLogs)
-                        Debug.LogWarning($"[StructureService] Tile ({anchorX + dx},{anchorY + dy}) is not buildable ground.");
-                    return false;
-                }
+        // 3. Must not overlap an existing crop
+        if (WorldDataManager.Instance.HasCropAtWorldPosition(tileWorld))
+        {
+            if (showDebugLogs)
+                Debug.LogWarning($"[StructureService] Tile ({anchorX},{anchorY}) has a crop.");
+            return false;
+        }
 
-                // 3. Must not overlap an existing crop
-                if (WorldDataManager.Instance.HasCropAtWorldPosition(tileWorld))
-                {
-                    if (showDebugLogs)
-                        Debug.LogWarning($"[StructureService] Tile ({anchorX + dx},{anchorY + dy}) has a crop.");
-                    return false;
-                }
+        // 4. Must not overlap an existing structure
+        if (WorldDataManager.Instance.HasStructureAtWorldPosition(tileWorld))
+        {
+            if (showDebugLogs)
+                Debug.LogWarning($"[StructureService] Tile ({anchorX},{anchorY}) already has a structure.");
+            return false;
+        }
 
-                // 4. Must not overlap an existing structure
-                if (WorldDataManager.Instance.HasStructureAtWorldPosition(tileWorld))
-                {
-                    if (showDebugLogs)
-                        Debug.LogWarning($"[StructureService] Tile ({anchorX + dx},{anchorY + dy}) already has a structure.");
-                    return false;
-                }
-
-                // 5. Must not be on tilled soil
-                if (WorldDataManager.Instance.IsTilledAtWorldPosition(tileWorld))
-                {
-                    if (showDebugLogs)
-                        Debug.LogWarning($"[StructureService] Tile ({anchorX + dx},{anchorY + dy}) is tilled soil.");
-                    return false;
-                }
-            }
+        // 5. Must not be on tilled soil
+        if (WorldDataManager.Instance.IsTilledAtWorldPosition(tileWorld))
+        {
+            if (showDebugLogs)
+                Debug.LogWarning($"[StructureService] Tile ({anchorX},{anchorY}) is tilled soil.");
+            return false;
         }
 
         return true;
@@ -92,28 +86,20 @@ public class StructureService : IStructureService
         int anchorX = Mathf.FloorToInt(worldPosition.x);
         int anchorY = Mathf.FloorToInt(worldPosition.y);
 
-        // Write every tile in the footprint to WorldDataManager
-        for (int dx = 0; dx < data.Width; dx++)
+        // Write the single tile to WorldDataManager
+        Vector3 tileWorld = new Vector3(anchorX, anchorY, 0f);
+        bool ok = WorldDataManager.Instance.PlaceStructureAtWorldPosition(tileWorld, data.StructureId);
+        if (!ok)
         {
-            for (int dy = 0; dy < data.Height; dy++)
-            {
-                Vector3 tileWorld = new Vector3(anchorX + dx, anchorY + dy, 0f);
-                bool ok = WorldDataManager.Instance.PlaceStructureAtWorldPosition(tileWorld, data.StructureId);
-                if (!ok)
-                {
-                    Debug.LogError($"[StructureService] Failed to write tile ({anchorX + dx},{anchorY + dy}) — rolling back.");
-                    // Rollback previously written tiles
-                    RollbackPlacement(anchorX, anchorY, dx, dy);
-                    return false;
-                }
-            }
+            Debug.LogError($"[StructureService] Failed to write tile ({anchorX},{anchorY}).");
+            return false;
         }
 
         if (showDebugLogs)
-            Debug.Log($"[StructureService] ✓ Placed '{data.StructureId}' at ({anchorX},{anchorY}) size {data.Width}x{data.Height}");
+            Debug.Log($"[StructureService] ✓ Placed '{data.StructureId}' at ({anchorX},{anchorY})");
 
         // Refresh visuals
-        RefreshAffectedChunks(anchorX, anchorY, data.Width, data.Height);
+        RefreshAffectedChunks(anchorX, anchorY, 1, 1);
 
         // Network sync
         if (PhotonNetwork.IsConnected && syncManager != null)
@@ -131,19 +117,13 @@ public class StructureService : IStructureService
         int anchorX = Mathf.FloorToInt(worldPosition.x);
         int anchorY = Mathf.FloorToInt(worldPosition.y);
 
-        for (int dx = 0; dx < data.Width; dx++)
-        {
-            for (int dy = 0; dy < data.Height; dy++)
-            {
-                Vector3 tileWorld = new Vector3(anchorX + dx, anchorY + dy, 0f);
-                WorldDataManager.Instance.RemoveStructureAtWorldPosition(tileWorld);
-            }
-        }
+        Vector3 tileWorld = new Vector3(anchorX, anchorY, 0f);
+        WorldDataManager.Instance.RemoveStructureAtWorldPosition(tileWorld);
 
         if (showDebugLogs)
             Debug.Log($"[StructureService] ✗ Removed '{data.StructureId}' at ({anchorX},{anchorY})");
 
-        RefreshAffectedChunks(anchorX, anchorY, data.Width, data.Height);
+        RefreshAffectedChunks(anchorX, anchorY, 1, 1);
 
         if (PhotonNetwork.IsConnected && syncManager != null)
             BroadcastStructureRemoved(anchorX, anchorY);
@@ -227,22 +207,5 @@ public class StructureService : IStructureService
         }
     }
 
-    /// <summary>Undo partially-written tiles on placement failure.</summary>
-    private void RollbackPlacement(int anchorX, int anchorY, int failDx, int failDy)
-    {
-        for (int dx = 0; dx < failDx; dx++)
-        {
-            for (int dy = 0; dy < failDy; dy++)
-            {
-                Vector3 pos = new Vector3(anchorX + dx, anchorY + dy, 0f);
-                WorldDataManager.Instance.RemoveStructureAtWorldPosition(pos);
-            }
-        }
-        // Also roll back tiles in the current row before failDy
-        for (int dy = 0; dy < failDy; dy++)
-        {
-            Vector3 pos = new Vector3(anchorX + failDx, anchorY + dy, 0f);
-            WorldDataManager.Instance.RemoveStructureAtWorldPosition(pos);
-        }
-    }
+
 }

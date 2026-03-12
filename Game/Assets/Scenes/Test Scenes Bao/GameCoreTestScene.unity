@@ -5120,7 +5120,6 @@ MonoBehaviour:
   craftingInventoryAdapter: {fileID: 1564190097}
   cookingInventoryAdapter: {fileID: 2015000857}
   craftingInInventoryAdapter: {fileID: 435592459}
-  pickupKey: 102
 --- !u!1 &337970959
 GameObject:
   m_ObjectHideFlags: 0
@@ -30652,6 +30651,7 @@ MonoBehaviour:
   defaultSimplePrefab: {fileID: 2204487346316466391, guid: 4cd27e6c78dae6340b8b850488c34994, type: 3}
   structureCatalog:
   - {fileID: 11400000, guid: 7c973bba67aec7e4eb8c1c3ffd9d4e93, type: 2}
+  - {fileID: 11400000, guid: 1390210e212423346b91ea5e6b129cb2, type: 2}
 --- !u!1 &2066821487
 GameObject:
   m_ObjectHideFlags: 0

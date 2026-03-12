@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   StructureId: stone_furnace
   Prefab: {fileID: 2204487346316466391, guid: 74a7d0ef12dd9314593a27a7383229e4, type: 3}
-  Width: 1
-  Height: 1
-  InteractionType: 2
+  InteractionType: 3
   MaxHealth: 3
   StorageSlots: 0
   DoubleChestLeftSprite: {fileID: 0}
