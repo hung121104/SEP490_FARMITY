@@ -3,14 +3,15 @@ using UnityEngine;
 using TMPro;
 
 /// <summary>
-/// Reusable drop-in class for managing floating interaction prompts (e.g. "Press E to Craft").
+/// Reusable drop-in class for managing floating interaction prompts.
 /// Automatically repositions the text left/right relative to the target to avoid overlapping.
+/// Now relies on both Mouse Hover and Player proximity.
 /// </summary>
 public class DynamicInteractionPrompt : MonoBehaviour
 {
     [Header("Settings")]
-    [Tooltip("The text to show when the player is near.")]
-    public string interactionPrompt = "Press E to Interact";
+    [Tooltip("The text to show when the player is near and hovering.")]
+    public string interactionPrompt = "Click to Interact";
 
     [Header("UI Component")]
     [Tooltip("Text element to display the interaction prompt")]
@@ -25,7 +26,10 @@ public class DynamicInteractionPrompt : MonoBehaviour
     private Transform _targetPlayer;
     private bool _isShowing = false;
     private int _overlapCount = 0;
+    private bool _isMouseHovering = false;
     private Collider2D _triggerCollider;
+
+    private bool PlayerInRange => _overlapCount > 0;
 
     private void Awake()
     {
@@ -54,14 +58,10 @@ public class DynamicInteractionPrompt : MonoBehaviour
     private System.Collections.IEnumerator VisibilityCheckRoutine()
     {
         // Wait 2 frames for physics engine to catch up and trigger OnTriggerEnter2D
-        // in case the object was spawned from a pool directly over the player.
         yield return null;
         yield return null;
 
-        if (_overlapCount == 0 && promptText != null)
-        {
-            promptText.enabled = false;
-        }
+        EvaluateVisibility();
     }
 
     private void Update()
@@ -75,6 +75,8 @@ public class DynamicInteractionPrompt : MonoBehaviour
 
     private void UpdatePosition()
     {
+        if (_targetPlayer == null) return;
+        
         float targetX = _targetPlayer.position.x;
         float selfX = transform.position.x;
         
@@ -88,6 +90,8 @@ public class DynamicInteractionPrompt : MonoBehaviour
         );
     }
 
+    // ── Xử lý tầm nhìn của Player (Collider) ───────
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("PlayerEntity"))
@@ -99,14 +103,7 @@ public class DynamicInteractionPrompt : MonoBehaviour
                 _targetPlayer = collision.transform;
             }
 
-            if (_overlapCount == 1 && promptText != null)
-            {
-                if (showDebugLogs) Debug.Log("[DynamicPrompt] Showing interaction prompt.");
-                promptText.text = interactionPrompt;
-                promptText.enabled = true;
-                _isShowing = true;
-                UpdatePosition(); // Instantly update position to prevent 1-frame jitter
-            }
+            EvaluateVisibility();
         }
     }
 
@@ -124,13 +121,12 @@ public class DynamicInteractionPrompt : MonoBehaviour
             
             StartCoroutine(ConfirmPlayerExited());
         }
+        else
+        {
+            EvaluateVisibility();
+        }
     }
 
-    /// <summary>
-    /// Wait one frame then perform a physics query to verify the player
-    /// has actually left the trigger zone. Prevents false UI closing
-    /// when the Rigidbody2D briefly sleeps.
-    /// </summary>
     private System.Collections.IEnumerator ConfirmPlayerExited()
     {
         yield return null;
@@ -147,16 +143,55 @@ public class DynamicInteractionPrompt : MonoBehaviour
             {
                 // False exit — player is still inside.
                 _overlapCount++;
-                if (promptText != null) promptText.enabled = true;
+                EvaluateVisibility();
                 yield break;
             }
         }
 
-        if (showDebugLogs) Debug.Log("[DynamicPrompt] Hiding interaction prompt.");
-        
-        _isShowing = false;
-        _targetPlayer = null;
-        if (promptText != null) promptText.enabled = false;
+        EvaluateVisibility();
+    }
+
+    // ── Xử lý chuột (Hover) ───────
+
+    private void OnMouseEnter()
+    {
+        _isMouseHovering = true;
+        EvaluateVisibility();
+    }
+
+    private void OnMouseExit()
+    {
+        _isMouseHovering = false;
+        EvaluateVisibility();
+    }
+
+    // ── Cập nhật trạng thái hiển thị UI ───────
+
+    private void EvaluateVisibility()
+    {
+        bool shouldShow = PlayerInRange && _isMouseHovering;
+
+        if (shouldShow && !_isShowing)
+        {
+            if (showDebugLogs) Debug.Log("[DynamicPrompt] Showing interaction prompt.");
+            if (promptText != null)
+            {
+                promptText.text = interactionPrompt;
+                promptText.enabled = true;
+            }
+            _isShowing = true;
+            UpdatePosition(); // Instantly update position to prevent 1-frame jitter
+        }
+        else if (!shouldShow && _isShowing)
+        {
+            if (showDebugLogs) Debug.Log("[DynamicPrompt] Hiding interaction prompt.");
+            _isShowing = false;
+            
+            // Only clear target if the player actually left
+            if (!PlayerInRange) _targetPlayer = null;
+            
+            if (promptText != null) promptText.enabled = false;
+        }
     }
 
     private void OnDisable()
@@ -165,6 +200,7 @@ public class DynamicInteractionPrompt : MonoBehaviour
         // This preserves the state across 1-frame ObjectPool chunk refreshes
         // to prevent UI flickering.
         _overlapCount = 0;
+        _isMouseHovering = false;
         _isShowing = false;
         _targetPlayer = null;
     }
