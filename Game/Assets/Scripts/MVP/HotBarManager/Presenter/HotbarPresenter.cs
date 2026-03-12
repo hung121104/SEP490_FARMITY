@@ -9,6 +9,9 @@ public class HotbarPresenter
 
     public event Action<ItemData, Vector3, int> OnItemUsed;
 
+    /// <summary>Fired when the selected hotbar slot changes. Parameter is the new item's ItemData (null if empty).</summary>
+    public event Action<ItemData> OnSelectedItemChanged;
+
     public HotbarPresenter(HotbarModel model, HotbarView view, IInventoryService inventoryService)
     {
         this.model = model;
@@ -51,6 +54,7 @@ public class HotbarPresenter
     private void HandleSlotSelection(int slotIndex)
     {
         model.SelectSlot(slotIndex);
+        NotifySelectedItemChanged();
     }
 
     private void HandleScrollInput(float direction)
@@ -59,6 +63,13 @@ public class HotbarPresenter
             model.SelectPreviousSlot();
         else
             model.SelectNextSlot();
+        NotifySelectedItemChanged();
+    }
+
+    private void NotifySelectedItemChanged()
+    {
+        var item = model.GetCurrentItem();
+        OnSelectedItemChanged?.Invoke(item?.ItemData);
     }
 
     private void HandleUseItem()

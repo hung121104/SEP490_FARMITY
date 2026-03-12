@@ -40,15 +40,6 @@ public enum Quality
     Diamond         // 3 stars
 }
 
-public enum ToolMaterial
-{
-    Basic,
-    Copper,
-    Steel,
-    Gold,
-    Diamond
-}
-
 public enum StatType
 {
     Speed,

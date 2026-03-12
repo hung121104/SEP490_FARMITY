@@ -23,7 +23,7 @@ export class UpdateItemDto {
   toolType?: number;
   toolLevel?: number;
   toolPower?: number;
-  toolMaterial?: number;
+  toolMaterialId?: string;
 
   // Pollen
   sourcePlantId?: string;
@@ -40,7 +40,7 @@ export class UpdateItemDto {
   damage?: number;
   critChance?: number;
   attackSpeed?: number;
-  weaponMaterial?: number;
+  weaponMaterialId?: string;
 
   // Fish
   difficulty?: number;

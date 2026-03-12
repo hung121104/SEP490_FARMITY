@@ -10,4 +10,10 @@ public struct PlayerData
     public float positionX;
     public float positionY;
     public int sectionIndex;
+
+    // Appearance config IDs (paper-doll layers)
+    public string hairConfigId;
+    public string outfitConfigId;
+    public string hatConfigId;
+    public string toolConfigId;
 }
