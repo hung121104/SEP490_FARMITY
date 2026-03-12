@@ -8,9 +8,4 @@ public interface IInteractable
     /// Called when the player presses the interaction key (e.g., F) while inside the trigger zone.
     /// </summary>
     void Interact();
-
-    /// <summary>
-    /// Short text shown in the UI prompt (e.g., "Open Chest", "Use Furnace").
-    /// </summary>
-    string InteractionPrompt { get; }
 }

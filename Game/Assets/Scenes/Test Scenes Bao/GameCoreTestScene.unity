@@ -5120,6 +5120,7 @@ MonoBehaviour:
   craftingInventoryAdapter: {fileID: 1564190097}
   cookingInventoryAdapter: {fileID: 2015000857}
   craftingInInventoryAdapter: {fileID: 435592459}
+  pickupKey: 102
 --- !u!1 &337970959
 GameObject:
   m_ObjectHideFlags: 0
@@ -28394,9 +28395,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
-  plowingKey: 0
-  allowHoldToPlow: 1
-  plowRepeatInterval: 0.5
   playerTag: PlayerEntity
   plowingRange: 2
   showDebugLogs: 0

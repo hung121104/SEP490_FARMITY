@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class CraftingSystemManager : MonoBehaviour
@@ -24,42 +25,14 @@ public class CraftingSystemManager : MonoBehaviour
     private CraftingPresenter craftingInInventoryPresenter; //For crafting inventory tab
     private CookingPresenter cookingPresenter;
 
-    private bool isCraftingInInventoryActive = true;
-
-    [Header("Input")]
-    [SerializeField] private KeyCode pickupKey = KeyCode.F;
-    
-    // Track the frame the UI was opened to prevent closing it on the exact same frame 
-    // it triggers if `Input.GetKeyDown` is processed by both the interactable and the manager.
-    private double frameCraftingOpened = -0.5f;
-    private double frameCookingOpened = -0.5f;
-
     private void Awake()
     {
         SetupUIStructure();
     }
 
-    private void Update()
-    {
-        if (Input.GetKeyDown(pickupKey))
-        {
-            if (craftingPresenter != null && craftingPresenter.IsUIOpen() && Time.frameCount != frameCraftingOpened)
-            {
-                CloseCraftingUI();
-                return;
-            }
-            
-            if (cookingPresenter != null && cookingPresenter.IsUIOpen() && Time.frameCount != frameCookingOpened)
-            {
-                CloseCookingUI();
-                return;
-            }
-        }
-    }
-
     private void Start()
     {
-       InitializeSystem();
+        InitializeSystem();
     }
 
     private void SetupUIStructure()
@@ -270,7 +243,6 @@ public class CraftingSystemManager : MonoBehaviour
     /// </summary>
     public void OpenCraftingUI()
     {
-        frameCraftingOpened = Time.frameCount;
         craftingPresenter?.OpenCraftingUI();
         craftingInventoryAdapter?.OnOpen();
     }
@@ -289,7 +261,6 @@ public class CraftingSystemManager : MonoBehaviour
     /// </summary>
     public void OpenCookingUI()
     {
-        frameCookingOpened = Time.frameCount;
         cookingPresenter?.OpenCookingUI();
         cookingInventoryAdapter?.OnOpen();
     }
@@ -328,6 +299,12 @@ public class CraftingSystemManager : MonoBehaviour
     {
         craftingService?.UnlockRecipe(recipeID);
     }
+
+    /// <summary>Returns true if the standalone Crafting UI is currently open.</summary>
+    public bool IsCraftingUIOpen() => craftingPresenter != null && craftingPresenter.IsUIOpen();
+
+    /// <summary>Returns true if the Cooking UI is currently open.</summary>
+    public bool IsCookingUIOpen() => cookingPresenter != null && cookingPresenter.IsUIOpen();
 
     /// <summary>
     /// Get crafting service for external use
