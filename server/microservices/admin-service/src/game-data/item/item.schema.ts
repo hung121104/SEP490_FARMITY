@@ -83,8 +83,9 @@ export class Item {
   @Prop()
   toolPower?: number;
 
+  /** References a Material document by materialId (e.g. 'mat_copper'). */
   @Prop()
-  toolMaterial?: number;
+  toolMaterialId?: string;
 
   // ── itemType: 3 – Pollen ───────────────────────────────────────────────────
 
@@ -131,8 +132,9 @@ export class Item {
   @Prop()
   attackSpeed?: number;
 
+  /** References a Material document by materialId (e.g. 'mat_steel'). */
   @Prop()
-  weaponMaterial?: number;
+  weaponMaterialId?: string;
 
   // ── itemType: 7 – Fish ─────────────────────────────────────────────────────
 

@@ -12,8 +12,29 @@ public class ItemUsageController : MonoBehaviour
     private HotbarPresenter presenter;
     private ItemUsagePresenter itemUsagePresenter;
     private bool isSubscribed = false;
+    private ItemData _currentItem;
 
     private void Start() => TrySubscribe();
+
+    private void OnEnable()
+    {
+        MaterialCatalogService.OnReady += OnMaterialCatalogReady;
+    }
+
+    private void OnDisable()
+    {
+        MaterialCatalogService.OnReady -= OnMaterialCatalogReady;
+    }
+
+    /// <summary>
+    /// Called once when MaterialCatalogService finishes loading all sheets.
+    /// Re-applies tool appearance in case it was skipped while the catalog was loading.
+    /// </summary>
+    private void OnMaterialCatalogReady()
+    {
+        if (_currentItem != null)
+            HandleSelectedItemChanged(_currentItem);
+    }
 
     private void TrySubscribe()
     {
@@ -45,9 +66,11 @@ public class ItemUsageController : MonoBehaviour
 
     private void HandleSelectedItemChanged(ItemData item)
     {
+        _currentItem = item;
+
         if (item is ToolData tool)
         {
-            string configId = GetToolMaterialConfigId(tool.toolMaterial);
+            string configId = MaterialCatalogService.Instance?.GetMaterial(tool.toolMaterialId)?.materialId;
             if (!string.IsNullOrEmpty(configId))
             {
                 var localPlayer = FindLocalPlayer();
@@ -56,9 +79,13 @@ public class ItemUsageController : MonoBehaviour
                 if (sync != null) sync.SetTool(configId);
                 return;
             }
+
+            // Tool has a materialId but catalog isn't ready yet — defer without
+            // clearing the tool layer. OnMaterialCatalogReady() will re-trigger.
+            if (!string.IsNullOrEmpty(tool.toolMaterialId)) return;
         }
 
-        // No tool selected — clear the tool layer
+        // No tool selected (or tool has no materialId) — clear the tool layer
         var lp = FindLocalPlayer();
         if (lp == null) return;
         var s = lp.GetComponent<PlayerAppearanceSync>();
@@ -125,6 +152,7 @@ public class ItemUsageController : MonoBehaviour
 
     private void OnDestroy()
     {
+        MaterialCatalogService.OnReady -= OnMaterialCatalogReady;
         if (presenter != null && isSubscribed)
         {
             presenter.OnItemUsed -= HandleItemUsed;
@@ -134,14 +162,14 @@ public class ItemUsageController : MonoBehaviour
 
     /// <summary>
     /// Updates the tool paper-doll layer to match the item being used.
-    /// Derives the configId from the tool's material (e.g. ToolMaterial.Gold → "gold_tool")
-    /// so one spritesheet per material covers all tool types.
+    /// Looks up the tool's materialId in MaterialCatalogService; materialId
+    /// is also the SkinCatalogManager configId registered on startup.
     /// </summary>
     private void SyncToolAppearance(ItemData item)
     {
         if (item is not ToolData tool) return;
 
-        string configId = GetToolMaterialConfigId(tool.toolMaterial);
+        string configId = MaterialCatalogService.Instance?.GetMaterial(tool.toolMaterialId)?.materialId;
         if (string.IsNullOrEmpty(configId)) return;
 
         var localPlayer = FindLocalPlayer();
@@ -150,23 +178,6 @@ public class ItemUsageController : MonoBehaviour
         var sync = localPlayer.GetComponent<PlayerAppearanceSync>();
         if (sync != null)
             sync.SetTool(configId);
-    }
-
-    /// <summary>
-    /// Maps ToolMaterial enum → SkinCatalog configId.
-    /// Each material has ONE spritesheet that covers all tool animations.
-    /// </summary>
-    private static string GetToolMaterialConfigId(ToolMaterial material)
-    {
-        return material switch
-        {
-            ToolMaterial.Basic   => "basic_tool",
-            ToolMaterial.Copper  => "copper_tool",
-            ToolMaterial.Steel   => "steel_tool",
-            ToolMaterial.Gold    => "gold_tool",
-            ToolMaterial.Diamond => "diamond_tool",
-            _                   => null,
-        };
     }
 
     private static GameObject _cachedLocalPlayer;

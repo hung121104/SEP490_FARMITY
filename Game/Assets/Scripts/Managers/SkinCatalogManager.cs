@@ -96,6 +96,28 @@ public class SkinCatalogManager : MonoBehaviour
         StartCoroutine(FetchCatalog());
     }
 
+    /// <summary>
+    /// Loads and registers a single external spritesheet into this catalog.
+    /// Called by <c>MaterialCatalogService</c> so material tool sheets are
+    /// available to <c>DynamicSpriteSwapper</c> under <paramref name="configId"/>.
+    /// </summary>
+    /// <param name="configId">The key to store sprites under (e.g. "mat_copper").</param>
+    /// <param name="spritesheetUrl">Cloudinary URL of the PNG.</param>
+    /// <param name="cellSize">Uniform cell width and height in pixels.</param>
+    /// <param name="onDone">Optional callback fired when the sheet finishes loading.</param>
+    public IEnumerator LoadExternalSheet(
+        string configId, string spritesheetUrl, int cellSize, System.Action onDone = null)
+    {
+        yield return LoadSheet(
+            new SkinConfigEntry
+            {
+                configId       = configId,
+                spritesheetUrl = spritesheetUrl,
+                cellSize       = cellSize > 0 ? cellSize : 64,
+            },
+            onDone);
+    }
+
     // ── Private: Network ──────────────────────────────────────────────────────
 
     private IEnumerator FetchCatalog()
