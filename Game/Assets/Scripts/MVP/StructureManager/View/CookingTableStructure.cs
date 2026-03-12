@@ -4,12 +4,12 @@ using UnityEngine.InputSystem;
 using TMPro;
 
 /// <summary>
-/// Attached to the CraftingTable prefab.
-/// Listens for the Interact action while the player
-/// is inside the trigger collider, then toggles the Crafting UI.
+/// Attached to the CookingTable prefab.
+/// Listens for the Interact action (E key via InputManager) while the player
+/// is inside the trigger collider, then toggles the Cooking UI.
 /// Auto-closes when the player genuinely leaves the trigger zone.
 /// </summary>
-public class CraftingTableStructure : MonoBehaviour
+public class CookingTableStructure : MonoBehaviour, IInteractable
 {
 
     [Header("Debug")]
@@ -60,7 +60,7 @@ public class CraftingTableStructure : MonoBehaviour
         UnsubscribeInput();
         _overlapCount = 0;
     }
-    
+
     private void OnDestroy() => UnsubscribeInput();
 
     private void SubscribeInput()
@@ -87,7 +87,7 @@ public class CraftingTableStructure : MonoBehaviour
         {
             _overlapCount++;
 
-            if (showDebugLogs) Debug.Log($"[CraftingTableStructure] Player entered trigger (overlap={_overlapCount})");
+            if (showDebugLogs) Debug.Log($"[CookingTableStructure] Player entered trigger (overlap={_overlapCount})");
         }
     }
 
@@ -96,14 +96,14 @@ public class CraftingTableStructure : MonoBehaviour
         if (!collision.CompareTag("PlayerEntity")) return;
 
         _overlapCount = Mathf.Max(0, _overlapCount - 1);
-        if (showDebugLogs) Debug.Log($"[CraftingTableStructure] OnTriggerExit2D received (overlap={_overlapCount})");
+        if (showDebugLogs) Debug.Log($"[CookingTableStructure] OnTriggerExit2D received (overlap={_overlapCount})");
 
         if (_overlapCount == 0)
         {
             // Guard: if the GameObject is being deactivated (e.g. returned to pool),
             if (!gameObject.activeInHierarchy)
             {
-                if (showDebugLogs) Debug.Log("[CraftingTableStructure] Object inactive — ignoring false exit.");
+                if (showDebugLogs) Debug.Log("[CookingTableStructure] Object inactive — ignoring false exit.");
                 return;
             }
             StartCoroutine(ConfirmPlayerExited());
@@ -111,8 +111,8 @@ public class CraftingTableStructure : MonoBehaviour
     }
 
     /// <summary>
-    /// Waits one frame then performs a physics query to verify the player
-    /// has actually left the trigger zone before closing the UI.
+    /// This prevents false exits caused by Rigidbody2D going to sleep,
+    /// which can fire OnTriggerExit2D even when the player is stationary.
     /// </summary>
     private System.Collections.IEnumerator ConfirmPlayerExited()
     {
@@ -132,20 +132,20 @@ public class CraftingTableStructure : MonoBehaviour
             {
                 // False exit — player is still inside (Rigidbody2D sleep artifact).
                 _overlapCount++;
-                if (showDebugLogs) Debug.Log("[CraftingTableStructure] False exit ignored — player still inside trigger.");
+                if (showDebugLogs) Debug.Log("[CookingTableStructure] False exit ignored — player still inside trigger.");
 
                 yield break;
             }
         }
 
         // Player has genuinely left the trigger zone — close the UI.
-        if (showDebugLogs) Debug.Log("[CraftingTableStructure] Player confirmed outside — closing Crafting UI.");
+        if (showDebugLogs) Debug.Log("[CookingTableStructure] Player confirmed outside — closing Cooking UI.");
 
         if (craftingSystemManager != null)
-            craftingSystemManager.CloseCraftingUI();
+            craftingSystemManager.CloseCookingUI();
         else
         {
-            if (showDebugLogs) Debug.LogWarning("[CraftingTableStructure] CraftingSystemManager not found in scene!");
+            if (showDebugLogs) Debug.LogWarning("[CookingTableStructure] CraftingSystemManager not found in scene!");
         }
     }
 
@@ -157,8 +157,8 @@ public class CraftingTableStructure : MonoBehaviour
         if (craftingSystemManager == null) return;
 
         // Toggle: close if already open, open if closed.
-        if (craftingSystemManager.IsCraftingUIOpen())
-            craftingSystemManager.CloseCraftingUI();
+        if (craftingSystemManager.IsCookingUIOpen())
+            craftingSystemManager.CloseCookingUI();
         else
             Interact();
     }
@@ -168,10 +168,10 @@ public class CraftingTableStructure : MonoBehaviour
     public void Interact()
     {
         if (craftingSystemManager != null)
-            craftingSystemManager.OpenCraftingUI();
+            craftingSystemManager.OpenCookingUI();
         else
         {
-            if (showDebugLogs) Debug.LogWarning("[CraftingTableStructure] CraftingSystemManager not found in scene!");
+            if (showDebugLogs) Debug.LogWarning("[CookingTableStructure] CraftingSystemManager not found in scene!");
         }
     }
 }

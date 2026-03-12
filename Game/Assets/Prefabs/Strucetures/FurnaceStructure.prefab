@@ -148,7 +148,7 @@ GameObject:
   - component: {fileID: 6718537387405557432}
   - component: {fileID: 6795186660115503223}
   m_Layer: 0
-  m_Name: CraftingTableStructure
+  m_Name: FurnaceStructure
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -383,9 +383,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3187684034438856739}
-  - component: {fileID: 278062136792960451}
   - component: {fileID: 3545300986593338749}
   - component: {fileID: 1623015290808156205}
+  - component: {fileID: 3656694092361923199}
   m_Layer: 0
   m_Name: Trigger
   m_TagString: Untagged
@@ -408,19 +408,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2003200812255760318}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &278062136792960451
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7051626965882632828}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f5f7b9220e0d7884a8ee7c0ad059f966, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  showDebugLogs: 0
 --- !u!114 &3545300986593338749
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -433,7 +420,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7f54c75e9426cd409e056a5f625f8ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  interactionPrompt: Press E to Craft
+  interactionPrompt: Press E to Cook
   promptText: {fileID: 7818072806478239655}
   promptOffset: {x: 160, y: -50, z: 0}
   showDebugLogs: 0
@@ -483,3 +470,16 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 3, y: 2}
   m_EdgeRadius: 0
+--- !u!114 &3656694092361923199
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7051626965882632828}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 299e805423ff33d469c7fc52b4605800, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  showDebugLogs: 0
