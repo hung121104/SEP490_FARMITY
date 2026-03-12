@@ -6,36 +6,31 @@ using AchievementManager.Service;
 
 namespace AchievementManager.Presenter
 {
-    /// <summary>
-    /// Subscribes to ALL GameEventBus events.
-    /// Maintains local counters per requirement type.
-    /// Matches events to achievement requirements.
-    /// Reports absolute progress totals to server.
-    /// Detects false→true transition for unlock notification.
-    /// 
-    /// Owned and controlled by AchievementPresenter.
-    /// Does NOT make direct API calls - delegates to AchievementPresenter.
-    /// </summary>
     public class AchievementTrackerPresenter : MonoBehaviour
     {
-        #region Dependencies (injected by AchievementPresenter)
+        #region Fields
 
         private AchievementModel model;
         private IAchievementService service;
         private AchievementPresenter presenter;
 
+        public bool IsInitialized { get; private set; } = false;
+
+        private HashSet<string> pendingAchievementIds = new HashSet<string>();
+        private Coroutine debounceCoroutine;
+
+        [Header("Debounce Settings")]
+        [SerializeField] private float debounceDelay = 0.5f;
+
         #endregion
 
         #region Initialization
-
-        public bool IsInitialized { get; private set; } = false;
 
         public void Initialize(
             AchievementModel model,
             IAchievementService service,
             AchievementPresenter presenter)
         {
-            // ✅ Allow re-initialize only if not already done
             if (IsInitialized)
             {
                 Debug.Log("[AchievementTrackerPresenter] Already initialized - skipped");
@@ -51,294 +46,245 @@ namespace AchievementManager.Presenter
             Debug.Log("[AchievementTrackerPresenter] Initialized and listening!");
         }
 
-        private void OnDestroy()
-        {
-            UnsubscribeFromEvents();
-        }
-
         #endregion
 
-        #region Subscribe / Unsubscribe
+        #region Event Subscriptions
 
         private void SubscribeToEvents()
         {
-            GameEventBus.OnEnemyKilled    += HandleEnemyKilled;
-            GameEventBus.OnCropHarvested  += HandleCropHarvested;
-            GameEventBus.OnSeedPlanted    += HandleSeedPlanted;
-            GameEventBus.OnFishCaught     += HandleFishCaught;
-            GameEventBus.OnItemCrafted    += HandleItemCrafted;
-            GameEventBus.OnFoodCooked     += HandleFoodCooked;
-            GameEventBus.OnItemCollected  += HandleItemCollected;
-            GameEventBus.OnItemTraded     += HandleItemTraded;
-            GameEventBus.OnAreaDiscovered += HandleAreaDiscovered;
-            GameEventBus.OnLevelReached   += HandleLevelReached;
-            GameEventBus.OnQuestCompleted += HandleQuestCompleted;
-
-            Debug.Log("[AchievementTrackerPresenter] Subscribed to GameEventBus");
+            GameEventBus.OnCropHarvested  += (id, count) => HandleEvent("HARVEST", id, count);
+            GameEventBus.OnEnemyKilled    += (id, count) => HandleEvent("KILL", id, count);
+            GameEventBus.OnSeedPlanted    += (id, count) => HandleEvent("PLANT", id, count);
+            GameEventBus.OnFishCaught     += (id, count) => HandleEvent("FISH", id, count);
+            GameEventBus.OnItemCrafted    += (id, count) => HandleEvent("CRAFT", id, count);
+            GameEventBus.OnFoodCooked     += (id, count) => HandleEvent("COOK", id, count);
+            GameEventBus.OnItemCollected  += (id, count) => HandleEvent("COLLECT", id, count);
+            GameEventBus.OnItemTraded     += (id, count) => HandleEvent("TRADE", id, count);
+            GameEventBus.OnAreaDiscovered += (id, count) => HandleEvent("DISCOVER", id, count);
+            GameEventBus.OnQuestCompleted += (id, count) => HandleEvent("QUEST_COMPLETE", id, count);
+            // ✅ Fix: OnLevelReached is Action<int,int> → (level, count)
+            GameEventBus.OnLevelReached   += (level, count) => HandleLevelEvent(level);
         }
 
-        private void UnsubscribeFromEvents()
+        private void OnDestroy()
         {
-            GameEventBus.OnEnemyKilled    -= HandleEnemyKilled;
-            GameEventBus.OnCropHarvested  -= HandleCropHarvested;
-            GameEventBus.OnSeedPlanted    -= HandleSeedPlanted;
-            GameEventBus.OnFishCaught     -= HandleFishCaught;
-            GameEventBus.OnItemCrafted    -= HandleItemCrafted;
-            GameEventBus.OnFoodCooked     -= HandleFoodCooked;
-            GameEventBus.OnItemCollected  -= HandleItemCollected;
-            GameEventBus.OnItemTraded     -= HandleItemTraded;
-            GameEventBus.OnAreaDiscovered -= HandleAreaDiscovered;
-            GameEventBus.OnLevelReached   -= HandleLevelReached;
-            GameEventBus.OnQuestCompleted -= HandleQuestCompleted;
-
-            Debug.Log("[AchievementTrackerPresenter] Unsubscribed from GameEventBus");
+            GameEventBus.OnCropHarvested  -= (id, count) => HandleEvent("HARVEST", id, count);
+            GameEventBus.OnEnemyKilled    -= (id, count) => HandleEvent("KILL", id, count);
+            GameEventBus.OnSeedPlanted    -= (id, count) => HandleEvent("PLANT", id, count);
+            GameEventBus.OnFishCaught     -= (id, count) => HandleEvent("FISH", id, count);
+            GameEventBus.OnItemCrafted    -= (id, count) => HandleEvent("CRAFT", id, count);
+            GameEventBus.OnFoodCooked     -= (id, count) => HandleEvent("COOK", id, count);
+            GameEventBus.OnItemCollected  -= (id, count) => HandleEvent("COLLECT", id, count);
+            GameEventBus.OnItemTraded     -= (id, count) => HandleEvent("TRADE", id, count);
+            GameEventBus.OnAreaDiscovered -= (id, count) => HandleEvent("DISCOVER", id, count);
+            GameEventBus.OnQuestCompleted -= (id, count) => HandleEvent("QUEST_COMPLETE", id, count);
+            GameEventBus.OnLevelReached   -= (level, count) => HandleLevelEvent(level);
         }
 
         #endregion
 
-        #region Event Handlers
+        #region Event Handling
 
-        private void HandleEnemyKilled(string entityId)
-            => HandleEvent("KILL", entityId);
-
-        private void HandleCropHarvested(string cropId)
-            => HandleEvent("HARVEST", cropId);
-
-        private void HandleSeedPlanted(string seedId)
-            => HandleEvent("PLANT", seedId);
-
-        private void HandleFishCaught(string fishId)
-            => HandleEvent("FISH", fishId);
-
-        private void HandleItemCrafted(string itemId)
-            => HandleEvent("CRAFT", itemId);
-
-        private void HandleFoodCooked(string recipeId)
-            => HandleEvent("COOK", recipeId);
-
-        private void HandleItemCollected(string itemId)
-            => HandleEvent("COLLECT", itemId);
-
-        private void HandleItemTraded(string itemId)
-            => HandleEvent("TRADE", itemId);
-
-        private void HandleAreaDiscovered(string areaId)
-            => HandleEvent("DISCOVER", areaId);
-
-        private void HandleQuestCompleted(string questId)
-            => HandleEvent("QUEST_COMPLETE", questId);
-
-        private void HandleLevelReached(int level)
+        private void HandleEvent(string eventType, string entityId, int count = 1)
         {
-            // ✅ Fix 3: null entityId for REACH_LEVEL
-            // level value is absolute progress, not entityId
-            HandleEvent("REACH_LEVEL", null, level);
+            if (!IsInitialized || !model.isLoaded) return;
+
+            string generalKey  = eventType;
+            string specificKey = $"{eventType}_{entityId}";
+
+            model.AddToCounter(generalKey, count);
+            model.AddToCounter(specificKey, count);
+
+            Debug.Log($"[AchievementTrackerPresenter] Event: {eventType} | " +
+                      $"entityId: {entityId} | count: {count} | " +
+                      $"general: {model.GetCounter(generalKey)} | " +
+                      $"specific: {model.GetCounter(specificKey)}");
+
+            MarkDirtyAchievements(eventType, entityId);
         }
 
-        #endregion
-
-        #region Core Logic
-
-        /// <summary>
-        /// Core handler for all string-based events.
-        /// Increments dual counters then checks all achievements.
-        /// </summary>
-        private void HandleEvent(string type, string entityId)
+        private void HandleLevelEvent(int level)
         {
-            if (model == null || !model.isLoaded)
-            {
-                Debug.LogWarning($"[AchievementTrackerPresenter] " +
-                                 $"Model not ready - skipping {type} event");
-                return;
-            }
+            if (!IsInitialized || !model.isLoaded) return;
 
-            // ✅ Fix 1: Dual counter increment
-            // Always increment BOTH general AND specific counter
-            string generalKey = type;
-            model.IncrementCounter(generalKey);
-
-            if (!string.IsNullOrEmpty(entityId))
-            {
-                string specificKey = $"{type}_{entityId}";
-                model.IncrementCounter(specificKey);
-            }
-
-            Debug.Log($"[AchievementTrackerPresenter] " +
-                      $"Event: {type} | entityId: {entityId ?? "any"} | " +
-                      $"generalCounter: {model.GetCounter(generalKey)}");
-
-            // Check all achievements for matching requirements
-            CheckAchievements(type, entityId);
-        }
-
-        /// <summary>
-        /// Special handler for int-based level events.
-        /// Level achievements check if counter >= requirement target.
-        /// </summary>
-        private void HandleEvent(string type, string entityId, int level)
-        {
-            if (model == null || !model.isLoaded) return;
-
-            // For REACH_LEVEL: set counter to level value (not increment)
-            // because level is already the absolute total
-            string generalKey = type;
-            int current = model.GetCounter(generalKey);
-
+            int current = model.GetCounter("REACH_LEVEL");
             if (level > current)
             {
-                model.localCounters[generalKey] = level;
-                Debug.Log($"[AchievementTrackerPresenter] " +
-                          $"Level counter updated: {current} → {level}");
+                model.SetCounter("REACH_LEVEL", level);
+                Debug.Log($"[AchievementTrackerPresenter] REACH_LEVEL → {level}");
+                MarkDirtyAchievements("REACH_LEVEL", null);
             }
-
-            if (!string.IsNullOrEmpty(entityId))
-            {
-                string specificKey = $"{type}_{entityId}";
-                model.localCounters[specificKey] = level;
-            }
-
-            CheckAchievements(type, entityId);
         }
 
-        /// <summary>
-        /// Checks all achievements for requirements matching
-        /// the fired event type + entityId.
-        /// Sends update to server if local counter > server progress.
-        /// </summary>
-        private void CheckAchievements(string type, string entityId)
-        {
-            List<AchievementData> allAchievements = model.GetAllAchievements();
+        #endregion
 
-            foreach (AchievementData achievement in allAchievements)
+        #region Dirty Marking + Debounce
+
+        private void MarkDirtyAchievements(string eventType, string entityId)
+        {
+            if (!model.isLoaded) return;
+
+            foreach (AchievementData achievement in model.GetAllAchievements())
             {
-                // Skip already achieved
                 if (achievement.isAchieved) continue;
-                if (!achievement.IsValid()) continue;
 
                 for (int i = 0; i < achievement.requirements.Count; i++)
                 {
                     AchievementRequirement req = achievement.requirements[i];
 
-                    // Does this requirement match the fired event type?
-                    if (req.type != type) continue;
+                    // ✅ Fix: use req.type (not req.eventType)
+                    if (!IsEventMatchingRequirement(req, eventType, entityId)) continue;
 
-                    // Does entityId match?
-                    // null entityId in requirement = any entity counts
-                    // specific entityId = only that entity counts
-                    bool entityMatches = string.IsNullOrEmpty(req.entityId)
-                        || req.entityId == entityId;
+                    // ✅ Fix: progress lives in achievement.progress[i], not req.currentProgress
+                    int localProgress  = GetLocalProgress(req);
+                    int serverProgress = achievement.progress != null && i < achievement.progress.Count
+                        ? achievement.progress[i]
+                        : 0;
 
-                    if (!entityMatches) continue;
-
-                    // Which counter key to use for this requirement?
-                    string counterKey = req.GetCounterKey();
-                    int localProgress = model.GetCounter(counterKey);
-                    int serverProgress = achievement.progress[i];
-
-                    // Only send if local is higher than server
-                    if (localProgress <= serverProgress) continue;
-
-                    Debug.Log($"[AchievementTrackerPresenter] " +
-                              $"Progress update: {achievement.achievementId} " +
-                              $"req[{i}] {serverProgress} → {localProgress}");
-
-                    // Send to server
-                    UpdateProgressRequest request = new UpdateProgressRequest(
-                        achievement.achievementId,
-                        i,
-                        localProgress
-                    );
-
-                    // Store wasAchieved BEFORE server responds
-                    bool wasAchieved = achievement.isAchieved;
-
-                    StartCoroutine(service.UpdateProgress(
-                        request,
-                        updatedData => OnProgressUpdated(updatedData, wasAchieved),
-                        error => Debug.LogWarning(
-                            $"[AchievementTrackerPresenter] Update failed: {error}")
-                    ));
-                }
-            }
-        }
-
-        #endregion
-
-        #region Server Response Handler
-
-        /// <summary>
-        /// Called after server responds to UpdateProgress.
-        /// Updates local state.
-        /// Detects false→true for unlock notification.
-        /// </summary>
-        private void OnProgressUpdated(AchievementData updatedData, bool wasAchieved)
-        {
-            if (updatedData == null) return;
-
-            // Update local state with fresh server data
-            model.UpsertAchievement(updatedData);
-
-            // ✅ Detect false → true transition
-            bool nowAchieved = updatedData.isAchieved;
-
-            if (!wasAchieved && nowAchieved)
-            {
-                Debug.Log($"[AchievementTrackerPresenter] " +
-                          $"ACHIEVEMENT UNLOCKED: {updatedData.name}!");
-
-                // Notify AchievementPresenter to show popup
-                presenter?.OnAchievementUnlocked(updatedData);
-            }
-            else
-            {
-                // Silent update - just refresh UI if panel is open
-                presenter?.OnProgressUpdated(updatedData);
-            }
-        }
-
-        #endregion
-
-        #region Counter Restore (called by AchievementPresenter on login)
-
-        /// <summary>
-        /// Restores local counters from server data on login.
-        /// Uses Math.Max rule - never go below server value.
-        /// Called by AchievementPresenter after FetchAllAchievements.
-        /// </summary>
-        public void RestoreCountersFromServer(List<AchievementData> achievements)
-        {
-            if (achievements == null) return;
-
-            foreach (AchievementData achievement in achievements)
-            {
-                if (!achievement.IsValid()) continue;
-
-                for (int i = 0; i < achievement.requirements.Count; i++)
-                {
-                    AchievementRequirement req = achievement.requirements[i];
-                    int serverProgress = achievement.progress[i];
-
-                    // ✅ Fix 2: Math.Max across ALL achievements sharing same key
-                    // General key restore
-                    string generalKey = req.GetGeneralCounterKey();
-                    model.RestoreCounter(generalKey, serverProgress);
-
-                    // Specific key restore (if entityId exists)
-                    if (!string.IsNullOrEmpty(req.entityId))
+                    if (localProgress > serverProgress)
                     {
-                        string specificKey = req.GetCounterKey();
-                        model.RestoreCounter(specificKey, serverProgress);
+                        pendingAchievementIds.Add(achievement.achievementId);
+                        Debug.Log($"[AchievementTrackerPresenter] Marked dirty: {achievement.name}");
                     }
                 }
             }
 
-            Debug.Log($"[AchievementTrackerPresenter] " +
-                      $"Counters restored from {achievements.Count} achievements");
+            if (pendingAchievementIds.Count > 0)
+                RestartDebounce();
+        }
 
-            // Log restored counters for debug
-            foreach (var kvp in model.localCounters)
-                Debug.Log($"[AchievementTrackerPresenter] " +
-                          $"Counter restored: {kvp.Key} = {kvp.Value}");
+        private void RestartDebounce()
+        {
+            if (debounceCoroutine != null)
+                StopCoroutine(debounceCoroutine);
+
+            debounceCoroutine = StartCoroutine(DebounceFlush());
+        }
+
+        private IEnumerator DebounceFlush()
+        {
+            yield return new WaitForSeconds(debounceDelay);
+
+            Debug.Log($"[AchievementTrackerPresenter] Flushing {pendingAchievementIds.Count} pending achievements...");
+
+            HashSet<string> toFlush = new HashSet<string>(pendingAchievementIds);
+            pendingAchievementIds.Clear();
+
+            foreach (string achievementId in toFlush)
+            {
+                AchievementData achievement = model.GetAchievement(achievementId);
+                if (achievement == null || achievement.isAchieved) continue;
+
+                yield return SendProgressToServer(achievement);
+            }
+
+            debounceCoroutine = null;
+        }
+
+        #endregion
+
+        #region Server Communication
+
+        private IEnumerator SendProgressToServer(AchievementData achievement)
+        {
+            bool isAchievedBefore = achievement.isAchieved;
+
+            for (int i = 0; i < achievement.requirements.Count; i++)
+            {
+                AchievementRequirement req = achievement.requirements[i];
+
+                int localProgress  = GetLocalProgress(req);
+                int serverProgress = achievement.progress != null && i < achievement.progress.Count
+                    ? achievement.progress[i]
+                    : 0;
+
+                if (localProgress <= serverProgress) continue;
+
+                // ✅ Fix: use correct UpdateProgressRequest constructor (achievementId, requirementIndex, progress)
+                UpdateProgressRequest request = new UpdateProgressRequest(
+                    achievement.achievementId,
+                    i,
+                    localProgress
+                );
+
+                // ✅ Fix: IAchievementService.UpdateProgress takes (request, onSuccess, onError) positionally
+                yield return service.UpdateProgress(
+                    request,
+                    (updated) => OnProgressSuccess(updated, isAchievedBefore),
+                    (err)     => Debug.LogWarning($"[AchievementTrackerPresenter] PUT failed: {err}")
+                );
+            }
+        }
+
+        private void OnProgressSuccess(AchievementData updated, bool wasAchievedBefore)
+        {
+            model.UpsertAchievement(updated);
+
+            if (!wasAchievedBefore && updated.isAchieved)
+            {
+                Debug.Log($"[AchievementTrackerPresenter] 🎉 Unlocked: {updated.name}");
+                presenter?.OnAchievementUnlocked(updated);
+            }
+            else
+            {
+                presenter?.OnProgressUpdated(updated);
+            }
+        }
+
+        #endregion
+
+        #region Counter Restore
+
+        public void RestoreCountersFromServer(List<AchievementData> achievements)
+        {
+            foreach (AchievementData achievement in achievements)
+            {
+                for (int i = 0; i < achievement.requirements.Count; i++)
+                {
+                    AchievementRequirement req = achievement.requirements[i];
+
+                    // ✅ Fix: use req.type (not req.eventType), progress from achievement.progress[i]
+                    int serverProgress = achievement.progress != null && i < achievement.progress.Count
+                        ? achievement.progress[i]
+                        : 0;
+
+                    string generalKey  = req.type;
+                    string specificKey = $"{req.type}_{req.entityId}";
+
+                    int current = model.GetCounter(generalKey);
+                    if (serverProgress > current)
+                        model.SetCounter(generalKey, serverProgress);
+
+                    current = model.GetCounter(specificKey);
+                    if (serverProgress > current)
+                        model.SetCounter(specificKey, serverProgress);
+                }
+            }
+
+            Debug.Log("[AchievementTrackerPresenter] Counters restored from server ✅");
+        }
+
+        #endregion
+
+        #region Helpers
+
+        private bool IsEventMatchingRequirement(
+            AchievementRequirement req,
+            string eventType,
+            string entityId)
+        {
+            // ✅ Fix: use req.type (not req.eventType)
+            if (req.type != eventType) return false;
+            if (!string.IsNullOrEmpty(req.entityId) && req.entityId != entityId) return false;
+            return true;
+        }
+
+        private int GetLocalProgress(AchievementRequirement req)
+        {
+            // ✅ Fix: use req.type (not req.eventType)
+            return string.IsNullOrEmpty(req.entityId)
+                ? model.GetCounter(req.type)
+                : model.GetCounter($"{req.type}_{req.entityId}");
         }
 
         #endregion

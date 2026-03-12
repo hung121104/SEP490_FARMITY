@@ -81,6 +81,26 @@ namespace AchievementManager.Model
             localCounters[key] = Math.Max(current, serverValue);
         }
 
+        /// <summary>
+        /// Add a specific count to counter (for bulk events).
+        /// Example: craft 100 tools → AddToCounter("CRAFT_tool_01", 100)
+        /// </summary>
+        public void AddToCounter(string key, int count)
+        {
+            if (!localCounters.ContainsKey(key))
+                localCounters[key] = 0;
+            localCounters[key] += count;
+        }
+
+        /// <summary>
+        /// Set counter to exact value.
+        /// Used for absolute values like REACH_LEVEL.
+        /// </summary>
+        public void SetCounter(string key, int value)
+        {
+            localCounters[key] = value;
+        }
+
         #endregion
 
         #region Achievement Helpers
