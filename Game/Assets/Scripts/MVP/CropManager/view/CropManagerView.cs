@@ -27,6 +27,10 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     [Range(0.1f, 10f)]
     public float growthSpeedMultiplier = 1f;
 
+    [Header("Water Decay Settings")]
+    [Tooltip("How many in-game minutes water lasts before it evaporates.")]
+    [SerializeField] private float waterDecayDurationMinutes = 24f;
+
     [Header("Visual")]
     public Transform cropVisualsParent;
 
@@ -64,6 +68,8 @@ public class CropManagerView : MonoBehaviourPunCallbacks
             WorldDataManager.Instance,
             syncManager);
 
+        growthService.WaterDecayDurationMinutes = waterDecayDurationMinutes;
+
         // Subscribe to visual-refresh event
         growthService.OnCropStageChanged += OnCropStageChanged;
 
@@ -92,6 +98,12 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         // (same formula as TimeManagerView.AdvanceTime)
         float gameMinutesDelta = Time.deltaTime * timeManager.timeSpeed * growthSpeedMultiplier;
         growthService?.TickGrowth(gameMinutesDelta);
+
+        // Live-push decay duration changes made in the Inspector during Play mode.
+        if (growthService != null)
+            growthService.WaterDecayDurationMinutes = waterDecayDurationMinutes;
+
+        growthService?.TickWaterDecay(gameMinutesDelta);
     }
 
     // ── Visual refresh (driven by service event) ──────────────────────────

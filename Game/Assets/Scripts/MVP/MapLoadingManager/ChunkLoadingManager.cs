@@ -25,6 +25,9 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     [Header("Visual Settings")]
     [Tooltip("Show loaded chunks with crops")]
     public bool visualizeCrops = true;
+
+    [Tooltip("Prefab used to render a crop. Assign a prefab with a SpriteRenderer (can be on a child object) so you can control the local offset in the editor.")]
+    public GameObject cropVisualPrefab;
     
     // Plant data is sourced from PlantCatalogService at runtime — no Inspector array needed.
     
@@ -34,6 +37,13 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     
     [Tooltip("Name of the tilemap to place tilled tiles on")]
     public string tilledTilemapName = "TilledOverlayTilemap";
+
+    [Header("Watered Tile Settings")]
+    [Tooltip("TileBase to use for watered tiles")]
+    public TileBase wateredTile;
+
+    [Tooltip("Name of the tilemap to place watered tiles on")]
+    public string wateredTilemapName = "WateredOverlayTilemap";
     
     [Header("Debug")]
     public bool showDebugLogs = true;
@@ -60,6 +70,9 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     
     // Track tilled tiles per chunk for cleanup: chunkPos -> list of tile positions
     private Dictionary<Vector2Int, List<Vector3Int>> chunkTilledTiles = new Dictionary<Vector2Int, List<Vector3Int>>();
+
+    // Track watered tiles per chunk for cleanup: chunkPos -> list of tile positions
+    private Dictionary<Vector2Int, List<Vector3Int>> chunkWateredTiles = new Dictionary<Vector2Int, List<Vector3Int>>();
     
     // Cache tilemap references
     private Dictionary<string, Tilemap> tilemapCache = new Dictionary<string, Tilemap>();
@@ -362,6 +375,18 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             }
             chunkTilledTiles.Remove(chunkPos);
         }
+
+        // Clear watered tiles from tilemap
+        if (chunkWateredTiles.ContainsKey(chunkPos))
+        {
+            Tilemap wateredTilemap = FindTilemap(wateredTilemapName);
+            if (wateredTilemap != null)
+            {
+                foreach (Vector3Int tilePos in chunkWateredTiles[chunkPos])
+                    wateredTilemap.SetTile(tilePos, null);
+            }
+            chunkWateredTiles.Remove(chunkPos);
+        }
     }
     
     /// <summary>
@@ -378,9 +403,13 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         
         List<GameObject> visuals = new List<GameObject>();
         List<Vector3Int> tilledTilePositions = new List<Vector3Int>();
+        List<Vector3Int> wateredTilePositions = new List<Vector3Int>();
         
         // Find the tilemap for tilled tiles
         Tilemap tilledTilemap = FindTilemap(tilledTilemapName);
+
+        // Find the tilemap for watered tiles
+        Tilemap wateredTilemap = FindTilemap(wateredTilemapName);
         
         // Get all tiles (both tilled and with crops)
         foreach (var tile in chunk.GetAllTiles())
@@ -408,6 +437,28 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 tilledTilemap.SetTile(tilePos, tilledTile);
                 tilledTilePositions.Add(tilePos);
             }
+
+            // If tile has a watered crop, place the watered overlay tile
+            if (tile.HasCrop && tile.Crop.IsWatered)
+            {
+                if (wateredTile == null)
+                {
+                    if (showDebugLogs)
+                        Debug.LogWarning("[ChunkLoading] WateredTile (TileBase) not assigned!");
+                }
+                else if (wateredTilemap == null)
+                {
+                    if (showDebugLogs)
+                        Debug.LogWarning($"[ChunkLoading] Tilemap '{wateredTilemapName}' not found!");
+                }
+                else
+                {
+                    Vector3 worldPos = new Vector3(tile.WorldX, tile.WorldY, 0);
+                    Vector3Int tilePos = wateredTilemap.WorldToCell(worldPos);
+                    wateredTilemap.SetTile(tilePos, wateredTile);
+                    wateredTilePositions.Add(tilePos);
+                }
+            }
             
             // If tile has a crop, spawn the crop visual on top of the tilled tile
             if (tile.HasCrop)
@@ -429,10 +480,6 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                     continue;
                 }
                 
-                // Create crop visual GameObject
-                GameObject visual = new GameObject($"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}");
-                visual.transform.position = new Vector3(tile.WorldX, tile.WorldY+0.062f, 0);
-                
                 // Get sprite from catalog (handles hybrid delegation internally)
                 Sprite stageSprite = PlantCatalogService.Instance?.GetStageSprite(tile.Crop.PlantId, tile.Crop.CropStage);
 
@@ -440,14 +487,31 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 {
                     if (showDebugLogs)
                         Debug.LogWarning($"[ChunkLoading] '{plantData.plantName}' stage {tile.Crop.CropStage} has a null sprite in PlantCatalogService.");
-                    Destroy(visual);
                     continue;
                 }
 
-                SpriteRenderer sr = visual.AddComponent<SpriteRenderer>();
+                // Instantiate from prefab if assigned, otherwise fall back to a plain GameObject
+                GameObject visual;
+                if (cropVisualPrefab != null)
+                {
+                    visual = Instantiate(cropVisualPrefab, new Vector3(tile.WorldX, tile.WorldY, 0), Quaternion.identity);
+                }
+                else
+                {
+                    visual = new GameObject();
+                    visual.transform.position = new Vector3(tile.WorldX, tile.WorldY, 0);
+                }
+
+                visual.name = $"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}";
+
+                // SpriteRenderer may be on the root or a child object (allowing offset control in prefab)
+                SpriteRenderer sr = visual.GetComponentInChildren<SpriteRenderer>(true);
+                if (sr == null)
+                    sr = visual.AddComponent<SpriteRenderer>();
+
                 sr.sprite = stageSprite;
                 sr.sortingLayerName = "WalkInfront";
-                
+
                 visuals.Add(visual);
 
             }
@@ -493,6 +557,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         
         chunkVisuals[chunkPos] = visuals;
         chunkTilledTiles[chunkPos] = tilledTilePositions;
+        chunkWateredTiles[chunkPos] = wateredTilePositions;
         
         if (showDebugLogs && (visuals.Count > 0 || tilledTilePositions.Count > 0))
             Debug.Log($"[ChunkLoading] Spawned {visuals.Count} crop visuals + {tilledTilePositions.Count} tilled tiles for chunk ({chunkPos.x}, {chunkPos.y})");
@@ -609,6 +674,18 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             }
             chunkTilledTiles.Remove(chunkPos);
         }
+
+        // Clear watered tile cells from the Tilemap before re-spawning.
+        if (chunkWateredTiles.ContainsKey(chunkPos))
+        {
+            Tilemap wateredTilemap = FindTilemap(wateredTilemapName);
+            if (wateredTilemap != null)
+            {
+                foreach (Vector3Int tilePos in chunkWateredTiles[chunkPos])
+                    wateredTilemap.SetTile(tilePos, null);
+            }
+            chunkWateredTiles.Remove(chunkPos);
+        }
         
         // Return old structure visuals to pool
         ReleaseChunkStructures(chunkPos);
@@ -650,6 +727,24 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 Destroy(go);
         }
         chunkStructureVisuals.Remove(chunkPos);
+    }
+
+    /// <summary>
+    /// Removes the watered overlay tile at a single world position.
+    /// Called directly by CropGrowthService on water decay — avoids a full chunk re-render.
+    /// </summary>
+    public void ClearWateredTileAt(Vector3 worldPos)
+    {
+        Tilemap wateredTilemap = FindTilemap(wateredTilemapName);
+        if (wateredTilemap == null) return;
+
+        Vector3Int cellPos = wateredTilemap.WorldToCell(worldPos);
+        wateredTilemap.SetTile(cellPos, null);
+
+        // Remove from tracking so the next RefreshChunkVisuals doesn't try to null it again
+        Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+        if (chunkWateredTiles.TryGetValue(chunkPos, out var list))
+            list.Remove(cellPos);
     }
 
     /// <summary>

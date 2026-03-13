@@ -217,6 +217,10 @@ public class CropPlowingService : ICropPlowingService
             tilledTilemap.SetTile(cellPos, null);
         }
 
+        // Also remove watered overlay tile (tilled is a prerequisite for watered)
+        ChunkLoadingManager chunkLoader = Object.FindAnyObjectByType<ChunkLoadingManager>();
+        chunkLoader?.ClearWateredTileAt(worldPosition);
+
         if (showDebugLogs)
             Debug.Log($"[CropPlowingService] ✓ Untilled tile at {worldPosition}.");
 
@@ -229,7 +233,6 @@ public class CropPlowingService : ICropPlowingService
         }
 
         // Refresh chunk visuals
-        ChunkLoadingManager chunkLoader = Object.FindAnyObjectByType<ChunkLoadingManager>();
         if (chunkLoader != null)
         {
             Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPosition);

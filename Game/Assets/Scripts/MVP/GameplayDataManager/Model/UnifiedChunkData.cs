@@ -25,6 +25,7 @@ public class UnifiedChunkData : BaseChunkData
         public float  GrowthTimer;      // seconds accumulated toward next stage
         public byte   PollenHarvestCount; // pollen collections this flowering stage
         public bool   IsWatered;        // watered flag (affects growth speed)
+        public float  WaterDecayTimer;  // in-game minutes accumulated toward water expiry
         public bool   IsFertilized;     // fertilizer applied (affects growth speed)
         public bool   IsPollinated;     // hybrid already applied, prevents double cross
     }
@@ -173,7 +174,7 @@ public class UnifiedChunkData : BaseChunkData
         }
 
         slot.HasCrop = true;
-        slot.Crop    = new CropTileData { PlantId = plantId };
+        slot.Crop    = new CropTileData { PlantId = plantId, IsWatered = slot.Crop.IsWatered, WaterDecayTimer = slot.Crop.WaterDecayTimer };
         tiles[key]   = slot;
         IsDirty      = true;
         return true;
@@ -276,7 +277,8 @@ public class UnifiedChunkData : BaseChunkData
     {
         long key = GetKey(worldX, worldY);
         if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.IsTilled) return false;
-        slot.Crop.IsWatered = true;
+        slot.Crop.IsWatered       = true;
+        slot.Crop.WaterDecayTimer = 0f;   // reset decay clock whenever freshly watered
         tiles[key] = slot;
         IsDirty    = true;
         return true;
@@ -296,6 +298,16 @@ public class UnifiedChunkData : BaseChunkData
     {
         long key = GetKey(worldX, worldY);
         return tiles.TryGetValue(key, out TileSlot slot) && slot.Crop.IsWatered;
+    }
+
+    public bool AddWaterDecayTime(int worldX, int worldY, float deltaMinutes)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.Crop.IsWatered) return false;
+        slot.Crop.WaterDecayTimer += deltaMinutes;
+        tiles[key] = slot;
+        IsDirty    = true;
+        return true;
     }
 
     // ── Fertilizer ────────────────────────────────────────────────────────
@@ -518,6 +530,7 @@ public class UnifiedChunkData : BaseChunkData
                 bytes.AddRange(BitConverter.GetBytes(slot.Crop.GrowthTimer));
                 bytes.Add(slot.Crop.PollenHarvestCount);
                 bytes.Add((byte)(slot.Crop.IsWatered    ? 1 : 0));
+                bytes.AddRange(BitConverter.GetBytes(slot.Crop.WaterDecayTimer));
                 bytes.Add((byte)(slot.Crop.IsFertilized ? 1 : 0));
                 bytes.Add((byte)(slot.Crop.IsPollinated ? 1 : 0));
             }
@@ -575,6 +588,7 @@ public class UnifiedChunkData : BaseChunkData
                 slot.Crop.GrowthTimer        = BitConverter.ToSingle(data, offset); offset += 4;
                 slot.Crop.PollenHarvestCount = offset < data.Length ? data[offset++] : (byte)0;
                 slot.Crop.IsWatered          = offset < data.Length && data[offset++] == 1;
+                slot.Crop.WaterDecayTimer    = offset + 4 <= data.Length ? BitConverter.ToSingle(data, offset) : 0f; offset += 4;
                 slot.Crop.IsFertilized       = offset < data.Length && data[offset++] == 1;
                 slot.Crop.IsPollinated       = offset < data.Length && data[offset++] == 1;
             }
@@ -609,7 +623,9 @@ public class UnifiedChunkData : BaseChunkData
             {
                 int plantIdLen = string.IsNullOrEmpty(slot.Crop.PlantId)
                     ? 0 : System.Text.Encoding.UTF8.GetByteCount(slot.Crop.PlantId);
-                size += 1 + plantIdLen + 1 + 4 + 1 + 1 + 1 + 1;
+                // PlantIdLen(1) + PlantId(N) + CropStage(1) + GrowthTimer(4)
+                // + PollenCount(1) + IsWatered(1) + WaterDecayTimer(4) + IsFertilized(1) + IsPollinated(1)
+                size += 1 + plantIdLen + 1 + 4 + 1 + 1 + 4 + 1 + 1;
             }
             if (slot.HasStructure)
             {

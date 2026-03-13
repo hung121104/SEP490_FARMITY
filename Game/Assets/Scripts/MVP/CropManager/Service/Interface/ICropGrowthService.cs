@@ -26,6 +26,13 @@ public interface ICropGrowthService
     /// <summary>Returns the <see cref="PollenDataSO"/> for the crop at (worldX, worldY), or null.</summary>
     PollenData GetPollenItem(int worldX, int worldY);
 
+    /// <summary>
+    /// Called every frame (MasterClient only). Accumulates in-game time on all watered tiles
+    /// and removes the IsWatered flag once <see cref="WaterDecayDurationMinutes"/> is reached.
+    /// </summary>
+    /// <param name="gameMinutesDelta">In-game minutes elapsed since the last tick.</param>
+    void TickWaterDecay(float gameMinutesDelta);
+
     // ── Growth mutations ──────────────────────────────────────────────────
 
     /// <summary>
@@ -40,6 +47,20 @@ public interface ICropGrowthService
     /// Intended for debugging / editor tooling only.
     /// </summary>
     void ForceGrowCrop(int worldX, int worldY);
+
+    // ── Configuration ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Growth speed multiplier applied to watered crops (default 2x).
+    /// Adjust in the Inspector via CropWateringView.
+    /// </summary>
+    float WateringSpeedMultiplier { get; set; }
+
+    /// <summary>
+    /// How many in-game minutes water lasts before it evaporates (default 24 minutes).
+    /// Adjust in the Inspector via CropManagerView.
+    /// </summary>
+    float WaterDecayDurationMinutes { get; set; }
 
     // ── Events ────────────────────────────────────────────────────────────
 
