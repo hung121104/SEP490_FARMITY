@@ -139,10 +139,9 @@ export class AccountService implements OnModuleInit {
     if (!isPasswordValid) {
       throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
-    const payload = { username: account.username, sub: account._id };
+    const session = await this.sessionService.createSession(account._id.toString(), 60);
+    const payload = { username: account.username, sub: account._id, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
-    // create a session so token verification works via verify-token
-    await this.sessionService.createSession(token, account._id.toString(), 60);
     return {
       userId: account._id.toString(),
       username: account.username,
@@ -162,9 +161,9 @@ export class AccountService implements OnModuleInit {
     if (!isPasswordValid) {
       throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
-    const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin };
+    const session = await this.sessionService.createSession(account._id.toString(), 60);
+    const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
-    await this.sessionService.createSession(token, account._id.toString(), 60);
     console.log(`[auth-service] Admin logged in: ${account.username}`);
     return {
       userId: account._id.toString(),
@@ -200,13 +199,19 @@ export class AccountService implements OnModuleInit {
   // Active verification: validates token and refreshes inactivity timer
   async verifyToken(token: string) {
     try {
-      const isActive = await this.sessionService.isSessionActive(token);
+      const payload = this.jwtService.verify(token) as { sid?: string; username?: string };
+      const sid = payload?.sid;
+      if (!sid) {
+        throw new RpcException({ status: 401, message: 'Invalid token payload' });
+      }
+
+      const isActive = await this.sessionService.isSessionActive(sid);
       if (!isActive) {
         console.log('[auth-service] Token rejected: session inactive or revoked');
         throw new RpcException({ status: 401, message: 'Session inactive or revoked' });
       }
-      await this.sessionService.updateActivity(token);
-      const payload = this.jwtService.verify(token);
+
+      await this.sessionService.updateActivity(sid);
       console.log(`[auth-service] Token verified: ${payload?.username ?? 'unknown'}`);
       return payload;
     } catch (err) {
@@ -218,11 +223,18 @@ export class AccountService implements OnModuleInit {
   // Passive verification: validates token WITHOUT refreshing inactivity timer
   async verifyTokenPassive(token: string) {
     try {
-      const isActive = await this.sessionService.isSessionActive(token);
+      const payload = this.jwtService.verify(token) as { sid?: string };
+      const sid = payload?.sid;
+      if (!sid) {
+        throw new RpcException({ status: 401, message: 'Invalid token payload' });
+      }
+
+      const isActive = await this.sessionService.isSessionActive(sid);
       if (!isActive) {
         throw new RpcException({ status: 401, message: 'Session inactive or revoked' });
       }
-      return this.jwtService.verify(token);
+
+      return payload;
     } catch (err) {
       if (err instanceof RpcException) throw err;
       throw new RpcException({ status: 401, message: 'Invalid token' });
@@ -231,7 +243,18 @@ export class AccountService implements OnModuleInit {
 
   // Admin logout: revokes session to prevent token reuse
   async logout(token: string) {
-    const revoked = await this.sessionService.revokeSession(token);
+    let sid: string | undefined;
+    try {
+      sid = (this.jwtService.verify(token) as { sid?: string })?.sid;
+    } catch {
+      throw new RpcException({ status: 401, message: 'Invalid token' });
+    }
+
+    if (!sid) {
+      throw new RpcException({ status: 401, message: 'Invalid token payload' });
+    }
+
+    const revoked = await this.sessionService.revokeSession(sid);
     if (!revoked) {
       throw new RpcException({ status: 400, message: 'Session not found' });
     }
