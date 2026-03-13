@@ -64,11 +64,36 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
         }
         else
         {
-            // Master client initializes time in room properties
-            SyncTimeToRoomProperties();
+            // Master client waits for saved data, then initializes time in room properties
+            StartCoroutine(WaitForBootstrapperAndInit());
         }
         
         nextSyncTime = Time.time + syncInterval;
+    }
+
+    private System.Collections.IEnumerator WaitForBootstrapperAndInit()
+    {
+        // Wait for WorldDataBootstrapper to finish loading saved data
+        while (WorldDataBootstrapper.Instance != null && !WorldDataBootstrapper.Instance.IsReady)
+            yield return null;
+
+        // Load saved time from WorldDataManager if available
+        if (WorldDataManager.Instance != null && WorldDataManager.Instance.Day > 0)
+        {
+            year   = WorldDataManager.Instance.Year;
+            month  = WorldDataManager.Instance.Month;
+            day    = WorldDataManager.Instance.Day;
+            hour   = WorldDataManager.Instance.Hour;
+            minute = WorldDataManager.Instance.Minute;
+
+            season = (Season)(month - 1);
+            week   = ((day - 1) / DaysPerWeek) + 1;
+
+            if (showDebugLogs)
+                Debug.Log($"[TimeManager] Restored saved time: {GetCurrentTimeString()}");
+        }
+
+        SyncTimeToRoomProperties();
     }
 
     void Update()
@@ -162,6 +187,10 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
         };
         
         PhotonNetwork.CurrentRoom.SetCustomProperties(timeProps);
+
+        // Keep WorldDataManager in sync so auto-save payload has current time
+        if (WorldDataManager.Instance != null)
+            WorldDataManager.Instance.SetTime(day, month, year, hour, (int)minute);
         
         if (showDebugLogs)
             Debug.Log($"[TimeManager] Synced time: {GetCurrentTimeString()}");

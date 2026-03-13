@@ -23,6 +23,7 @@ public class PlayerAnimationView : MonoBehaviour
     [Header("Action Triggers")]
     [SerializeField] private string triggerPlow  = "Plow";
     [SerializeField] private string triggerPlant = "Plant";
+    [SerializeField] private string triggerWater = "watering";
 
     [Header("Action Direction Parameters")]
     [Tooltip("Animator Float: -1 = left, 1 = right.")]
@@ -31,9 +32,8 @@ public class PlayerAnimationView : MonoBehaviour
     [Header("Movement Lock Durations")]
     [Tooltip("How long (seconds) to lock movement during the plow animation. Match this to your plow clip length.")]
     [SerializeField] private float plowLockDuration = 0.5f;
-    // Add more here as you add actions:
-    // [SerializeField] private float waterLockDuration = 0.6f;
-    // [SerializeField] private float attackLockDuration = 0.4f;
+    [Tooltip("How long (seconds) to lock movement during the watering animation. Match this to your watering clip length.")]
+    [SerializeField] private float waterLockDuration = 0.5f;
 
     // ── Runtime refs ──────────────────────────────────────────────────────
     [SerializeField]private Animator    _animator;
@@ -55,12 +55,14 @@ public class PlayerAnimationView : MonoBehaviour
 
     private void OnEnable()
     {
-        CropPlowingView.OnPlowAnimationRequested += HandlePlowAnimation;
+        CropPlowingView.OnPlowAnimationRequested  += HandlePlowAnimation;
+        CropWateringView.OnWaterAnimationRequested += HandleWaterAnimation;
     }
 
     private void OnDisable()
     {
-        CropPlowingView.OnPlowAnimationRequested -= HandlePlowAnimation;
+        CropPlowingView.OnPlowAnimationRequested  -= HandlePlowAnimation;
+        CropWateringView.OnWaterAnimationRequested -= HandleWaterAnimation;
     }
 
     // ── Called by PlayerMovement every frame ──────────────────────────────
@@ -117,6 +119,26 @@ public class PlayerAnimationView : MonoBehaviour
     {
         _animator?.SetFloat(paramActionX, dirX);
         _animator?.SetTrigger(triggerPlow);
+    }
+
+    private void HandleWaterAnimation(Vector2 waterDirection)
+    {
+        if (_photonView != null && !_photonView.IsMine) return;
+
+        _animator?.SetFloat(paramActionX, waterDirection.x);
+        _animator?.SetTrigger(triggerWater);
+
+        StartCoroutine(LockFor(waterLockDuration));
+
+        if (_photonView != null && PhotonNetwork.IsConnected)
+            _photonView.RPC(nameof(RPC_TriggerWater), RpcTarget.Others, waterDirection.x);
+    }
+
+    [PunRPC]
+    private void RPC_TriggerWater(float dirX)
+    {
+        _animator?.SetFloat(paramActionX, dirX);
+        _animator?.SetTrigger(triggerWater);
     }
 
     // ── Photon sync (locomotion) ───────────────────────────────────────────

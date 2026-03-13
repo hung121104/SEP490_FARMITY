@@ -165,6 +165,23 @@ public class CropPlowingService : ICropPlowingService
         {
             tilledTilemap.SetTile(correctTilePosition, tilledTile);
 
+            // Auto-water newly tilled tile if it's currently raining
+            if (WeatherView.IsRaining)
+            {
+                WorldDataManager.Instance.WaterTileAtWorldPosition(worldPosition);
+
+                Tilemap wateredTilemap = FindTilemapAtPosition(worldPosition, "WateredOverlayTilemap");
+                if (wateredTilemap != null)
+                {
+                    ChunkLoadingManager chunkLoader = Object.FindAnyObjectByType<ChunkLoadingManager>();
+                    if (chunkLoader != null && chunkLoader.wateredTile != null)
+                        wateredTilemap.SetTile(correctTilePosition, chunkLoader.wateredTile);
+                }
+
+                if (PhotonNetwork.IsConnected && syncManager != null)
+                    syncManager.BroadcastTileWatered(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y));
+            }
+
             if (showDebugLogs)
                 Debug.Log($"[CropPlowingService] ✓ Successfully plowed tile at {correctTilePosition} on tilemap {tilledTilemap.gameObject.name}");
 
@@ -217,6 +234,10 @@ public class CropPlowingService : ICropPlowingService
             tilledTilemap.SetTile(cellPos, null);
         }
 
+        // Also remove watered overlay tile (tilled is a prerequisite for watered)
+        ChunkLoadingManager chunkLoader = Object.FindAnyObjectByType<ChunkLoadingManager>();
+        chunkLoader?.ClearWateredTileAt(worldPosition);
+
         if (showDebugLogs)
             Debug.Log($"[CropPlowingService] ✓ Untilled tile at {worldPosition}.");
 
@@ -229,7 +250,6 @@ public class CropPlowingService : ICropPlowingService
         }
 
         // Refresh chunk visuals
-        ChunkLoadingManager chunkLoader = Object.FindAnyObjectByType<ChunkLoadingManager>();
         if (chunkLoader != null)
         {
             Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPosition);
