@@ -310,6 +310,15 @@ public class UnifiedChunkData : BaseChunkData
         return true;
     }
 
+    public bool SetWaterDecayTimer(int worldX, int worldY, float minutes)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileSlot slot)) return false;
+        slot.Crop.WaterDecayTimer = minutes;
+        tiles[key] = slot;
+        return true;
+    }
+
     // ── Fertilizer ────────────────────────────────────────────────────────
 
     public bool FertilizeTile(int worldX, int worldY)

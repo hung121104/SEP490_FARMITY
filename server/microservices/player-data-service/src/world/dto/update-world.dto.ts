@@ -2,16 +2,13 @@ import { UpsertCharacterDto } from '../../character/dto/upsert-character.dto';
 
 // ── Tile delta types ────────────────────────────────────────────────────────
 
-export class TileDataDto {
-  type?: string;
-  plantId?: string | null;
-  cropStage?: number;
-  growthTimer?: number;
-  pollenHarvestCount?: number;
-  isWatered?: boolean;
-  isFertilized?: boolean;
-  isPollinated?: boolean;
-}
+/**
+ * Tile delta payload. `type` is the only structurally required field.
+ * All crop-specific fields (plantId, cropStage, growthTimer, etc.) are passed
+ * through as-is from the Unity client, so adding a new field to CropTileData
+ * on the client requires NO change here or in the schema.
+ */
+export type TileDataDto = { type?: string } & Record<string, unknown>;
 
 /** One chunk's worth of changed tiles.  tiles key = local tile index "0"–"899". */
 export class ChunkDeltaDto {

@@ -140,6 +140,20 @@ public class WorldDataManager : MonoBehaviour
                 if (td.type == "tilled" || td.type == "crop")
                 {
                     this.TillTileAtWorldPosition(worldPos);
+
+                    // Restore watered state for tilled-only tiles (crops handle it below)
+                    if (td.type == "tilled" && td.isWatered && CropData != null)
+                    {
+                        var chunkPos  = WorldToChunkCoords(worldPos);
+                        int sectionId = GetSectionIdFromWorldPosition(worldPos);
+                        var chunkData = CropData.GetChunk(sectionId, chunkPos);
+                        if (chunkData != null)
+                        {
+                            chunkData.WaterTile(worldX, worldY);
+                            if (td.waterDecayTimer > 0f)
+                                chunkData.SetWaterDecayTimer(worldX, worldY, td.waterDecayTimer);
+                        }
+                    }
                 }
 
                 // ── Restore crop ──
@@ -163,7 +177,13 @@ public class WorldDataManager : MonoBehaviour
 
                         if (chunkData != null)
                         {
-                            if (td.isWatered)    chunkData.WaterTile(worldX, worldY);
+                            if (td.isWatered)
+                            {
+                                chunkData.WaterTile(worldX, worldY);
+                                // WaterTile resets the timer to 0 — restore the saved value
+                                if (td.waterDecayTimer > 0f)
+                                    chunkData.SetWaterDecayTimer(worldX, worldY, td.waterDecayTimer);
+                            }
                             if (td.isFertilized)  chunkData.FertilizeTile(worldX, worldY);
                             if (td.isPollinated)  chunkData.SetPollinated(worldX, worldY, true);
 

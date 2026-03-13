@@ -106,6 +106,7 @@ public class TileResponseData
     public float growthTimer;
     public int  pollenHarvestCount;
     public bool isWatered;
+    public float waterDecayTimer;
     public bool isFertilized;
     public bool isPollinated;
 }

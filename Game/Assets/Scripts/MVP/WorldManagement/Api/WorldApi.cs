@@ -20,14 +20,17 @@ public static class WorldApi
     [Serializable]
     public class TileDataDto
     {
-        [JsonProperty("type",               NullValueHandling = NullValueHandling.Ignore)] public string type;
-        [JsonProperty("plantId",            NullValueHandling = NullValueHandling.Ignore)] public string plantId;
-        [JsonProperty("cropStage",          NullValueHandling = NullValueHandling.Ignore)] public int?   cropStage;
-        [JsonProperty("growthTimer",        NullValueHandling = NullValueHandling.Ignore)] public float? growthTimer;
-        [JsonProperty("pollenHarvestCount", NullValueHandling = NullValueHandling.Ignore)] public int?   pollenHarvestCount;
-        [JsonProperty("isWatered",          NullValueHandling = NullValueHandling.Ignore)] public bool?  isWatered;
-        [JsonProperty("isFertilized",       NullValueHandling = NullValueHandling.Ignore)] public bool?  isFertilized;
-        [JsonProperty("isPollinated",       NullValueHandling = NullValueHandling.Ignore)] public bool?  isPollinated;
+        /// <summary>"crop" | "tilled" | "empty"</summary>
+        [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
+        public string type;
+
+        /// <summary>
+        /// All crop-specific fields are captured here automatically via Newtonsoft
+        /// JsonExtensionData.  Adding a new field to CropTileData requires NO change
+        /// to this class — it flows through to the server transparently.
+        /// </summary>
+        [JsonExtensionData]
+        public Dictionary<string, Newtonsoft.Json.Linq.JToken> _extra;
     }
 
     /// <summary>
