@@ -73,4 +73,16 @@ public static class WorldDataManagerCropExtensions
 
     public static bool IsPollinatedAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
         => manager.CropData?.IsPollinatedAtWorldPosition(worldPos) ?? false;
+
+    public static bool WaterTileAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.WaterTileAtWorldPosition(worldPos) ?? false;
+
+    public static bool UnwaterTileAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.UnwaterTileAtWorldPosition(worldPos) ?? false;
+
+    public static bool IsWateredAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.IsWateredAtWorldPosition(worldPos) ?? false;
+
+    public static bool AddWaterDecayTime(this WorldDataManager manager, Vector3 worldPos, float deltaMinutes)
+        => manager.CropData?.AddWaterDecayTime(worldPos, deltaMinutes) ?? false;
 }

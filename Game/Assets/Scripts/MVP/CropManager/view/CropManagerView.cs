@@ -27,6 +27,10 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     [Range(0.1f, 10f)]
     public float growthSpeedMultiplier = 1f;
 
+    [Header("Water Decay Settings")]
+    [Tooltip("How many in-game minutes water lasts before it evaporates.")]
+    [SerializeField] private float waterDecayDurationMinutes = 24f;
+
     [Header("Visual")]
     public Transform cropVisualsParent;
 
@@ -64,8 +68,17 @@ public class CropManagerView : MonoBehaviourPunCallbacks
             WorldDataManager.Instance,
             syncManager);
 
+        growthService.WaterDecayDurationMinutes = waterDecayDurationMinutes;
+
         // Subscribe to visual-refresh event
         growthService.OnCropStageChanged += OnCropStageChanged;
+
+        // Subscribe to rain events for auto-watering
+        WeatherView.OnRainStarted += OnRainStarted;
+        WeatherView.OnRainStopped += OnRainStopped;
+        // If it's already raining when we initialize, apply immediately
+        if (WeatherView.IsRaining)
+            OnRainStarted();
 
         // Visual parent fallback
         if (cropVisualsParent == null)
@@ -79,6 +92,45 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     {
         if (Instance == this) Instance = null;
         if (growthService != null) growthService.OnCropStageChanged -= OnCropStageChanged;
+        WeatherView.OnRainStarted -= OnRainStarted;
+        WeatherView.OnRainStopped -= OnRainStopped;
+    }
+
+    // ── Rain event handlers ──────────────────────────────────────────────
+    private void OnRainStarted()
+    {
+        if (growthService == null) return;
+        growthService.IsRaining = true;
+
+        // Only MasterClient performs the bulk water + visual refresh
+        if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient) return;
+
+        growthService.WaterAllTilledTiles();
+
+        // Refresh visuals for all loaded chunks so watered overlays appear
+        if (chunkLoadingManager != null && WorldDataManager.Instance != null)
+        {
+            foreach (var config in WorldDataManager.Instance.sectionConfigs)
+            {
+                if (!config.IsActive) continue;
+                var section = WorldDataManager.Instance.GetSection(config.SectionId);
+                if (section == null) continue;
+                foreach (var chunkPos in section.Keys)
+                    chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+            }
+        }
+
+        if (showDebugLogs)
+            Debug.Log("[CropManagerView] Rain started — all tilled tiles watered, decay paused.");
+    }
+
+    private void OnRainStopped()
+    {
+        if (growthService == null) return;
+        growthService.IsRaining = false;
+
+        if (showDebugLogs)
+            Debug.Log("[CropManagerView] Rain stopped — water decay resumed.");
     }
 
     // ── Real-time growth tick ─────────────────────────────────────────
@@ -92,6 +144,12 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         // (same formula as TimeManagerView.AdvanceTime)
         float gameMinutesDelta = Time.deltaTime * timeManager.timeSpeed * growthSpeedMultiplier;
         growthService?.TickGrowth(gameMinutesDelta);
+
+        // Live-push decay duration changes made in the Inspector during Play mode.
+        if (growthService != null)
+            growthService.WaterDecayDurationMinutes = waterDecayDurationMinutes;
+
+        growthService?.TickWaterDecay(gameMinutesDelta);
     }
 
     // ── Visual refresh (driven by service event) ──────────────────────────

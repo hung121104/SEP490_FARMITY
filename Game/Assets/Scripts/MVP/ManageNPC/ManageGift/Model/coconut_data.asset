@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1631834b83b53e74087a1acafffee9c7, type: 3}
   m_Name: coconut_data
   m_EditorClassIdentifier: 
-  itemData: {fileID: 11400000, guid: 1abe3500c13fb7449b0b69e4c4991616, type: 2}
+  itemId: gold_rod
   affectionValue: 10
   reactionText: amaizng

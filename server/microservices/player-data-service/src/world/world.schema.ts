@@ -29,6 +29,12 @@ export class World {
 
   @Prop({ type: Number, default: 0 })
   gold: number;
+
+  @Prop({ type: Number, default: 0 })
+  weatherToday: number;
+
+  @Prop({ type: Number, default: 0 })
+  weatherTomorrow: number;
 }
 
 export const WorldSchema = SchemaFactory.createForClass(World);
