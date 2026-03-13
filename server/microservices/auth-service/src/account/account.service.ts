@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { Account, AccountDocument } from './account.schema';
 import { UnverifiedAccount, UnverifiedAccountDocument } from './unverified-account.schema';
 import { CreateAccountDto } from './dto/create-account.dto';
@@ -13,18 +13,44 @@ import { SessionService } from './session.service';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
+import { firstValueFrom } from 'rxjs';
 import { ResetOtpTemplate } from './templates/reset-otp.template';
 import { RegisterOtpTemplate } from './templates/register-otp.template';
 
+type RequirementDefinition = {
+  type: string;
+  target: number;
+  entityId?: string;
+  label: string;
+};
+
+type AchievementDefinition = {
+  achievementId: string;
+  name: string;
+  description: string;
+  requirements: RequirementDefinition[];
+};
+
+type PlayerAchievementState = {
+  progress: number[];
+  achievedAt: Date | null;
+};
+
 @Injectable()
-export class AccountService {
+export class AccountService implements OnModuleInit {
   constructor(
     @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
     @InjectModel(UnverifiedAccount.name) private unverifiedModel: Model<UnverifiedAccountDocument>,
+    @InjectConnection() private readonly connection: Connection,
     private jwtService: JwtService,
     private sessionService: SessionService,
     private configService: ConfigService,
+    @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
   ) {}
+
+  async onModuleInit() {
+    await this.migrateAllLegacyAchievementRows();
+  }
 
   // ── Step 1: Initiate registration (saves to UnverifiedAccount + sends OTP) ──
   async initiateRegistration(createAccountDto: CreateAccountDto) {
@@ -262,6 +288,293 @@ export class AccountService {
     await account.save();
 
     return { ok: true };
+  }
+
+  async getPlayerAchievements(accountId: string): Promise<any[]> {
+    const account = await this.accountModel.findById(accountId).exec();
+    if (!account) {
+      throw new RpcException({ status: 404, message: 'Account not found' });
+    }
+
+    let definitions: AchievementDefinition[];
+    try {
+      definitions = await firstValueFrom(this.adminClient.send('get-all-achievements', {}));
+    } catch {
+      throw new RpcException({ status: 502, message: 'Failed to fetch achievement definitions' });
+    }
+
+    if (!definitions || definitions.length === 0) return [];
+
+    const map = this.toProgressMap(account.achievementProgress);
+    await this.migrateLegacyPlayerAchievements(account, map);
+    let changed = false;
+
+    const result = definitions.map((def) => {
+      const expectedLen = def.requirements.length;
+      const current = map.get(def.achievementId);
+
+      if (!current) {
+        const created: PlayerAchievementState = {
+          progress: new Array(expectedLen).fill(0),
+          achievedAt: null,
+        };
+        map.set(def.achievementId, created);
+        changed = true;
+        return this.toAchievementResponse(def, created);
+      }
+
+      const normalizedProgress = this.normalizeProgress(current.progress, expectedLen);
+      if (!this.sameProgress(normalizedProgress, current.progress)) {
+        current.progress = normalizedProgress;
+        map.set(def.achievementId, current);
+        changed = true;
+      }
+
+      return this.toAchievementResponse(def, current);
+    });
+
+    if (changed) {
+      account.achievementProgress = map;
+      await account.save();
+    }
+
+    return result;
+  }
+
+  async updateAchievementProgress(dto: {
+    accountId: string;
+    achievementId: string;
+    requirementIndex: number;
+    progress: number;
+  }): Promise<any> {
+    const { accountId, achievementId, requirementIndex, progress } = dto;
+
+    let definition: AchievementDefinition;
+    try {
+      definition = await firstValueFrom(this.adminClient.send('get-achievement-by-id', achievementId));
+    } catch {
+      throw new RpcException({ status: 404, message: `Achievement "${achievementId}" not found` });
+    }
+
+    if (requirementIndex >= definition.requirements.length) {
+      throw new RpcException({
+        status: 400,
+        message: `requirementIndex ${requirementIndex} is out of bounds (achievement has ${definition.requirements.length} requirement(s))`,
+      });
+    }
+
+    const account = await this.accountModel.findById(accountId).exec();
+    if (!account) {
+      throw new RpcException({ status: 404, message: 'Account not found' });
+    }
+
+    const map = this.toProgressMap(account.achievementProgress);
+    await this.migrateLegacyPlayerAchievements(account, map);
+    const existing = map.get(achievementId) ?? {
+      progress: new Array(definition.requirements.length).fill(0),
+      achievedAt: null,
+    };
+
+    existing.progress = this.normalizeProgress(existing.progress, definition.requirements.length);
+
+    if (existing.achievedAt) {
+      return this.toAchievementResponse(definition, existing);
+    }
+
+    if (progress <= (existing.progress[requirementIndex] ?? 0)) {
+      return this.toAchievementResponse(definition, existing);
+    }
+
+    existing.progress[requirementIndex] = progress;
+    const allMet = definition.requirements.every(
+      (req, i) => (existing.progress[i] ?? 0) >= req.target,
+    );
+
+    if (allMet) {
+      existing.achievedAt = new Date();
+    }
+
+    map.set(achievementId, existing);
+    account.achievementProgress = map;
+    await account.save();
+
+    return this.toAchievementResponse(definition, existing);
+  }
+
+  private toProgressMap(
+    value: Map<string, PlayerAchievementState> | Record<string, PlayerAchievementState> | undefined,
+  ): Map<string, PlayerAchievementState> {
+    if (value instanceof Map) return value;
+    if (!value || typeof value !== 'object') return new Map();
+    return new Map(Object.entries(value));
+  }
+
+  private async migrateLegacyPlayerAchievements(
+    account: AccountDocument,
+    map: Map<string, PlayerAchievementState>,
+  ): Promise<void> {
+    const legacyCollection = this.connection.collection('playerachievements');
+
+    let legacyRows: Array<{
+      _id: Types.ObjectId;
+      achievementId: string;
+      progress?: number[];
+      achievedAt?: Date | null;
+    }>;
+
+    try {
+      legacyRows = await legacyCollection
+        .find({ accountId: new Types.ObjectId(account._id as any) })
+        .toArray() as Array<{
+          _id: Types.ObjectId;
+          achievementId: string;
+          progress?: number[];
+          achievedAt?: Date | null;
+        }>;
+    } catch {
+      // Legacy collection may not exist yet; this is safe to ignore.
+      return;
+    }
+
+    if (!legacyRows.length) return;
+
+    let changed = false;
+    for (const row of legacyRows) {
+      if (!row.achievementId) continue;
+      const incomingProgress = Array.isArray(row.progress) ? row.progress : [];
+      const incomingAchievedAt = row.achievedAt ?? null;
+
+      const existing = map.get(row.achievementId);
+      if (!existing) {
+        map.set(row.achievementId, {
+          progress: incomingProgress,
+          achievedAt: incomingAchievedAt,
+        });
+        changed = true;
+        continue;
+      }
+
+      const maxLen = Math.max(existing.progress?.length ?? 0, incomingProgress.length);
+      const merged = new Array(maxLen).fill(0).map((_, i) =>
+        Math.max(existing.progress?.[i] ?? 0, incomingProgress[i] ?? 0),
+      );
+
+      const achievedAt = existing.achievedAt ?? incomingAchievedAt;
+
+      if (!this.sameProgress(merged, existing.progress) || achievedAt !== existing.achievedAt) {
+        map.set(row.achievementId, { progress: merged, achievedAt });
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      account.achievementProgress = map;
+      await account.save();
+    }
+
+    // Cleanup migrated legacy rows so collection can be safely dropped later.
+    await legacyCollection.deleteMany({ accountId: new Types.ObjectId(account._id as any) });
+  }
+
+  private async migrateAllLegacyAchievementRows(): Promise<void> {
+    const legacyCollection = this.connection.collection('playerachievements');
+
+    type LegacyRow = {
+      _id: Types.ObjectId;
+      accountId: Types.ObjectId;
+      achievementId: string;
+      progress?: number[];
+      achievedAt?: Date | null;
+    };
+
+    let rows: LegacyRow[];
+    try {
+      rows = (await legacyCollection.find({}).toArray()) as LegacyRow[];
+    } catch {
+      return;
+    }
+
+    if (!rows.length) return;
+
+    const rowsByAccount = new Map<string, LegacyRow[]>();
+    for (const row of rows) {
+      if (!row.accountId || !row.achievementId) continue;
+      const key = String(row.accountId);
+      const bucket = rowsByAccount.get(key);
+      if (bucket) {
+        bucket.push(row);
+      } else {
+        rowsByAccount.set(key, [row]);
+      }
+    }
+
+    for (const [accountId, legacyRows] of rowsByAccount.entries()) {
+      const account = await this.accountModel.findById(accountId).exec();
+      if (!account) continue;
+
+      const map = this.toProgressMap(account.achievementProgress);
+      let changed = false;
+
+      for (const row of legacyRows) {
+        const incomingProgress = Array.isArray(row.progress) ? row.progress : [];
+        const incomingAchievedAt = row.achievedAt ?? null;
+        const existing = map.get(row.achievementId);
+
+        if (!existing) {
+          map.set(row.achievementId, {
+            progress: incomingProgress,
+            achievedAt: incomingAchievedAt,
+          });
+          changed = true;
+          continue;
+        }
+
+        const maxLen = Math.max(existing.progress?.length ?? 0, incomingProgress.length);
+        const merged = new Array(maxLen).fill(0).map((_, i) =>
+          Math.max(existing.progress?.[i] ?? 0, incomingProgress[i] ?? 0),
+        );
+        const achievedAt = existing.achievedAt ?? incomingAchievedAt;
+
+        if (!this.sameProgress(merged, existing.progress) || achievedAt !== existing.achievedAt) {
+          map.set(row.achievementId, { progress: merged, achievedAt });
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        account.achievementProgress = map;
+        await account.save();
+      }
+    }
+
+    await legacyCollection.deleteMany({});
+    console.log(`[auth-service] Migrated and cleared ${rows.length} legacy playerachievements row(s)`);
+  }
+
+  private normalizeProgress(progress: number[] | undefined, expectedLen: number): number[] {
+    const current = Array.isArray(progress) ? [...progress] : [];
+    if (current.length >= expectedLen) return current.slice(0, expectedLen);
+    return [...current, ...new Array(expectedLen - current.length).fill(0)];
+  }
+
+  private sameProgress(a: number[], b: number[] | undefined): boolean {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }
+
+  private toAchievementResponse(definition: AchievementDefinition, state: PlayerAchievementState) {
+    return {
+      achievementId: definition.achievementId,
+      name: definition.name,
+      description: definition.description,
+      requirements: definition.requirements,
+      progress: state.progress,
+      achievedAt: state.achievedAt ?? null,
+      isAchieved: !!state.achievedAt,
+    };
   }
 
   private generateOtp(): string {

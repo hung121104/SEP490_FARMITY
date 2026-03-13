@@ -32,6 +32,24 @@ export class AccountController {
     return this.accountService.findById(accountId);
   }
 
+  @MessagePattern('get-player-achievements')
+  async getPlayerAchievements(@Body() accountId: string) {
+    return this.accountService.getPlayerAchievements(accountId);
+  }
+
+  @MessagePattern('update-achievement-progress')
+  async updateAchievementProgress(
+    @Body()
+    dto: {
+      accountId: string;
+      achievementId: string;
+      requirementIndex: number;
+      progress: number;
+    },
+  ) {
+    return this.accountService.updateAchievementProgress(dto);
+  }
+
   // Admin login (web management)
   @MessagePattern('login-admin')
   async loginAdmin(@Body() loginDto: LoginDto) {
