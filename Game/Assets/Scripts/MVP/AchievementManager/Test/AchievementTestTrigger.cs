@@ -79,15 +79,15 @@ public class AchievementTestTrigger : MonoBehaviour
     [ContextMenu("Test/Fire Kill Event (Generic)")]
     public void FireKillGeneric()
     {
-        Log("Firing KILL event - generic (entityId = null)");
-        GameEventBus.FireEnemyKilled(null);
+        Log("Firing KILL event - generic");
+        GameEventBus.FireEnemyKilled(null, 1);
     }
 
     [ContextMenu("Test/Fire Kill Event (Specific Entity)")]
     public void FireKillSpecific()
     {
-        Log($"Firing KILL event - specific entityId: {killEntityId}");
-        GameEventBus.FireEnemyKilled(killEntityId);
+        Log($"Firing KILL event - entityId: {killEntityId}");
+        GameEventBus.FireEnemyKilled(killEntityId, 1);
     }
 
     #endregion
@@ -98,14 +98,14 @@ public class AchievementTestTrigger : MonoBehaviour
     public void FireHarvestGeneric()
     {
         Log("Firing HARVEST event - generic");
-        GameEventBus.FireCropHarvested(null);
+        GameEventBus.FireCropHarvested(null, 1);
     }
 
     [ContextMenu("Test/Fire Harvest Event (Specific)")]
     public void FireHarvestSpecific()
     {
         Log($"Firing HARVEST event - cropId: {harvestCropId}");
-        GameEventBus.FireCropHarvested(harvestCropId);
+        GameEventBus.FireCropHarvested(harvestCropId, 1);
     }
 
     #endregion
@@ -116,14 +116,14 @@ public class AchievementTestTrigger : MonoBehaviour
     public void FirePlantGeneric()
     {
         Log("Firing PLANT event - generic");
-        GameEventBus.FireSeedPlanted(null);
+        GameEventBus.FireSeedPlanted(null, 1);
     }
 
     [ContextMenu("Test/Fire Plant Event (Specific)")]
     public void FirePlantSpecific()
     {
         Log($"Firing PLANT event - seedId: {plantSeedId}");
-        GameEventBus.FireSeedPlanted(plantSeedId);
+        GameEventBus.FireSeedPlanted(plantSeedId, 1);
     }
 
     #endregion
@@ -134,14 +134,14 @@ public class AchievementTestTrigger : MonoBehaviour
     public void FireFishGeneric()
     {
         Log("Firing FISH event - generic");
-        GameEventBus.FireFishCaught(null);
+        GameEventBus.FireFishCaught(null, 1);
     }
 
     [ContextMenu("Test/Fire Fish Event (Specific)")]
     public void FireFishSpecific()
     {
         Log($"Firing FISH event - fishId: {fishId}");
-        GameEventBus.FireFishCaught(fishId);
+        GameEventBus.FireFishCaught(fishId, 1);
     }
 
     #endregion
@@ -152,14 +152,14 @@ public class AchievementTestTrigger : MonoBehaviour
     public void FireCraftGeneric()
     {
         Log("Firing CRAFT event - generic");
-        GameEventBus.FireItemCrafted(null);
+        GameEventBus.FireItemCrafted(null, 1);
     }
 
     [ContextMenu("Test/Fire Craft Event (Specific)")]
     public void FireCraftSpecific()
     {
         Log($"Firing CRAFT event - itemId: {craftItemId}");
-        GameEventBus.FireItemCrafted(craftItemId);
+        GameEventBus.FireItemCrafted(craftItemId, 1);
     }
 
     #endregion
@@ -170,14 +170,14 @@ public class AchievementTestTrigger : MonoBehaviour
     public void FireCookGeneric()
     {
         Log("Firing COOK event - generic");
-        GameEventBus.FireFoodCooked(null);
+        GameEventBus.FireFoodCooked(null, 1);
     }
 
     [ContextMenu("Test/Fire Cook Event (Specific)")]
     public void FireCookSpecific()
     {
         Log($"Firing COOK event - recipeId: {cookRecipeId}");
-        GameEventBus.FireFoodCooked(cookRecipeId);
+        GameEventBus.FireFoodCooked(cookRecipeId, 1);
     }
 
     #endregion
@@ -188,14 +188,14 @@ public class AchievementTestTrigger : MonoBehaviour
     public void FireCollectGeneric()
     {
         Log("Firing COLLECT event - generic");
-        GameEventBus.FireItemCollected(null);
+        GameEventBus.FireItemCollected(null, 1);
     }
 
     [ContextMenu("Test/Fire Collect Event (Specific)")]
     public void FireCollectSpecific()
     {
         Log($"Firing COLLECT event - itemId: {collectItemId}");
-        GameEventBus.FireItemCollected(collectItemId);
+        GameEventBus.FireItemCollected(collectItemId, 1);
     }
 
     #endregion
@@ -206,14 +206,14 @@ public class AchievementTestTrigger : MonoBehaviour
     public void FireTradeGeneric()
     {
         Log("Firing TRADE event - generic");
-        GameEventBus.FireItemTraded(null);
+        GameEventBus.FireItemTraded(null, 1);
     }
 
     [ContextMenu("Test/Fire Trade Event (Specific)")]
     public void FireTradeSpecific()
     {
         Log($"Firing TRADE event - itemId: {tradeItemId}");
-        GameEventBus.FireItemTraded(tradeItemId);
+        GameEventBus.FireItemTraded(tradeItemId, 1);
     }
 
     #endregion
@@ -224,32 +224,34 @@ public class AchievementTestTrigger : MonoBehaviour
     public void FireDiscoverGeneric()
     {
         Log("Firing DISCOVER event - generic");
-        GameEventBus.FireAreaDiscovered(null);
+        GameEventBus.FireAreaDiscovered(null, 1);
     }
 
     [ContextMenu("Test/Fire Discover Event (Specific)")]
     public void FireDiscoverSpecific()
     {
         Log($"Firing DISCOVER event - areaId: {areaId}");
-        GameEventBus.FireAreaDiscovered(areaId);
+        GameEventBus.FireAreaDiscovered(areaId, 1);
     }
 
     #endregion
 
     #region Level Events
 
-    /// <summary>
-    /// ✅ Fix 2: Auto-increments testLevel after each call.
-    /// So calling multiple times always sends a higher value.
-    /// Server no-ops if level not higher → now always progresses! ✅
-    /// </summary>
     [ContextMenu("Test/Fire Level Up Event")]
     public void FireLevelUp()
     {
         Log($"Firing REACH_LEVEL event - level: {testLevel}");
         GameEventBus.FireLevelReached(testLevel);
-        testLevel++; // ✅ Auto-increment for next call
+        testLevel++;
         Log($"Next FireLevelUp will use level: {testLevel}");
+    }
+
+    [ContextMenu("Test/Reset Test Level")]
+    public void ResetTestLevel()
+    {
+        testLevel = 5;
+        Log($"Test level reset to: {testLevel}");
     }
 
     #endregion
@@ -260,82 +262,46 @@ public class AchievementTestTrigger : MonoBehaviour
     public void FireQuestGeneric()
     {
         Log("Firing QUEST_COMPLETE event - generic");
-        GameEventBus.FireQuestCompleted(null);
+        GameEventBus.FireQuestCompleted(null, 1);
     }
 
     [ContextMenu("Test/Fire Quest Complete Event (Specific)")]
     public void FireQuestSpecific()
     {
         Log($"Firing QUEST_COMPLETE event - questId: {questId}");
-        GameEventBus.FireQuestCompleted(questId);
+        GameEventBus.FireQuestCompleted(questId, 1);
     }
 
     #endregion
 
     #region Batch + Panel Tests
 
-    /// <summary>
-    /// ✅ Fix 1: Two modes controlled by batchOptimized toggle:
-    /// 
-    /// batchOptimized = TRUE (recommended):
-    /// → Fire all events in one frame (increments local counters)
-    /// → GameEventBus fires synchronously
-    /// → AchievementTrackerPresenter increments counter each time
-    /// → Each event still checks localCounter > serverProgress
-    /// → Redundant PUTs still sent BUT server handles correctly
-    /// → NOTE: True deduplication requires changes to TrackerPresenter
-    ///         which is out of test scope - this is expected behavior ✅
-    /// 
-    /// batchOptimized = FALSE:
-    /// → Original behavior, shows all concurrent PUTs in console
-    /// → Useful to verify server handles concurrent requests correctly
-    /// </summary>
     [ContextMenu("Test/Batch Kill Test")]
     public void BatchKillTest()
     {
-        if (batchOptimized)
-        {
-            Log($"[OPTIMIZED] Firing KILL event {batchKillCount} times - " +
-                $"expect up to {batchKillCount} PUT requests " +
-                $"(server handles all correctly via progress-only-increases)");
-        }
-        else
-        {
-            Log($"[RAW] Firing KILL event {batchKillCount} times - " +
-                $"watch console for concurrent PUT requests");
-        }
-
-        for (int i = 0; i < batchKillCount; i++)
-            GameEventBus.FireEnemyKilled(killEntityId);
-
-        Log($"Batch complete! Check console for PUT requests sent.");
+        Log($"Firing KILL x{batchKillCount} → expect 1 PUT after debounce");
+        // ✅ Single fire with count - 1 PUT total after debounce
+        GameEventBus.FireEnemyKilled(killEntityId, batchKillCount);
+        Log("Batch fired! Watch console for 1 PUT after 0.5s.");
     }
 
-    /// <summary>
-    /// Fire ALL event types once.
-    /// ✅ Fix 2: Level auto-increments so repeated calls always progress.
-    /// </summary>
     [ContextMenu("Test/Fire ALL Events Once")]
     public void FireAllEventsOnce()
     {
         Log("Firing ALL event types once!");
-        GameEventBus.FireEnemyKilled(killEntityId);
-        GameEventBus.FireCropHarvested(harvestCropId);
-        GameEventBus.FireSeedPlanted(plantSeedId);
-        GameEventBus.FireFishCaught(fishId);
-        GameEventBus.FireItemCrafted(craftItemId);
-        GameEventBus.FireFoodCooked(cookRecipeId);
-        GameEventBus.FireItemCollected(collectItemId);
-        GameEventBus.FireItemTraded(tradeItemId);
-        GameEventBus.FireAreaDiscovered(areaId);
-
-        // ✅ Fix 2: Use current testLevel then increment for next FireAllEventsOnce call
-        Log($"Firing REACH_LEVEL with level: {testLevel}");
+        GameEventBus.FireEnemyKilled(killEntityId,    1);
+        GameEventBus.FireCropHarvested(harvestCropId, 1);
+        GameEventBus.FireSeedPlanted(plantSeedId,     1);
+        GameEventBus.FireFishCaught(fishId,           1);
+        GameEventBus.FireItemCrafted(craftItemId,     1);
+        GameEventBus.FireFoodCooked(cookRecipeId,     1);
+        GameEventBus.FireItemCollected(collectItemId, 1);
+        GameEventBus.FireItemTraded(tradeItemId,      1);
+        GameEventBus.FireAreaDiscovered(areaId,       1);
         GameEventBus.FireLevelReached(testLevel);
+        GameEventBus.FireQuestCompleted(questId,      1);
         testLevel++;
-
-        GameEventBus.FireQuestCompleted(questId);
-        Log($"All events fired! Next FireAllEventsOnce will use level: {testLevel}");
+        Log($"All events fired! Next level will be: {testLevel}");
     }
 
     [ContextMenu("Test/Open Achievement Panel")]
@@ -369,8 +335,7 @@ public class AchievementTestTrigger : MonoBehaviour
         }
 
         var achievements = AchievementPresenter.Instance.GetAllAchievements();
-        Debug.Log($"[AchievementTestTrigger] " +
-                  $"Total achievements loaded: {achievements.Count}");
+        Debug.Log($"[AchievementTestTrigger] Total loaded: {achievements.Count}");
 
         foreach (var a in achievements)
         {
@@ -380,16 +345,6 @@ public class AchievementTestTrigger : MonoBehaviour
                           $"→ {a.GetProgressText(i)} " +
                           $"({a.GetProgressRatio(i) * 100:F0}%)");
         }
-    }
-
-    /// <summary>
-    /// Reset testLevel back to original value for clean re-testing.
-    /// </summary>
-    [ContextMenu("Test/Reset Test Level")]
-    public void ResetTestLevel()
-    {
-        testLevel = 5;
-        Log($"Test level reset to: {testLevel}");
     }
 
     #endregion
