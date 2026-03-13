@@ -101,8 +101,9 @@ MonoBehaviour:
     rb: {fileID: 0}
     animator: {fileID: 0}
     spriteRenderer: {fileID: 0}
+    enemyId: enemy_unknown
     isInitialized: 0
-  maxHealth: 1000
+  maxHealth: 100
   detectionRange: 8
   attackRange: 1.5
   fieldOfViewAngle: 120
@@ -133,6 +134,7 @@ MonoBehaviour:
   flashCount: 2
   animator: {fileID: 7705436625211187722}
   spriteRenderer: {fileID: 9107845147142514731}
+  enemyData: {fileID: 11400000, guid: 8d3d2b102338cf047a8edf59c993ede2, type: 2}
 --- !u!212 &9107845147142514731
 SpriteRenderer:
   m_ObjectHideFlags: 0
