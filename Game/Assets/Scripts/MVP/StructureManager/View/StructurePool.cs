@@ -53,7 +53,7 @@ public class StructurePool : MonoBehaviour
     }
 
     /// <summary>
-    /// Return a structure GameObject to its pool.
+    /// Return a structure GameObject to its pool.w
     /// </summary>
     public void Release(string structureId, GameObject obj)
     {

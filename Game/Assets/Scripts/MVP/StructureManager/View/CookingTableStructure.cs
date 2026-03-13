@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Attached to the CookingTable prefab.
-/// Uses mouse click to toggle the Cooking UI when the player
-/// is inside the trigger collider and hovering over the table.
+/// Enables a global highlight prefab when the player is inside the trigger collider AND hovering over the table.
+/// Listens for the Interact action (E key) to toggle the Cooking UI.
 /// Auto-closes when the player genuinely leaves the trigger zone.
 /// </summary>
 public class CookingTableStructure : MonoBehaviour, IInteractable
@@ -12,20 +13,37 @@ public class CookingTableStructure : MonoBehaviour, IInteractable
     [Header("Debug")]
     [SerializeField] private bool showDebugLogs = false;
 
+    [Header("Highlight Settings")]
+    [Tooltip("Offset position for the global highlight object relative to this structure.")]
+    [SerializeField] private Vector3 highlightOffset = new Vector3(0f, 1.5f, 0f);
+
+    [Tooltip("A dedicated trigger object for mouse hover.")]
+    [SerializeField] private MouseHoverTrigger mouseHoverTrigger;
+
     private CraftingSystemManager craftingSystemManager;
     private Collider2D _triggerCollider;
 
-    // Overlap counter instead of a plain bool.
-    // Handles Unity physics wakeup events that may fire Enter/Exit repeatedly.
-    private int _overlapCount = 0;
-    private bool PlayerInRange => _overlapCount > 0;
+    // Polling state instead of overlap counter.
+    private bool _playerInRange = false;
+    private bool PlayerInRange => _playerInRange;
 
     // Track mouse hover state
     private bool _isMouseHovering = false;
+    private bool _isTargeted = false;
+
+    // Guard against double-subscribing.
+    private bool _inputSubscribed = false;
+    private bool _isBeingPooled = false;
 
     private void Awake()
     {
         _triggerCollider = GetComponent<Collider2D>();
+
+        if (mouseHoverTrigger != null)
+        {
+            mouseHoverTrigger.OnHoverEnter += HandleHoverEnter;
+            mouseHoverTrigger.OnHoverExit += HandleHoverExit;
+        }
     }
 
     private void Start()
@@ -35,115 +53,183 @@ public class CookingTableStructure : MonoBehaviour, IInteractable
 
     private void OnEnable()
     {
-        StartCoroutine(VisibilityCheckRoutine());
-    }
+        _isBeingPooled = false;
+        _isTargeted = false;
 
-    private System.Collections.IEnumerator VisibilityCheckRoutine()
-    {
-        // Wait 2 frames to let physics engine trigger OnTriggerEnter2D 
-        // if the player is already inside the newly spawned position.
-        yield return null;
-        yield return null;
-    }
-
-    private void OnDisable()
-    {
-        _overlapCount = 0;
+        // Immediately re-evaluate state to avoid any visible flicker
         _isMouseHovering = false;
-    }
+        _playerInRange = false;
 
-    // ── Trigger zone ────────────────────────────────────────────────────
-
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (collision.CompareTag("PlayerEntity"))
+        if (_triggerCollider != null && Camera.main != null)
         {
-            _overlapCount++;
+            // Mouse hover check
+            Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            _isMouseHovering = _triggerCollider.OverlapPoint(mousePos);
 
-            if (showDebugLogs) Debug.Log($"[CookingTableStructure] Player entered trigger (overlap={_overlapCount})");
-        }
-    }
-
-    private void OnTriggerExit2D(Collider2D collision)
-    {
-        if (!collision.CompareTag("PlayerEntity")) return;
-
-        _overlapCount = Mathf.Max(0, _overlapCount - 1);
-        if (showDebugLogs) Debug.Log($"[CookingTableStructure] OnTriggerExit2D received (overlap={_overlapCount})");
-
-        if (_overlapCount == 0)
-        {
-            // Guard: if the GameObject is being deactivated (e.g. returned to pool),
-            if (!gameObject.activeInHierarchy)
+            // Player range check
+            var results = new List<Collider2D>();
+            var filter = new ContactFilter2D { useTriggers = true };
+            Physics2D.OverlapCollider(_triggerCollider, filter, results);
+            foreach (var col in results)
             {
-                if (showDebugLogs) Debug.Log("[CookingTableStructure] Object inactive — ignoring false exit.");
-                return;
+                if (col.CompareTag("PlayerEntity")) { _playerInRange = true; break; }
             }
-            StartCoroutine(ConfirmPlayerExited());
         }
+
+        EvaluateTargetState(); // Show highlight immediately if conditions are already met.
+        SubscribeInput();
     }
 
-    /// <summary>
-    /// This prevents false exits caused by Rigidbody2D going to sleep,
-    /// which can fire OnTriggerExit2D even when the player is stationary.
-    /// </summary>
-    private System.Collections.IEnumerator ConfirmPlayerExited()
+    private void Update()
     {
-        // Wait one frame for physics to settle before querying.
-        yield return null;
+        CheckPlayerInRange();
+    }
 
-        if (_triggerCollider == null) yield break;
+    private void CheckPlayerInRange()
+    {
+        if (_triggerCollider == null) return;
 
-        // Re-check via physics overlap query.
+        if (!gameObject.activeInHierarchy) return;
+
+        GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
+        if (playerObj != null)
+        {
+            var rb = playerObj.GetComponent<Rigidbody2D>();
+            if (rb != null && rb.IsSleeping()) rb.WakeUp();
+        }
+
         var results = new List<Collider2D>();
         var filter = new ContactFilter2D { useTriggers = true };
         Physics2D.OverlapCollider(_triggerCollider, filter, results);
 
+        bool foundPlayer = false;
         foreach (var col in results)
         {
             if (col.CompareTag("PlayerEntity"))
             {
-                // False exit — player is still inside (Rigidbody2D sleep artifact).
-                _overlapCount++;
-                if (showDebugLogs) Debug.Log("[CookingTableStructure] False exit ignored — player still inside trigger.");
-
-                yield break;
+                foundPlayer = true;
+                break;
             }
         }
 
-        // Player has genuinely left the trigger zone — close the UI.
-        if (showDebugLogs) Debug.Log("[CookingTableStructure] Player confirmed outside — closing Cooking UI.");
-
-        if (craftingSystemManager != null)
-            craftingSystemManager.CloseCookingUI();
-        else
+        if (foundPlayer != _playerInRange)
         {
-            if (showDebugLogs) Debug.LogWarning("[CookingTableStructure] CraftingSystemManager not found in scene!");
+            _playerInRange = foundPlayer;
+            
+            if (showDebugLogs)
+                Debug.Log($"[CookingTableStructure] PlayerInRange thay đổi thành ({_playerInRange})");
+
+            // If player out of range and UI is open, close UI
+            if (!_playerInRange && craftingSystemManager != null && craftingSystemManager.IsCookingUIOpen())
+            {
+                craftingSystemManager.CloseCookingUI();
+            }
+
+            EvaluateTargetState();
         }
     }
 
-    // ── Mouse Click / Hover callback ────────────────────────────────────
+    private void OnDisable()
+    {
+        UnsubscribeInput();
 
-    private void OnMouseEnter()
+        if (_isBeingPooled)
+        {
+            _isBeingPooled = false;
+            return;
+        }
+
+        _playerInRange = false;
+        _isMouseHovering = false;
+        EvaluateTargetState();
+    }
+
+    private void OnDestroy()
+    {
+        UnsubscribeInput();
+        if (mouseHoverTrigger != null)
+        {
+            mouseHoverTrigger.OnHoverEnter -= HandleHoverEnter;
+            mouseHoverTrigger.OnHoverExit -= HandleHoverExit;
+        }
+    }
+
+    private void SubscribeInput()
+    {
+        if (_inputSubscribed) return;
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.Interact.performed += OnInteract;
+        _inputSubscribed = true;
+    }
+
+    private void UnsubscribeInput()
+    {
+        if (!_inputSubscribed) return;
+        if (InputManager.Instance != null)
+            InputManager.Instance.Interact.performed -= OnInteract;
+        _inputSubscribed = false;
+    }
+
+    // ── Target Evaluation ───────────────────────────────────────────────
+
+    private void EvaluateTargetState()
+    {
+        bool shouldBeTargeted = PlayerInRange && _isMouseHovering;
+
+        if (shouldBeTargeted && !_isTargeted)
+        {
+            _isTargeted = true;
+            if (StructureHighlight.Instance != null)
+                StructureHighlight.Instance.Show(transform, highlightOffset);
+
+            if (showDebugLogs) Debug.Log("[CookingTable] Targeted (Highlight ON)");
+        }
+        else if (!shouldBeTargeted && _isTargeted)
+        {
+            _isTargeted = false;
+            if (StructureHighlight.Instance != null)
+                StructureHighlight.Instance.Hide(transform);
+
+            if (showDebugLogs) Debug.Log("[CookingTable] Untargeted (Highlight OFF)");
+        }
+    }
+
+    // ── Mouse / Hover callback ────────────────────────────────────
+
+    private void HandleHoverEnter()
     {
         _isMouseHovering = true;
+        EvaluateTargetState();
     }
 
-    private void OnMouseExit()
+    private void HandleHoverExit()
     {
         _isMouseHovering = false;
+        EvaluateTargetState();
     }
 
-    private void OnMouseDown()
+    // ── Input callback (Interact) ───────────────────────────────────────
+
+    private void OnInteract(InputAction.CallbackContext ctx)
     {
-        if (!PlayerInRange || !_isMouseHovering) return;
         if (craftingSystemManager == null) return;
 
-        // Toggle: close if already open, open if closed.
+        // If the UI is already open, any table the player is standing near can close it.
+        // This solves the issue where hover is blocked by the UI itself.
         if (craftingSystemManager.IsCookingUIOpen())
-            craftingSystemManager.CloseCookingUI();
-        else
+        {
+            if (PlayerInRange)
+            {
+                craftingSystemManager.CloseCookingUI();
+            }
+            return;
+        }
+
+        // If UI is closed, only this specific table can open it if targeted (hover + range)
+        if (_isTargeted)
+        {
             Interact();
+        }
     }
 
     // ── IInteractable ───────────────────────────────────────────────────
