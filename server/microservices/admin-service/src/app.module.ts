@@ -12,6 +12,7 @@ import { GameConfigModule } from './game-config/game-config.module';
 import { AchievementModule } from './game-data/achievement/achievement.module';
 import { SkinConfigModule } from './game-data/skin-config/skin-config.module';
 import { MaterialModule } from './game-data/material/material.module';
+import { ResourceConfigModule } from './game-data/resource-config/resource-config.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { MaterialModule } from './game-data/material/material.module';
     AchievementModule,
     SkinConfigModule,
     MaterialModule,
+    ResourceConfigModule,
   ],
 })
 export class AppModule {}

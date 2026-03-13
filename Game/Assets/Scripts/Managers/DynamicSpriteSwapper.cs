@@ -71,6 +71,11 @@ public class DynamicSpriteSwapper : MonoBehaviour
         }
     }
 
+    public void SetConfigId(string newConfigId)
+    {
+        ConfigId = newConfigId;
+    }
+
     // ── Unity Lifecycle ───────────────────────────────────────────────────────
 
     private void Awake()
