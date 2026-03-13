@@ -6,14 +6,14 @@ public class CraftingSystemManager : MonoBehaviour
 {
     [SerializeField] private InventoryGameView inventoryGameView;
 
-    [Header("UI Views")]
+    [Header("UI Crafting Views")]
     [SerializeField] private CraftingMainView craftingInventoryView;
     [SerializeField] private CraftingMainView craftingMainView;
     [SerializeField] private CookingMainView cookingMainView;
 
     [Header("Inventory Display")]
-    [SerializeField] private Transform craftingInventoryContainer;
-    [SerializeField] private Transform cookingInventoryContainer;
+    [SerializeField] private Transform craftingMainPanel;
+    [SerializeField] private Transform cookingMainPanel;
 
     // Core components
     private CraftingModel craftingModel;
@@ -236,7 +236,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void OpenCraftingUI()
     {
         craftingPresenter?.OpenCraftingUI();
-        inventoryGameView?.OpenCraftingInventory(craftingInventoryContainer);
+        inventoryGameView?.OpenCraftingInventory(craftingMainPanel);
     }
 
     /// <summary>
@@ -254,7 +254,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void OpenCookingUI()
     {
         cookingPresenter?.OpenCookingUI();
-        inventoryGameView?.OpenCookingInventory(cookingInventoryContainer);
+        inventoryGameView?.OpenCookingInventory(cookingMainPanel);
     }
 
     /// <summary>

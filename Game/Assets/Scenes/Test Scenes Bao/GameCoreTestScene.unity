@@ -4684,8 +4684,8 @@ MonoBehaviour:
   craftingInventoryView: {fileID: 435592460}
   craftingMainView: {fileID: 1564190098}
   cookingMainView: {fileID: 2015000858}
-  craftingInventoryContainer: {fileID: 593825073}
-  cookingInventoryContainer: {fileID: 132205187}
+  craftingMainPanel: {fileID: 593825073}
+  cookingMainPanel: {fileID: 132205187}
 --- !u!1 &337970959
 GameObject:
   m_ObjectHideFlags: 0
