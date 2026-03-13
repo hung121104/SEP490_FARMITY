@@ -247,7 +247,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         HasCrop      = slot.HasCrop,
                         Crop         = slot.Crop,
                         HasStructure = slot.HasStructure,
-                        StructureId  = slot.HasStructure ? slot.Structure.StructureId : null
+                        StructureId  = slot.HasStructure ? slot.Structure.StructureId : null,
+                        IsWatered    = slot.Crop.IsWatered
                     };
                 }
                 ChunkSyncData syncData = new ChunkSyncData
@@ -361,6 +362,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     for (byte p = 0; p < entry.Crop.PollenHarvestCount; p++)
                         chunk.IncrementPollenHarvestCount(entry.WorldX, entry.WorldY);
                 }
+
+                if (entry.IsWatered)
+                    chunk.WaterTile(entry.WorldX, entry.WorldY);
 
                 // Restore structure data
                 if (entry.HasStructure && !string.IsNullOrEmpty(entry.StructureId))
@@ -978,13 +982,14 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         public UnifiedChunkData.CropTileData Crop;
         public bool   HasStructure;
         public string StructureId;
+        public bool IsWatered;
     }
     
     // Wire format per tile entry:
     //   WorldX(4) WorldY(4) flags(1)
     //   [if HasCrop:      PlantIdLen(1) PlantId(N) Stage(1) GrowthTimer(4) PollenCount(1)]
     //   [if HasStructure:  StructIdLen(1) StructId(N)]
-    // flags: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure
+    // flags: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure, bit3=IsWatered
     private byte[] SerializeBatch(ChunkSyncData[] batch)
     {
         var bytes = new System.Collections.Generic.List<byte>();
@@ -1011,6 +1016,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 if (entry.IsTilled)     flags |= 1;
                 if (entry.HasCrop)      flags |= 2;
                 if (entry.HasStructure) flags |= 4;
+                if (entry.IsWatered)    flags |= 8;
                 bytes.Add(flags);                                            // 1
 
                 if (entry.HasCrop)
@@ -1067,6 +1073,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 entry.IsTilled     = (flags & 1) != 0;
                 entry.HasCrop      = (flags & 2) != 0;
                 entry.HasStructure = (flags & 4) != 0;
+                entry.IsWatered    = (flags & 8) != 0;
 
                 if (entry.HasCrop)
                 {

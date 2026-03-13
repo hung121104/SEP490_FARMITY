@@ -165,6 +165,13 @@ public class CropPlowingService : ICropPlowingService
         {
             tilledTilemap.SetTile(correctTilePosition, tilledTile);
 
+            if (showDebugLogs)
+                Debug.Log($"[CropPlowingService] ✓ Successfully plowed tile at {correctTilePosition} on tilemap {tilledTilemap.gameObject.name}");
+
+            // Broadcast till first so the remote client has IsTilled=true before watering
+            if (PhotonNetwork.IsConnected && syncManager != null)
+                syncManager.BroadcastTileTilled(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y));
+
             // Auto-water newly tilled tile if it's currently raining
             if (WeatherView.IsRaining)
             {
@@ -181,12 +188,6 @@ public class CropPlowingService : ICropPlowingService
                 if (PhotonNetwork.IsConnected && syncManager != null)
                     syncManager.BroadcastTileWatered(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y));
             }
-
-            if (showDebugLogs)
-                Debug.Log($"[CropPlowingService] ✓ Successfully plowed tile at {correctTilePosition} on tilemap {tilledTilemap.gameObject.name}");
-
-            if (PhotonNetwork.IsConnected && syncManager != null)
-                syncManager.BroadcastTileTilled(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y));
 
             return true;
         }
