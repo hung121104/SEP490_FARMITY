@@ -176,6 +176,7 @@ public class WorldDataManager : MonoBehaviour
                     }
                 }
 
+                // —— Restore structure ——
                 tilesApplied++;
             }
         }

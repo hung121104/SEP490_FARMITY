@@ -1,0 +1,13 @@
+export enum RequirementType {
+  KILL = 'KILL',
+  HARVEST = 'HARVEST',
+  PLANT = 'PLANT',
+  CRAFT = 'CRAFT',
+  FISH = 'FISH',
+  COLLECT = 'COLLECT',
+  DISCOVER = 'DISCOVER',
+  QUEST_COMPLETE = 'QUEST_COMPLETE',
+  REACH_LEVEL = 'REACH_LEVEL',
+  COOK = 'COOK',
+  TRADE = 'TRADE',
+}

@@ -16,7 +16,8 @@ public enum ItemType
     Forage,         // Wild items
     Resource,       // Raw materials
     Gift,           // Special gift items
-    Quest           // Quest-specific items
+    Quest,          // Quest-specific items
+    Structure       // Placeable structures (Chest, Furnace, Fence…)
 }
 
 public enum ItemCategory
@@ -133,3 +134,12 @@ public enum ToolType
     Axe,
     FishingRod
 }
+
+public enum StructureInteractionType
+{
+    None,       // Decorative only — no interaction
+    Storage,    // Opens Storage UI (Chest)
+    Crafting,   // Opens Crafting UI (Workbench)
+    Smelting    // Opens Smelting/Furnace UI
+}
+

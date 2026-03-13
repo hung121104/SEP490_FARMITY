@@ -16,6 +16,6 @@ MonoBehaviour:
   - itemID: fish_tuna
     catchChance: 0.1
   - itemID: fish_goby
-    catchChance: 0.403
+    catchChance: 0.508
   - itemID: fish_carp
-    catchChance: 0.567
+    catchChance: 0.503

@@ -387,7 +387,7 @@ public class UnifiedChunkData : BaseChunkData
     /// <summary>
     /// Place a structure at this world position.
     /// Fails if a crop is already present (mutual exclusion).
-    /// Structures do NOT require a tilled tile.
+    /// Structures CANNOT be placed on tilled soil.
     /// </summary>
     public bool PlaceStructure(string structureId, int worldX, int worldY)
     {
@@ -403,6 +403,11 @@ public class UnifiedChunkData : BaseChunkData
             if (slot.HasCrop)
             {
                 Debug.LogWarning($"[UnifiedChunkData] Cannot place structure at ({worldX},{worldY}) — crop is there.");
+                return false;
+            }
+            if (slot.IsTilled)
+            {
+                Debug.LogWarning($"[UnifiedChunkData] Cannot place structure at ({worldX},{worldY}) — tile is tilled.");
                 return false;
             }
             slot.HasStructure = true;

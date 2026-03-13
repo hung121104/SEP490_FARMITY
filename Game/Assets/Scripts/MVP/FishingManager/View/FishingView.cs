@@ -94,7 +94,7 @@ public class FishingView : MonoBehaviourPun, IFishingView
         // --- 1. CastRod ---
         if (localPlayer != null)
         {
-            Animator anim = localPlayer.GetComponent<Animator>();
+            Animator anim = localPlayer.GetComponentInChildren<Animator>();
             if (anim != null)
             {
                 lastFacingX = targetPosition.x >= localPlayer.transform.position.x ? 1f : -1f;
@@ -111,7 +111,7 @@ public class FishingView : MonoBehaviourPun, IFishingView
         // --- 2. WaitFishing ---
         if (localPlayer != null)
         {
-            Animator anim = localPlayer.GetComponent<Animator>();
+            Animator anim = localPlayer.GetComponentInChildren<Animator>();
             if (anim != null)
             {
                 anim.SetTrigger("WaitFishing");
@@ -159,7 +159,7 @@ public class FishingView : MonoBehaviourPun, IFishingView
 
         if (localPlayer != null)
         {
-            Animator anim = localPlayer.GetComponent<Animator>();
+            Animator anim = localPlayer.GetComponentInChildren<Animator>();
             if (anim != null)
             {
                 anim.SetFloat("ActionX", lastFacingX);
@@ -195,7 +195,7 @@ public class FishingView : MonoBehaviourPun, IFishingView
             PhotonView pv = player.GetComponent<PhotonView>();
             if (pv != null && pv.Owner.ActorNumber == ownerActorNumber)
             {
-                Animator anim = player.GetComponent<Animator>();
+                Animator anim = player.GetComponentInChildren<Animator>();
                 if (anim != null)
                 {
                     anim.SetFloat("ActionX", facingX);

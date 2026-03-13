@@ -399,6 +399,9 @@ public class CraftingPresenter
     {
         if (mainView == null) return;
 
+        // Skip if UI is already closed
+        if (!IsUIOpen()) return;
+
         mainView.Hide();
         recipeDetailView?.HideRecipeDetail();
         selectedRecipeID = null;
