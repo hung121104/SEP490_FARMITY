@@ -840,7 +840,7 @@ MonoBehaviour:
   useButton: {fileID: 0}
   fadeInDuration: 0.2
   fadeOutDuration: 0.15
-  offset: {x: 200, y: 100}
+  offset: {x: 230, y: 100}
   followMouse: 1
   clampToScreen: 1
 --- !u!1 &52215084
@@ -15112,6 +15112,9 @@ MonoBehaviour:
   inventoryView: {fileID: 1526296357}
   itemDetailView: {fileID: 52079948}
   itemDeleteView: {fileID: 798044606}
+  deleteZoneDefaultPos: {x: 658.2, y: 180}
+  deleteZoneCraftingAndCookingPos: {x: 658.2, y: 413}
+  deleteZoneCraftingInInventoryPos: {x: 387, y: 411}
 --- !u!1 &1044202528
 GameObject:
   m_ObjectHideFlags: 0

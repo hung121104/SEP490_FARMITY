@@ -11,6 +11,11 @@ public class InventoryGameView : MonoBehaviour
     [SerializeField] private ItemDetailView itemDetailView;
     [SerializeField] private ItemDeleteView itemDeleteView;
 
+    [Header("Delete Zone Position Adjustments")]
+    [SerializeField] private Vector2 deleteZoneDefaultPos = new Vector2(658.2f, 180);
+    [SerializeField] private Vector2 deleteZoneCraftingAndCookingPos = new Vector2(658.2f, 413);
+    [SerializeField] private Vector2 deleteZoneCraftingInInventoryPos = new Vector2(387, 411);
+
     private InventoryModel model;
     private IInventoryService service;
     private InventoryPresenter presenter;
@@ -159,7 +164,10 @@ public class InventoryGameView : MonoBehaviour
     public void OpenInventory()
     {
         if (itemDeleteView != null)
+        {
             itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneDefaultPos);
+        }
             
         if (inventoryView != null)
         {
@@ -170,7 +178,11 @@ public class InventoryGameView : MonoBehaviour
 
     public void OpenCraftingInventory(Transform container = null)
     {
-        if (itemDeleteView != null) itemDeleteView.EnableDrops();
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneCraftingAndCookingPos);
+        }
         
         if (container != null)
             inventoryView?.ShowWithParent(container);
@@ -180,7 +192,11 @@ public class InventoryGameView : MonoBehaviour
 
     public void OpenCookingInventory(Transform container = null)
     {
-        if (itemDeleteView != null) itemDeleteView.EnableDrops();
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneCraftingAndCookingPos);
+        }
         
         if (container != null)
             inventoryView?.ShowWithParent(container);
@@ -190,7 +206,17 @@ public class InventoryGameView : MonoBehaviour
 
     public void OpenCraftingInInventory()
     {
-        OpenInventory();
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneCraftingInInventoryPos);
+        }
+            
+        if (inventoryView != null)
+        {
+            inventoryView.Show();
+            Debug.Log("[InventoryGameView] Crafting in Inventory opened");
+        }
     }
 
     public void CloseInventory()
