@@ -27,16 +27,19 @@ public class CropBreedingView : MonoBehaviourPun
     private Vector2Int lastTile = new Vector2Int(int.MinValue, int.MinValue);
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
-    void Awake()
+    // NOTE: Service construction is deferred to Start() so that WorldDataManager,
+    // CropManagerView, and ChunkDataSyncManager have finished their own Awake()
+    // before we resolve them. Building in Awake() captured null references, causing
+    // CanApplyPollen() to silently fail on every attempt.
+    void Start()
     {
         var service = new CropBreedingService(
             WorldDataManager.Instance,
             FindAnyObjectByType<CropManagerView>(),
             FindAnyObjectByType<ChunkDataSyncManager>());
         presenter = new CropBreedingPresenter(this, service);
+        FindLocalPlayer();
     }
-
-    void Start()      => FindLocalPlayer();
     void Update()     { if (playerTransform == null) FindLocalPlayer(); }
 
     void OnEnable()   => UseToolService.OnPollenRequested += HandlePollenUseRequested;
@@ -46,8 +49,18 @@ public class CropBreedingView : MonoBehaviourPun
 
     private void HandlePollenUseRequested(PollenData pollen, Vector3 mouseWorldPos)
     {
-        if (playerTransform == null) { Debug.LogWarning("[CropBreedingView] playerTransform is null."); return; }
-        if (pollen == null) { Debug.LogWarning("[CropBreedingView] pollen is null."); return; }
+        if (playerTransform == null)
+        {
+            Debug.LogWarning("[CropBreedingView] playerTransform is null.");
+            OnBreedingResult?.Invoke(false);
+            return;
+        }
+        if (pollen == null)
+        {
+            Debug.LogWarning("[CropBreedingView] pollen is null.");
+            OnBreedingResult?.Invoke(false);
+            return;
+        }
 
         Debug.Log($"[CropBreedingView] HandlePollenUseRequested: pollen='{pollen.itemID}' crossResults={pollen.crossResults?.Length ?? 0} mousePos={mouseWorldPos}");
 
@@ -58,7 +71,12 @@ public class CropBreedingView : MonoBehaviourPun
         Vector3 tile = CropTileSelector.GetDirectionalTile(
             playerTransform.position, mouseWorldPos, interactionRadius, ref lastTile);
 
-        if (tile == Vector3.zero) { Debug.LogWarning($"[CropBreedingView] GetDirectionalTile returned zero for mousePos={mouseWorldPos}."); return; }
+        if (tile == Vector3.zero)
+        {
+            Debug.LogWarning($"[CropBreedingView] GetDirectionalTile returned zero for mousePos={mouseWorldPos}. Player may be out of range (interactionRadius={interactionRadius}).");
+            OnBreedingResult?.Invoke(false);
+            return;
+        }
 
         Debug.Log($"[CropBreedingView] Applying pollen at tile {tile}.");
         presenter.HandleApplyPollen(pollen, tile);

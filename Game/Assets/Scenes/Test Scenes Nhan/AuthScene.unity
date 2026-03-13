@@ -698,6 +698,8 @@ MonoBehaviour:
   username: {fileID: 1517844198}
   password: {fileID: 1512081998}
   loginButton: {fileID: 217286567}
+  errorText: {fileID: 0}
+  successScene: 
 --- !u!4 &2101468140
 Transform:
   m_ObjectHideFlags: 0

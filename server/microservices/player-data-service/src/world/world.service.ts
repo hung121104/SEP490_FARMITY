@@ -109,7 +109,17 @@ export class WorldService {
     // Fetch all characters associated with this world
     try {
       const characters = await this.characterService.getAllByWorldId(world._id);
-      result.characters = characters;
+      // Convert each character's inventory Map to a plain object for JSON serialization.
+      // Unity's Newtonsoft.Json can then deserialize it as Dictionary<string, InventorySlotResponse>.
+      result.characters = characters.map((c: any) => {
+        const charObj = c.toObject ? c.toObject() : { ...c };
+        if (charObj.inventory instanceof Map) {
+          const invObj: Record<string, any> = {};
+          charObj.inventory.forEach((v: any, k: string) => { invObj[k] = v; });
+          charObj.inventory = invObj;
+        }
+        return charObj;
+      });
     } catch (err) {
       console.error('[WorldService] Failed to fetch characters for world', err);
       result.characters = [];
@@ -250,6 +260,36 @@ export class WorldService {
       // 3. Apply tile deltas — only the tiles that changed
       if (dto.deltas && dto.deltas.length > 0) {
         await this.applyTileDeltas(worldOid, dto.deltas, opts);
+      }
+
+      // 4. Apply inventory deltas — only the slots that changed
+      if (dto.inventoryDeltas && dto.inventoryDeltas.length > 0) {
+        await this.characterService.applyInventoryDeltas(worldOid, dto.inventoryDeltas, opts);
+
+        // Merge applied deltas into the in-memory charactersResult so the response
+        // reflects the post-delta inventory state (avoids an extra DB round-trip).
+        for (const delta of dto.inventoryDeltas) {
+          const idx = charactersResult.findIndex(
+            (c: any) => (c.accountId?.toString ? c.accountId.toString() : String(c.accountId)) === delta.accountId,
+          );
+          if (idx !== -1) {
+            const charDoc = charactersResult[idx];
+            const charObj: any = charDoc?.toObject ? charDoc.toObject() : { ...charDoc };
+            const inv: Record<string, any> =
+              charObj.inventory instanceof Map
+                ? Object.fromEntries(charObj.inventory as Map<string, any>)
+                : { ...(charObj.inventory ?? {}) };
+            for (const [slotIdx, slotData] of Object.entries(delta.slots) as [string, any][]) {
+              if (slotData?.itemId && slotData.quantity > 0) {
+                inv[slotIdx] = { itemId: slotData.itemId, quantity: slotData.quantity };
+              } else {
+                delete inv[slotIdx];
+              }
+            }
+            charObj.inventory = inv;
+            charactersResult[idx] = charObj;
+          }
+        }
       }
 
       return { ok: true, characters: charactersResult };

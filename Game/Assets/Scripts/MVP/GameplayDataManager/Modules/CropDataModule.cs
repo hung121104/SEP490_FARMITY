@@ -150,18 +150,18 @@ public class CropDataModule : IWorldDataModule
         return chunk.UpdateCropStage(wx, wy, newStage);
     }
 
-    public bool UpdateCropAge(Vector3 worldPos, int newAge)
+    public bool UpdateGrowthTimer(Vector3 worldPos, float newTimer)
     {
         if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
             return false;
-        return chunk.UpdateCropAge(wx, wy, newAge);
+        return chunk.UpdateGrowthTimer(wx, wy, newTimer);
     }
 
-    public bool IncrementCropAge(Vector3 worldPos)
+    public bool AddGrowthTime(Vector3 worldPos, float deltaSeconds)
     {
         if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
             return false;
-        return chunk.IncrementCropAge(wx, wy);
+        return chunk.AddGrowthTime(wx, wy, deltaSeconds);
     }
 
     // ── Pollen ────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -400,6 +400,9 @@ public class CookingPresenter
     public void CloseCookingUI()
     {
         if (mainView == null) return;
+
+        // Skip if UI is already closed
+        if (!IsUIOpen()) return;
 
         mainView.Hide();
         recipeDetailView?.HideRecipeDetail();

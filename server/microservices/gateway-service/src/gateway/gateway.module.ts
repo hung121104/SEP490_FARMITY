@@ -70,6 +70,17 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/plants/:plantId', method: RequestMethod.PUT },
         { path: 'game-data/plants/:plantId', method: RequestMethod.DELETE },
         { path: 'game-config/main-menu', method: RequestMethod.PUT },
+        { path: 'player-data/achievement', method: RequestMethod.ALL },
+        { path: 'player-data/achievement/progress', method: RequestMethod.PUT },
+        { path: 'game-data/achievements/create', method: RequestMethod.POST },
+        { path: 'game-data/achievements/:achievementId', method: RequestMethod.PUT },
+        { path: 'game-data/achievements/:achievementId', method: RequestMethod.DELETE },
+        { path: 'game-data/skin-configs', method: RequestMethod.POST },
+        { path: 'game-data/skin-configs/:configId', method: RequestMethod.PUT },
+        { path: 'game-data/skin-configs/:configId', method: RequestMethod.DELETE },
+        { path: 'game-data/materials', method: RequestMethod.POST },
+        { path: 'game-data/materials/:materialId', method: RequestMethod.PUT },
+        { path: 'game-data/materials/:materialId', method: RequestMethod.DELETE },
       );
 
     // enforce admin only on admin routes
@@ -95,6 +106,15 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/plants/:plantId', method: RequestMethod.PUT },
         { path: 'game-data/plants/:plantId', method: RequestMethod.DELETE },
         { path: 'game-config/main-menu', method: RequestMethod.PUT },
+        { path: 'game-data/achievements/create', method: RequestMethod.POST },
+        { path: 'game-data/achievements/:achievementId', method: RequestMethod.PUT },
+        { path: 'game-data/achievements/:achievementId', method: RequestMethod.DELETE },
+        { path: 'game-data/skin-configs', method: RequestMethod.POST },
+        { path: 'game-data/skin-configs/:configId', method: RequestMethod.PUT },
+        { path: 'game-data/skin-configs/:configId', method: RequestMethod.DELETE },
+        { path: 'game-data/materials', method: RequestMethod.POST },
+        { path: 'game-data/materials/:materialId', method: RequestMethod.PUT },
+        { path: 'game-data/materials/:materialId', method: RequestMethod.DELETE },
       );
   }
 }

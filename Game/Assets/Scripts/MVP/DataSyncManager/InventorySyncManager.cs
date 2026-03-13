@@ -116,7 +116,10 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     // ══════════════════════════════════════════════════════════
 
     /// <summary>Get local player's characterId from PlayerData._id (MongoDB _id).
-    /// Priority: in-memory cache → PlayerPrefs (persists across rejoin) → PlayerDataManager.
+    /// Priority: in-memory cache → PlayerDataManager (live, world-scoped) → PlayerPrefs (cross-session fallback).
+    /// PlayerDataManager is checked before PlayerPrefs to avoid using a stale charId cached from a
+    /// previous world — every world gives a character a new _id, so the PlayerPrefs entry becomes
+    /// invalid when the player switches worlds.
     /// </summary>
     public string LocalCharacterId
     {
@@ -126,26 +129,33 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
             if (!string.IsNullOrEmpty(_cachedCharacterId))
                 return _cachedCharacterId;
 
-            // 2. PlayerPrefs cache — survives scene reload / master rejoin
-            string prefKey = CharIdPrefKey;
-            string stored = PlayerPrefs.GetString(prefKey, null);
+            // 2. Live lookup from PlayerDataManager — checked first because it reflects the
+            //    current world's character _id.  On master clients this is populated by
+            //    WorldDataBootstrapper before any inventory registration happens.
+            //    On non-master clients players.Count == 0, so this step is skipped safely.
+            string accountId = SessionManager.Instance?.UserId;
+            if (!string.IsNullOrEmpty(accountId)
+                && PlayerDataManager.Instance != null
+                && PlayerDataManager.Instance.players.Count > 0)
+            {
+                var data = PlayerDataManager.Instance.players.Find(p => p.accountId == accountId);
+                if (!string.IsNullOrEmpty(data._id))
+                {
+                    _cachedCharacterId = data._id;
+                    // Overwrite any stale PlayerPrefs entry so future sessions start clean.
+                    PlayerPrefs.SetString(CharIdPrefKey, _cachedCharacterId);
+                    PlayerPrefs.Save();
+                    return _cachedCharacterId;
+                }
+            }
+
+            // 3. PlayerPrefs cache — fallback for non-master clients that have not yet
+            //    received a CHAR_ID_RESPONSE, or for master when PlayerDataManager is
+            //    temporarily empty (e.g. very early in scene load before bootstrap finishes).
+            string stored = PlayerPrefs.GetString(CharIdPrefKey, null);
             if (!string.IsNullOrEmpty(stored))
             {
                 _cachedCharacterId = stored;
-                return _cachedCharacterId;
-            }
-
-            // 3. Live lookup from PlayerDataManager (populated by WorldDataBootstrapper on master)
-            string accountId = SessionManager.Instance?.UserId;
-            if (string.IsNullOrEmpty(accountId)) return null;
-            if (PlayerDataManager.Instance == null) return null;
-
-            var data = PlayerDataManager.Instance.players.Find(p => p.accountId == accountId);
-            if (!string.IsNullOrEmpty(data._id))
-            {
-                _cachedCharacterId = data._id;
-                PlayerPrefs.SetString(prefKey, _cachedCharacterId);
-                PlayerPrefs.Save();
                 return _cachedCharacterId;
             }
 
@@ -190,6 +200,17 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
         float elapsed   = 0f;
         float nextRetry = retryEvery;
 
+        // Master client: wait until WorldDataBootstrapper has finished loading so that
+        // PlayerDataManager is fully populated before we read LocalCharacterId.
+        // Without this guard, a stale PlayerPrefs entry from a previous world can be
+        // returned by LocalCharacterId (PlayerDataManager.players is empty during the
+        // async fetch), causing inventory to be registered under the wrong charId.
+        if (PhotonNetwork.IsMasterClient)
+        {
+            yield return new WaitUntil(() =>
+                WorldDataBootstrapper.Instance != null && WorldDataBootstrapper.Instance.IsReady);
+        }
+
         // Non-master: send initial request; master ignores this call.
         RequestCharacterIdFromMaster();
 
@@ -217,6 +238,11 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             MasterRegisterCharacter(charId, maxSlots);
+            // WorldDataBootstrapper already populated saved slot data into InventoryDataModule
+            // before this point (DoRegisterLocalPlayerInventory waits on IsReady).
+            // Fire OnInventoryChanged so InventoryGameView.HandleRemoteInventoryChanged()
+            // copies that authoritative data into the local InventoryModel and refreshes the UI.
+            OnInventoryChanged?.Invoke();
         }
         else
         {

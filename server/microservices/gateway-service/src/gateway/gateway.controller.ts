@@ -30,17 +30,20 @@ import { UpdateNewsDto } from './dto/update-news.dto';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
 import { UploadSignatureDto } from './dto/upload-signature.dto';
-import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
-import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
+import { RequestResetDto } from './dto/request-admin-reset.dto';
+import { ConfirmResetDto } from './dto/confirm-admin-reset.dto';
 import { UpdateWorldDto } from './dto/update-world.dto';
 import { CreateItemDto } from './dto/create-item.dto';
 import { CreatePlantDto } from './dto/create-plant.dto';
 import { CreateCraftingRecipeDto } from './dto/create-crafting-recipe.dto';
 import { UpdateCraftingRecipeDto } from './dto/update-crafting-recipe.dto';
+import { VerifyRegistrationDto } from './dto/verify-registration.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { UpdatePlantDto } from './dto/update-plant.dto';
 import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
+import { CreateAchievementDto } from './dto/create-achievement.dto';
+import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
 
 @Controller()
 export class GatewayController {
@@ -223,6 +226,17 @@ export class GatewayController {
     }
   }
 
+  @Post('auth/verify-registration')
+  async verifyRegistration(@Body() dto: VerifyRegistrationDto) {
+    try {
+      return await firstValueFrom(
+        this.authClient.send('verify-registration', dto),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   @Post('auth/login-ingame')
   async login(@Body() loginDto: any) {
     try {
@@ -398,22 +412,22 @@ export class GatewayController {
     return this.adminClient.send('delete-media', id);
   }
 
-  @Post('auth/admin-reset/request')
-  async adminResetRequest(@Body() dto: RequestAdminResetDto) {
+  @Post('auth/reset/request')
+  async resetRequest(@Body() dto: RequestResetDto) {
     try {
       return await firstValueFrom(
-        this.authClient.send('admin-reset-request', dto),
+        this.authClient.send('reset-request', dto),
       );
     } catch (err) {
       throw this.rpcError(err);
     }
   }
 
-  @Post('auth/admin-reset/confirm')
-  async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
+  @Post('auth/reset/confirm')
+  async resetConfirm(@Body() dto: ConfirmResetDto) {
     try {
       return await firstValueFrom(
-        this.authClient.send('admin-reset-confirm', dto),
+        this.authClient.send('reset-confirm', dto),
       );
     } catch (err) {
       throw this.rpcError(err);
@@ -615,7 +629,7 @@ export class GatewayController {
    *
    *  Text fields:
    *    plantId, plantName, harvestedItemId  — required
-   *    growthStages  — JSON string: [{"stageNum":0,"age":0},{"stageNum":1,"age":3},…]
+   *    growthStages  — JSON string: [{"stageNum":0,"growthDurationMinutes":0},{"stageNum":1,"growthDurationMinutes":30},…]
    *                    stageIconUrl is injected automatically from the uploaded sprites.
    *    All other CreatePlantDto optional fields as plain strings.
    *
@@ -631,7 +645,7 @@ export class GatewayController {
   ) {
     try {
       // Parse growthStages JSON string sent as a form field
-      let stages: { stageNum: number; age: number; stageIconUrl?: string }[] =
+      let stages: { stageNum: number; growthDurationMinutes: number; stageIconUrl?: string }[] =
         [];
       if (body.growthStages) {
         try {
@@ -665,39 +679,14 @@ export class GatewayController {
         );
       }
 
-      // Sort stage files by the trailing number in the original filename
-      // e.g. "cabbage_0.png" → 0, "cabbage_2.png" → 2
-      const parseStageIndex = (filename: string): number => {
-        const match = filename.replace(/\.[^.]+$/, '').match(/(\d+)$/);
-        if (!match)
-          throw new BadRequestException(
-            `Stage sprite filename "${filename}" must end with a stage index, e.g. "cabbage_0.png"`,
-          );
-        return parseInt(match[1], 10);
-      };
-
-      const sortedStageFiles = [...stageFiles].sort(
-        (a, b) =>
-          parseStageIndex(a.originalname) - parseStageIndex(b.originalname),
-      );
-
-      // Validate that the parsed indices are 0..N-1 with no gaps
-      sortedStageFiles.forEach((f, i) => {
-        const idx = parseStageIndex(f.originalname);
-        if (idx !== i)
-          throw new BadRequestException(
-            `Stage sprite indices must be contiguous starting from 0. Got index ${idx} at position ${i}.`,
-          );
-      });
-
-      // Upload stage sprites sorted by index and inject stageIconUrl
+      // Use form order for stage sprites (first file → stage 0, second → stage 1, etc.)
       for (let i = 0; i < stages.length; i++) {
-        const publicId = sortedStageFiles[i].originalname.replace(
+        const publicId = stageFiles[i].originalname.replace(
           /\.[^.]+$/,
           '',
         );
         stages[i].stageIconUrl = await this.cloudinaryService.uploadFile(
-          sortedStageFiles[i],
+          stageFiles[i],
           'plant-sprites',
           publicId,
         );
@@ -839,7 +828,7 @@ export class GatewayController {
 
       // Re-parse growthStages if provided
       if (body.growthStages) {
-        let stages: { stageNum: number; age: number; stageIconUrl?: string }[];
+        let stages: { stageNum: number; growthDurationMinutes: number; stageIconUrl?: string }[];
         try {
           stages = JSON.parse(body.growthStages);
         } catch {
@@ -857,25 +846,14 @@ export class GatewayController {
               `Expected ${stages.length} stageSprites file(s), received ${stageFiles.length}`,
             );
           }
-          const parseStageIndex = (filename: string): number => {
-            const match = filename.replace(/\.[^.]+$/, '').match(/(\d+)$/);
-            if (!match)
-              throw new BadRequestException(
-                `Stage sprite filename "${filename}" must end with a stage index, e.g. "cabbage_0.png"`,
-              );
-            return parseInt(match[1], 10);
-          };
-          const sortedStageFiles = [...stageFiles].sort(
-            (a, b) =>
-              parseStageIndex(a.originalname) - parseStageIndex(b.originalname),
-          );
+          // Use form order for stage sprites (first file → stage 0, second → stage 1, etc.)
           for (let i = 0; i < stages.length; i++) {
-            const publicId = sortedStageFiles[i].originalname.replace(
+            const publicId = stageFiles[i].originalname.replace(
               /\.[^.]+$/,
               '',
             );
             stages[i].stageIconUrl = await this.cloudinaryService.uploadFile(
-              sortedStageFiles[i],
+              stageFiles[i],
               'plant-sprites',
               publicId,
             );
@@ -1113,6 +1091,352 @@ export class GatewayController {
       );
     } catch (err) {
       if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Achievements (Admin) ────────────────────────────────────────
+
+  /** POST /game-data/achievements/create — create a new achievement definition (admin only) */
+  @Post('game-data/achievements/create')
+  async createAchievement(@Body() dto: CreateAchievementDto) {
+    try {
+      return await firstValueFrom(this.adminClient.send('create-achievement', dto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/achievements/all — list all achievement definitions */
+  @Get('game-data/achievements/all')
+  async getAllAchievements() {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-all-achievements', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/achievements/:achievementId — get one definition */
+  @Get('game-data/achievements/:achievementId')
+  async getAchievementById(@Param('achievementId') achievementId: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-achievement-by-id', achievementId));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/achievements/:achievementId — update a definition (admin only) */
+  @Put('game-data/achievements/:achievementId')
+  async updateAchievement(
+    @Param('achievementId') achievementId: string,
+    @Body() dto: any,
+  ) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('update-achievement', { achievementId, dto }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/achievements/:achievementId — delete a definition (admin only) */
+  @Delete('game-data/achievements/:achievementId')
+  async deleteAchievement(@Param('achievementId') achievementId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-achievement', achievementId),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Player Achievements ─────────────────────────────────────────────────────
+
+  /** GET /player-data/achievement — get all achievements with this player's progress */
+  @Get('player-data/achievement')
+  async getPlayerAchievements(@Req() req: Request) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('get-player-achievements', String(accountId)),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/achievement/progress — update progress on one requirement */
+  @Put('player-data/achievement/progress')
+  async updateAchievementProgress(
+    @Body() dto: UpdateAchievementProgressDto,
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('update-achievement-progress', {
+          ...dto,
+          accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Skin Catalog (Paper Doll) ──────────────────────────────────────────────
+
+  /**
+   * GET /game-data/skin-configs — public (no auth required).
+   * Query param `layer` is optional (e.g. ?layer=tool).
+   * Unity SkinCatalogManager calls this on startup.
+   */
+  @Get('game-data/skin-configs')
+  async getSkinCatalog(@Query('layer') layer?: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-skin-catalog', { layer }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * POST /game-data/skin-configs — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — required.
+   * Text fields: configId, displayName, cellSize?, layer?
+   */
+  @Post('game-data/skin-configs')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async createSkinConfig(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'A spritesheet file is required (field name: "spritesheet")',
+      );
+    try {
+      const spritesheetUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'skin-spritesheets',
+        body.configId || undefined,
+      );
+      const dto = {
+        configId: body.configId,
+        displayName: body.displayName,
+        spritesheetUrl,
+        cellSize: body.cellSize !== undefined ? Number(body.cellSize) : undefined,
+        layer: body.layer,
+      };
+      return await firstValueFrom(
+        this.adminClient.send('create-skin-config', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * PUT /game-data/skin-configs/:configId — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — optional; omit to keep existing URL.
+   * Text fields: displayName?, cellSize?, layer?
+   */
+  @Put('game-data/skin-configs/:configId')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async updateSkinConfig(
+    @Param('configId') configId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const patch: Record<string, any> = {};
+      if (body.displayName !== undefined) patch.displayName = body.displayName;
+      if (body.cellSize !== undefined) patch.cellSize = Number(body.cellSize);
+      if (body.layer !== undefined) patch.layer = body.layer;
+
+      if (file) {
+        patch.spritesheetUrl = await this.cloudinaryService.uploadFile(
+          file,
+          'skin-spritesheets',
+          configId,
+        );
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('update-skin-config', { configId, ...patch }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * DELETE /game-data/skin-configs/:configId — admin-only.
+   */
+  @Delete('game-data/skin-configs/:configId')
+  async deleteSkinConfig(@Param('configId') configId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-skin-config', { configId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Material Catalog ──────────────────────────────────────────────────────────
+
+  /**
+   * GET /game-data/materials/catalog — public.
+   * Unity MaterialCatalogService calls this on startup.
+   * Returns { materials: MaterialEntry[] } sorted by materialTier.
+   */
+  @Get('game-data/materials/catalog')
+  async getMaterialCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-material-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * GET /game-data/materials — public, flat array.
+   */
+  @Get('game-data/materials')
+  async getAllMaterials() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-materials', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * GET /game-data/materials/:materialId — public.
+   */
+  @Get('game-data/materials/:materialId')
+  async getMaterialById(@Param('materialId') materialId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-material-by-id', { materialId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * POST /game-data/materials — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — required.
+   * Text fields: materialId, materialName, materialTier?, cellSize?, description?
+   * The spritesheet is uploaded to Cloudinary folder 'material-spritesheets'.
+   */
+  @Post('game-data/materials')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async createMaterial(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'A spritesheet file is required (field name: "spritesheet")',
+      );
+    try {
+      const spritesheetUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'material-spritesheets',
+        body.materialId || undefined,
+      );
+      const dto = {
+        materialId:    body.materialId,
+        materialName:  body.materialName,
+        spritesheetUrl,
+        materialTier:  body.materialTier  !== undefined ? Number(body.materialTier)  : undefined,
+        cellSize:      body.cellSize      !== undefined ? Number(body.cellSize)      : undefined,
+        description:   body.description,
+      };
+      return await firstValueFrom(
+        this.adminClient.send('create-material', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * PUT /game-data/materials/:materialId — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — optional.
+   * Text fields: materialName?, materialTier?, cellSize?, description?
+   */
+  @Put('game-data/materials/:materialId')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async updateMaterial(
+    @Param('materialId') materialId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const patch: Record<string, any> = { materialId };
+      if (body.materialName  !== undefined) patch.materialName  = body.materialName;
+      if (body.materialTier  !== undefined) patch.materialTier  = Number(body.materialTier);
+      if (body.cellSize      !== undefined) patch.cellSize      = Number(body.cellSize);
+      if (body.description   !== undefined) patch.description   = body.description;
+
+      if (file) {
+        patch.spritesheetUrl = await this.cloudinaryService.uploadFile(
+          file,
+          'material-spritesheets',
+          materialId,
+        );
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('update-material', patch),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * DELETE /game-data/materials/:materialId — admin-only.
+   */
+  @Delete('game-data/materials/:materialId')
+  async deleteMaterial(@Param('materialId') materialId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-material', { materialId }),
+      );
+    } catch (err) {
       throw this.rpcError(err);
     }
   }

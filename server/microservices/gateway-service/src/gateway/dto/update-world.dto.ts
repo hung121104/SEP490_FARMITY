@@ -4,7 +4,7 @@ export class TileDataDto {
   type?: string;
   plantId?: string | null;
   cropStage?: number;
-  totalAge?: number;
+  growthTimer?: number;
   pollenHarvestCount?: number;
   isWatered?: boolean;
   isFertilized?: boolean;
@@ -17,6 +17,20 @@ export class ChunkDeltaDto {
   chunkY: number;
   sectionId: number;
   tiles: Record<string, TileDataDto>;
+}
+
+// ── Inventory delta types ────────────────────────────────────────────────────
+
+export class InventorySlotDeltaDto {
+  itemId: string;
+  quantity: number;
+}
+
+/** One player's changed inventory slots.  slots key = slot index "0"–"35". */
+export class PlayerInventoryDeltaDto {
+  accountId: string;
+  /** Only the slots that changed; key = string(slotIndex) */
+  slots: Record<string, InventorySlotDeltaDto>;
 }
 
 // ── Main DTO ────────────────────────────────────────────────────────────────
@@ -48,4 +62,10 @@ export class UpdateWorldDto {
    * Forwarded transparently to player-data-service save-world handler.
    */
   deltas?: ChunkDeltaDto[];
+
+  /**
+   * Inventory deltas — only players whose inventory changed since last save.
+   * Forwarded transparently to player-data-service save-world handler.
+   */
+  inventoryDeltas?: PlayerInventoryDeltaDto[];
 }

@@ -10,15 +10,19 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
    - [User Authentication](#user-authentication)
    - [Admin Authentication](#admin-authentication)
    - [Admin Password Reset](#admin-password-reset)
-2. [Content Management](#content-management)
+2. [Game Config](#game-config)
+   - [Main Menu](#main-menu)
+3. [Content Management](#content-management)
    - [Blog (Development Diary)](#blog-development-diary)
    - [News & Announcements](#news--announcements)
    - [Media Gallery](#media-gallery)
-3. [Game Data Management](#game-data-management)
+4. [Game Data Management](#game-data-management)
    - [Items Catalog](#items-catalog)
    - [Plants Catalog](#plants-catalog)
    - [Crafting Recipes](#crafting-recipes)
-4. [Player Data](#player-data)
+   - [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
+   - [Material Catalog](#material-catalog)
+5. [Player Data](#player-data)
    - [World Management](#world-management)
    - [Character Management](#character-management)
 
@@ -93,16 +97,45 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Response: `{ "ok": true }`
 
-### Admin Password Reset
+### Password Reset
 
-- **POST** `/auth/admin-reset/request`: Request OTP for password reset.
+- **POST** `/auth/reset/request`: Request OTP for password reset.
   - Body: `{ "email": "string" }`
   - Response: `{ "ok": true }`
-  - Note: Sends 6-digit OTP to admin email, valid for 2 minutes.
+  - Note: Sends 6-digit OTP to the account email, valid for 2 minutes.
 
-- **POST** `/auth/admin-reset/confirm`: Confirm OTP and set new password.
+- **POST** `/auth/reset/confirm`: Confirm OTP and set new password.
   - Body: `{ "email": "string", "otp": "string", "newPassword": "string" }`
   - Response: `{ "ok": true }`
+
+## Game Config
+
+### Main Menu
+
+- **GET** `/game-config/main-menu`: Get the current main-menu background config (public).
+  - Response:
+    ```json
+    {
+      "currentBackgroundUrl": "string",
+      "version": "number"
+    }
+    ```
+  - Note: Returns `null` if no background has been set yet.
+
+- **PUT** `/game-config/main-menu`: Update the main-menu background image (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Fields:
+    - `background` *(file, required)* — Background image (max 10 MB). Uploaded to Cloudinary folder `game-config` automatically; `currentBackgroundUrl` set from the resulting `secure_url`.
+  - Response:
+    ```json
+    {
+      "currentBackgroundUrl": "string",
+      "version": "number"
+    }
+    ```
+
+---
 
 ## Content Management
 
@@ -436,13 +469,13 @@ Depending on `itemType`, specific extra fields must be included:
 
 | `itemType` | Name | Required Extra Fields | Type & Notes |
 |---|---|---|---|
-| `0` | Tool | `toolType`<br>`toolLevel`<br>`toolPower`<br>`toolMaterial` | int: 0=Hoe, 1=WateringCan, 2=Pickaxe, 3=Axe, 4=FishingRod<br>int: Tool level (e.g., 1)<br>int: Tool power (e.g., 1)<br>int: 0=Basic, 1=Copper, 2=Steel, 3=Gold, 4=Diamond |
+| `0` | Tool | `toolType`<br>`toolLevel`<br>`toolPower`<br>`toolMaterialId` | int: 0=Hoe, 1=WateringCan, 2=Pickaxe, 3=Axe, 4=FishingRod<br>int: Tool level (e.g., 1)<br>int: Tool power (e.g., 1)<br>string: `materialId` of a Material document (e.g., `"mat_copper"`). See [Material Catalog](#material-catalog). |
 | `1` | Seed | `plantId` | string: ID of `PlantData` entry this seed grows (e.g., `"plant_corn"`) |
 | `2` | Crop | *(none)* | |
 | `3` | Pollen | `sourcePlantId`<br>`pollinationSuccessChance`<br>`viabilityDays`<br>`crossResults` | string: `plantId` of the plant that produced this pollen (e.g., `"plant_corn"`)<br>float: Chance of pollination success (e.g., `0.5`)<br>int: Days the pollen remains viable (e.g., `3`)<br>array: Cross-breeding table — `[{ "targetPlantId": "string", "resultPlantId": "string" }]`. Each entry maps a receiver `plantId` to the hybrid `plantId` that spawns when this pollen is applied to it. Consumed by `PollenData.FindResultPlantId()` in the Unity client. |
 | `4` | Consumable | `energyRestore`<br>`healthRestore`<br>`bufferDuration` | int: Stamina restored<br>int: Health restored<br>float: Buff duration |
 | `5` | Material | *(none)* | |
-| `6` | Weapon | `damage`<br>`critChance`<br>`attackSpeed`<br>`weaponMaterial` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>float: Attack speed (e.g., 1.0)<br>int: 0=Basic, 1=Copper, 2=Steel, 3=Gold, 4=Diamond |
+| `6` | Weapon | `damage`<br>`critChance`<br>`attackSpeed`<br>`weaponMaterialId` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>float: Attack speed (e.g., 1.0)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog). |
 | `7` | Fish | `difficulty`<br>`fishingSeasons`<br>`isLegendary` | int: Difficulty level (e.g., 1)<br>int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>bool: (default `false`) |
 | `8` | Cooking | `energyRestore`<br>`healthRestore`<br>`bufferDuration` | int: Stamina restored<br>int: Health restored<br>float: Buff duration |
 | `9` | Forage | `foragingSeasons`<br>`energyRestore` | int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>int: (default `5`) |
@@ -465,12 +498,12 @@ Depending on `itemType`, specific extra fields must be included:
     
     | Field name | Required | Description |
     |---|---|---|
-    | `stageSprites` | ✅ | Repeated file field — filenames **must** end with `_<stageIndex>` (e.g., `cabbage_0.png`, `cabbage_1.png`). Files can be uploaded in any order; gateway sorts by trailing index. Count must match `growthStages` entries. |
+    | `stageSprites` | ✅ | Repeated file field — files are assigned to stages by their order in the form (first file → stage 0, second → stage 1, etc.). Count must match `growthStages` entries. |
     | `hybridFlowerSprite` | Hybrid only | Sprite at `pollenStage` (sets `hybridFlowerIconUrl`) |
     | `hybridMatureSprite` | Hybrid only | Sprite at `pollenStage + 1` (sets `hybridMatureIconUrl`) |
   
   - **Text fields**: All other plant fields as form-data strings, except:
-    - `growthStages` — Send as **JSON string**, e.g., `[{"stageNum":0,"age":0},{"stageNum":1,"age":3}]`. `stageIconUrl` filled automatically from uploaded sprites.
+    - `growthStages` — Send as **JSON string**, e.g., `[{"stageNum":0,"growthDurationMinutes":0},{"stageNum":1,"growthDurationMinutes":30}]`. `stageIconUrl` filled automatically from uploaded sprites.
   - Response: Saved plant document including `_id` and all resolved `stageIconUrl` CDN URLs
   - Note: Returns `409 Conflict` if a plant with the same `plantId` already exists
 
@@ -497,11 +530,11 @@ Depending on `itemType`, specific extra fields must be included:
 
     | Field name | Description |
     |---|---|
-    | `stageSprites` | Repeated file field — replaces all stage sprites. Filenames must end with `_<stageIndex>`. Must be provided together with `growthStages` JSON and count must match. |
-    | `hybridFlowerSprite` | Replaces `hybridFlowerIconUrl` |
-    | `hybridMatureSprite` | Replaces `hybridMatureIconUrl` |
+    | `stageSprites` | Repeated file field — replaces all stage sprites. Assigned by form order (1st file → stage 0, etc.). Must be sent together with a `growthStages` JSON body field; file count must match stage count. When omitted, each stage in the `growthStages` JSON **must include its existing `stageIconUrl`** (Mongoose requires the field). |
+    | `hybridFlowerSprite` | Replaces `hybridFlowerIconUrl`. Can be sent independently without `growthStages`. |
+    | `hybridMatureSprite` | Replaces `hybridMatureIconUrl`. Can be sent independently without `growthStages`. |
 
-  - **Optional text fields**: Any subset of plant fields (all optional). `growthStages` as JSON string if replacing stages.
+  - **Optional text fields**: Any subset of plant fields (all optional). `growthStages` as JSON string if replacing stages. When updating stage data without uploading new sprites, each stage entry must include `stageIconUrl` (copy existing CDN URL) to pass Mongoose validation.
   - Response: Updated plant document
   - Note: Returns `404` if plant not found
 
@@ -517,7 +550,7 @@ Depending on `itemType`, specific extra fields must be included:
 |---|---|---|---|---|
 | `plantId` | string | ✅ | — | Unique game-side ID (e.g., `"plant_corn"`) |
 | `plantName` | string | ✅ | — | Display name |
-| `growthStages` | JSON string | ✅ | — | Stringified array of `{ stageNum, age }` objects (at least 1 entry). `stageIconUrl` set automatically from uploaded sprites. |
+| `growthStages` | JSON string | ✅ | — | Stringified array of `{ stageNum, growthDurationMinutes }` objects (at least 1 entry). On create, omit `stageIconUrl` — filled automatically from uploaded sprites. On update, include `stageIconUrl` in each entry if not uploading new sprites. |
 | `harvestedItemId` | string | ✅ | — | `itemID` of crop/item dropped on harvest (from ItemCatalog) |
 | `canProducePollen` | bool | — | `false` | Whether pollen can be collected |
 | `pollenStage` | int | — | `3` | Stage index at which pollen becomes collectible |
@@ -536,8 +569,8 @@ Depending on `itemType`, specific extra fields must be included:
 | Field | Type | Notes |
 |---|---|---|
 | `stageNum` | int | Stage index (0-based) |
-| `age` | int | Total in-game days to reach this stage |
-| `stageIconUrl` | string | **Auto-filled** by gateway — parsed from trailing index in sprite filename (e.g., `cabbage_2.png` → stage 2). Do not send manually. |
+| `growthDurationMinutes` | float | In-game minutes to grow through this stage (e.g., `60` = 1 in-game hour) |
+| `stageIconUrl` | string | **Auto-filled** by gateway from `stageSprites` uploads (assigned by form order: 1st file → stage 0, 2nd → stage 1, etc.). On **create**, do not include in the JSON (gateway injects it). On **update without sprites**, include the existing CDN URL in each stage object — Mongoose requires the field. |
 
 ---
 
@@ -610,5 +643,166 @@ Depending on `itemType`, specific extra fields must be included:
   - Response: Deleted recipe document
   - Note: Returns `404` if recipe not found
 
+---
+
+### Skin Configs (Paper Doll)
+
+> Spritesheet catalog for the layered Paper Doll system. Unity's `SkinCatalogManager` fetches this on startup to build its sprite dictionary. Each entry maps a `configId` to a hosted PNG spritesheet that is sliced at runtime into a `Sprite[]`.
+
+#### HTTP Endpoints
+
+- **GET** `/game-data/skin-configs`: Get the full skin catalog (public, no auth required).
+  - Optional query param: `layer` — filter by layer (e.g., `?layer=outfit`).
+  - Response:
+    ```json
+    [
+      {
+        "_id": "string",
+        "configId": "string",
+        "spritesheetUrl": "string",
+        "cellSize": 64,
+        "displayName": "string",
+        "layer": "string",
+        "createdAt": "ISO date",
+        "updatedAt": "ISO date"
+      }
+    ]
+    ```
+  - Note: Consumed by `SkinCatalogManager.cs` in Unity client on startup.
+
+- **POST** `/game-data/skin-configs`: Create a new skin config entry (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Fields:
+
+    | Field | Type | Required | Notes |
+    |---|---|---|---|
+    | `spritesheet` | file (PNG) | ✅ | Spritesheet image, max 10 MB. Uploaded to Cloudinary folder `skin-spritesheets` automatically. |
+    | `configId` | text | ✅ | Stable string key used by Unity (e.g., `"farmer_base"`, `"frog_outfit"`). Used as Cloudinary public ID. |
+    | `displayName` | text | ✅ | Human-readable label shown in the admin panel. |
+    | `cellSize` | text (int) | — | Width and height of each sprite cell in pixels. Default: `64`. |
+    | `layer` | text | — | Paper Doll layer: `body`, `tool`, `hair`, `hat`, `outfit`, etc. Default: `body`. |
+
+  - Response: Created skin config document including `_id` and the Cloudinary `spritesheetUrl`.
+  - Note: Returns `409 Conflict` if a skin config with the same `configId` already exists.
+
+- **PUT** `/game-data/skin-configs/:configId`: Update an existing skin config (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Path param: `configId` — the stable string key (e.g., `farmer_base`).
+  - Fields (all optional):
+
+    | Field | Type | Notes |
+    |---|---|---|
+    | `spritesheet` | file (PNG) | New spritesheet, max 10 MB. When provided, re-uploads to Cloudinary using `configId` as public ID and updates `spritesheetUrl`. Omit to keep the existing URL. |
+    | `displayName` | text | New display name. |
+    | `cellSize` | text (int) | New cell size in pixels. |
+    | `layer` | text | New layer tag. |
+
+  - Response: Updated skin config document.
+  - Note: Returns `404` if no entry with this `configId` exists.
+
+- **DELETE** `/game-data/skin-configs/:configId`: Delete a skin config entry (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `configId` — the stable string key (e.g., `farmer_base`).
+  - Response: `204 No Content`
+  - Note: Returns `404` if not found. Does **not** delete the Cloudinary asset — remove it manually in the Cloudinary dashboard if needed.
+
+#### Skin Config Fields
+
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `configId` | string | ✅ | — | Unique stable key used by Unity (e.g., `"farmer_base"`, `"frog_outfit"`, `"copper_tool"`). |
+| `spritesheetUrl` | string | ✅ | — | Public Cloudinary URL of the PNG. **Set automatically** from the uploaded `spritesheet` file. |
+| `cellSize` | int | — | `64` | Width = height of each sprite frame in pixels. Must divide evenly into the sheet dimensions. |
+| `displayName` | string | ✅ | — | Label shown in the admin panel. |
+| `layer` | string | — | `"body"` | Which Paper Doll layer this sheet belongs to. Values: `body`, `tool`, `hair`, `hat`, `outfit`. |
+
+#### Unity Integration Notes
+
+- Unity `SkinCatalogManager` calls `GET /game-data/skin-configs` on startup.
+- Each entry's `spritesheetUrl` PNG is downloaded (or served from disk cache at `Application.persistentDataPath/SkinCache/<configId>.png`), decoded, and sliced into a `Sprite[]` keyed by `configId`.
+- `DynamicSpriteSwapper` on each Paper Doll layer reads `configId` from `EquipmentManager` and calls `SkinCatalogManager.GetSprites(configId)` every `LateUpdate`.
+- To clear the client-side disk cache after updating a spritesheet, call `SkinCatalogManager.Instance.RefreshCatalog()` in play mode or delete `Application.persistentDataPath/SkinCache/`.
+- **Tool layer spritesheets are NOT stored here.** Tool appearance is driven by the Material Catalog (see below). `MaterialCatalogService.cs` registers each material's spritesheet into `SkinCatalogManager` under its `materialId` on startup.
+
+---
+
+### Material Catalog
+
+> Standalone collection for tool/weapon composition materials. Completely separate from `itemType: 5` (Material) inventory items. Each document owns the tool-layer spritesheet for that material tier. Unity `MaterialCatalogService` fetches this on startup and registers each sheet into `SkinCatalogManager` using `materialId` as the `configId`.
+>
+> **Seeding order:** Create Material documents **before** creating Tool/Weapon items that reference them via `toolMaterialId` / `weaponMaterialId`.
+
+#### HTTP Endpoints
+
+- **GET** `/game-data/materials/catalog`: Get full material catalog in Unity-client format (public).
+  - Response: `{ "materials": [ ...materialObjects ] }` sorted by `materialTier` ascending.
+  - Note: Consumed by `MaterialCatalogService.cs` in Unity on startup.
+
+- **GET** `/game-data/materials`: Get flat array of all material documents (public).
+  - Response: `[ ...materialObjects ]`
+
+- **GET** `/game-data/materials/:materialId`: Get a single material by `materialId` (public).
+  - Path param: `materialId` — stable string key (e.g., `mat_copper`)
+  - Response: Material document or `null`
+
+- **POST** `/game-data/materials`: Create a new material (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Fields:
+
+    | Field | Type | Required | Notes |
+    |---|---|---|---|
+    | `spritesheet` | file (PNG) | ✅ | Tool-layer animation sheet, max 10 MB. Uploaded to Cloudinary folder `material-spritesheets` automatically. |
+    | `materialId` | text | ✅ | Stable string key (e.g., `mat_copper`). Used as Cloudinary public ID and as `configId` in `SkinCatalogManager`. |
+    | `materialName` | text | ✅ | Display name (e.g., `Copper`). |
+    | `materialTier` | text (int) | — | Numeric tier for stat scaling. Default: `1`. |
+    | `cellSize` | text (int) | — | Sprite cell width/height in pixels. Default: `64`. |
+    | `description` | text | — | Optional flavour text. |
+
+  - Response: Created material document including `_id` and `spritesheetUrl`.
+  - Note: Returns `409 Conflict` if a material with the same `materialId` already exists.
+
+- **PUT** `/game-data/materials/:materialId`: Update an existing material (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Path param: `materialId` — stable string key (e.g., `mat_copper`)
+  - Fields (all optional):
+
+    | Field | Type | Notes |
+    |---|---|---|
+    | `spritesheet` | file (PNG) | New sheet, max 10 MB. Re-uploads to Cloudinary using `materialId` as public ID. Omit to keep existing URL. |
+    | `materialName` | text | New display name. |
+    | `materialTier` | text (int) | New tier value. |
+    | `cellSize` | text (int) | New cell size in pixels. |
+    | `description` | text | New description. |
+
+  - Response: Updated material document.
+  - Note: Returns `404` if not found.
+
+- **DELETE** `/game-data/materials/:materialId`: Delete a material (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `materialId` — stable string key (e.g., `mat_copper`)
+  - Response: Deleted material document.
+  - Note: Returns `404` if not found. Does **not** delete the Cloudinary asset.
+
+#### Material Fields
+
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `materialId` | string | ✅ | — | Stable string key (e.g., `"mat_copper"`). Also used as `configId` in `SkinCatalogManager`. |
+| `materialName` | string | ✅ | — | Display name (e.g., `"Copper"`). |
+| `materialTier` | int | — | `1` | Numeric tier for future stat scaling. Higher = stronger material. |
+| `spritesheetUrl` | string | ✅ | — | Cloudinary URL of the tool animation PNG. **Set automatically** from the uploaded `spritesheet` file. |
+| `cellSize` | int | — | `64` | Uniform sprite cell width/height in pixels. |
+| `description` | string | — | `""` | Optional flavour text. |
+
+#### Unity Integration Notes
+
+- `MaterialCatalogService.cs` calls `GET /game-data/materials/catalog` on startup.
+- For each entry, `SkinCatalogManager.Instance.LoadExternalSheet(materialId, spritesheetUrl, cellSize)` is called, registering the sheet under `materialId` as the configId.
+- `ItemUsageController` looks up `tool.toolMaterialId` via `MaterialCatalogService.Instance.GetMaterial(id)` and passes `materialEntry.materialId` directly to `EquipmentManager.EquipTool()` as the configId.
+- To add a new material tier: `POST /game-data/materials` once — no code changes required.
 
 

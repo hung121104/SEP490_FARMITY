@@ -37,7 +37,33 @@ public class WorldApiResponse
         public float positionX;
         public float positionY;
         public int sectionIndex;
+
+        // Appearance config IDs (paper-doll layers)
+        public string hairConfigId;
+        public string outfitConfigId;
+        public string hatConfigId;
+        public string toolConfigId;
+
+        /// <summary>
+        /// Saved inventory slots — key = slot index as string ("0"–"35").
+        /// Null/empty if no inventory was saved.
+        /// Requires Newtonsoft.Json for Dictionary deserialization.
+        /// </summary>
+        public Dictionary<string, InventorySlotResponse> inventory;
     }
+}
+
+// ───────────────────────────────────────────────────────────── Inventory DTO
+
+/// <summary>
+/// Mirrors the InventorySlotData sub-document in character.schema.ts.
+/// Used only for deserialization of the GET /player-data/world response.
+/// </summary>
+[Serializable]
+public class InventorySlotResponse
+{
+    public string itemId;
+    public int    quantity;
 }
 
 // ─────────────────────────────────────────────────────────────────── Chunk DTOs
@@ -77,7 +103,7 @@ public class TileResponseData
     public string plantId;
 
     public int  cropStage;
-    public int  totalAge;
+    public float growthTimer;
     public int  pollenHarvestCount;
     public bool isWatered;
     public bool isFertilized;

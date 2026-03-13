@@ -132,6 +132,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
         bool hasContent = (payload.characters != null && payload.characters.Count > 0)
                        || (payload.deltas     != null && payload.deltas.Count     > 0)
+                       || (payload.inventoryDeltas != null && payload.inventoryDeltas.Count > 0)
                        || payload.day != null;
 
         if (!hasContent)
@@ -153,7 +154,9 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
         if (saved)
         {
+            ClearPendingUntilledForDirtyChunks();
             _dirtyChunks.Clear();
+            WorldDataManager.Instance?.InventoryData?.ClearAllDirtyFlags();
             if (ShowDebugLogs) Debug.Log("[WorldSave] Auto-save sent successfully.");
         }
         else
@@ -169,11 +172,19 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
     private bool OnWantsToQuit()
     {
+#if UNITY_EDITOR
+        // In the editor, stopping play mode triggers wantsToQuit but it is not a
+        // real application quit.  Attempting an async HTTP flush here races against
+        // Unity tearing down play-mode objects (DontDestroyOnLoad singletons become
+        // invalid) and always throws.  Skip the flush — data is not lost in the editor.
+        return true;
+#else
         if (_quitSent) return true;   // flush already done — allow quit
 
         _quitSent = true;
         _ = FlushAndQuitAsync();
         return false;                  // block OS quit until flush completes
+#endif
     }
 
     private async Task FlushAndQuitAsync()
@@ -190,7 +201,13 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     payload
                 );
 
-                if (success) Debug.Log("[WorldSave] Quit-flush complete.");
+                if (success)
+                {
+                    ClearPendingUntilledForDirtyChunks();
+                    _dirtyChunks.Clear();
+                    WorldDataManager.Instance?.InventoryData?.ClearAllDirtyFlags();
+                    Debug.Log("[WorldSave] Quit-flush complete.");
+                }
                 else         Debug.LogWarning("[WorldSave] Quit-flush HTTP request failed — quitting anyway.");
             }
             else
@@ -205,6 +222,24 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
         // _quitSent is already true; this second call will now return true and proceed
         Application.Quit();
+    }
+
+    // ──────────────────────────────────────────────────── Helpers
+
+    /// <summary>
+    /// Clear PendingUntilledPositions on every dirty chunk after a successful save
+    /// so those positions are not re-sent on the next cycle.
+    /// Must be called before _dirtyChunks.Clear().
+    /// </summary>
+    private void ClearPendingUntilledForDirtyChunks()
+    {
+        var wdm = WorldDataManager.Instance;
+        if (wdm == null) return;
+        foreach (var (cx, cy, sid) in _dirtyChunks)
+        {
+            var chunkData = wdm.GetChunk(sid, new UnityEngine.Vector2Int(cx, cy));
+            chunkData?.PendingUntilledPositions.Clear();
+        }
     }
 
     // ──────────────────────────────────────────────────── Payload builder
@@ -239,12 +274,25 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             string accountId = rawId as string;
             if (string.IsNullOrEmpty(accountId)) continue;
 
-            characters.Add(new WorldApi.UpdateWorldRequest.CharacterUpdate
+            var charUpdate = new WorldApi.UpdateWorldRequest.CharacterUpdate
             {
                 accountId = accountId,
                 positionX = go.transform.position.x,
                 positionY = go.transform.position.y,
-            });
+            };
+
+            // Include appearance configIds if PlayerAppearanceSync is present
+            var appearance = go.GetComponent<PlayerAppearanceSync>();
+            if (appearance != null)
+            {
+                var (hair, outfit, hat, tool) = appearance.GetCurrentAppearance();
+                charUpdate.hairConfigId   = string.IsNullOrEmpty(hair)   ? null : hair;
+                charUpdate.outfitConfigId = string.IsNullOrEmpty(outfit) ? null : outfit;
+                charUpdate.hatConfigId    = string.IsNullOrEmpty(hat)    ? null : hat;
+                charUpdate.toolConfigId   = string.IsNullOrEmpty(tool)   ? null : tool;
+            }
+
+            characters.Add(charUpdate);
         }
         if (characters.Count > 0) request.characters = characters;
 
@@ -277,7 +325,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                         td.type               = "crop";
                         td.plantId            = slot.Crop.PlantId;
                         td.cropStage          = slot.Crop.CropStage;
-                        td.totalAge           = slot.Crop.TotalAge;
+                        td.growthTimer        = slot.Crop.GrowthTimer;
                         td.pollenHarvestCount = slot.Crop.PollenHarvestCount;
                         td.isWatered          = slot.Crop.IsWatered;
                         td.isFertilized       = slot.Crop.IsFertilized;
@@ -289,6 +337,20 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     }
 
                     tileDict[localIndex.ToString()] = td;
+                }
+
+                // Include tiles that were untilled since the last save.
+                // They were removed from the in-memory dictionary so the loop above
+                // cannot see them, but the server still has them as "tilled".
+                // Sending type="empty" overwrites the stale DB record.
+                foreach (var (wx, wy) in chunkData.PendingUntilledPositions)
+                {
+                    int lx  = wx - chunkX * 30;
+                    int ly  = wy - chunkY * 30;
+                    int idx = lx + ly * 30;
+                    // Only add if not already overridden by the active-tile loop above
+                    if (!tileDict.ContainsKey(idx.ToString()))
+                        tileDict[idx.ToString()] = new WorldApi.TileDataDto { type = "empty" };
                 }
 
                 if (tileDict.Count > 0)
@@ -306,7 +368,89 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             if (deltas.Count > 0) request.deltas = deltas;
         }
 
+        // ── Inventory deltas — only dirty characters ──
+        var invModule = wdm?.InventoryData;
+        if (invModule != null)
+        {
+            var dirtyCharIds = invModule.GetDirtyCharacterIds();
+            if (ShowDebugLogs)
+                Debug.Log($"[WorldSave] Inventory check: {dirtyCharIds.Count} dirty character(s)");
+
+            if (dirtyCharIds.Count > 0)
+            {
+                var invDeltas = new List<WorldApi.PlayerInventoryDelta>();
+                foreach (var charId in dirtyCharIds)
+                {
+                    var inv = invModule.GetInventory(charId);
+                    if (inv == null)
+                    {
+                        if (ShowDebugLogs) Debug.LogWarning($"[WorldSave] Inventory null for charId='{charId}'");
+                        continue;
+                    }
+
+                    // Resolve accountId from characterId via PlayerDataManager
+                    string accountId = ResolveAccountId(charId);
+                    if (string.IsNullOrEmpty(accountId))
+                    {
+                        if (ShowDebugLogs) Debug.LogWarning($"[WorldSave] Could not resolve accountId for charId='{charId}'");
+                        continue;
+                    }
+
+                    var slots = new Dictionary<string, WorldApi.InventorySlotDelta>();
+
+                    // Send ALL slots (occupied → $set, empty → $unset on server).
+                    // This ensures items removed from the inventory since the last save
+                    // are deleted from the DB and do not reappear on the next game load.
+                    for (byte slotIdx = 0; slotIdx < inv.MaxSlots; slotIdx++)
+                    {
+                        if (inv.TryGetSlot(slotIdx, out InventorySlot slot) && !slot.IsEmpty)
+                        {
+                            slots[slotIdx.ToString()] = new WorldApi.InventorySlotDelta
+                            {
+                                itemId   = slot.ItemId,
+                                quantity = slot.Quantity
+                            };
+                        }
+                        else
+                        {
+                            // Empty slot: quantity 0 / null itemId tells the server to $unset this key.
+                            slots[slotIdx.ToString()] = new WorldApi.InventorySlotDelta
+                            {
+                                itemId   = null,
+                                quantity = 0
+                            };
+                        }
+                    }
+
+                    if (ShowDebugLogs)
+                        Debug.Log($"[WorldSave] Inventory delta: charId='{charId}' accountId='{accountId}' slots={slots.Count}");
+
+                    invDeltas.Add(new WorldApi.PlayerInventoryDelta
+                    {
+                        accountId = accountId,
+                        slots     = slots
+                    });
+                }
+                if (invDeltas.Count > 0) request.inventoryDeltas = invDeltas;
+            }
+        }
+        else
+        {
+            if (ShowDebugLogs) Debug.LogWarning("[WorldSave] InventoryDataModule is null!");
+        }
+
         return request;
+    }
+
+    /// <summary>
+    /// Map a MongoDB characterId (_id) back to the player's accountId
+    /// using PlayerDataManager's player list.
+    /// </summary>
+    private static string ResolveAccountId(string characterId)
+    {
+        if (PlayerDataManager.Instance == null) return null;
+        var data = PlayerDataManager.Instance.players.Find(p => p._id == characterId);
+        return string.IsNullOrEmpty(data.accountId) ? null : data.accountId;
     }
 
     // ──────────────────────────────────────────────────── Photon callbacks

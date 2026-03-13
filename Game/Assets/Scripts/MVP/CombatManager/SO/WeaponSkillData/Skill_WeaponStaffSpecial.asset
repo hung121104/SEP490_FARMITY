@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a531c917f405b5d47948ccb54770694f, type: 3}
+  m_Name: Skill_WeaponStaffSpecial
+  m_EditorClassIdentifier: 
+  skillName: Staff Special
+  skillDescription: Staff Special Skill
+  skillID: 7
+  skillIcon: {fileID: 2952482376178455717, guid: 2e0f1fd247fdde94d9bcd59fd3fa3c74, type: 3}
+  skillColor: {r: 1, g: 1, b: 1, a: 1}
+  skillOwnership: 1
+  skillCategory: 1
+  requiredWeaponType: 0
+  cooldown: 3
+  diceTier: 6
+  skillMultiplier: 1.5
+  projectilePrefab: {fileID: 2996777577814843754, guid: 361c72b4eb57a1243b47af566d1f9693, type: 3}
+  projectileSpeed: 10
+  projectileRange: 8
+  projectileKnockback: 5
+  slashVFXPrefab: {fileID: 0}
+  slashVFXDuration: 0.5
+  slashVFXSpawnOffset: 1.2
+  slashVFXPositionOffset: {x: 0, y: 0}
+  slashKnockbackForce: 5
+  damagePopupPrefab: {fileID: 0}

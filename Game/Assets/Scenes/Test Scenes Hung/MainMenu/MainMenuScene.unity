@@ -348,15 +348,11 @@ MonoBehaviour:
   moveDuration: 0.5
   delay: 1.3
   scaleDuration: 0.5
+  scaleTarget: 15
   onStartAnimationName: turnRToL
-  loginCanvasGroup: {fileID: 0}
-  registerCanvasGroup: {fileID: 0}
-  titleCanvasGroup: {fileID: 0}
   openBookBtn: {fileID: 0}
   closeBookBtn: {fileID: 0}
-  openLoginBtn: {fileID: 0}
-  openRegisterBtn: {fileID: 0}
-  openTitleBtn: {fileID: 0}
+  panelController: {fileID: 0}
 --- !u!114 &362392243
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -728,6 +724,51 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 3120943773472400013, guid: 7fae4a89bce348e419d15301306fb794, type: 3}
   m_PrefabInstance: {fileID: 7124149539401895274}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &942455305
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 942455307}
+  - component: {fileID: 942455306}
+  m_Layer: 0
+  m_Name: MaterialCatalogService
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &942455306
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 942455305}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55ca903d8923bb043b2f1f4b27606403, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  catalogApiUrl: https://localhost:3000/game-data/materials/catalog
+--- !u!4 &942455307
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 942455305}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -126.83195, y: 81.78961, z: -0.10379306}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &950441699
 GameObject:
   m_ObjectHideFlags: 0
@@ -1487,6 +1528,50 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 3120943773472400013, guid: 7fae4a89bce348e419d15301306fb794, type: 3}
   m_PrefabInstance: {fileID: 192533392}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1825484793
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1825484795}
+  - component: {fileID: 1825484794}
+  m_Layer: 0
+  m_Name: SkinCatalog
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1825484794
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1825484793}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2752ea4b463f43449e7a1ebd7e22ec6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &1825484795
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1825484793}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -117.573494, y: 82.19347, z: 7.1126146}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1832421369
 GameObject:
   m_ObjectHideFlags: 0
@@ -1677,3 +1762,5 @@ SceneRoots:
   - {fileID: 583594017}
   - {fileID: 1527857675}
   - {fileID: 1036632749}
+  - {fileID: 1825484795}
+  - {fileID: 942455307}

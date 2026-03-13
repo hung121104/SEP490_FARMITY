@@ -27,11 +27,11 @@ public static class WorldDataManagerCropExtensions
     public static bool UpdateCropStage(this WorldDataManager manager, Vector3 worldPos, byte newStage)
         => manager.CropData?.UpdateCropStage(worldPos, newStage) ?? false;
 
-    public static bool UpdateCropAge(this WorldDataManager manager, Vector3 worldPos, int newAge)
-        => manager.CropData?.UpdateCropAge(worldPos, newAge) ?? false;
+    public static bool UpdateGrowthTimer(this WorldDataManager manager, Vector3 worldPos, float newTimer)
+        => manager.CropData?.UpdateGrowthTimer(worldPos, newTimer) ?? false;
 
-    public static bool IncrementCropAge(this WorldDataManager manager, Vector3 worldPos)
-        => manager.CropData?.IncrementCropAge(worldPos) ?? false;
+    public static bool AddGrowthTime(this WorldDataManager manager, Vector3 worldPos, float deltaSeconds)
+        => manager.CropData?.AddGrowthTime(worldPos, deltaSeconds) ?? false;
 
     public static bool IncrementPollenHarvestCount(this WorldDataManager manager, Vector3 worldPos)
         => manager.CropData?.IncrementPollenHarvestCount(worldPos) ?? false;

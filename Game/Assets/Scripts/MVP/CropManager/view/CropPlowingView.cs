@@ -6,11 +6,6 @@ public class CropPlowingView : MonoBehaviour
     [Header("Tile Reference")]
     [SerializeField] private TileBase tilledTile;
     
-    [Header("Input Settings")]
-    [SerializeField] private KeyCode plowingKey = KeyCode.E;
-    [SerializeField] private bool allowHoldToPlow = true;
-    [Tooltip("How often (seconds) to attempt plowing while holding the plow key.")]
-    [SerializeField] private float plowRepeatInterval = 0.1f;
     
     [Header("Player Settings")]
     [Tooltip("Tag to find the player GameObject")]
@@ -39,8 +34,6 @@ public class CropPlowingView : MonoBehaviour
     public CropPlowingPresenter GetPresenter() => presenter;
     private Transform playerTransform;
     private HotbarView hotbarView;
-    private Vector2Int lastPlowedTile = new Vector2Int(int.MinValue, int.MinValue);
-    private float holdTimer = 0f;
     private float _mouseHoldTimer = 0f;
     private SpriteRenderer _previewSR;
     private Vector3 _lastMouseWorldPos;  // raw mouse pos before tile snap — used for anim direction
@@ -91,47 +84,6 @@ public class CropPlowingView : MonoBehaviour
             }
         }
         
-        // Check for plowing input
-        if (allowHoldToPlow)
-        {
-            if (Input.GetKeyDown(plowingKey))
-            {
-                // Immediate plow on key down
-                HandlePlowInput();
-                holdTimer = plowRepeatInterval;
-            }
-            
-            if (Input.GetKey(plowingKey))
-            {
-                holdTimer -= Time.deltaTime;
-                if (holdTimer <= 0f)
-                {
-                    HandlePlowInput();
-                    holdTimer = plowRepeatInterval;
-                }
-            }
-            
-            if (Input.GetKeyUp(plowingKey))
-            {
-                // Reset timer and tile tracking
-                holdTimer = 0f;
-                lastPlowedTile = new Vector2Int(int.MinValue, int.MinValue);
-            }
-        }
-        else
-        {
-            if (Input.GetKeyDown(plowingKey))
-            {
-                HandlePlowInput();
-            }
-            
-            // Reset last plowed tile when key is released
-            if (Input.GetKeyUp(plowingKey))
-            {
-                lastPlowedTile = new Vector2Int(int.MinValue, int.MinValue);
-            }
-        }
-
         // Update preview and mouse-hold every frame
         UpdatePlowPreview();
         HandleMouseHoldPlow();
@@ -177,7 +129,7 @@ public class CropPlowingView : MonoBehaviour
         var currentItem = hotbarView?.GetCurrentItem()?.ItemData as ToolData;
         if (currentItem == null || currentItem.toolType != ToolType.Hoe) return;
 
-        if (Input.GetMouseButton(0))
+        if (InputManager.Instance?.UseItem.IsPressed() ?? false)
         {
             _mouseHoldTimer -= Time.deltaTime;
             if (_mouseHoldTimer <= 0f)
@@ -214,54 +166,6 @@ public class CropPlowingView : MonoBehaviour
             playerTransform.position, mouseWorldPos, plowingRange, ref dummy);
     }
 
-    private void HandlePlowInput()
-    {
-        if (playerTransform == null)
-        {
-
-            Debug.LogWarning("Player transform is not assigned!");
-            return;
-        }
-        
-        // Get directional tile position
-        Vector3 targetTilePos = GetDirectionalTileForPlowing();
-        
-        if (targetTilePos != Vector3.zero)
-        {
-            presenter.HandlePlowAction(targetTilePos);
-        }
-    }
-    
-    /// <summary>
-    /// Gets the tile in the direction of the mouse, within range of player.
-    /// Delegates to the shared <see cref="CropTileSelector"/> utility.
-    /// </summary>
-    private Vector3 GetDirectionalTileForPlowing()
-    {
-        if (Camera.main == null || playerTransform == null)
-        {
-            if (showDebugLogs)
-                Debug.LogWarning("[CropPlowingView] Camera or Player not found. Cannot calculate tile.");
-            return Vector3.zero;
-        }
-
-        Vector3 playerPos = playerTransform.position;
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.z = 0f;
-        _lastMouseWorldPos = mouseWorldPos;  // store before snap
-
-        Vector3 result = CropTileSelector.GetDirectionalTile(
-            playerPos,
-            mouseWorldPos,
-            plowingRange,
-            ref lastPlowedTile);
-
-        if (showDebugLogs && result != Vector3.zero)
-            Debug.Log($"[CropPlowingView] Plowing at tile ({result.x}, {result.y})");
-
-        return result;
-    }
-    
     /// <summary>
     /// Called when plowing is successful
     /// </summary>
@@ -313,6 +217,10 @@ public class CropPlowingView : MonoBehaviour
         if (presenter == null || playerTransform == null) return;
 
         _lastMouseWorldPos = mouseWorldPos;  // store before snap
+
+        // Reset the mouse-hold timer so HandleMouseHoldPlow does NOT fire again
+        // in the same frame — preventing the double-action that was cancelling itself out.
+        _mouseHoldTimer = mouseHoldRepeatInterval;
 
         Vector2Int dummy = new Vector2Int(int.MinValue, int.MinValue);
         Vector3 snappedTile = CropTileSelector.GetDirectionalTile(

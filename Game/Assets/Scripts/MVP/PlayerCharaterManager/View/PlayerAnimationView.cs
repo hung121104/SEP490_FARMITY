@@ -36,7 +36,7 @@ public class PlayerAnimationView : MonoBehaviour
     // [SerializeField] private float attackLockDuration = 0.4f;
 
     // ── Runtime refs ──────────────────────────────────────────────────────
-    private Animator    _animator;
+    [SerializeField]private Animator    _animator;
     private PhotonView  _photonView;
 
     /// <summary>True while any action is locking player movement.</summary>
@@ -49,7 +49,7 @@ public class PlayerAnimationView : MonoBehaviour
     // ── Lifecycle ──────────────────────────────────────────────────────────
     private void Awake()
     {
-        _animator   = GetComponent<Animator>();
+        // _animator   = GetComponent<Animator>();
         _photonView = GetComponent<PhotonView>();
     }
 
