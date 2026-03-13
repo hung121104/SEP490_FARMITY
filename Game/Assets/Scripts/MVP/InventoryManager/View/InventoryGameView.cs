@@ -1,10 +1,13 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Photon.Pun;
 
 public class InventoryGameView : MonoBehaviour
 {
     [Header("Settings")]
     [SerializeField] private int inventorySlots = 36;
+
+    [Header("Inventory Positions")]
+    [SerializeField] private Vector2 mainInventoryPosition = Vector2.zero;
 
     [Header("References")]
     [SerializeField] private InventoryView inventoryView;
@@ -140,8 +143,6 @@ public class InventoryGameView : MonoBehaviour
         {
             concreteService.ApplyRemoteInventoryState(inv, inventorySlots);
         }
-
-        Debug.Log("[InventoryGameView] ✓ Remote inventory sync applied successfully");
     }
 
     /// <summary>
@@ -154,17 +155,57 @@ public class InventoryGameView : MonoBehaviour
         HandleRemoteInventoryChanged();
     }
 
+    /// <summary>
+    /// Opens the main inventory at its default position.
+    /// Used by hotkeys or tab generic switches.
+    /// </summary>
     public void OpenInventory()
     {
+        OpenInventoryAtPosition(mainInventoryPosition);
+        
         if (inventoryView != null)
         {
-            //Re-enable drops when opening inventory
-            if (itemDeleteView != null)
-            {
-                itemDeleteView.EnableDrops();
-            }
-            Debug.Log("[InventoryGameView] Inventory opened");
+            inventoryView.Show(); // Make sure it's active
+            Debug.Log("[InventoryGameView] Main Inventory opened");
         }
+    }
+
+    /// <summary>
+    /// Open the shared inventory panel at a specific anchored position.
+    /// Called by external systems such as CraftingSystemManager.
+    /// </summary>
+    public void OpenInventoryAtPosition(Vector2 anchoredPosition)
+    {
+        if (itemDeleteView != null)
+            itemDeleteView.EnableDrops();
+
+        inventoryView?.ShowAtPosition(anchoredPosition);
+        Debug.Log($"[InventoryGameView] Inventory opened at position {anchoredPosition}");
+    }
+
+    public void OpenCraftingInventory(Transform container = null)
+    {
+        if (itemDeleteView != null) itemDeleteView.EnableDrops();
+        
+        if (container != null)
+            inventoryView?.ShowWithParent(container);
+        else
+            OpenInventoryAtPosition(mainInventoryPosition);
+    }
+
+    public void OpenCookingInventory(Transform container = null)
+    {
+        if (itemDeleteView != null) itemDeleteView.EnableDrops();
+        
+        if (container != null)
+            inventoryView?.ShowWithParent(container);
+        else
+            OpenInventoryAtPosition(mainInventoryPosition);
+    }
+
+    public void OpenCraftingInInventory()
+    {
+        OpenInventoryAtPosition(mainInventoryPosition);
     }
 
     public void CloseInventory()
@@ -172,6 +213,7 @@ public class InventoryGameView : MonoBehaviour
         if (inventoryView != null)
         {
             presenter?.CancelAllActions();
+            inventoryView.Hide();
             Debug.Log("[InventoryGameView] Inventory closed");
         }
     }
@@ -226,8 +268,7 @@ public class InventoryGameView : MonoBehaviour
     }
 
     /// <summary>
-    /// Called by CraftingInventoryAdapter (or other secondary views) when the user
-    /// performs an action (drag, drop, sort, delete) on that view.
+    /// Called by external systems when the user performs an action on a secondary view.
     /// Resets the main presenter's action cooldown so HandleRemoteInventoryChanged
     /// correctly defers the echo broadcast and doesn't revert local changes.
     /// </summary>

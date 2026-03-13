@@ -10,9 +10,9 @@ public class CraftingSystemManager : MonoBehaviour
     [SerializeField] private CookingMainView cookingMainView;
 
     [Header("Inventory Display")]
-    [SerializeField] private CraftingInventoryAdapter craftingInventoryAdapter;
-    [SerializeField] private CraftingInventoryAdapter cookingInventoryAdapter;
-    [SerializeField] private CraftingInventoryAdapter craftingInInventoryAdapter;
+    [SerializeField] private InventoryGameView inventoryGameView;
+    [SerializeField] private Transform craftingInventoryContainer;
+    [SerializeField] private Transform cookingInventoryContainer;
 
     // Core components
     private CraftingModel craftingModel;
@@ -89,8 +89,8 @@ public class CraftingSystemManager : MonoBehaviour
         // 7. Initialize Cooking Presenter
         InitializeCookingPresenter();
 
-        // 8. Connect inventory adapter last (after all systems ready)
-        ConnectInventoryAdapter();
+        // 8. Connect inventory to sub-UIs (after all systems ready)
+        InitializeInventoryForSubUIs();
 
         Debug.Log("[CraftingSystemManager] System initialized successfully");
     }
@@ -106,6 +106,11 @@ public class CraftingSystemManager : MonoBehaviour
         {
             inventoryService = existingInventory.GetInventoryService();
             inventorySlotCount = existingInventory.GetInventorySlotCount();
+
+            // Cache the InventoryGameView reference if not assigned in Inspector
+            if (inventoryGameView == null)
+                inventoryGameView = existingInventory;
+
             Debug.Log("[CraftingSystemManager] Inventory references obtained from InventoryGameView.");
         }
         else
@@ -115,31 +120,17 @@ public class CraftingSystemManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Connects the shared inventory to the CraftingInventoryAdapter.
-    /// Called last to ensure inventoryModel and inventoryService are both ready.
+    /// Ensures the shared InventoryView's slots are initialized.
+    /// No secondary views or adapters needed — the single InventoryView is reused.
     /// </summary>
-    private void ConnectInventoryAdapter()
+    private void InitializeInventoryForSubUIs()
     {
-        if (inventorySlotCount <= 0 || inventoryService == null)
+        if (inventoryGameView == null)
         {
-            Debug.LogError("[CraftingSystemManager] Cannot connect adapter, inventory slot count or service is null.");
+            Debug.LogError("[CraftingSystemManager] inventoryGameView not assigned — inventory will not show for sub-UIs.");
             return;
         }
-
-        if (craftingInventoryAdapter != null)
-            craftingInventoryAdapter.InjectInventory(inventorySlotCount, inventoryService);
-        else
-            Debug.LogWarning("[CraftingSystemManager] CraftingInventoryAdapter not assigned.");
-
-        if (cookingInventoryAdapter != null)
-            cookingInventoryAdapter.InjectInventory(inventorySlotCount, inventoryService);
-        else
-            Debug.LogWarning("[CraftingSystemManager] CookingInventoryAdapter not assigned.");
-
-        if (craftingInInventoryAdapter != null)
-            craftingInInventoryAdapter.InjectInventory(inventorySlotCount, inventoryService);
-        else
-            Debug.LogWarning("[CraftingSystemManager] CraftingInInventoryAdapter not assigned.");
+        Debug.Log("[CraftingSystemManager] Inventory ready for sub-UI usage.");
     }
 
     private void InitializeCraftingInInventoryPresenter()
@@ -244,7 +235,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void OpenCraftingUI()
     {
         craftingPresenter?.OpenCraftingUI();
-        craftingInventoryAdapter?.OnOpen();
+        inventoryGameView?.OpenCraftingInventory(craftingInventoryContainer);
     }
 
     /// <summary>
@@ -253,7 +244,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void CloseCraftingUI()
     {
         craftingPresenter?.CloseCraftingUI();
-        craftingInventoryAdapter?.OnClose();
+        inventoryGameView?.CloseInventory();
     }
 
     /// <summary>
@@ -262,7 +253,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void OpenCookingUI()
     {
         cookingPresenter?.OpenCookingUI();
-        cookingInventoryAdapter?.OnOpen();
+        inventoryGameView?.OpenCookingInventory(cookingInventoryContainer);
     }
 
     /// <summary>
@@ -271,7 +262,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void CloseCookingUI()
     {
         cookingPresenter?.CloseCookingUI();
-        cookingInventoryAdapter?.OnClose();
+        inventoryGameView?.CloseInventory();
     }
 
     /// <summary>
@@ -280,7 +271,7 @@ public class CraftingSystemManager : MonoBehaviour
     public void OpenCraftingInInventory()
     {
         craftingInInventoryPresenter?.OpenCraftingUI();
-        craftingInInventoryAdapter?.OnOpen();
+        inventoryGameView?.OpenCraftingInInventory();
     }
 
     /// <summary>
@@ -289,7 +280,6 @@ public class CraftingSystemManager : MonoBehaviour
     public void CloseCraftingInInventory()
     {
         craftingInInventoryPresenter?.CloseCraftingUI();
-        craftingInInventoryAdapter?.OnClose();
     }
 
     /// <summary>
