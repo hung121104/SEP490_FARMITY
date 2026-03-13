@@ -424,6 +424,227 @@ export class AccountService implements OnModuleInit {
     return this.toAchievementResponse(definition, existing);
   }
 
+  async updateAchievementProgressBatch(dto: {
+    accountId: string;
+    updates: Array<{
+      achievementId: string;
+      requirementIndex: number;
+      progress: number;
+    }>;
+  }): Promise<{
+    summary: { total: number; updated: number; noop: number; failed: number };
+    results: Array<{
+      index: number;
+      achievementId: string;
+      requirementIndex: number;
+      submittedProgress: number;
+      status: 'updated' | 'noop' | 'failed';
+      message?: string;
+      achievement?: any;
+    }>;
+    updatedAchievements: any[];
+  }> {
+    const updates = Array.isArray(dto.updates) ? dto.updates : [];
+    const total = updates.length;
+
+    if (total === 0) {
+      return {
+        summary: { total: 0, updated: 0, noop: 0, failed: 0 },
+        results: [],
+        updatedAchievements: [],
+      };
+    }
+
+    const account = await this.accountModel.findById(dto.accountId).exec();
+    if (!account) {
+      throw new RpcException({ status: 404, message: 'Account not found' });
+    }
+
+    const map = this.toProgressMap(account.achievementProgress);
+    await this.migrateLegacyPlayerAchievements(account, map);
+
+    const definitionCache = new Map<string, AchievementDefinition | null>();
+    const changedAchievementIds = new Set<string>();
+    const results: Array<{
+      index: number;
+      achievementId: string;
+      requirementIndex: number;
+      submittedProgress: number;
+      status: 'updated' | 'noop' | 'failed';
+      message?: string;
+      achievement?: any;
+    }> = [];
+
+    let hasChanges = false;
+
+    const getDefinition = async (achievementId: string): Promise<AchievementDefinition | null> => {
+      if (definitionCache.has(achievementId)) {
+        return definitionCache.get(achievementId) ?? null;
+      }
+      try {
+        const definition = await firstValueFrom(
+          this.adminClient.send('get-achievement-by-id', achievementId),
+        );
+        definitionCache.set(achievementId, definition);
+        return definition;
+      } catch {
+        definitionCache.set(achievementId, null);
+        return null;
+      }
+    };
+
+    for (let i = 0; i < updates.length; i++) {
+      const item = updates[i];
+      const achievementId = String(item?.achievementId ?? '');
+      const requirementIndex = item?.requirementIndex;
+      const progress = item?.progress;
+
+      if (!achievementId) {
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex: Number.isFinite(requirementIndex) ? requirementIndex : -1,
+          submittedProgress: Number.isFinite(progress) ? progress : -1,
+          status: 'failed',
+          message: 'achievementId is required',
+        });
+        continue;
+      }
+
+      if (!Number.isInteger(requirementIndex) || requirementIndex < 0) {
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex: Number.isFinite(requirementIndex) ? requirementIndex : -1,
+          submittedProgress: Number.isFinite(progress) ? progress : -1,
+          status: 'failed',
+          message: 'requirementIndex must be an integer >= 0',
+        });
+        continue;
+      }
+
+      if (typeof progress !== 'number' || Number.isNaN(progress) || progress < 0) {
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex,
+          submittedProgress: Number.isFinite(progress) ? progress : -1,
+          status: 'failed',
+          message: 'progress must be a number >= 0',
+        });
+        continue;
+      }
+
+      const definition = await getDefinition(achievementId);
+      if (!definition) {
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex,
+          submittedProgress: progress,
+          status: 'failed',
+          message: `Achievement "${achievementId}" not found`,
+        });
+        continue;
+      }
+
+      if (requirementIndex >= definition.requirements.length) {
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex,
+          submittedProgress: progress,
+          status: 'failed',
+          message: `requirementIndex ${requirementIndex} is out of bounds (achievement has ${definition.requirements.length} requirement(s))`,
+        });
+        continue;
+      }
+
+      const existing = map.get(achievementId) ?? {
+        progress: new Array(definition.requirements.length).fill(0),
+        achievedAt: null,
+      };
+      existing.progress = this.normalizeProgress(existing.progress, definition.requirements.length);
+
+      if (existing.achievedAt) {
+        const achievement = this.toAchievementResponse(definition, existing);
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex,
+          submittedProgress: progress,
+          status: 'noop',
+          message: 'Achievement already completed',
+          achievement,
+        });
+        continue;
+      }
+
+      const current = existing.progress[requirementIndex] ?? 0;
+      if (progress <= current) {
+        const achievement = this.toAchievementResponse(definition, existing);
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex,
+          submittedProgress: progress,
+          status: 'noop',
+          message: `Stale progress ignored (current=${current})`,
+          achievement,
+        });
+        continue;
+      }
+
+      existing.progress[requirementIndex] = progress;
+      const allMet = definition.requirements.every(
+        (req, idx) => (existing.progress[idx] ?? 0) >= req.target,
+      );
+      if (allMet) {
+        existing.achievedAt = new Date();
+      }
+
+      map.set(achievementId, existing);
+      changedAchievementIds.add(achievementId);
+      hasChanges = true;
+
+      const achievement = this.toAchievementResponse(definition, existing);
+      results.push({
+        index: i,
+        achievementId,
+        requirementIndex,
+        submittedProgress: progress,
+        status: 'updated',
+        achievement,
+      });
+    }
+
+    if (hasChanges) {
+      account.achievementProgress = map;
+      await account.save();
+    }
+
+    const updatedAchievements = Array.from(changedAchievementIds)
+      .map((achievementId) => {
+        const definition = definitionCache.get(achievementId);
+        const state = map.get(achievementId);
+        if (!definition || !state) return null;
+        return this.toAchievementResponse(definition, state);
+      })
+      .filter((item): item is NonNullable<typeof item> => !!item);
+
+    const summary = results.reduce(
+      (acc, item) => {
+        if (item.status === 'updated') acc.updated += 1;
+        else if (item.status === 'noop') acc.noop += 1;
+        else acc.failed += 1;
+        return acc;
+      },
+      { total, updated: 0, noop: 0, failed: 0 },
+    );
+
+    return { summary, results, updatedAchievements };
+  }
+
   private toProgressMap(
     value: Map<string, PlayerAchievementState> | Record<string, PlayerAchievementState> | undefined,
   ): Map<string, PlayerAchievementState> {

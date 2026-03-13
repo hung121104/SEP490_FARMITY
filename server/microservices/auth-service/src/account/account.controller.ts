@@ -50,6 +50,21 @@ export class AccountController {
     return this.accountService.updateAchievementProgress(dto);
   }
 
+  @MessagePattern('update-achievement-progress-batch')
+  async updateAchievementProgressBatch(
+    @Body()
+    dto: {
+      accountId: string;
+      updates: Array<{
+        achievementId: string;
+        requirementIndex: number;
+        progress: number;
+      }>;
+    },
+  ) {
+    return this.accountService.updateAchievementProgressBatch(dto);
+  }
+
   // Admin login (web management)
   @MessagePattern('login-admin')
   async loginAdmin(@Body() loginDto: LoginDto) {
