@@ -3899,6 +3899,8 @@ MonoBehaviour:
   hour: 0
   minute: 0
   gold: 0
+  weatherToday: 0
+  weatherTomorrow: 0
 --- !u!4 &244448537
 Transform:
   m_ObjectHideFlags: 0
@@ -17180,17 +17182,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   killEntityId: goblin_01
   harvestCropId: wheat_01
-  plantSeedId: carrot_seed_01
-  fishId: salmon_01
   craftItemId: iron_sword_01
-  cookRecipeId: mushroom_soup_01
-  collectItemId: gold_coin_01
-  tradeItemId: wheat_01
-  areaId: forest_area_01
-  testLevel: 5
-  questId: quest_01
-  batchKillCount: 10
-  batchOptimized: 1
+  skeletonId: skeleton_01
+  stressCount: 1000
   showDebugLog: 1
 --- !u!1 &1005992855
 GameObject:
@@ -29617,8 +29611,58 @@ Transform:
   - {fileID: 254223839}
   - {fileID: 200427657}
   - {fileID: 1004020370}
+  - {fileID: 1832908640}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1832908639
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1832908640}
+  - component: {fileID: 1832908641}
+  m_Layer: 0
+  m_Name: AchievementTestPanelUI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1832908640
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1832908639}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1832904186}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1832908641
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1832908639}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f33f257503618a64ba42c067e0b34886, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  showOnStart: 1
+  toggleKey: 289
+  panelWidth: 430
+  panelHeight: 600
+  testTrigger: {fileID: 1004020371}
 --- !u!1 &1839607806
 GameObject:
   m_ObjectHideFlags: 0
@@ -31698,6 +31742,7 @@ MonoBehaviour:
   timeManager: {fileID: 76351687}
   enableGrowth: 1
   growthSpeedMultiplier: 1
+  waterDecayDurationMinutes: 24
   cropVisualsParent: {fileID: 0}
   showDebugLogs: 0
 --- !u!4 &1955384471
@@ -32710,8 +32755,11 @@ MonoBehaviour:
   updateInterval: 1
   unloadDelay: 5
   visualizeCrops: 1
+  cropVisualPrefab: {fileID: 0}
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   tilledTilemapName: TilledOverlayTilemap
+  wateredTile: {fileID: 0}
+  wateredTilemapName: WateredOverlayTilemap
   showDebugLogs: 0
   showLoadedChunksGizmos: 0
   enableDailyReload: 1

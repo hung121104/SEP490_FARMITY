@@ -1,6 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 using AchievementManager.Presenter;
 
 /// <summary>
@@ -15,51 +13,16 @@ public class AchievementTestTrigger : MonoBehaviour
 {
     #region Serialized Fields
 
-    [Header("─── Kill Tests ───────────────────")]
+    [Header("─── Key IDs (from achievement JSON) ─────────────")]
     [SerializeField] private string killEntityId = "goblin_01";
-
-    [Header("─── Harvest Tests ──────────────────")]
     [SerializeField] private string harvestCropId = "wheat_01";
-
-    [Header("─── Plant Tests ────────────────────")]
-    [SerializeField] private string plantSeedId = "carrot_seed_01";
-
-    [Header("─── Fish Tests ─────────────────────")]
-    [SerializeField] private string fishId = "salmon_01";
-
-    [Header("─── Craft Tests ────────────────────")]
     [SerializeField] private string craftItemId = "iron_sword_01";
+    [SerializeField] private string skeletonId = "skeleton_01";
 
-    [Header("─── Cook Tests ─────────────────────")]
-    [SerializeField] private string cookRecipeId = "mushroom_soup_01";
+    [Header("─── Load Tests ───────────────────────────────────")]
+    [SerializeField] private int stressCount = 1000;
 
-    [Header("─── Collect Tests ──────────────────")]
-    [SerializeField] private string collectItemId = "gold_coin_01";
-
-    [Header("─── Trade Tests ────────────────────")]
-    [SerializeField] private string tradeItemId = "wheat_01";
-
-    [Header("─── Discover Tests ─────────────────")]
-    [SerializeField] private string areaId = "forest_area_01";
-
-    [Header("─── Level Tests ────────────────────")]
-    [Tooltip("Each FireLevelUp call uses this value then auto-increments for next call")]
-    [SerializeField] private int testLevel = 5;
-
-    [Header("─── Quest Tests ────────────────────")]
-    [SerializeField] private string questId = "quest_01";
-
-    [Header("─── Batch Test ─────────────────────")]
-    [Tooltip("How many kills to simulate in batch test")]
-    [SerializeField] private int batchKillCount = 10;
-
-    [Tooltip(
-        "TRUE  = fire all events then send ONE PUT with final counter (recommended)\n" +
-        "FALSE = fire each event individually → multiple PUT requests (original behavior)"
-    )]
-    [SerializeField] private bool batchOptimized = true;
-
-    [Header("─── Debug Info ─────────────────────")]
+    [Header("─── Debug ────────────────────────────────────────")]
     [SerializeField] private bool showDebugLog = true;
 
     #endregion
@@ -68,264 +31,98 @@ public class AchievementTestTrigger : MonoBehaviour
 
     private void Start()
     {
-        Debug.Log("[AchievementTestTrigger] Ready! Use Inspector buttons to fire events.");
-        Debug.Log("[AchievementTestTrigger] Make sure you are logged in first!");
+        Debug.Log("[AchievementTestTrigger] Lean test suite ready.");
+        Debug.Log("[AchievementTestTrigger] Recommended order: Login -> Scenario A/B/C -> Print state.");
     }
 
     #endregion
 
-    #region Kill Events
+    #region Essential Scenarios
 
-    [ContextMenu("Test/Fire Kill Event (Generic)")]
-    public void FireKillGeneric()
+    [ContextMenu("Test/Scenario A - Mixed Types Same Window (1 batch expected)")]
+    public void ScenarioMixedTypesSameWindow()
     {
-        Log("Firing KILL event - generic");
-        GameEventBus.FireEnemyKilled(null, 1);
-    }
-
-    [ContextMenu("Test/Fire Kill Event (Specific Entity)")]
-    public void FireKillSpecific()
-    {
-        Log($"Firing KILL event - entityId: {killEntityId}");
+        Log("Scenario A: KILL + HARVEST + CRAFT in one debounce window.");
         GameEventBus.FireEnemyKilled(killEntityId, 1);
-    }
-
-    #endregion
-
-    #region Harvest Events
-
-    [ContextMenu("Test/Fire Harvest Event (Generic)")]
-    public void FireHarvestGeneric()
-    {
-        Log("Firing HARVEST event - generic");
-        GameEventBus.FireCropHarvested(null, 1);
-    }
-
-    [ContextMenu("Test/Fire Harvest Event (Specific)")]
-    public void FireHarvestSpecific()
-    {
-        Log($"Firing HARVEST event - cropId: {harvestCropId}");
         GameEventBus.FireCropHarvested(harvestCropId, 1);
-    }
-
-    #endregion
-
-    #region Plant Events
-
-    [ContextMenu("Test/Fire Plant Event (Generic)")]
-    public void FirePlantGeneric()
-    {
-        Log("Firing PLANT event - generic");
-        GameEventBus.FireSeedPlanted(null, 1);
-    }
-
-    [ContextMenu("Test/Fire Plant Event (Specific)")]
-    public void FirePlantSpecific()
-    {
-        Log($"Firing PLANT event - seedId: {plantSeedId}");
-        GameEventBus.FireSeedPlanted(plantSeedId, 1);
-    }
-
-    #endregion
-
-    #region Fish Events
-
-    [ContextMenu("Test/Fire Fish Event (Generic)")]
-    public void FireFishGeneric()
-    {
-        Log("Firing FISH event - generic");
-        GameEventBus.FireFishCaught(null, 1);
-    }
-
-    [ContextMenu("Test/Fire Fish Event (Specific)")]
-    public void FireFishSpecific()
-    {
-        Log($"Firing FISH event - fishId: {fishId}");
-        GameEventBus.FireFishCaught(fishId, 1);
-    }
-
-    #endregion
-
-    #region Craft Events
-
-    [ContextMenu("Test/Fire Craft Event (Generic)")]
-    public void FireCraftGeneric()
-    {
-        Log("Firing CRAFT event - generic");
-        GameEventBus.FireItemCrafted(null, 1);
-    }
-
-    [ContextMenu("Test/Fire Craft Event (Specific)")]
-    public void FireCraftSpecific()
-    {
-        Log($"Firing CRAFT event - itemId: {craftItemId}");
         GameEventBus.FireItemCrafted(craftItemId, 1);
     }
 
-    #endregion
-
-    #region Cook Events
-
-    [ContextMenu("Test/Fire Cook Event (Generic)")]
-    public void FireCookGeneric()
+    [ContextMenu("Test/Scenario B - Multi Requirement (jack_of_all_trades)")]
+    public void ScenarioMultiRequirement()
     {
-        Log("Firing COOK event - generic");
-        GameEventBus.FireFoodCooked(null, 1);
+        Log("Scenario B: KILL x3 + HARVEST x3 for jack_of_all_trades.");
+        GameEventBus.FireEnemyKilled(killEntityId, 3);
+        GameEventBus.FireCropHarvested(harvestCropId, 3);
     }
 
-    [ContextMenu("Test/Fire Cook Event (Specific)")]
-    public void FireCookSpecific()
+    [ContextMenu("Test/Scenario C - Generic + Specific Kill Pair")]
+    public void ScenarioGenericAndSpecificPair()
     {
-        Log($"Firing COOK event - recipeId: {cookRecipeId}");
-        GameEventBus.FireFoodCooked(cookRecipeId, 1);
+        Log("Scenario C: KILL goblin_01 x5 (first_blood + goblin_slayer together).");
+        GameEventBus.FireEnemyKilled(killEntityId, 5);
     }
 
-    #endregion
-
-    #region Collect Events
-
-    [ContextMenu("Test/Fire Collect Event (Generic)")]
-    public void FireCollectGeneric()
+    [ContextMenu("Test/Scenario D - Non Matching Specific ID")]
+    public void ScenarioNonMatchingSpecificId()
     {
-        Log("Firing COLLECT event - generic");
-        GameEventBus.FireItemCollected(null, 1);
+        Log("Scenario D: KILL unknown_enemy_999 x3 (specific achievements should not match).");
+        GameEventBus.FireEnemyKilled("unknown_enemy_999", 3);
     }
 
-    [ContextMenu("Test/Fire Collect Event (Specific)")]
-    public void FireCollectSpecific()
+    [ContextMenu("Test/Scenario E - Over Target + Noop Safety")]
+    public void ScenarioOverTargetProgress()
     {
-        Log($"Firing COLLECT event - itemId: {collectItemId}");
-        GameEventBus.FireItemCollected(collectItemId, 1);
+        Log("Scenario E: KILL goblin_01 x20 (over target, server should be idempotent/noop-safe).");
+        GameEventBus.FireEnemyKilled(killEntityId, 20);
     }
 
-    #endregion
-
-    #region Trade Events
-
-    [ContextMenu("Test/Fire Trade Event (Generic)")]
-    public void FireTradeGeneric()
+    [ContextMenu("Test/Scenario F - Specific Extra Achievement (skeleton)")]
+    public void ScenarioSkeletonSpecific()
     {
-        Log("Firing TRADE event - generic");
-        GameEventBus.FireItemTraded(null, 1);
+        Log("Scenario F: KILL skeleton_01 x3 (skeleton_slayer_test).");
+        GameEventBus.FireEnemyKilled(skeletonId, 3);
     }
 
-    [ContextMenu("Test/Fire Trade Event (Specific)")]
-    public void FireTradeSpecific()
+    [ContextMenu("Test/Scenario G - Stress Single Event")]
+    public void ScenarioStressSingleEvent()
     {
-        Log($"Firing TRADE event - itemId: {tradeItemId}");
-        GameEventBus.FireItemTraded(tradeItemId, 1);
+        Log($"Scenario G: KILL {killEntityId} x{stressCount} in one event.");
+        GameEventBus.FireEnemyKilled(killEntityId, stressCount);
     }
 
-    #endregion
-
-    #region Discover Events
-
-    [ContextMenu("Test/Fire Discover Event (Generic)")]
-    public void FireDiscoverGeneric()
+    [ContextMenu("Test/Scenario H - Full Coverage Smoke")]
+    public void ScenarioFullCoverageSmoke()
     {
-        Log("Firing DISCOVER event - generic");
-        GameEventBus.FireAreaDiscovered(null, 1);
-    }
+        Log("Scenario H: concise full smoke over all major types from JSON.");
 
-    [ContextMenu("Test/Fire Discover Event (Specific)")]
-    public void FireDiscoverSpecific()
-    {
-        Log($"Firing DISCOVER event - areaId: {areaId}");
-        GameEventBus.FireAreaDiscovered(areaId, 1);
+        GameEventBus.FireEnemyKilled(killEntityId, 5);
+        GameEventBus.FireCropHarvested(harvestCropId, 5);
+        GameEventBus.FireItemCrafted(craftItemId, 3);
+        GameEventBus.FireEnemyKilled(skeletonId, 3);
+        GameEventBus.FireQuestCompleted("quest_01", 3);
+        GameEventBus.FireLevelReached(5);
     }
 
     #endregion
 
-    #region Level Events
+    #region Utilities
 
-    [ContextMenu("Test/Fire Level Up Event")]
-    public void FireLevelUp()
-    {
-        Log($"Firing REACH_LEVEL event - level: {testLevel}");
-        GameEventBus.FireLevelReached(testLevel);
-        testLevel++;
-        Log($"Next FireLevelUp will use level: {testLevel}");
-    }
-
-    [ContextMenu("Test/Reset Test Level")]
-    public void ResetTestLevel()
-    {
-        testLevel = 5;
-        Log($"Test level reset to: {testLevel}");
-    }
-
-    #endregion
-
-    #region Quest Events
-
-    [ContextMenu("Test/Fire Quest Complete Event (Generic)")]
-    public void FireQuestGeneric()
-    {
-        Log("Firing QUEST_COMPLETE event - generic");
-        GameEventBus.FireQuestCompleted(null, 1);
-    }
-
-    [ContextMenu("Test/Fire Quest Complete Event (Specific)")]
-    public void FireQuestSpecific()
-    {
-        Log($"Firing QUEST_COMPLETE event - questId: {questId}");
-        GameEventBus.FireQuestCompleted(questId, 1);
-    }
-
-    #endregion
-
-    #region Batch + Panel Tests
-
-    [ContextMenu("Test/Batch Kill Test")]
-    public void BatchKillTest()
-    {
-        Log($"Firing KILL x{batchKillCount} → expect 1 PUT after debounce");
-        // ✅ Single fire with count - 1 PUT total after debounce
-        GameEventBus.FireEnemyKilled(killEntityId, batchKillCount);
-        Log("Batch fired! Watch console for 1 PUT after 0.5s.");
-    }
-
-    [ContextMenu("Test/Fire ALL Events Once")]
-    public void FireAllEventsOnce()
-    {
-        Log("Firing ALL event types once!");
-        GameEventBus.FireEnemyKilled(killEntityId,    1);
-        GameEventBus.FireCropHarvested(harvestCropId, 1);
-        GameEventBus.FireSeedPlanted(plantSeedId,     1);
-        GameEventBus.FireFishCaught(fishId,           1);
-        GameEventBus.FireItemCrafted(craftItemId,     1);
-        GameEventBus.FireFoodCooked(cookRecipeId,     1);
-        GameEventBus.FireItemCollected(collectItemId, 1);
-        GameEventBus.FireItemTraded(tradeItemId,      1);
-        GameEventBus.FireAreaDiscovered(areaId,       1);
-        GameEventBus.FireLevelReached(testLevel);
-        GameEventBus.FireQuestCompleted(questId,      1);
-        testLevel++;
-        Log($"All events fired! Next level will be: {testLevel}");
-    }
-
-    [ContextMenu("Test/Open Achievement Panel")]
-    public void OpenAchievementPanel()
-    {
-        Log("Opening achievement panel...");
-        AchievementPresenter.Instance?.OpenPanel();
-    }
-
-    [ContextMenu("Test/Close Achievement Panel")]
-    public void CloseAchievementPanel()
-    {
-        Log("Closing achievement panel...");
-        AchievementPresenter.Instance?.ClosePanel();
-    }
-
-    [ContextMenu("Test/Simulate Login Success")]
+    [ContextMenu("Test/Utility/Simulate Login Success")]
     public void SimulateLoginSuccess()
     {
         Log("Simulating login success → fetching achievements...");
         AchievementPresenter.Instance?.OnLoginSuccess();
     }
 
-    [ContextMenu("Test/Print Achievement State")]
+    [ContextMenu("Test/Utility/Open Achievement Panel")]
+    public void OpenAchievementPanel()
+    {
+        Log("Opening achievement panel...");
+        AchievementPresenter.Instance?.OpenPanel();
+    }
+
+    [ContextMenu("Test/Utility/Print Achievement State")]
     public void PrintAchievementState()
     {
         if (AchievementPresenter.Instance == null)
@@ -337,13 +134,13 @@ public class AchievementTestTrigger : MonoBehaviour
         var achievements = AchievementPresenter.Instance.GetAllAchievements();
         Debug.Log($"[AchievementTestTrigger] Total loaded: {achievements.Count}");
 
-        foreach (var a in achievements)
+        foreach (var achievement in achievements)
         {
-            Debug.Log($"─── {a.name} | isAchieved: {a.isAchieved}");
-            for (int i = 0; i < a.requirements.Count; i++)
-                Debug.Log($"    req[{i}] {a.requirements[i].label} " +
-                          $"→ {a.GetProgressText(i)} " +
-                          $"({a.GetProgressRatio(i) * 100:F0}%)");
+            Debug.Log($"--- {achievement.name} | isAchieved: {achievement.isAchieved}");
+            for (int i = 0; i < achievement.requirements.Count; i++)
+            {
+                Debug.Log($"req[{i}] {achievement.requirements[i].label} -> {achievement.GetProgressText(i)} ({achievement.GetProgressRatio(i) * 100f:F0}%)");
+            }
         }
     }
 

@@ -141,13 +141,7 @@ namespace AchievementManager.Presenter
         {
             Debug.Log($"[AchievementTrackerPresenter] Force flushing {toFlush.Count} achievements...");
 
-            foreach (string achievementId in toFlush)
-            {
-                AchievementData achievement = model.GetAchievement(achievementId);
-                if (achievement == null || achievement.isAchieved) continue;
-
-                yield return SendProgressToServer(achievement);
-            }
+            yield return FlushPendingAchievements(toFlush);
 
             Debug.Log("[AchievementTrackerPresenter] Force flush complete ✅");
         }
@@ -239,13 +233,7 @@ namespace AchievementManager.Presenter
             HashSet<string> toFlush = new HashSet<string>(pendingAchievementIds);
             pendingAchievementIds.Clear();
 
-            foreach (string achievementId in toFlush)
-            {
-                AchievementData achievement = model.GetAchievement(achievementId);
-                if (achievement == null || achievement.isAchieved) continue;
-
-                yield return SendProgressToServer(achievement);
-            }
+            yield return FlushPendingAchievements(toFlush);
 
             debounceCoroutine = null;
         }
@@ -254,38 +242,115 @@ namespace AchievementManager.Presenter
 
         #region Server Communication
 
-        private IEnumerator SendProgressToServer(AchievementData achievement)
+        private IEnumerator FlushPendingAchievements(HashSet<string> achievementIds)
         {
-            bool isAchievedBefore = achievement.isAchieved;
+            List<UpdateProgressRequest> requests = BuildBatchRequests(achievementIds);
+            if (requests.Count == 0) yield break;
 
-            for (int i = 0; i < achievement.requirements.Count; i++)
+            Dictionary<string, bool> wasAchievedMap = new Dictionary<string, bool>();
+            foreach (string achievementId in achievementIds)
             {
-                AchievementRequirement req = achievement.requirements[i];
-
-                int localProgress  = GetLocalProgress(req);
-                int serverProgress = achievement.progress != null && i < achievement.progress.Count
-                    ? achievement.progress[i]
-                    : 0;
-
-                if (localProgress <= serverProgress) continue;
-
-                UpdateProgressRequest request = new UpdateProgressRequest(
-                    achievement.achievementId,
-                    i,
-                    localProgress
-                );
-
-                yield return service.UpdateProgress(
-                    request,
-                    (updated) => OnProgressSuccess(updated, isAchievedBefore),
-                    (err)     => Debug.LogWarning($"[AchievementTrackerPresenter] PUT failed: {err}")
-                );
+                AchievementData achievement = model.GetAchievement(achievementId);
+                if (achievement != null)
+                    wasAchievedMap[achievementId] = achievement.isAchieved;
             }
+
+            BatchUpdateProgressResponse batchResponse = null;
+            bool success = false;
+
+            yield return service.UpdateProgressBatch(
+                requests,
+                (response) =>
+                {
+                    batchResponse = response;
+                    success = true;
+                },
+                (error) => Debug.LogWarning($"[AchievementTrackerPresenter] Batch PUT failed: {error}")
+            );
+
+            if (!success || batchResponse == null) yield break;
+
+            ApplyBatchResponse(batchResponse, wasAchievedMap);
         }
 
-        private void OnProgressSuccess(AchievementData updated, bool wasAchievedBefore)
+        private List<UpdateProgressRequest> BuildBatchRequests(HashSet<string> achievementIds)
         {
+            List<UpdateProgressRequest> requests = new List<UpdateProgressRequest>();
+
+            foreach (string achievementId in achievementIds)
+            {
+                AchievementData achievement = model.GetAchievement(achievementId);
+                if (achievement == null || achievement.isAchieved) continue;
+
+                for (int i = 0; i < achievement.requirements.Count; i++)
+                {
+                    AchievementRequirement req = achievement.requirements[i];
+
+                    int localProgress = GetLocalProgress(req);
+                    int serverProgress = achievement.progress != null && i < achievement.progress.Count
+                        ? achievement.progress[i]
+                        : 0;
+
+                    if (localProgress <= serverProgress) continue;
+
+                    requests.Add(new UpdateProgressRequest(
+                        achievement.achievementId,
+                        i,
+                        localProgress
+                    ));
+                }
+            }
+
+            return requests;
+        }
+
+        private void ApplyBatchResponse(
+            BatchUpdateProgressResponse response,
+            Dictionary<string, bool> wasAchievedMap)
+        {
+            HashSet<string> notified = new HashSet<string>();
+
+            if (response.updatedAchievements != null)
+            {
+                foreach (AchievementData updated in response.updatedAchievements)
+                    UpsertAndNotify(updated, wasAchievedMap, notified);
+            }
+
+            if (response.results != null)
+            {
+                foreach (BatchUpdateResult result in response.results)
+                {
+                    if (result == null) continue;
+
+                    if (result.status == "failed")
+                    {
+                        Debug.LogWarning($"[AchievementTrackerPresenter] Batch item failed | " +
+                                         $"achievementId={result.achievementId}, req={result.requirementIndex}, msg={result.message}");
+                    }
+
+                    if (result.achievement != null)
+                        UpsertAndNotify(result.achievement, wasAchievedMap, notified);
+                }
+            }
+
+            Debug.Log($"[AchievementTrackerPresenter] Batch flush done | " +
+                      $"total={response.summary?.total}, updated={response.summary?.updated}, " +
+                      $"noop={response.summary?.noop}, failed={response.summary?.failed}");
+        }
+
+        private void UpsertAndNotify(
+            AchievementData updated,
+            Dictionary<string, bool> wasAchievedMap,
+            HashSet<string> notified)
+        {
+            if (updated == null || string.IsNullOrEmpty(updated.achievementId)) return;
+
+            bool wasAchievedBefore =
+                wasAchievedMap.TryGetValue(updated.achievementId, out bool value) && value;
+
             model.UpsertAchievement(updated);
+
+            if (notified.Contains(updated.achievementId)) return;
 
             if (!wasAchievedBefore && updated.isAchieved)
             {
@@ -296,6 +361,8 @@ namespace AchievementManager.Presenter
             {
                 presenter?.OnProgressUpdated(updated);
             }
+
+            notified.Add(updated.achievementId);
         }
 
         #endregion
