@@ -382,21 +382,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
     #endregion
 
     /// <summary>
-    /// Show the inventory panel at a specific anchored position in its parent Canvas.
-    /// Used when displaying the shared inventory alongside a Crafting or Cooking UI.
-    /// </summary>
-    public void ShowAtPosition(Vector2 anchoredPosition)
-    {
-        if (inventoryPanel == null) return;
-
-        RectTransform root = inventoryRoot != null ? inventoryRoot : inventoryPanel.GetComponent<RectTransform>();
-        if (root != null)
-            root.anchoredPosition = anchoredPosition;
-
-        inventoryPanel.SetActive(true);
-    }
-
-    /// <summary>
     /// Moves the inventory panel to a new parent container (e.g. escaping closed menus)
     /// and resets its position to (0,0) so it fits perfectly inside the new parent's layout.
     /// </summary>

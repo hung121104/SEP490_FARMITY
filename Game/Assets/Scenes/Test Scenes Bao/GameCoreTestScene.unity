@@ -4680,10 +4680,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c1cf56b32e941d42b82e7052e10fbe2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  inventoryGameView: {fileID: 1039417487}
   craftingInventoryView: {fileID: 435592460}
   craftingMainView: {fileID: 1564190098}
   cookingMainView: {fileID: 2015000858}
-  inventoryGameView: {fileID: 1039417487}
   craftingInventoryContainer: {fileID: 593825073}
   cookingInventoryContainer: {fileID: 132205187}
 --- !u!1 &337970959
@@ -15109,7 +15109,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inventorySlots: 36
-  mainInventoryPosition: {x: 0, y: 0}
   inventoryView: {fileID: 1526296357}
   itemDetailView: {fileID: 52079948}
   itemDeleteView: {fileID: 798044606}

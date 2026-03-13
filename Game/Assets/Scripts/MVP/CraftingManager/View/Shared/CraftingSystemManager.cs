@@ -4,13 +4,14 @@ using UnityEngine.UI;
 
 public class CraftingSystemManager : MonoBehaviour
 {
+    [SerializeField] private InventoryGameView inventoryGameView;
+
     [Header("UI Views")]
     [SerializeField] private CraftingMainView craftingInventoryView;
     [SerializeField] private CraftingMainView craftingMainView;
     [SerializeField] private CookingMainView cookingMainView;
 
     [Header("Inventory Display")]
-    [SerializeField] private InventoryGameView inventoryGameView;
     [SerializeField] private Transform craftingInventoryContainer;
     [SerializeField] private Transform cookingInventoryContainer;
 

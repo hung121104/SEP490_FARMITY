@@ -6,9 +6,6 @@ public class InventoryGameView : MonoBehaviour
     [Header("Settings")]
     [SerializeField] private int inventorySlots = 36;
 
-    [Header("Inventory Positions")]
-    [SerializeField] private Vector2 mainInventoryPosition = Vector2.zero;
-
     [Header("References")]
     [SerializeField] private InventoryView inventoryView;
     [SerializeField] private ItemDetailView itemDetailView;
@@ -161,26 +158,14 @@ public class InventoryGameView : MonoBehaviour
     /// </summary>
     public void OpenInventory()
     {
-        OpenInventoryAtPosition(mainInventoryPosition);
-        
-        if (inventoryView != null)
-        {
-            inventoryView.Show(); // Make sure it's active
-            Debug.Log("[InventoryGameView] Main Inventory opened");
-        }
-    }
-
-    /// <summary>
-    /// Open the shared inventory panel at a specific anchored position.
-    /// Called by external systems such as CraftingSystemManager.
-    /// </summary>
-    public void OpenInventoryAtPosition(Vector2 anchoredPosition)
-    {
         if (itemDeleteView != null)
             itemDeleteView.EnableDrops();
-
-        inventoryView?.ShowAtPosition(anchoredPosition);
-        Debug.Log($"[InventoryGameView] Inventory opened at position {anchoredPosition}");
+            
+        if (inventoryView != null)
+        {
+            inventoryView.Show(); // Make sure it's active and returns to original parent
+            Debug.Log("[InventoryGameView] Main Inventory opened");
+        }
     }
 
     public void OpenCraftingInventory(Transform container = null)
@@ -190,7 +175,7 @@ public class InventoryGameView : MonoBehaviour
         if (container != null)
             inventoryView?.ShowWithParent(container);
         else
-            OpenInventoryAtPosition(mainInventoryPosition);
+            inventoryView?.Show();
     }
 
     public void OpenCookingInventory(Transform container = null)
@@ -200,12 +185,12 @@ public class InventoryGameView : MonoBehaviour
         if (container != null)
             inventoryView?.ShowWithParent(container);
         else
-            OpenInventoryAtPosition(mainInventoryPosition);
+            inventoryView?.Show();
     }
 
     public void OpenCraftingInInventory()
     {
-        OpenInventoryAtPosition(mainInventoryPosition);
+        OpenInventory();
     }
 
     public void CloseInventory()
