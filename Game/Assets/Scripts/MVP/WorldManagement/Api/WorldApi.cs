@@ -86,6 +86,9 @@ public static class WorldApi
         [JsonProperty("minute", NullValueHandling = NullValueHandling.Ignore)] public int? minute;
         [JsonProperty("gold",   NullValueHandling = NullValueHandling.Ignore)] public int? gold;
 
+        [JsonProperty("weatherToday",    NullValueHandling = NullValueHandling.Ignore)] public int? weatherToday;
+        [JsonProperty("weatherTomorrow", NullValueHandling = NullValueHandling.Ignore)] public int? weatherTomorrow;
+
         [JsonProperty("characters", NullValueHandling = NullValueHandling.Ignore)]
         public List<CharacterUpdate> characters;
 

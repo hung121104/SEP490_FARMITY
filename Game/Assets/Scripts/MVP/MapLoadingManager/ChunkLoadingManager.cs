@@ -438,8 +438,8 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 tilledTilePositions.Add(tilePos);
             }
 
-            // If tile has a watered crop, place the watered overlay tile
-            if (tile.HasCrop && tile.Crop.IsWatered)
+            // If tile is tilled and watered, place the watered overlay tile
+            if (tile.IsTilled && tile.Crop.IsWatered)
             {
                 if (wateredTile == null)
                 {

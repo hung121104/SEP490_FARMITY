@@ -262,6 +262,9 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             hour   = wdm?.Hour,
             minute = wdm?.Minute,
             gold   = wdm?.Gold,
+            // Weather state from WorldDataManager
+            weatherToday    = wdm?.WeatherToday,
+            weatherTomorrow = wdm?.WeatherTomorrow,
         };
 
         // ── Characters — read live positions from PlayerEntity GameObjects ──

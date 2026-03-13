@@ -62,6 +62,17 @@ public interface ICropGrowthService
     /// </summary>
     float WaterDecayDurationMinutes { get; set; }
 
+    /// <summary>
+    /// When true, water decay is paused (e.g. during rain).
+    /// </summary>
+    bool IsRaining { get; set; }
+
+    /// <summary>
+    /// Immediately waters every tilled tile across all active sections.
+    /// Called when rain starts so all farmland gets watered automatically.
+    /// </summary>
+    void WaterAllTilledTiles();
+
     // ── Events ────────────────────────────────────────────────────────────
 
     /// <summary>

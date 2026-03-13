@@ -47,6 +47,10 @@ export class UpdateWorldDto {
   minute?: number;
   gold?: number;
 
+  // Weather persistence
+  weatherToday?: number;
+  weatherTomorrow?: number;
+
   // Up to 4 characters to upsert
   characters?: UpsertCharacterDto[];
 

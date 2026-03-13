@@ -73,6 +73,13 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         // Subscribe to visual-refresh event
         growthService.OnCropStageChanged += OnCropStageChanged;
 
+        // Subscribe to rain events for auto-watering
+        WeatherView.OnRainStarted += OnRainStarted;
+        WeatherView.OnRainStopped += OnRainStopped;
+        // If it's already raining when we initialize, apply immediately
+        if (WeatherView.IsRaining)
+            OnRainStarted();
+
         // Visual parent fallback
         if (cropVisualsParent == null)
             cropVisualsParent = new GameObject("CropVisuals").transform;
@@ -85,6 +92,45 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     {
         if (Instance == this) Instance = null;
         if (growthService != null) growthService.OnCropStageChanged -= OnCropStageChanged;
+        WeatherView.OnRainStarted -= OnRainStarted;
+        WeatherView.OnRainStopped -= OnRainStopped;
+    }
+
+    // ── Rain event handlers ──────────────────────────────────────────────
+    private void OnRainStarted()
+    {
+        if (growthService == null) return;
+        growthService.IsRaining = true;
+
+        // Only MasterClient performs the bulk water + visual refresh
+        if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient) return;
+
+        growthService.WaterAllTilledTiles();
+
+        // Refresh visuals for all loaded chunks so watered overlays appear
+        if (chunkLoadingManager != null && WorldDataManager.Instance != null)
+        {
+            foreach (var config in WorldDataManager.Instance.sectionConfigs)
+            {
+                if (!config.IsActive) continue;
+                var section = WorldDataManager.Instance.GetSection(config.SectionId);
+                if (section == null) continue;
+                foreach (var chunkPos in section.Keys)
+                    chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+            }
+        }
+
+        if (showDebugLogs)
+            Debug.Log("[CropManagerView] Rain started — all tilled tiles watered, decay paused.");
+    }
+
+    private void OnRainStopped()
+    {
+        if (growthService == null) return;
+        growthService.IsRaining = false;
+
+        if (showDebugLogs)
+            Debug.Log("[CropManagerView] Rain stopped — water decay resumed.");
     }
 
     // ── Real-time growth tick ─────────────────────────────────────────

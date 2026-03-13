@@ -85,6 +85,28 @@ public class WorldDataManager : MonoBehaviour
     public int Minute => minute;
     public int Gold   => gold;
 
+    // Weather state
+    [SerializeField] private int weatherToday;
+    [SerializeField] private int weatherTomorrow;
+    public int WeatherToday    => weatherToday;
+    public int WeatherTomorrow => weatherTomorrow;
+
+    public void SetWeather(int today, int tomorrow)
+    {
+        weatherToday    = today;
+        weatherTomorrow = tomorrow;
+    }
+
+    /// <summary>Called by TimeManagerView to keep WDM in sync for auto-save.</summary>
+    public void SetTime(int d, int mo, int y, int h, int mi)
+    {
+        day    = d;
+        month  = mo;
+        year   = y;
+        hour   = h;
+        minute = mi;
+    }
+
     /// <summary>Called by WorldDataBootstrapper to load world time/economy data.</summary>
     public void PopulateWorldMeta(WorldApiResponse data)
     {
@@ -95,7 +117,9 @@ public class WorldDataManager : MonoBehaviour
         hour      = data.hour;
         minute    = data.minute;
         gold      = data.gold;
-        Debug.Log($"[WorldDataManager] World meta loaded: {worldName} | Day {day} | Gold {gold}");
+        weatherToday    = data.weatherToday;
+        weatherTomorrow = data.weatherTomorrow;
+        Debug.Log($"[WorldDataManager] World meta loaded: {worldName} | Day {day} | Gold {gold} | Weather: today={weatherToday} tomorrow={weatherTomorrow}");
     }
 
     /// <summary>

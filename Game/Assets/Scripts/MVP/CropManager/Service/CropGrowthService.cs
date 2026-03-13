@@ -24,6 +24,9 @@ public class CropGrowthService : ICropGrowthService
     /// <inheritdoc/>
     public float WaterDecayDurationMinutes { get; set; } = 24f;
 
+    /// <inheritdoc/>
+    public bool IsRaining { get; set; }
+
     // ── Events ────────────────────────────────────────────────────────────
     /// <inheritdoc/>
     public event System.Action<int, int, byte> OnCropStageChanged;
@@ -180,6 +183,9 @@ public class CropGrowthService : ICropGrowthService
     {
         if (worldData == null || gameMinutesDelta <= 0f) return;
 
+        // Pause water decay while it's raining
+        if (IsRaining) return;
+
         for (int s = 0; s < worldData.sectionConfigs.Count; s++)
         {
             var sectionConfig = worldData.sectionConfigs[s];
@@ -245,5 +251,40 @@ public class CropGrowthService : ICropGrowthService
 
         OnCropStageChanged?.Invoke(worldX, worldY, newStage);
         Debug.Log($"[CropGrowthService] Force-grew ({worldX},{worldY}) → stage {newStage}.");
+    }
+
+    public void WaterAllTilledTiles()
+    {
+        if (worldData == null) return;
+
+        int count = 0;
+
+        for (int s = 0; s < worldData.sectionConfigs.Count; s++)
+        {
+            var sectionConfig = worldData.sectionConfigs[s];
+            if (!sectionConfig.IsActive) continue;
+
+            var section = worldData.GetSection(sectionConfig.SectionId);
+            if (section == null) continue;
+
+            foreach (var chunkPair in section)
+            {
+                UnifiedChunkData chunk = chunkPair.Value;
+
+                foreach (var tile in chunk.GetAllTiles())
+                {
+                    if (!tile.IsTilled || tile.Crop.IsWatered) continue;
+
+                    chunk.WaterTile(tile.WorldX, tile.WorldY);
+                    count++;
+
+                    if (PhotonNetwork.IsConnected && syncManager != null)
+                        syncManager.BroadcastTileWatered(tile.WorldX, tile.WorldY);
+                }
+            }
+        }
+
+        if (count > 0)
+            Debug.Log($"[CropGrowthService] Rain watered {count} tilled tiles.");
     }
 }

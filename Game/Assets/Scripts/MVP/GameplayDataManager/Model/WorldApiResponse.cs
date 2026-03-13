@@ -21,6 +21,8 @@ public class WorldApiResponse
     public int hour;
     public int minute;
     public int gold;
+    public int weatherToday;
+    public int weatherTomorrow;
     public List<CharacterEntry> characters = new List<CharacterEntry>();
 
     /// <summary>Loaded chunk documents — one per saved 30x30 chunk.</summary>
