@@ -21,8 +21,10 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     public int maxResourcesPerChunk = 40;
     public int dailySpawnRate = 5;
 
-    [Header("Visual")]
-    public GameObject genericResourcePrefab;
+    [Header("Prefabs based on Resource Type")]
+    public GameObject treePrefab;
+    public GameObject rockPrefab;
+    public GameObject orePrefab;
 
     private readonly Dictionary<string, GameObject> _spawnedVisuals =
         new Dictionary<string, GameObject>();
@@ -317,21 +319,39 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
             _spawnedVisuals.Remove(visualKey);
         }
 
-        if (genericResourcePrefab == null)
+        ResourceConfigData configData = ResourceCatalogManager.Instance?.GetResourceConfig(resourceId);
+        if (configData == null)
         {
-            Debug.LogWarning("[ResourceSpawnerManager] genericResourcePrefab is not assigned.");
+            Debug.LogWarning($"[ResourceSpawnerManager] Missing config data for resource '{resourceId}'.");
+            return;
+        }
+
+        GameObject prefabToUse = treePrefab; // Default fallback
+        if (!string.IsNullOrEmpty(configData.resourceType))
+        {
+            switch (configData.resourceType.ToLower())
+            {
+                case "tree": prefabToUse = treePrefab; break;
+                case "rock": prefabToUse = rockPrefab; break;
+                case "ore": prefabToUse = orePrefab; break;
+                default: prefabToUse = treePrefab; break; // safe fallback
+            }
+        }
+
+        if (prefabToUse == null)
+        {
+            Debug.LogWarning($"[ResourceSpawnerManager] Prefab for resourceType '{configData.resourceType}' is not assigned.");
             return;
         }
 
         Vector3 worldPos = TileIndexToWorldPosition(chunkX, chunkY, tileIndex);
-        GameObject visual = Instantiate(genericResourcePrefab, worldPos, Quaternion.identity);
+        GameObject visual = Instantiate(prefabToUse, worldPos, Quaternion.identity);
         visual.name = $"Resource_{resourceId}_{chunkX}_{chunkY}_{tileIndex}";
         _spawnedVisuals[visualKey] = visual;
 
-        ResourceConfigData configData = ResourceCatalogManager.Instance?.GetResourceConfig(resourceId);
-        if (configData == null || string.IsNullOrEmpty(configData.spriteUrl))
+        if (string.IsNullOrEmpty(configData.spriteUrl))
         {
-            Debug.LogWarning($"[ResourceSpawnerManager] Missing config/spriteUrl for resource '{resourceId}'.");
+            Debug.LogWarning($"[ResourceSpawnerManager] Missing spriteUrl for resource '{resourceId}'.");
             return;
         }
 

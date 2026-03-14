@@ -36,7 +36,7 @@ export class ResourceConfig {
   spriteUrl: string | null;
 
   @Prop({ default: 'tree' })
-  collisionType: string;
+  resourceType: string;
 
   @Prop({ type: [ResourceDropEntry], default: [] })
   dropTable: ResourceDropEntry[];

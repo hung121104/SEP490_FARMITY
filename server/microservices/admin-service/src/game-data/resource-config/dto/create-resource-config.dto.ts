@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -52,7 +53,8 @@ export class CreateResourceConfigDto {
 
   @IsOptional()
   @IsString()
-  collisionType?: string;
+  @IsIn(['tree', 'rock', 'ore'])
+  resourceType?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

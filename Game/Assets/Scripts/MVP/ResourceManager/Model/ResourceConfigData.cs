@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// One drop-table row for a resource config.
@@ -21,9 +22,10 @@ public class ResourceConfigData
     public string resourceId = "";
     public string name = "";
     public int maxHp = 1;
-    public string requiredToolId = "";
-    public string spriteUrl = "";
-    public DropEntry[] dropTable = Array.Empty<DropEntry>();
+    public string requiredToolId;
+    public string spriteUrl;
+    public string resourceType = "tree";
+    public List<DropEntry> dropTable = new List<DropEntry>(); // Corrected syntax and type based on existing DropEntry
 }
 
 /// <summary>

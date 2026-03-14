@@ -463,7 +463,7 @@ export class GatewayController {
       };
 
       if (body.requiredToolId) dto.requiredToolId = body.requiredToolId;
-      if (body.collisionType) dto.collisionType = body.collisionType;
+      if (body.resourceType) dto.resourceType = body.resourceType;
 
       if (file) {
         dto.spriteUrl = await this.cloudinaryService.uploadFile(
@@ -509,8 +509,8 @@ export class GatewayController {
       if (body.maxHp !== undefined) dto.maxHp = Number(body.maxHp);
       if (body.requiredToolId !== undefined)
         dto.requiredToolId = body.requiredToolId;
-      if (body.collisionType !== undefined)
-        dto.collisionType = body.collisionType;
+      if (body.resourceType !== undefined)
+        dto.resourceType = body.resourceType;
 
       if (file) {
         dto.spriteUrl = await this.cloudinaryService.uploadFile(

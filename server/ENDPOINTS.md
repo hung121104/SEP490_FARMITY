@@ -857,6 +857,7 @@ Depending on `itemType`, specific extra fields must be included:
 | `resourceId` | string | ✅ | Stable game-side identifier (e.g., `oak_tree`, `stone_rock`) |
 | `name` | string | ✅ | Display name |
 | `maxHp` | int | ✅ | Initial HP used by host RAM state |
+| `resourceType` | string | ✅ | Classification of the resource (`tree`, `rock`, or `ore`) for prefab/collider selection |
 | `requiredToolId` | string\|null | — | Optional minimum/required tool identifier |
 | `spriteUrl` | string\|null | — | Cloudinary URL for the resource sprite. **Auto-filled** if a `sprite` file is uploaded. |
 | `dropTable` | array | ✅ | Array of item drops with chance and amount range |

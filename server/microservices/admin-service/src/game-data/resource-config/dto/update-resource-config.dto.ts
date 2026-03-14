@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsNumber, IsOptional, IsString, Min, ValidateNested, IsIn } from 'class-validator';
 import { ResourceDropEntryDto } from './create-resource-config.dto';
 
 export class UpdateResourceConfigDto {
@@ -22,7 +22,8 @@ export class UpdateResourceConfigDto {
 
   @IsOptional()
   @IsString()
-  collisionType?: string;
+  @IsIn(['tree', 'rock', 'ore'])
+  resourceType?: string;
 
   @IsOptional()
   @IsArray()

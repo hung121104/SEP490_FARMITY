@@ -124,7 +124,7 @@ public class ResourceInteractionManager : MonoBehaviourPun
 
     private void SpawnLootDrops(ResourceConfigData config, Vector3 worldPos)
     {
-        if (config.dropTable == null || config.dropTable.Length == 0)
+        if (config.dropTable == null || config.dropTable.Count == 0)
             return;
 
         foreach (DropEntry drop in config.dropTable)
