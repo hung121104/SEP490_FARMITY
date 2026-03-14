@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Newtonsoft.Json;
 using AchievementManager.Model;
 using AchievementManager.Service;
 
@@ -26,6 +27,8 @@ namespace AchievementManager.Presenter
         private bool isFlushing;
         private bool flushQueuedWhileFlushing;
         private int retryAttempt;
+
+        private const string PENDING_CACHE_KEY = "achievement_tracker_pending_updates";
 
         [Header("Debounce Settings")]
         [SerializeField] private float debounceDelay = 0.5f;
@@ -57,6 +60,7 @@ namespace AchievementManager.Presenter
             this.service   = service;
             this.presenter = presenter;
 
+            LoadPendingCache();
             SubscribeToEvents();
             StartAutosaveLoop();
             IsInitialized = true;
@@ -69,33 +73,45 @@ namespace AchievementManager.Presenter
 
         private void SubscribeToEvents()
         {
-            GameEventBus.OnCropHarvested  += (id, count) => HandleEvent("HARVEST", id, count);
-            GameEventBus.OnEnemyKilled    += (id, count) => HandleEvent("KILL", id, count);
-            GameEventBus.OnSeedPlanted    += (id, count) => HandleEvent("PLANT", id, count);
-            GameEventBus.OnFishCaught     += (id, count) => HandleEvent("FISH", id, count);
-            GameEventBus.OnItemCrafted    += (id, count) => HandleEvent("CRAFT", id, count);
-            GameEventBus.OnFoodCooked     += (id, count) => HandleEvent("COOK", id, count);
-            GameEventBus.OnItemCollected  += (id, count) => HandleEvent("COLLECT", id, count);
-            GameEventBus.OnItemTraded     += (id, count) => HandleEvent("TRADE", id, count);
-            GameEventBus.OnAreaDiscovered += (id, count) => HandleEvent("DISCOVER", id, count);
-            GameEventBus.OnQuestCompleted += (id, count) => HandleEvent("QUEST_COMPLETE", id, count);
-            GameEventBus.OnLevelReached   += (level, count) => HandleLevelEvent(level);
+            GameEventBus.OnCropHarvested  += OnCropHarvested;
+            GameEventBus.OnEnemyKilled    += OnEnemyKilled;
+            GameEventBus.OnSeedPlanted    += OnSeedPlanted;
+            GameEventBus.OnFishCaught     += OnFishCaught;
+            GameEventBus.OnItemCrafted    += OnItemCrafted;
+            GameEventBus.OnFoodCooked     += OnFoodCooked;
+            GameEventBus.OnItemCollected  += OnItemCollected;
+            GameEventBus.OnItemTraded     += OnItemTraded;
+            GameEventBus.OnAreaDiscovered += OnAreaDiscovered;
+            GameEventBus.OnQuestCompleted += OnQuestCompleted;
+            GameEventBus.OnLevelReached   += OnLevelReached;
         }
 
         private void UnsubscribeFromEvents()
         {
-            GameEventBus.OnCropHarvested  -= (id, count) => HandleEvent("HARVEST", id, count);
-            GameEventBus.OnEnemyKilled    -= (id, count) => HandleEvent("KILL", id, count);
-            GameEventBus.OnSeedPlanted    -= (id, count) => HandleEvent("PLANT", id, count);
-            GameEventBus.OnFishCaught     -= (id, count) => HandleEvent("FISH", id, count);
-            GameEventBus.OnItemCrafted    -= (id, count) => HandleEvent("CRAFT", id, count);
-            GameEventBus.OnFoodCooked     -= (id, count) => HandleEvent("COOK", id, count);
-            GameEventBus.OnItemCollected  -= (id, count) => HandleEvent("COLLECT", id, count);
-            GameEventBus.OnItemTraded     -= (id, count) => HandleEvent("TRADE", id, count);
-            GameEventBus.OnAreaDiscovered -= (id, count) => HandleEvent("DISCOVER", id, count);
-            GameEventBus.OnQuestCompleted -= (id, count) => HandleEvent("QUEST_COMPLETE", id, count);
-            GameEventBus.OnLevelReached   -= (level, count) => HandleLevelEvent(level);
+            GameEventBus.OnCropHarvested  -= OnCropHarvested;
+            GameEventBus.OnEnemyKilled    -= OnEnemyKilled;
+            GameEventBus.OnSeedPlanted    -= OnSeedPlanted;
+            GameEventBus.OnFishCaught     -= OnFishCaught;
+            GameEventBus.OnItemCrafted    -= OnItemCrafted;
+            GameEventBus.OnFoodCooked     -= OnFoodCooked;
+            GameEventBus.OnItemCollected  -= OnItemCollected;
+            GameEventBus.OnItemTraded     -= OnItemTraded;
+            GameEventBus.OnAreaDiscovered -= OnAreaDiscovered;
+            GameEventBus.OnQuestCompleted -= OnQuestCompleted;
+            GameEventBus.OnLevelReached   -= OnLevelReached;
         }
+
+        private void OnCropHarvested(string id, int count) => HandleEvent("HARVEST", id, count);
+        private void OnEnemyKilled(string id, int count) => HandleEvent("KILL", id, count);
+        private void OnSeedPlanted(string id, int count) => HandleEvent("PLANT", id, count);
+        private void OnFishCaught(string id, int count) => HandleEvent("FISH", id, count);
+        private void OnItemCrafted(string id, int count) => HandleEvent("CRAFT", id, count);
+        private void OnFoodCooked(string id, int count) => HandleEvent("COOK", id, count);
+        private void OnItemCollected(string id, int count) => HandleEvent("COLLECT", id, count);
+        private void OnItemTraded(string id, int count) => HandleEvent("TRADE", id, count);
+        private void OnAreaDiscovered(string id, int count) => HandleEvent("DISCOVER", id, count);
+        private void OnQuestCompleted(string id, int count) => HandleEvent("QUEST_COMPLETE", id, count);
+        private void OnLevelReached(int level, int count) => HandleLevelEvent(level);
 
         #endregion
 
@@ -150,6 +166,8 @@ namespace AchievementManager.Presenter
         {
             if (pendingUpdates.Count == 0) return;
 
+            SavePendingCache();
+
             if (debounceCoroutine != null)
             {
                 StopCoroutine(debounceCoroutine);
@@ -183,15 +201,22 @@ namespace AchievementManager.Presenter
             if (!IsInitialized || !model.isLoaded) return;
 
             string generalKey  = eventType;
-            string specificKey = $"{eventType}_{entityId}";
+            string specificKey = string.IsNullOrEmpty(entityId)
+                ? string.Empty
+                : $"{eventType}_{entityId}";
 
             model.AddToCounter(generalKey, count);
-            model.AddToCounter(specificKey, count);
+            if (!string.IsNullOrEmpty(specificKey))
+                model.AddToCounter(specificKey, count);
+
+            string specificLog = string.IsNullOrEmpty(specificKey)
+                ? "n/a"
+                : model.GetCounter(specificKey).ToString();
 
             Debug.Log($"[AchievementTrackerPresenter] Event: {eventType} | " +
                       $"entityId: {entityId} | count: {count} | " +
                       $"general: {model.GetCounter(generalKey)} | " +
-                      $"specific: {model.GetCounter(specificKey)}");
+                      $"specific: {specificLog}");
 
             MarkDirtyAchievements(eventType, entityId);
         }
@@ -268,10 +293,12 @@ namespace AchievementManager.Presenter
 
                 existing.progress = progress;
                 pendingUpdates[key] = existing;
+                SavePendingCache();
                 return true;
             }
 
             pendingUpdates[key] = new UpdateProgressRequest(achievementId, requirementIndex, progress);
+            SavePendingCache();
             return true;
         }
 
@@ -311,6 +338,7 @@ namespace AchievementManager.Presenter
             List<UpdateProgressRequest> requests = BuildBatchRequestsFromPending();
             if (requests.Count == 0)
             {
+                PruneStalePendingUpdates();
                 isFlushing = false;
                 yield break;
             }
@@ -431,6 +459,55 @@ namespace AchievementManager.Presenter
 
             foreach (string key in removableKeys)
                 pendingUpdates.Remove(key);
+
+            if (removableKeys.Count > 0)
+                SavePendingCache();
+        }
+
+        private void PruneStalePendingUpdates()
+        {
+            if (pendingUpdates.Count == 0) return;
+
+            List<string> removable = new List<string>();
+
+            foreach (KeyValuePair<string, UpdateProgressRequest> pair in pendingUpdates)
+            {
+                UpdateProgressRequest pending = pair.Value;
+                if (pending == null || string.IsNullOrEmpty(pending.achievementId))
+                {
+                    removable.Add(pair.Key);
+                    continue;
+                }
+
+                AchievementData achievement = model.GetAchievement(pending.achievementId);
+                if (achievement == null || achievement.isAchieved || achievement.requirements == null)
+                {
+                    removable.Add(pair.Key);
+                    continue;
+                }
+
+                if (pending.requirementIndex < 0 || pending.requirementIndex >= achievement.requirements.Count)
+                {
+                    removable.Add(pair.Key);
+                    continue;
+                }
+
+                AchievementRequirement req = achievement.requirements[pending.requirementIndex];
+                int localProgress = GetLocalProgress(req);
+                int serverProgress = achievement.progress != null && pending.requirementIndex < achievement.progress.Count
+                    ? achievement.progress[pending.requirementIndex]
+                    : 0;
+
+                if (Mathf.Max(localProgress, pending.progress) <= serverProgress)
+                    removable.Add(pair.Key);
+            }
+
+            if (removable.Count == 0) return;
+
+            foreach (string key in removable)
+                pendingUpdates.Remove(key);
+
+            SavePendingCache();
         }
 
         private void ScheduleRetry()
@@ -601,6 +678,83 @@ namespace AchievementManager.Presenter
         private string BuildPendingKey(string achievementId, int requirementIndex)
         {
             return $"{achievementId}#{requirementIndex}";
+        }
+
+        private void SavePendingCache()
+        {
+            try
+            {
+                List<PendingUpdateCacheItem> items = new List<PendingUpdateCacheItem>();
+                foreach (UpdateProgressRequest update in pendingUpdates.Values)
+                {
+                    if (update == null || string.IsNullOrEmpty(update.achievementId)) continue;
+                    items.Add(new PendingUpdateCacheItem
+                    {
+                        achievementId = update.achievementId,
+                        requirementIndex = update.requirementIndex,
+                        progress = update.progress
+                    });
+                }
+
+                if (items.Count == 0)
+                {
+                    PlayerPrefs.DeleteKey(PENDING_CACHE_KEY);
+                    PlayerPrefs.Save();
+                    return;
+                }
+
+                string json = JsonConvert.SerializeObject(items);
+                PlayerPrefs.SetString(PENDING_CACHE_KEY, json);
+                PlayerPrefs.Save();
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[AchievementTrackerPresenter] SavePendingCache failed: {ex.Message}");
+            }
+        }
+
+        private void LoadPendingCache()
+        {
+            try
+            {
+                if (!PlayerPrefs.HasKey(PENDING_CACHE_KEY)) return;
+
+                string json = PlayerPrefs.GetString(PENDING_CACHE_KEY, string.Empty);
+                if (string.IsNullOrEmpty(json)) return;
+
+                List<PendingUpdateCacheItem> items = JsonConvert.DeserializeObject<List<PendingUpdateCacheItem>>(json);
+                if (items == null || items.Count == 0)
+                {
+                    PlayerPrefs.DeleteKey(PENDING_CACHE_KEY);
+                    return;
+                }
+
+                foreach (PendingUpdateCacheItem item in items)
+                {
+                    if (item == null || string.IsNullOrEmpty(item.achievementId)) continue;
+                    string key = BuildPendingKey(item.achievementId, item.requirementIndex);
+                    pendingUpdates[key] = new UpdateProgressRequest(
+                        item.achievementId,
+                        item.requirementIndex,
+                        item.progress
+                    );
+                }
+
+                Debug.Log($"[AchievementTrackerPresenter] Loaded {pendingUpdates.Count} pending updates from cache");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[AchievementTrackerPresenter] LoadPendingCache failed: {ex.Message}");
+                PlayerPrefs.DeleteKey(PENDING_CACHE_KEY);
+            }
+        }
+
+        [System.Serializable]
+        private class PendingUpdateCacheItem
+        {
+            public string achievementId;
+            public int requirementIndex;
+            public int progress;
         }
 
         #endregion
