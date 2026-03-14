@@ -34,7 +34,10 @@ public class StructureDestructionView : MonoBehaviour
         ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
         IStructureService structService = new StructureService(syncManager, chunkLoadingManager, showDebugLogs);
         
-        presenter = new StructureDestructionPresenter(this, destService, structService, showDebugLogs);
+        InventoryGameView invGameView = FindAnyObjectByType<InventoryGameView>();
+        IInventoryService invService = invGameView != null ? invGameView.GetInventoryService() : null;
+        
+        presenter = new StructureDestructionPresenter(this, destService, structService, invService, showDebugLogs);
 
         // Subscribe to tool events
         UseToolService.OnAxeRequested += HandleToolUse;

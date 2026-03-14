@@ -8,17 +8,20 @@ public class StructureDestructionPresenter
     private readonly IStructureService structureService;
     private readonly DroppedItemManagerView droppedItemManager;
     private readonly StructureDestructionView view;
+    private readonly IInventoryService inventoryService;
     private readonly bool showDebugLogs;
 
     public StructureDestructionPresenter(
         StructureDestructionView view,
         IStructureDestructionService destructionService,
         IStructureService structureService,
+        IInventoryService inventoryService,
         bool showDebugLogs = true)
     {
         this.view = view;
         this.destructionService = destructionService;
         this.structureService = structureService;
+        this.inventoryService = inventoryService;
         this.showDebugLogs = showDebugLogs;
     }
 
@@ -49,8 +52,11 @@ public class StructureDestructionPresenter
                         // Remove from world
                         structureService.RemoveStructure(tilePos, structureData);
 
-                        // Drop item
-                        DropStructureItem(structureId, tilePos);
+                        // Try to add to inventory first, otherwise drop item
+                        if (inventoryService == null || !inventoryService.AddItem(structureId))
+                        {
+                            DropStructureItem(structureId, tilePos);
+                        }
                     }
                 }
             }

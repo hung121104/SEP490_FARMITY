@@ -3350,6 +3350,8 @@ MonoBehaviour:
   hour: 0
   minute: 0
   gold: 0
+  weatherToday: 0
+  weatherTomorrow: 0
 --- !u!4 &244448537
 Transform:
   m_ObjectHideFlags: 0
@@ -8203,6 +8205,7 @@ MonoBehaviour:
   - {fileID: 1814114346}
   - {fileID: 1590021479}
   craftingSystemManager: {fileID: 310445852}
+  inventoryGameView: {fileID: 0}
   craftingTabIndex: 2
   inventoryTabIndex: 0
 --- !u!222 &579001353
@@ -10698,7 +10701,7 @@ MonoBehaviour:
   inventoryDropZones:
   - {fileID: 2115831342}
   dropOffset: {x: 1, y: 1}
-  showDebugLogs: 1
+  showDebugLogs: 0
   poolDefaultCapacity: 50
   poolMaxSize: 100
 --- !u!1 &759280783
@@ -25786,6 +25789,7 @@ MonoBehaviour:
   timeManager: {fileID: 76351687}
   enableGrowth: 1
   growthSpeedMultiplier: 1
+  waterDecayDurationMinutes: 24
   cropVisualsParent: {fileID: 0}
   showDebugLogs: 0
 --- !u!4 &1955384471
@@ -26176,8 +26180,11 @@ MonoBehaviour:
   updateInterval: 1
   unloadDelay: 5
   visualizeCrops: 1
+  cropVisualPrefab: {fileID: 0}
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   tilledTilemapName: TilledOverlayTilemap
+  wateredTile: {fileID: 0}
+  wateredTilemapName: WateredOverlayTilemap
   showDebugLogs: 0
   showLoadedChunksGizmos: 0
   enableDailyReload: 1

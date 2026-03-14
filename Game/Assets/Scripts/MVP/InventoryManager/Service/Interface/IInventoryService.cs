@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
+
 
 public interface IInventoryService
 {
@@ -11,8 +13,8 @@ public interface IInventoryService
     event Action                 OnInventoryChanged;
 
     // Core Operations
-    bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal);
-    bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal);
+    bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null);
+    bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null);
     bool RemoveItem(string itemId, int quantity, Quality? quality = null);
     bool RemoveItemFromSlot(int slotIndex, int quantity);
     bool MoveItem(int fromSlot, int toSlot);
@@ -29,5 +31,6 @@ public interface IInventoryService
     List<ItemModel>   GetItemsByCategory(ItemCategory category);
     void              ClearInventory();
     void              SortInventory();
+    int               GetAddableQuantity(ItemData itemData, int quantity, Quality quality = Quality.Normal);
 }
 
