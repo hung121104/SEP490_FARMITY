@@ -36,6 +36,7 @@ namespace AchievementManager.Presenter
         [Header("Autosave Settings")]
         [SerializeField] private float autosaveInterval = 15f;
         [SerializeField] private bool flushImmediatelyOnUnlockCandidate = true;
+        [SerializeField] private bool persistPendingAcrossSessions = false;
 
         [Header("Retry Settings")]
         [SerializeField] private float retryBaseDelay = 2f;
@@ -198,7 +199,7 @@ namespace AchievementManager.Presenter
 
         private void HandleEvent(string eventType, string entityId, int count = 1)
         {
-            if (!IsInitialized || !model.isLoaded) return;
+            if (!IsInitialized) return;
 
             string generalKey  = eventType;
             string specificKey = string.IsNullOrEmpty(entityId)
@@ -217,6 +218,12 @@ namespace AchievementManager.Presenter
                       $"entityId: {entityId} | count: {count} | " +
                       $"general: {model.GetCounter(generalKey)} | " +
                       $"specific: {specificLog}");
+
+            if (!model.isLoaded)
+            {
+                Debug.Log("[AchievementTrackerPresenter] Model not loaded yet - counter buffered in RAM");
+                return;
+            }
 
             MarkDirtyAchievements(eventType, entityId);
         }
@@ -654,6 +661,40 @@ namespace AchievementManager.Presenter
             Debug.Log("[AchievementTrackerPresenter] Counters restored from server ✅");
         }
 
+        /// <summary>
+        /// After model is loaded and counters restored, reconcile buffered local counters
+        /// that may have been collected before load completed.
+        /// </summary>
+        public void ReconcileBufferedProgressAfterLoad()
+        {
+            if (!IsInitialized || !model.isLoaded) return;
+
+            bool hasNewPending = false;
+
+            foreach (AchievementData achievement in model.GetAllAchievements())
+            {
+                if (achievement == null || achievement.isAchieved || achievement.requirements == null) continue;
+
+                for (int i = 0; i < achievement.requirements.Count; i++)
+                {
+                    AchievementRequirement req = achievement.requirements[i];
+                    int localProgress = GetLocalProgress(req);
+                    int serverProgress = achievement.progress != null && i < achievement.progress.Count
+                        ? achievement.progress[i]
+                        : 0;
+
+                    if (localProgress > serverProgress)
+                        hasNewPending |= UpsertPendingUpdate(achievement.achievementId, i, localProgress);
+                }
+            }
+
+            if (hasNewPending && pendingUpdates.Count > 0)
+            {
+                Debug.Log($"[AchievementTrackerPresenter] Reconciled {pendingUpdates.Count} buffered updates after load");
+                RestartDebounce(0.1f);
+            }
+        }
+
         #endregion
 
         #region Helpers
@@ -682,6 +723,8 @@ namespace AchievementManager.Presenter
 
         private void SavePendingCache()
         {
+            if (!persistPendingAcrossSessions) return;
+
             try
             {
                 List<PendingUpdateCacheItem> items = new List<PendingUpdateCacheItem>();
@@ -715,6 +758,13 @@ namespace AchievementManager.Presenter
 
         private void LoadPendingCache()
         {
+            if (!persistPendingAcrossSessions)
+            {
+                if (PlayerPrefs.HasKey(PENDING_CACHE_KEY))
+                    PlayerPrefs.DeleteKey(PENDING_CACHE_KEY);
+                return;
+            }
+
             try
             {
                 if (!PlayerPrefs.HasKey(PENDING_CACHE_KEY)) return;
