@@ -37,6 +37,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private const byte CROP_CROSSBRED_EVENT     = 119;
     private const byte STRUCTURE_PLACED_EVENT  = 90;
     private const byte STRUCTURE_REMOVED_EVENT = 91;
+    private const byte TILE_WATERED_EVENT      = 120;
+    private const byte TILE_UNWATERED_EVENT    = 121;
     
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
@@ -177,6 +179,14 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
             case STRUCTURE_REMOVED_EVENT:
                 HandleStructureRemoved(photonEvent.CustomData);
+                break;
+
+            case TILE_WATERED_EVENT:
+                HandleTileWatered(photonEvent.CustomData);
+                break;
+
+            case TILE_UNWATERED_EVENT:
+                HandleTileUnwatered(photonEvent.CustomData);
                 break;
         }
     }
@@ -816,6 +826,90 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             if (chunkLoadingManager.IsChunkLoaded(chunkPos))
                 chunkLoadingManager.RefreshChunkVisuals(chunkPos);
         }
+    }
+
+    /// <summary>
+    /// Broadcast tile watered event to all other players.
+    /// </summary>
+    public void BroadcastTileWatered(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            TILE_WATERED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleTileWatered(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        WorldDataManager.Instance.WaterTileAtWorldPosition(worldPos);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received tile watered at ({worldX},{worldY})");
+
+        if (chunkLoadingManager != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+        }
+    }
+
+    /// <summary>
+    /// Broadcast that the water has expired at (worldX, worldY) — MasterClient only.
+    /// </summary>
+    public void BroadcastTileUnwatered(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            TILE_UNWATERED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleTileUnwatered(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        WorldDataManager.Instance.UnwaterTileAtWorldPosition(worldPos);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received tile unwatered (decay) at ({worldX},{worldY})");
+
+        // Remove only the single watered overlay tile — no full chunk re-render needed
+        chunkLoadingManager?.ClearWateredTileAt(worldPos);
     }
 
     // ── Structure visual helpers ──────────────────────────────────────────

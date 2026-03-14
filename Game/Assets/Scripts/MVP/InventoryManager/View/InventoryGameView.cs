@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Photon.Pun;
 
 public class InventoryGameView : MonoBehaviour
@@ -10,6 +10,11 @@ public class InventoryGameView : MonoBehaviour
     [SerializeField] private InventoryView inventoryView;
     [SerializeField] private ItemDetailView itemDetailView;
     [SerializeField] private ItemDeleteView itemDeleteView;
+
+    [Header("Delete Zone Position Adjustments")]
+    [SerializeField] private Vector2 deleteZoneDefaultPos = new Vector2(658.2f, 180);
+    [SerializeField] private Vector2 deleteZoneCraftingAndCookingPos = new Vector2(658.2f, 413);
+    [SerializeField] private Vector2 deleteZoneCraftingInInventoryPos = new Vector2(387, 411);
 
     private InventoryModel model;
     private IInventoryService service;
@@ -140,8 +145,6 @@ public class InventoryGameView : MonoBehaviour
         {
             concreteService.ApplyRemoteInventoryState(inv, inventorySlots);
         }
-
-        Debug.Log("[InventoryGameView] ✓ Remote inventory sync applied successfully");
     }
 
     /// <summary>
@@ -154,16 +157,65 @@ public class InventoryGameView : MonoBehaviour
         HandleRemoteInventoryChanged();
     }
 
+    /// <summary>
+    /// Opens the main inventory at its default position.
+    /// Used by hotkeys or tab generic switches.
+    /// </summary>
     public void OpenInventory()
     {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneDefaultPos);
+        }
+            
         if (inventoryView != null)
         {
-            //Re-enable drops when opening inventory
-            if (itemDeleteView != null)
-            {
-                itemDeleteView.EnableDrops();
-            }
-            Debug.Log("[InventoryGameView] Inventory opened");
+            inventoryView.Show(); // Make sure it's active and returns to original parent
+            Debug.Log("[InventoryGameView] Main Inventory opened");
+        }
+    }
+
+    public void OpenCraftingInventory(Transform container = null)
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneCraftingAndCookingPos);
+        }
+        
+        if (container != null)
+            inventoryView?.ShowWithParent(container);
+        else
+            inventoryView?.Show();
+    }
+
+    public void OpenCookingInventory(Transform container = null)
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneCraftingAndCookingPos);
+        }
+        
+        if (container != null)
+            inventoryView?.ShowWithParent(container);
+        else
+            inventoryView?.Show();
+    }
+
+    public void OpenCraftingInInventory()
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneCraftingInInventoryPos);
+        }
+            
+        if (inventoryView != null)
+        {
+            inventoryView.Show();
+            Debug.Log("[InventoryGameView] Crafting in Inventory opened");
         }
     }
 
@@ -172,6 +224,7 @@ public class InventoryGameView : MonoBehaviour
         if (inventoryView != null)
         {
             presenter?.CancelAllActions();
+            inventoryView.Hide();
             Debug.Log("[InventoryGameView] Inventory closed");
         }
     }
@@ -226,8 +279,7 @@ public class InventoryGameView : MonoBehaviour
     }
 
     /// <summary>
-    /// Called by CraftingInventoryAdapter (or other secondary views) when the user
-    /// performs an action (drag, drop, sort, delete) on that view.
+    /// Called by external systems when the user performs an action on a secondary view.
     /// Resets the main presenter's action cooldown so HandleRemoteInventoryChanged
     /// correctly defers the echo broadcast and doesn't revert local changes.
     /// </summary>

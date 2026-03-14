@@ -3,12 +3,14 @@ import { Document, Types } from 'mongoose';
 
 export type ChunkDocument = Chunk & Document;
 
-// ────────────────────────────────────────────────────────────────────────────
-//  TileData sub-document
-//  Stored inside the `tiles` Map.  All fields are optional/nullable because
-//  a tile may be only tilled (no crop) or only contain certain flags.
-// ────────────────────────────────────────────────────────────────────────────
-@Schema({ _id: false })
+/**
+ * TileData sub-document stored inside the `tiles` Map.
+ * `strict: false` allows any extra crop fields sent by the client to be stored
+ * in MongoDB automatically — no schema change needed when CropTileData evolves.
+ * The explicitly declared @Prop fields are kept for backwards-compatibility with
+ * existing documents and to ensure sensible defaults on upsert.
+ */
+@Schema({ _id: false, strict: false })
 export class TileData {
   /** Tile category string, e.g. 'crop', 'tilled', 'empty' */
   @Prop({ default: 'empty' })

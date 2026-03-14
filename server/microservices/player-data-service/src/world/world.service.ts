@@ -179,6 +179,8 @@ export class WorldService {
     if (dto.hour !== undefined) worldUpdate.hour = dto.hour;
     if (dto.minute !== undefined) worldUpdate.minute = dto.minute;
     if (dto.gold !== undefined) worldUpdate.gold = dto.gold;
+    if (dto.weatherToday !== undefined) worldUpdate.weatherToday = dto.weatherToday;
+    if (dto.weatherTomorrow !== undefined) worldUpdate.weatherTomorrow = dto.weatherTomorrow;
 
     const updatedWorld = Object.keys(worldUpdate).length > 0
       ? await this.worldModel.findByIdAndUpdate(dto.worldId, { $set: worldUpdate }, { new: true }).exec()
@@ -239,6 +241,8 @@ export class WorldService {
       if (dto.year !== undefined)   worldUpdate.year   = dto.year;
       if (dto.hour !== undefined)   worldUpdate.hour   = dto.hour;
       if (dto.minute !== undefined) worldUpdate.minute = dto.minute;
+      if (dto.weatherToday !== undefined) worldUpdate.weatherToday = dto.weatherToday;
+      if (dto.weatherTomorrow !== undefined) worldUpdate.weatherTomorrow = dto.weatherTomorrow;
 
       if (Object.keys(worldUpdate).length > 0) {
         await this.worldModel.findByIdAndUpdate(

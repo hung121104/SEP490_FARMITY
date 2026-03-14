@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Photon.Pun;
 using System.Collections;
 
@@ -202,20 +202,27 @@ public class NPCPatrolController : MonoBehaviourPun, IPunObservable
 
         GameObject nearest = null;
         float minDist = float.MaxValue;
+        Vector3 nearestPlayerPos = Vector3.zero;
 
         foreach (var p in players)
         {
-            float dist = Vector2.Distance(transform.position, p.transform.position);
+            // Dùng CenterPoint (tâm thực của player) nếu có, tránh lệch do hierarchy offset
+            Transform center = p.transform.Find("CenterPoint");
+            Vector3 playerPos = center != null ? center.position : p.transform.position;
+
+            float dist = Vector2.Distance(transform.position, playerPos);
             if (dist < minDist)
             {
                 minDist = dist;
                 nearest = p;
+                nearestPlayerPos = playerPos;
             }
         }
 
         if (nearest == null) return;
 
-        float direction = nearest.transform.position.x - transform.position.x;
+        // Dùng nearestPlayerPos (đã tính từ CenterPoint) để xác định hướng flip
+        float direction = nearestPlayerPos.x - transform.position.x;
 
         if (direction > 0.01f)
         {
