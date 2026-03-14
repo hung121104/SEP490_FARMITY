@@ -277,9 +277,6 @@ public class CropGrowthService : ICropGrowthService
 
                     chunk.WaterTile(tile.WorldX, tile.WorldY);
                     count++;
-
-                    if (PhotonNetwork.IsConnected && syncManager != null)
-                        syncManager.BroadcastTileWatered(tile.WorldX, tile.WorldY);
                 }
             }
         }

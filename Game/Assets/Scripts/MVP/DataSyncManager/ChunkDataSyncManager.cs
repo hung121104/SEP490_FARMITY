@@ -232,7 +232,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             foreach (var chunkPair in section)
             {
                 UnifiedChunkData chunk = chunkPair.Value;
-                if (chunk.GetCropCount() == 0 && chunk.GetTilledCount() == 0 && chunk.GetStructureCount() == 0) continue; // Skip truly empty chunks
+                if (chunk.GetCropCount() == 0 && chunk.GetTilledCount() == 0 && chunk.GetStructureCount() == 0 && chunk.GetResourceCount() == 0) continue; // Skip truly empty chunks
 
                 var allSlots = chunk.GetAllTiles();
                 var entries  = new SyncTileEntry[allSlots.Count];
@@ -247,7 +247,11 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         HasCrop      = slot.HasCrop,
                         Crop         = slot.Crop,
                         HasStructure = slot.HasStructure,
-                        StructureId  = slot.HasStructure ? slot.Structure.StructureId : null
+                        StructureId  = slot.HasStructure ? slot.Structure.StructureId : null,
+                        HasResource  = slot.HasResource,
+                        ResourceId   = slot.HasResource ? slot.Resource.ResourceId : null,
+                        ResourceHp   = slot.HasResource ? (byte)slot.Resource.CurrentHp : (byte)0,
+                        IsWatered    = slot.IsTilled && slot.Crop.IsWatered
                     };
                 }
                 ChunkSyncData syncData = new ChunkSyncData
@@ -344,13 +348,16 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 continue;
             }
             
-            // Clear existing data and load synced tiles (tilled, crops, and structures)
+            // Clear existing data and load synced tiles (tilled, crops, resources, and structures)
             chunk.Clear();
 
             foreach (var entry in chunkData.Tiles)
             {
                 if (entry.IsTilled)
                     chunk.TillTile(entry.WorldX, entry.WorldY);
+                
+                if (entry.IsWatered)
+                    chunk.WaterTile(entry.WorldX, entry.WorldY);
 
                 if (entry.HasCrop)
                 {
@@ -366,6 +373,12 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 if (entry.HasStructure && !string.IsNullOrEmpty(entry.StructureId))
                 {
                     chunk.PlaceStructure(entry.StructureId, entry.WorldX, entry.WorldY);
+                }
+
+                // Restore resource data
+                if (entry.HasResource && !string.IsNullOrEmpty(entry.ResourceId))
+                {
+                    chunk.PlaceResource(entry.ResourceId, entry.ResourceHp > 0 ? entry.ResourceHp : 1, entry.WorldX, entry.WorldY);
                 }
             }
 
@@ -606,6 +619,11 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.TillTileAtWorldPosition(worldPos);
+        
+        if (WeatherView.IsRaining)
+        {
+            WorldDataManager.Instance.WaterTileAtWorldPosition(worldPos);
+        }
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received tile tilled at ({worldX}, {worldY})");
@@ -978,6 +996,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         public UnifiedChunkData.CropTileData Crop;
         public bool   HasStructure;
         public string StructureId;
+        public bool   HasResource;
+        public string ResourceId;
+        public byte   ResourceHp;
+        public bool   IsWatered;
     }
     
     // Wire format per tile entry:
@@ -1011,6 +1033,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 if (entry.IsTilled)     flags |= 1;
                 if (entry.HasCrop)      flags |= 2;
                 if (entry.HasStructure) flags |= 4;
+                if (entry.HasResource)  flags |= 8;
+                if (entry.IsWatered)    flags |= 16;
                 bytes.Add(flags);                                            // 1
 
                 if (entry.HasCrop)
@@ -1032,6 +1056,16 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         : System.Text.Encoding.UTF8.GetBytes(entry.StructureId);
                     bytes.Add((byte)structIdBytes.Length);                   // 1
                     bytes.AddRange(structIdBytes);                           // N
+                }
+
+                if (entry.HasResource)
+                {
+                    byte[] resIdBytes = string.IsNullOrEmpty(entry.ResourceId)
+                        ? System.Array.Empty<byte>()
+                        : System.Text.Encoding.UTF8.GetBytes(entry.ResourceId);
+                    bytes.Add((byte)resIdBytes.Length);
+                    bytes.AddRange(resIdBytes);
+                    bytes.Add(entry.ResourceHp);
                 }
             }
         }
@@ -1067,6 +1101,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 entry.IsTilled     = (flags & 1) != 0;
                 entry.HasCrop      = (flags & 2) != 0;
                 entry.HasStructure = (flags & 4) != 0;
+                entry.HasResource  = (flags & 8) != 0;
+                entry.IsWatered    = (flags & 16) != 0;
 
                 if (entry.HasCrop)
                 {
@@ -1085,6 +1121,15 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     entry.StructureId = structIdLen > 0
                         ? System.Text.Encoding.UTF8.GetString(data, offset, structIdLen) : string.Empty;
                     offset += structIdLen;
+                }
+
+                if (entry.HasResource)
+                {
+                    int resIdLen = offset < data.Length ? data[offset++] : 0;
+                    entry.ResourceId = resIdLen > 0
+                        ? System.Text.Encoding.UTF8.GetString(data, offset, resIdLen) : string.Empty;
+                    offset += resIdLen;
+                    entry.ResourceHp = offset < data.Length ? data[offset++] : (byte)0;
                 }
 
                 chunk.Tiles[j] = entry;
