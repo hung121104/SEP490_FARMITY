@@ -55,10 +55,11 @@ public class ShopService : IShopService
         {
             ItemData itemData = shuffledItems[i];
 
-            // 
+            
             float randomMultiplier = UnityEngine.Random.Range(0.9f, 1.2f);
             int finalPrice = Mathf.Max(1, Mathf.RoundToInt(itemData.buyPrice * randomMultiplier));
-
+            // original price
+            //int finalPrice = itemData.buyPrice;
             newDailyItems.Add(new ShopItemModel(itemData.itemID, finalPrice));
         }
 
@@ -72,14 +73,14 @@ public class ShopService : IShopService
         var shopItem = _model.DailyItems[slotIndex];
         if (shopItem.IsSoldOut) return false;
 
-        // Kiểm tra túi đồ có chỗ không
+       
         if (!playerInventory.HasSpace())
         {
             Debug.LogWarning("[ShopService] Túi đồ đã đầy!");
             return false;
         }
 
-        // Thử trừ tiền từ WorldDataManager
+        
         if (WorldDataManager.Instance.TrySpendGold(shopItem.Price))
         {
             // 

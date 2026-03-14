@@ -18,6 +18,7 @@ public class ShopPresenter
         _inventoryGameView = inventoryGameView;
         _playerInventory = _inventoryGameView.GetInventoryService();
 
+       
         FieldInfo field = typeof(InventoryGameView).GetField("inventoryView", BindingFlags.NonPublic | BindingFlags.Instance);
         if (field != null)
         {
@@ -35,14 +36,25 @@ public class ShopPresenter
     private void HandleBuyClicked(int slotIndex)
     {
         var shopItem = _shopService.GetShopModel().DailyItems[slotIndex];
+
+        // 1. Kiểm tra tiền
         if (WorldDataManager.Instance.Gold < shopItem.Price)
         {
             _view.FlashPriceRed(slotIndex);
             return;
         }
 
+        // 2. Tiến hành mua
         bool success = _shopService.TryBuyItem(slotIndex, _playerInventory);
-        if (success) Debug.Log($"[Shop] Đã mua {shopItem.ItemId}");
+
+        if (success)
+        {
+            Debug.Log($"[Shop] Đã mua thành công {shopItem.ItemId}");
+
+            // --- THÊM DÒNG NÀY ĐỂ REFRESH UI NGAY LẬP TỨC ---
+            // Nó sẽ đọc lại trạng thái IsSoldOut từ Model và làm mờ nút bấm
+            _view.UpdateShopSlots(_shopService.GetShopModel().DailyItems);
+        }
     }
 
     private void HandleOpenInventoryToSell()
@@ -50,9 +62,9 @@ public class ShopPresenter
         if (_inventoryUI == null) return;
 
         _view.ClearSellSlot();
-        _view.SetVisible(false);
-
-        _inventoryGameView.OpenInventory();
+        _view.SetVisible(false); 
+        _inventoryGameView.OpenInventory(); 
+        _view.ToggleExternalInventory(true); 
 
         _inventoryUI.OnSlotClicked -= OnInventorySlotClickedForSell;
         _inventoryUI.OnSlotClicked += OnInventorySlotClickedForSell;
@@ -61,8 +73,11 @@ public class ShopPresenter
     private void OnInventorySlotClickedForSell(int slotIndex)
     {
         _inventoryUI.OnSlotClicked -= OnInventorySlotClickedForSell;
-        _inventoryGameView.CloseInventory();
-        _view.SetVisible(true);
+
+        _inventoryGameView.CloseInventory(); 
+        _view.ToggleExternalInventory(false); 
+
+        _view.SetVisible(true); 
 
         var item = _playerInventory.GetItemAtSlot(slotIndex);
         if (item != null)
@@ -73,10 +88,6 @@ public class ShopPresenter
                 _currentItemToSell = item;
                 int sellPrice = itemData.GetSellPrice(item.Quality);
                 _view.ShowItemToSell(item, sellPrice);
-            }
-            else
-            {
-                Debug.LogWarning("[Shop] Vật phẩm này không thể bán!");
             }
         }
     }
@@ -91,18 +102,14 @@ public class ShopPresenter
         }
     }
 
-    // --- XỬ LÝ NÚT CLOSE ---
     private void HandleCloseShop()
     {
-        Debug.Log("[ShopPresenter] Đóng cửa hàng bằng nút Close_Btn!");
         _currentItemToSell = null;
         _view.ClearSellSlot();
         _view.SetVisible(false);
-
-        Dispose(); 
+        Dispose();
     }
 
-    
     public void Dispose()
     {
         _view.OnBuyClicked -= HandleBuyClicked;

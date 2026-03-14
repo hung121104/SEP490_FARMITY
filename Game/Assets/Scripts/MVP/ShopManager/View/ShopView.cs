@@ -14,7 +14,9 @@ public class ShopView : MonoBehaviour, IShopView
 
     [Header("Shop Slots")]
     [SerializeField] private List<ShopSlotView> shopSlots;
-
+    [Header("External UI References")]
+    [Tooltip("Kéo cái Khung UI Balo Tổng (cái bọc ngoài cùng chứa các Tab) vào đây")]
+    [SerializeField] private GameObject mainInventoryPanel;
     [Header("Sell Area")]
     [SerializeField] private Button selectItemToSellButton;
     [SerializeField] private Image sellItemIcon;
@@ -59,6 +61,17 @@ public class ShopView : MonoBehaviour, IShopView
         else
         {
             Debug.LogError("[ShopView] Shop panel null!");
+        }
+    }
+    public void ToggleExternalInventory(bool isVisible)
+    {
+        if (mainInventoryPanel != null)
+        {
+            mainInventoryPanel.SetActive(isVisible);
+        }
+        else
+        {
+            Debug.LogWarning("[ShopView] Bạn chưa kéo Khung Inventory Tổng vào ô Main Inventory Panel!");
         }
     }
 

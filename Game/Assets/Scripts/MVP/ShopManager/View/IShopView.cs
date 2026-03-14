@@ -13,7 +13,7 @@ public interface IShopView
    
     void ClearSellSlot();
 
-    
+    void ToggleExternalInventory(bool isVisible);
     event Action<int> OnBuyClicked; 
     event Action OnOpenInventoryToSellClicked; 
     event Action OnConfirmSellClicked; 
