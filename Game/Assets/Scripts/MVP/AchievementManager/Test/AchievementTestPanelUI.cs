@@ -61,33 +61,32 @@ public class AchievementTestPanelUI : MonoBehaviour
         scroll = GUILayout.BeginScrollView(scroll, false, true);
 
         DrawSection("Utilities");
+        DrawButton("Print Checklist (JSON)", testTrigger.FlowPrintChecklist);
         DrawButton("Simulate Login", testTrigger.SimulateLoginSuccess);
         DrawButton("Open Achievement Panel", testTrigger.OpenAchievementPanel);
         DrawButton("Print Achievement State", testTrigger.PrintAchievementState);
 
         GUILayout.Space(8f);
-        DrawSection("Core Scenarios");
-        DrawButton("Scenario A: Mixed Types Same Window", testTrigger.ScenarioMixedTypesSameWindow);
-        DrawButton("Scenario B: Multi Requirement", testTrigger.ScenarioMultiRequirement);
-        DrawButton("Scenario C: Generic + Specific Kill Pair", testTrigger.ScenarioGenericAndSpecificPair);
-        DrawButton("Scenario D: Non Matching Specific ID", testTrigger.ScenarioNonMatchingSpecificId);
-        DrawButton("Scenario E: Over Target + Noop Safety", testTrigger.ScenarioOverTargetProgress);
-        DrawButton("Scenario F: Skeleton Specific", testTrigger.ScenarioSkeletonSpecific);
-        DrawButton("Scenario G: Stress Single Event", testTrigger.ScenarioStressSingleEvent);
-        DrawButton("Scenario H: Full Coverage Smoke", testTrigger.ScenarioFullCoverageSmoke);
+        DrawSection("Recommended Flow");
+        DrawButton("Flow 1: Login + Fetch", testTrigger.FlowLoginAndFetch);
+        DrawButton("Flow 2: Kill Validation", testTrigger.FlowKillValidation);
+        DrawButton("Flow 3: Exact Pair Completions", testTrigger.FlowExactPairCompletions);
+        DrawButton("Flow 4: Multi Requirement + Mixed Batch", testTrigger.FlowMultiRequirementAndMixedBatch);
+        DrawButton("Flow 5: No-Match + OverTarget + Stress", testTrigger.FlowRobustness);
+        DrawButton("Flow 6: Full Regression Smoke", testTrigger.FlowFullRegressionSmoke);
 
         GUILayout.Space(8f);
         DrawSection("Quick Actions");
-        if (GUILayout.Button("Run A -> B -> C"))
+        if (GUILayout.Button("Run Flow 1 -> 2 -> 3"))
         {
-            testTrigger.ScenarioMixedTypesSameWindow();
-            testTrigger.ScenarioMultiRequirement();
-            testTrigger.ScenarioGenericAndSpecificPair();
+            testTrigger.FlowLoginAndFetch();
+            testTrigger.FlowKillValidation();
+            testTrigger.FlowExactPairCompletions();
         }
 
-        if (GUILayout.Button("Run Full Smoke + Print State"))
+        if (GUILayout.Button("Run Full Regression + Print State"))
         {
-            testTrigger.ScenarioFullCoverageSmoke();
+            testTrigger.FlowFullRegressionSmoke();
             testTrigger.PrintAchievementState();
         }
 
