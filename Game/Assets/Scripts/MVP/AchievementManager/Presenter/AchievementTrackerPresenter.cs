@@ -4,6 +4,7 @@ using UnityEngine;
 using Newtonsoft.Json;
 using AchievementManager.Model;
 using AchievementManager.Service;
+using System;
 
 namespace AchievementManager.Presenter
 {
@@ -27,6 +28,13 @@ namespace AchievementManager.Presenter
         private bool isFlushing;
         private bool flushQueuedWhileFlushing;
         private int retryAttempt;
+
+        private string lastFlushSource = "none";
+        private float lastFlushRealtime = -1f;
+        private int lastFlushSubmittedCount;
+        private int lastFlushSucceededCount;
+        private int lastFlushFailedCount;
+        private string lastFlushError = string.Empty;
 
         private const string PENDING_CACHE_KEY = "achievement_tracker_pending_updates";
 
@@ -350,6 +358,13 @@ namespace AchievementManager.Presenter
                 yield break;
             }
 
+            lastFlushSource = source;
+            lastFlushRealtime = Time.realtimeSinceStartup;
+            lastFlushSubmittedCount = requests.Count;
+            lastFlushSucceededCount = 0;
+            lastFlushFailedCount = 0;
+            lastFlushError = string.Empty;
+
             Dictionary<string, bool> wasAchievedMap = new Dictionary<string, bool>();
             foreach (UpdateProgressRequest request in requests)
             {
@@ -377,10 +392,25 @@ namespace AchievementManager.Presenter
             if (!success || batchResponse == null)
             {
                 retryAttempt++;
+                lastFlushError = "Batch request failed or null response";
+                lastFlushFailedCount = requests.Count;
                 ScheduleRetry();
                 isFlushing = false;
                 yield break;
             }
+
+            int failed = batchResponse.summary != null
+                ? batchResponse.summary.failed
+                : 0;
+            int updated = batchResponse.summary != null
+                ? batchResponse.summary.updated
+                : 0;
+            int noop = batchResponse.summary != null
+                ? batchResponse.summary.noop
+                : 0;
+
+            lastFlushFailedCount = Mathf.Max(0, failed);
+            lastFlushSucceededCount = Mathf.Max(0, updated + noop);
 
             ApplyBatchResponse(batchResponse, wasAchievedMap);
 
@@ -805,6 +835,231 @@ namespace AchievementManager.Presenter
             public string achievementId;
             public int requirementIndex;
             public int progress;
+        }
+
+        [System.Serializable]
+        public class PendingUpdateDebugItem
+        {
+            public string key;
+            public string achievementId;
+            public int requirementIndex;
+            public int pendingProgress;
+            public int serverProgress;
+            public int localProgress;
+            public int target;
+            public bool isAchieved;
+            public string requirementType;
+            public string requirementEntityId;
+        }
+
+        [System.Serializable]
+        public class AchievementTrackerDebugSnapshot
+        {
+            public bool isInitialized;
+            public bool modelLoaded;
+            public bool modelFetching;
+            public int achievementCount;
+            public int localCounterCount;
+
+            public int pendingCount;
+            public bool isFlushing;
+            public bool queuedWhileFlushing;
+            public int retryAttempt;
+
+            public float debounceDelay;
+            public float autosaveInterval;
+            public bool flushImmediatelyOnUnlockCandidate;
+            public bool persistPendingAcrossSessions;
+            public float retryBaseDelay;
+            public float retryMaxDelay;
+
+            public string lastFlushSource;
+            public float lastFlushRealtime;
+            public int lastFlushSubmittedCount;
+            public int lastFlushSucceededCount;
+            public int lastFlushFailedCount;
+            public string lastFlushError;
+
+            public long approxPendingBytes;
+            public long approxCounterBytes;
+            public long approxAchievementBytes;
+            public long approxTotalBytes;
+
+            public List<PendingUpdateDebugItem> pendingItems = new List<PendingUpdateDebugItem>();
+        }
+
+        public AchievementTrackerDebugSnapshot GetDebugSnapshot()
+        {
+            AchievementTrackerDebugSnapshot snapshot = new AchievementTrackerDebugSnapshot
+            {
+                isInitialized = IsInitialized,
+                modelLoaded = model != null && model.isLoaded,
+                modelFetching = model != null && model.isFetching,
+                achievementCount = model != null ? model.achievements.Count : 0,
+                localCounterCount = model != null ? model.localCounters.Count : 0,
+
+                pendingCount = pendingUpdates.Count,
+                isFlushing = isFlushing,
+                queuedWhileFlushing = flushQueuedWhileFlushing,
+                retryAttempt = retryAttempt,
+
+                debounceDelay = debounceDelay,
+                autosaveInterval = autosaveInterval,
+                flushImmediatelyOnUnlockCandidate = flushImmediatelyOnUnlockCandidate,
+                persistPendingAcrossSessions = persistPendingAcrossSessions,
+                retryBaseDelay = retryBaseDelay,
+                retryMaxDelay = retryMaxDelay,
+
+                lastFlushSource = lastFlushSource,
+                lastFlushRealtime = lastFlushRealtime,
+                lastFlushSubmittedCount = lastFlushSubmittedCount,
+                lastFlushSucceededCount = lastFlushSucceededCount,
+                lastFlushFailedCount = lastFlushFailedCount,
+                lastFlushError = lastFlushError,
+                approxPendingBytes = 0,
+                approxCounterBytes = 0,
+                approxAchievementBytes = 0,
+                approxTotalBytes = 0
+            };
+
+            foreach (KeyValuePair<string, UpdateProgressRequest> pair in pendingUpdates)
+            {
+                UpdateProgressRequest pending = pair.Value;
+                if (pending == null)
+                    continue;
+
+                PendingUpdateDebugItem item = new PendingUpdateDebugItem
+                {
+                    key = pair.Key,
+                    achievementId = pending.achievementId,
+                    requirementIndex = pending.requirementIndex,
+                    pendingProgress = pending.progress,
+                    serverProgress = 0,
+                    localProgress = 0,
+                    target = 0,
+                    isAchieved = false,
+                    requirementType = string.Empty,
+                    requirementEntityId = string.Empty
+                };
+
+                AchievementData achievement = model != null
+                    ? model.GetAchievement(pending.achievementId)
+                    : null;
+
+                if (achievement != null)
+                {
+                    item.isAchieved = achievement.isAchieved;
+
+                    if (achievement.progress != null && pending.requirementIndex >= 0 && pending.requirementIndex < achievement.progress.Count)
+                        item.serverProgress = achievement.progress[pending.requirementIndex];
+
+                    if (achievement.requirements != null && pending.requirementIndex >= 0 && pending.requirementIndex < achievement.requirements.Count)
+                    {
+                        AchievementRequirement req = achievement.requirements[pending.requirementIndex];
+                        item.target = req.target;
+                        item.requirementType = req.type;
+                        item.requirementEntityId = req.entityId;
+                        item.localProgress = GetLocalProgress(req);
+                    }
+                }
+
+                snapshot.pendingItems.Add(item);
+            }
+
+            snapshot.approxPendingBytes = EstimatePendingUpdatesBytes();
+            snapshot.approxCounterBytes = EstimateLocalCountersBytes();
+            snapshot.approxAchievementBytes = EstimateAchievementsBytes();
+            snapshot.approxTotalBytes = snapshot.approxPendingBytes +
+                                        snapshot.approxCounterBytes +
+                                        snapshot.approxAchievementBytes;
+
+            return snapshot;
+        }
+
+        public void DebugLogSnapshot()
+        {
+            AchievementTrackerDebugSnapshot snapshot = GetDebugSnapshot();
+            Debug.Log($"[AchievementTrackerPresenter] Snapshot | " +
+                      $"Init={snapshot.isInitialized}, Loaded={snapshot.modelLoaded}, " +
+                      $"Achievements={snapshot.achievementCount}, Counters={snapshot.localCounterCount}, " +
+                      $"Pending={snapshot.pendingCount}, Flushing={snapshot.isFlushing}, Retry={snapshot.retryAttempt}, " +
+                      $"Memory={{pending:{snapshot.approxPendingBytes}B, counters:{snapshot.approxCounterBytes}B, " +
+                      $"achievements:{snapshot.approxAchievementBytes}B, total:{snapshot.approxTotalBytes}B}}, " +
+                      $"LastFlush={{source:{snapshot.lastFlushSource}, submitted:{snapshot.lastFlushSubmittedCount}, " +
+                      $"ok:{snapshot.lastFlushSucceededCount}, failed:{snapshot.lastFlushFailedCount}, err:{snapshot.lastFlushError}}}");
+        }
+
+        private long EstimatePendingUpdatesBytes()
+        {
+            long bytes = 0;
+            foreach (KeyValuePair<string, UpdateProgressRequest> pair in pendingUpdates)
+            {
+                bytes += 32; // dictionary entry + object overhead estimate
+                bytes += EstimateStringBytes(pair.Key);
+
+                UpdateProgressRequest req = pair.Value;
+                if (req == null) continue;
+
+                bytes += 16; // ints/object fields
+                bytes += EstimateStringBytes(req.achievementId);
+            }
+            return bytes;
+        }
+
+        private long EstimateLocalCountersBytes()
+        {
+            if (model == null || model.localCounters == null) return 0;
+
+            long bytes = 0;
+            foreach (KeyValuePair<string, int> pair in model.localCounters)
+            {
+                bytes += 24; // dictionary entry + int estimate
+                bytes += EstimateStringBytes(pair.Key);
+            }
+            return bytes;
+        }
+
+        private long EstimateAchievementsBytes()
+        {
+            if (model == null || model.achievements == null) return 0;
+
+            long bytes = 0;
+            foreach (KeyValuePair<string, AchievementData> pair in model.achievements)
+            {
+                bytes += 32; // dictionary entry + object reference
+                bytes += EstimateStringBytes(pair.Key);
+
+                AchievementData achievement = pair.Value;
+                if (achievement == null) continue;
+
+                bytes += 64;
+                bytes += EstimateStringBytes(achievement.achievementId);
+                bytes += EstimateStringBytes(achievement.name);
+                bytes += EstimateStringBytes(achievement.description);
+                bytes += EstimateStringBytes(achievement.achievedAt);
+
+                if (achievement.progress != null)
+                    bytes += achievement.progress.Count * sizeof(int);
+
+                if (achievement.requirements != null)
+                {
+                    foreach (AchievementRequirement req in achievement.requirements)
+                    {
+                        if (req == null) continue;
+                        bytes += 32;
+                        bytes += EstimateStringBytes(req.type);
+                        bytes += EstimateStringBytes(req.entityId);
+                    }
+                }
+            }
+
+            return bytes;
+        }
+
+        private static long EstimateStringBytes(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return 0;
+            return 24 + (long)value.Length * sizeof(char);
         }
 
         #endregion
