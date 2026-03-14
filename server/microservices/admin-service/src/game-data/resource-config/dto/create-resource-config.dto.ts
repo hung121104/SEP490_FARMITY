@@ -56,6 +56,11 @@ export class CreateResourceConfigDto {
   @IsIn(['tree', 'rock', 'ore'])
   resourceType?: string;
 
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  spawnWeight?: number;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ResourceDropEntryDto)

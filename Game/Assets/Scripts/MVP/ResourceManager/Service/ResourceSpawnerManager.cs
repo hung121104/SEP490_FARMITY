@@ -21,6 +21,14 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     public int maxResourcesPerChunk = 40;
     public int dailySpawnRate = 5;
 
+    [Header("Noise Spawn System")]
+    [Tooltip("Size/Frequency of the noise map. Lower is larger clusters.")]
+    public float noiseScale = 0.1f;
+    [Tooltip("Minimum noise value (0.0 to 1.0) required to spawn a resource.")]
+    public float noiseThreshold = 0.5f;
+    private float _dailyNoiseOffsetX;
+    private float _dailyNoiseOffsetY;
+
     [Header("Prefabs based on Resource Type")]
     public GameObject treePrefab;
     public GameObject rockPrefab;
@@ -163,6 +171,8 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         if (spawnZoneMap == null) return false;
 
         Vector3 worldPos = TileIndexToWorldPosition(chunkX, chunkY, tileIndex);
+        // World tile coordinates in this project are already cell-aligned.
+        // Sampling with +0.5f shifts lookup upward/right and creates directional bias.
         Vector3Int cellPos = spawnZoneMap.WorldToCell(worldPos);
         return spawnZoneMap.HasTile(cellPos);
     }
@@ -200,6 +210,12 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
         List<string> resourceIds = new List<string>(catalog.resourceConfigs.Keys);
         int chunkSize = GetChunkSize();
+
+        // Evaluate noise from random coordinate offsets each time to randomize shapes per day.
+        // We split X and Y to prevent diagonal drifting bias in the noise map.
+        // We add 1,000,000 to prevent Unity's Mathf.PerlinNoise from mirroring across negative world coordinate axes.
+        _dailyNoiseOffsetX = Random.Range(100000f, 200000f) + 1000000f;
+        _dailyNoiseOffsetY = Random.Range(300000f, 400000f) + 1000000f;
 
         foreach (var sectionConfig in worldData.sectionConfigs)
         {
@@ -254,13 +270,59 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
                 totalValidTilesFound += validTiles.Count;
 
-                Shuffle(validTiles);
-                int spawnCount = Mathf.Min(amountToSpawn, validTiles.Count);
+                // --- Evualate Perlin Noise for Valid Tiles ---
+                List<int> noisePassedTiles = new List<int>();
+                foreach (int tileIndex in validTiles)
+                {
+                    Vector2Int worldTile = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
+                    
+                    // Sample from the center of the grid cell to prevent integer artifacts
+                    float sampleX = (worldTile.x + 0.5f) * noiseScale + _dailyNoiseOffsetX;
+                    float sampleY = (worldTile.y + 0.5f) * noiseScale + _dailyNoiseOffsetY;
+
+                    float noiseVal = Mathf.PerlinNoise(sampleX, sampleY);
+                        
+                    if (noiseVal >= noiseThreshold)
+                    {
+                        noisePassedTiles.Add(tileIndex);
+                    }
+                }
+
+                // We still shuffle passed tiles to avoid spawning exactly top-left downwards
+                Shuffle(noisePassedTiles);
+                int spawnCount = Mathf.Min(amountToSpawn, noisePassedTiles.Count);
 
                 for (int i = 0; i < spawnCount; i++)
                 {
-                    int tileIndex = validTiles[i];
-                    string pickedId = resourceIds[Random.Range(0, resourceIds.Count)];
+                    int tileIndex = noisePassedTiles[i];
+                    
+                    // --- Weighted random selection logic ---
+                    int totalWeight = 0;
+                    foreach (var id in resourceIds)
+                    {
+                        var cfg = catalog.GetResourceConfig(id);
+                        if (cfg != null) totalWeight += Mathf.Max(1, cfg.spawnWeight);
+                    }
+
+                    int randomWeight = Random.Range(0, totalWeight);
+                    string pickedId = resourceIds[0];
+                    int cumulativeWeight = 0;
+
+                    foreach (var id in resourceIds)
+                    {
+                        var cfg = catalog.GetResourceConfig(id);
+                        if (cfg != null)
+                        {
+                            cumulativeWeight += Mathf.Max(1, cfg.spawnWeight);
+                            if (randomWeight < cumulativeWeight)
+                            {
+                                pickedId = id;
+                                break;
+                            }
+                        }
+                    }
+                    // ---------------------------------------
+
                     ResourceConfigData configData = catalog.GetResourceConfig(pickedId);
                     if (configData == null) continue;
 
@@ -492,7 +554,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     private Vector3 TileIndexToWorldPosition(int chunkX, int chunkY, int tileIndex)
     {
         Vector2Int worldTile = TileIndexToWorldTile(chunkX, chunkY, tileIndex);
-        return new Vector3(worldTile.x, worldTile.y, 0f);
+        return new Vector3(worldTile.x, worldTile.y, 0f); // Render exactly at integer grid intersection
     }
 
     private int GetChunkSize()
@@ -521,4 +583,5 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     public void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged) { }
     public void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps) { }
     public void OnMasterClientSwitched(Player newMasterClient) { }
+
 }

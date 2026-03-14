@@ -25,6 +25,7 @@ public class ResourceConfigData
     public string requiredToolId;
     public string spriteUrl;
     public string resourceType = "tree";
+    public int spawnWeight = 1;
     public List<DropEntry> dropTable = new List<DropEntry>(); // Corrected syntax and type based on existing DropEntry
 }
 

@@ -38,6 +38,9 @@ export class ResourceConfig {
   @Prop({ default: 'tree' })
   resourceType: string;
 
+  @Prop({ default: 1 })
+  spawnWeight: number;
+
   @Prop({ type: [ResourceDropEntry], default: [] })
   dropTable: ResourceDropEntry[];
 }

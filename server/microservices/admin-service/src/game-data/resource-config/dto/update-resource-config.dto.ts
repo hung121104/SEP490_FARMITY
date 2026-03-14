@@ -26,6 +26,11 @@ export class UpdateResourceConfigDto {
   resourceType?: string;
 
   @IsOptional()
+  @IsNumber()
+  @Min(1)
+  spawnWeight?: number;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ResourceDropEntryDto)

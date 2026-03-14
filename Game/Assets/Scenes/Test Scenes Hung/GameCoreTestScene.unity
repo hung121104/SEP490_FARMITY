@@ -29400,7 +29400,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -134.00008, y: 167.99997}
+  m_AnchoredPosition: {x: -133.99995, y: 168}
   m_SizeDelta: {x: 285, y: 336}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &812480459
@@ -30574,7 +30574,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 479262023}
   m_Direction: 0
   m_Value: 0
-  m_Size: 0.94034576
+  m_Size: 0.9403419
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -36062,7 +36062,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.000015489757, y: -0.000034959092}
+  m_AnchoredPosition: {x: 0.000015489757, y: 0.000121909245}
   m_SizeDelta: {x: 0, y: 628}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1240703307
@@ -36766,6 +36766,10 @@ MonoBehaviour:
   spawnZoneMap: {fileID: 695224742}
   maxResourcesPerChunk: 40
   dailySpawnRate: 5
+  noiseScale: 15
+  noiseThreshold: 1
+  visualizeNoise: 0
+  visualizeChunkRadius: 1
   treePrefab: {fileID: 2815193234366554513, guid: e7de6b242ac47e847a5df47722c71653, type: 3}
   rockPrefab: {fileID: 2815193234366554513, guid: 98893bae58be7ac4d880400991f5e689, type: 3}
   orePrefab: {fileID: 2815193234366554513, guid: 65099e7d5d38c434c9f4d5734678ab88, type: 3}
@@ -44368,7 +44372,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 567473799}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9999946
+  m_Size: 0.99999017
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:

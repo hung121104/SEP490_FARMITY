@@ -464,6 +464,8 @@ export class GatewayController {
 
       if (body.requiredToolId) dto.requiredToolId = body.requiredToolId;
       if (body.resourceType) dto.resourceType = body.resourceType;
+      if (body.spawnWeight !== undefined)
+        dto.spawnWeight = Number(body.spawnWeight);
 
       if (file) {
         dto.spriteUrl = await this.cloudinaryService.uploadFile(
@@ -511,6 +513,8 @@ export class GatewayController {
         dto.requiredToolId = body.requiredToolId;
       if (body.resourceType !== undefined)
         dto.resourceType = body.resourceType;
+      if (body.spawnWeight !== undefined)
+        dto.spawnWeight = Number(body.spawnWeight);
 
       if (file) {
         dto.spriteUrl = await this.cloudinaryService.uploadFile(
