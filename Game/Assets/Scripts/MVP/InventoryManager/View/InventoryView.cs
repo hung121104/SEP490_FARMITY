@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -8,6 +8,8 @@ using UnityEngine.UI;
 public class InventoryView : MonoBehaviour, IInventoryView
 {
     [Header("UI Panels")]
+    [Tooltip("Drag the entire Inventory GameObject (including DropZone, Buttons, etc.) here to move them together.")]
+    [SerializeField] private RectTransform inventoryRoot;
     [SerializeField] private GameObject inventoryPanel;
     [SerializeField] private GameObject dragPreviewObject;
 
@@ -39,6 +41,9 @@ public class InventoryView : MonoBehaviour, IInventoryView
     private List<GameObject> rowObjects = new List<GameObject>();
     private Coroutine notificationCoroutine;
 
+    private Transform originalParent;
+    private Vector2 originalPosition;
+
     public bool IsVisible => inventoryPanel != null && inventoryPanel.activeSelf;
 
     #region Events
@@ -59,6 +64,13 @@ public class InventoryView : MonoBehaviour, IInventoryView
 
     private void Awake()
     {
+        RectTransform root = inventoryRoot != null ? inventoryRoot : (inventoryPanel != null ? inventoryPanel.GetComponent<RectTransform>() : null);
+        if (root != null)
+        {
+            originalParent = root.parent;
+            originalPosition = root.anchoredPosition;
+        }
+
         InitializeButtons();
         HideDragPreview();
         InitializeDeleteZone();
@@ -242,7 +254,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
     }
 
     /// <summary>
-    /// Programmatically assigns a delete zone after Awake (e.g. from CraftingInventoryAdapter).
+    /// Programmatically assigns a delete zone.
     /// </summary>
     public void SetDeleteZone(ItemDeleteView newDeleteView)
     {
@@ -267,7 +279,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
     }
 
     /// <summary>
-    /// Programmatically assigns a drop zone after Awake (e.g. from CraftingInventoryAdapter).
+    /// Programmatically assigns a drop zone.
     /// </summary>
     public void SetDropZone(InventoryDropZone newDropZone)
     {
@@ -368,6 +380,66 @@ public class InventoryView : MonoBehaviour, IInventoryView
         Debug.Log("[InventoryView] Drag state reset via ForceStopDragInEventSystem");
     }
     #endregion
+
+    /// <summary>
+    /// Moves the inventory panel to a new parent container (e.g. escaping closed menus)
+    /// and resets its position to (0,0) so it fits perfectly inside the new parent's layout.
+    /// </summary>
+    public void ShowWithParent(Transform parentContainer)
+    {
+        if (inventoryPanel == null) return;
+        
+        RectTransform root = inventoryRoot != null ? inventoryRoot : inventoryPanel.GetComponent<RectTransform>();
+
+        if (parentContainer != null && root != null)
+        {
+            root.SetParent(parentContainer, false);
+            // Snap to the center/origin of the new parent container
+            root.anchoredPosition = Vector2.zero;
+        }
+            
+        inventoryPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Returns the inventory panel back to its original parent in the hierarchy.
+    /// </summary>
+    public void ReturnToOriginalParent()
+    {
+        RectTransform root = inventoryRoot != null ? inventoryRoot : (inventoryPanel != null ? inventoryPanel.GetComponent<RectTransform>() : null);
+        if (root == null || originalParent == null) return;
+        
+        if (root.parent != originalParent)
+        {
+            root.SetParent(originalParent, false);
+            root.anchoredPosition = originalPosition;
+            
+            Debug.Log("[InventoryView] Returned to original parent.");
+        }
+    }
+
+    /// <summary>
+    /// Show the inventory panel without changing its position.
+    /// Used for default inventory opening via hotkey.
+    /// </summary>
+    public void Show()
+    {
+        ReturnToOriginalParent();
+        if (inventoryPanel != null)
+            inventoryPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Hide the inventory panel and cancel any ongoing actions.
+    /// </summary>
+    public void Hide()
+    {
+        CancelAllActions();
+        if (inventoryPanel != null)
+            inventoryPanel.SetActive(false);
+            
+        ReturnToOriginalParent();
+    }
 
     private void HandleSlotClicked(int slotIndex)
     {
