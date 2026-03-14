@@ -16,11 +16,27 @@ namespace AchievementManager.Presenter
 
         public bool IsInitialized { get; private set; } = false;
 
-        private HashSet<string> pendingAchievementIds = new HashSet<string>();
+        private Dictionary<string, UpdateProgressRequest> pendingUpdates
+            = new Dictionary<string, UpdateProgressRequest>();
+
         private Coroutine debounceCoroutine;
+        private Coroutine autosaveCoroutine;
+        private Coroutine retryCoroutine;
+
+        private bool isFlushing;
+        private bool flushQueuedWhileFlushing;
+        private int retryAttempt;
 
         [Header("Debounce Settings")]
         [SerializeField] private float debounceDelay = 0.5f;
+
+        [Header("Autosave Settings")]
+        [SerializeField] private float autosaveInterval = 15f;
+        [SerializeField] private bool flushImmediatelyOnUnlockCandidate = true;
+
+        [Header("Retry Settings")]
+        [SerializeField] private float retryBaseDelay = 2f;
+        [SerializeField] private float retryMaxDelay = 8f;
 
         #endregion
 
@@ -42,6 +58,7 @@ namespace AchievementManager.Presenter
             this.presenter = presenter;
 
             SubscribeToEvents();
+            StartAutosaveLoop();
             IsInitialized = true;
             Debug.Log("[AchievementTrackerPresenter] Initialized and listening!");
         }
@@ -86,7 +103,7 @@ namespace AchievementManager.Presenter
 
         private void OnApplicationPause(bool paused)
         {
-            if (paused && pendingAchievementIds.Count > 0)
+            if (paused && pendingUpdates.Count > 0)
             {
                 Debug.Log("[AchievementTrackerPresenter] App paused → force flush!");
                 ForceFlush();
@@ -95,7 +112,7 @@ namespace AchievementManager.Presenter
 
         private void OnApplicationQuit()
         {
-            if (pendingAchievementIds.Count > 0)
+            if (pendingUpdates.Count > 0)
             {
                 Debug.Log("[AchievementTrackerPresenter] App quit → force flush!");
                 ForceFlush();
@@ -104,10 +121,18 @@ namespace AchievementManager.Presenter
 
         private void OnDestroy()
         {
-            if (pendingAchievementIds.Count > 0)
+            if (pendingUpdates.Count > 0)
             {
                 Debug.Log("[AchievementTrackerPresenter] Destroyed → force flush!");
                 ForceFlush();
+            }
+
+            StopAutosaveLoop();
+
+            if (retryCoroutine != null)
+            {
+                StopCoroutine(retryCoroutine);
+                retryCoroutine = null;
             }
 
             UnsubscribeFromEvents();
@@ -123,7 +148,7 @@ namespace AchievementManager.Presenter
         /// </summary>
         public void ForceFlush()
         {
-            if (pendingAchievementIds.Count == 0) return;
+            if (pendingUpdates.Count == 0) return;
 
             if (debounceCoroutine != null)
             {
@@ -131,17 +156,20 @@ namespace AchievementManager.Presenter
                 debounceCoroutine = null;
             }
 
-            HashSet<string> toFlush = new HashSet<string>(pendingAchievementIds);
-            pendingAchievementIds.Clear();
+            if (retryCoroutine != null)
+            {
+                StopCoroutine(retryCoroutine);
+                retryCoroutine = null;
+            }
 
-            presenter?.StartCoroutine(ForceFlushCoroutine(toFlush));
+            presenter?.StartCoroutine(ForceFlushCoroutine());
         }
 
-        private IEnumerator ForceFlushCoroutine(HashSet<string> toFlush)
+        private IEnumerator ForceFlushCoroutine()
         {
-            Debug.Log($"[AchievementTrackerPresenter] Force flushing {toFlush.Count} achievements...");
+            Debug.Log($"[AchievementTrackerPresenter] Force flushing {pendingUpdates.Count} pending updates...");
 
-            yield return FlushPendingAchievements(toFlush);
+            yield return TryFlushPending("force");
 
             Debug.Log("[AchievementTrackerPresenter] Force flush complete ✅");
         }
@@ -189,6 +217,9 @@ namespace AchievementManager.Presenter
         {
             if (!model.isLoaded) return;
 
+            bool hasNewPending = false;
+            bool hasUnlockCandidate = false;
+
             foreach (AchievementData achievement in model.GetAllAchievements())
             {
                 if (achievement.isAchieved) continue;
@@ -206,34 +237,57 @@ namespace AchievementManager.Presenter
 
                     if (localProgress > serverProgress)
                     {
-                        pendingAchievementIds.Add(achievement.achievementId);
-                        Debug.Log($"[AchievementTrackerPresenter] Marked dirty: {achievement.name}");
+                        hasNewPending |= UpsertPendingUpdate(achievement.achievementId, i, localProgress);
+
+                        if (flushImmediatelyOnUnlockCandidate && req.target > 0 && localProgress >= req.target)
+                            hasUnlockCandidate = true;
                     }
                 }
             }
 
-            if (pendingAchievementIds.Count > 0)
-                RestartDebounce();
+            if (!hasNewPending && pendingUpdates.Count == 0) return;
+
+            if (hasUnlockCandidate)
+            {
+                Debug.Log("[AchievementTrackerPresenter] Unlock candidate detected → immediate flush");
+                RestartDebounce(0.05f);
+            }
+            else if (pendingUpdates.Count > 0)
+            {
+                RestartDebounce(debounceDelay);
+            }
         }
 
-        private void RestartDebounce()
+        private bool UpsertPendingUpdate(string achievementId, int requirementIndex, int progress)
+        {
+            string key = BuildPendingKey(achievementId, requirementIndex);
+
+            if (pendingUpdates.TryGetValue(key, out UpdateProgressRequest existing))
+            {
+                if (progress <= existing.progress) return false;
+
+                existing.progress = progress;
+                pendingUpdates[key] = existing;
+                return true;
+            }
+
+            pendingUpdates[key] = new UpdateProgressRequest(achievementId, requirementIndex, progress);
+            return true;
+        }
+
+        private void RestartDebounce(float delay)
         {
             if (debounceCoroutine != null)
                 StopCoroutine(debounceCoroutine);
 
-            debounceCoroutine = StartCoroutine(DebounceFlush());
+            debounceCoroutine = StartCoroutine(DebounceFlush(delay));
         }
 
-        private IEnumerator DebounceFlush()
+        private IEnumerator DebounceFlush(float delay)
         {
-            yield return new WaitForSeconds(debounceDelay);
+            yield return new WaitForSeconds(Mathf.Max(0f, delay));
 
-            Debug.Log($"[AchievementTrackerPresenter] Flushing {pendingAchievementIds.Count} pending achievements...");
-
-            HashSet<string> toFlush = new HashSet<string>(pendingAchievementIds);
-            pendingAchievementIds.Clear();
-
-            yield return FlushPendingAchievements(toFlush);
+            yield return TryFlushPending("debounce");
 
             debounceCoroutine = null;
         }
@@ -242,21 +296,38 @@ namespace AchievementManager.Presenter
 
         #region Server Communication
 
-        private IEnumerator FlushPendingAchievements(HashSet<string> achievementIds)
+        private IEnumerator TryFlushPending(string source)
         {
-            List<UpdateProgressRequest> requests = BuildBatchRequests(achievementIds);
-            if (requests.Count == 0) yield break;
+            if (pendingUpdates.Count == 0) yield break;
+
+            if (isFlushing)
+            {
+                flushQueuedWhileFlushing = true;
+                yield break;
+            }
+
+            isFlushing = true;
+
+            List<UpdateProgressRequest> requests = BuildBatchRequestsFromPending();
+            if (requests.Count == 0)
+            {
+                isFlushing = false;
+                yield break;
+            }
 
             Dictionary<string, bool> wasAchievedMap = new Dictionary<string, bool>();
-            foreach (string achievementId in achievementIds)
+            foreach (UpdateProgressRequest request in requests)
             {
-                AchievementData achievement = model.GetAchievement(achievementId);
+                if (string.IsNullOrEmpty(request.achievementId)) continue;
+                AchievementData achievement = model.GetAchievement(request.achievementId);
                 if (achievement != null)
-                    wasAchievedMap[achievementId] = achievement.isAchieved;
+                    wasAchievedMap[request.achievementId] = achievement.isAchieved;
             }
 
             BatchUpdateProgressResponse batchResponse = null;
             bool success = false;
+
+            Debug.Log($"[AchievementTrackerPresenter] Flushing {requests.Count} pending updates ({source})...");
 
             yield return service.UpdateProgressBatch(
                 requests,
@@ -268,40 +339,115 @@ namespace AchievementManager.Presenter
                 (error) => Debug.LogWarning($"[AchievementTrackerPresenter] Batch PUT failed: {error}")
             );
 
-            if (!success || batchResponse == null) yield break;
+            if (!success || batchResponse == null)
+            {
+                retryAttempt++;
+                ScheduleRetry();
+                isFlushing = false;
+                yield break;
+            }
 
             ApplyBatchResponse(batchResponse, wasAchievedMap);
-        }
 
-        private List<UpdateProgressRequest> BuildBatchRequests(HashSet<string> achievementIds)
-        {
-            List<UpdateProgressRequest> requests = new List<UpdateProgressRequest>();
+            RemoveSucceededPending(batchResponse, requests);
 
-            foreach (string achievementId in achievementIds)
+            if (batchResponse.summary != null && batchResponse.summary.failed > 0)
             {
-                AchievementData achievement = model.GetAchievement(achievementId);
-                if (achievement == null || achievement.isAchieved) continue;
-
-                for (int i = 0; i < achievement.requirements.Count; i++)
+                retryAttempt++;
+                ScheduleRetry();
+            }
+            else
+            {
+                retryAttempt = 0;
+                if (retryCoroutine != null)
                 {
-                    AchievementRequirement req = achievement.requirements[i];
-
-                    int localProgress = GetLocalProgress(req);
-                    int serverProgress = achievement.progress != null && i < achievement.progress.Count
-                        ? achievement.progress[i]
-                        : 0;
-
-                    if (localProgress <= serverProgress) continue;
-
-                    requests.Add(new UpdateProgressRequest(
-                        achievement.achievementId,
-                        i,
-                        localProgress
-                    ));
+                    StopCoroutine(retryCoroutine);
+                    retryCoroutine = null;
                 }
             }
 
+            isFlushing = false;
+
+            if (flushQueuedWhileFlushing)
+            {
+                flushQueuedWhileFlushing = false;
+                if (pendingUpdates.Count > 0)
+                    StartCoroutine(TryFlushPending("queued"));
+            }
+        }
+
+        private List<UpdateProgressRequest> BuildBatchRequestsFromPending()
+        {
+            List<UpdateProgressRequest> requests = new List<UpdateProgressRequest>();
+
+            foreach (UpdateProgressRequest pending in pendingUpdates.Values)
+            {
+                AchievementData achievement = model.GetAchievement(pending.achievementId);
+                if (achievement == null || achievement.isAchieved) continue;
+                if (achievement.requirements == null || pending.requirementIndex < 0 || pending.requirementIndex >= achievement.requirements.Count)
+                    continue;
+
+                AchievementRequirement req = achievement.requirements[pending.requirementIndex];
+
+                int localProgress = GetLocalProgress(req);
+                int targetProgress = Mathf.Max(localProgress, pending.progress);
+                int serverProgress = achievement.progress != null && pending.requirementIndex < achievement.progress.Count
+                    ? achievement.progress[pending.requirementIndex]
+                    : 0;
+
+                if (targetProgress <= serverProgress) continue;
+
+                requests.Add(new UpdateProgressRequest(
+                    pending.achievementId,
+                    pending.requirementIndex,
+                    targetProgress
+                ));
+            }
+
             return requests;
+        }
+
+        private void RemoveSucceededPending(
+            BatchUpdateProgressResponse response,
+            List<UpdateProgressRequest> submittedRequests)
+        {
+            HashSet<string> removableKeys = new HashSet<string>();
+
+            if (response.results != null)
+            {
+                foreach (BatchUpdateResult result in response.results)
+                {
+                    if (result == null) continue;
+                    if (result.status != "updated" && result.status != "noop") continue;
+
+                    removableKeys.Add(BuildPendingKey(result.achievementId, result.requirementIndex));
+                }
+            }
+            else if (response.summary != null && response.summary.failed == 0)
+            {
+                foreach (UpdateProgressRequest request in submittedRequests)
+                    removableKeys.Add(BuildPendingKey(request.achievementId, request.requirementIndex));
+            }
+
+            foreach (string key in removableKeys)
+                pendingUpdates.Remove(key);
+        }
+
+        private void ScheduleRetry()
+        {
+            if (pendingUpdates.Count == 0 || retryCoroutine != null) return;
+            retryCoroutine = StartCoroutine(RetryFlushCoroutine());
+        }
+
+        private IEnumerator RetryFlushCoroutine()
+        {
+            float delay = Mathf.Min(retryMaxDelay, retryBaseDelay * Mathf.Pow(2f, Mathf.Max(0, retryAttempt - 1)));
+            Debug.Log($"[AchievementTrackerPresenter] Scheduling retry in {delay:F1}s (attempt {retryAttempt})");
+            yield return new WaitForSeconds(delay);
+            retryCoroutine = null;
+
+            if (pendingUpdates.Count > 0)
+                yield return TryFlushPending("retry");
         }
 
         private void ApplyBatchResponse(
@@ -367,6 +513,38 @@ namespace AchievementManager.Presenter
 
         #endregion
 
+        #region Autosave
+
+        private void StartAutosaveLoop()
+        {
+            if (autosaveCoroutine != null)
+                StopCoroutine(autosaveCoroutine);
+
+            autosaveCoroutine = StartCoroutine(AutosaveLoop());
+        }
+
+        private void StopAutosaveLoop()
+        {
+            if (autosaveCoroutine == null) return;
+            StopCoroutine(autosaveCoroutine);
+            autosaveCoroutine = null;
+        }
+
+        private IEnumerator AutosaveLoop()
+        {
+            while (true)
+            {
+                yield return new WaitForSeconds(Mathf.Max(1f, autosaveInterval));
+
+                if (!IsInitialized || !model.isLoaded) continue;
+                if (pendingUpdates.Count == 0) continue;
+
+                yield return TryFlushPending("autosave");
+            }
+        }
+
+        #endregion
+
         #region Counter Restore
 
         public void RestoreCountersFromServer(List<AchievementData> achievements)
@@ -382,7 +560,9 @@ namespace AchievementManager.Presenter
                         : 0;
 
                     string generalKey  = req.type;
-                    string specificKey = $"{req.type}_{req.entityId}";
+                    string specificKey = string.IsNullOrEmpty(req.entityId)
+                        ? req.type
+                        : $"{req.type}_{req.entityId}";
 
                     int current = model.GetCounter(generalKey);
                     if (serverProgress > current)
@@ -416,6 +596,11 @@ namespace AchievementManager.Presenter
             return string.IsNullOrEmpty(req.entityId)
                 ? model.GetCounter(req.type)
                 : model.GetCounter($"{req.type}_{req.entityId}");
+        }
+
+        private string BuildPendingKey(string achievementId, int requirementIndex)
+        {
+            return $"{achievementId}#{requirementIndex}";
         }
 
         #endregion
