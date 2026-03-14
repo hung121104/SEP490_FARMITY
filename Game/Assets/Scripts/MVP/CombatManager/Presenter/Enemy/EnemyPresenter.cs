@@ -4,13 +4,13 @@ using System.Collections;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
+using CombatManager.SO;
 
 namespace CombatManager.Presenter
 {
     /// <summary>
     /// Main presenter for Enemy system.
-    /// Coordinates all enemy services (Health, AI, Knockback, Combat).
-    /// Single brain that manages all enemy behavior.
+    /// Now accepts EnemyDataSO for configurable enemy types.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(Animator))]
@@ -19,48 +19,17 @@ namespace CombatManager.Presenter
         [Header("Model")]
         [SerializeField] private EnemyModel model = new EnemyModel();
 
-        [Header("Health Settings")]
-        [SerializeField] private int maxHealth = 10;
-
-        [Header("Detection Settings")]
-        [SerializeField] private float detectionRange = 8f;
-        [SerializeField] private float attackRange = 1.5f;
-        [SerializeField] private float fieldOfViewAngle = 120f;
-        [SerializeField] private LayerMask playerLayer;
-        [SerializeField] private LayerMask obstacleLayer;
-
-        [Header("Movement Settings")]
-        [SerializeField] private float moveSpeed = 2f;
-        [SerializeField] private float chaseSpeed = 3f;
-        [SerializeField] private float wanderSpeed = 1f;
-        [SerializeField] private float wanderRange = 5f;
-
-        [Header("Guard Settings")]
-        [SerializeField] private float guardDuration = 2f;
-        [SerializeField] private float guardLookDuration = 1f;
-
-        [Header("Combat Settings")]
-        [SerializeField] private int damageAmount = 1;
-        [SerializeField] private float knockbackForce = 30f;
-        [SerializeField] private float damageThrottleTime = 0.5f;
-        [SerializeField] private GameObject damagePopupPrefab;
-
-        [Header("Physics Settings")]
-        [SerializeField] private float friction = 3f;
-        [SerializeField] private float maxVelocity = 10f;
-
-        [Header("Knockback Settings")]
-        [SerializeField] private float knockbackDuration = 0.3f;
-        [SerializeField] private float knockbackPushDistance = 3f;
-        [SerializeField] private float squashPixels = 0.05f;
-        [SerializeField] private float stretchPixels = 0.05f;
-        [SerializeField] private float waveDuration = 0.3f;
-        [SerializeField] private float flashDuration = 0.2f;
-        [SerializeField] private int flashCount = 2;
+        // ✅ NEW: Enemy data reference
+        [Header("Enemy Data")]
+        [SerializeField] private EnemyDataSO enemyData;
 
         [Header("Dependencies")]
         [SerializeField] private Animator animator;
         [SerializeField] private SpriteRenderer spriteRenderer;
+        [SerializeField] private GameObject damagePopupPrefab;
+
+        // ✅ NEW: Runtime enemy ID
+        private string enemyId;
 
         private IEnemyHealthService healthService;
         private IEnemyKnockbackService knockbackService;
@@ -82,22 +51,17 @@ namespace CombatManager.Presenter
             if (!model.isInitialized)
                 return;
 
-            // Update knockback timer
             knockbackService.UpdateKnockbackTimer(Time.deltaTime);
 
-            // Skip AI if knocked back
             if (knockbackService.IsKnockedBack())
                 return;
 
-            // Calculate distance to player
             float distanceToPlayer = model.playerTransform != null 
                 ? Vector2.Distance(transform.position, model.playerTransform.position) 
                 : float.MaxValue;
 
-            // Update AI behavior
             aiService.UpdateBehavior(Time.deltaTime, distanceToPlayer);
 
-            // Check for death
             if (healthService.IsDead())
             {
                 HandleDeath();
@@ -109,7 +73,6 @@ namespace CombatManager.Presenter
             if (!model.isInitialized)
                 return;
 
-            // Update physics
             aiService.UpdatePhysics(Time.fixedDeltaTime);
         }
 
@@ -118,31 +81,12 @@ namespace CombatManager.Presenter
             if (!model.isInitialized)
                 return;
 
-            // DEBUG: Log all collisions
-            Debug.Log($"[EnemyPresenter] {gameObject.name} colliding with {collision.gameObject.name}");
-            Debug.Log($"  - Collision object tag: {collision.gameObject.tag}");
-            Debug.Log($"  - Collision object layer: {LayerMask.LayerToName(collision.gameObject.layer)}");
-            Debug.Log($"  - Player layer mask: {model.playerLayer.value}");
-            Debug.Log($"  - Layer check result: {((1 << collision.gameObject.layer) & model.playerLayer)}");
-
-            // Check if colliding with player (using layer mask)
             if (((1 << collision.gameObject.layer) & model.playerLayer) != 0)
             {
-                Debug.Log($"[EnemyPresenter] Layer check PASSED - attempting to deal damage");
-                
                 if (combatService.CanDealDamage())
                 {
-                    Debug.Log($"[EnemyPresenter] Damage throttle check PASSED - dealing damage");
                     combatService.DealDamageToPlayer(collision);
                 }
-                else
-                {
-                    Debug.Log($"[EnemyPresenter] Damage throttle check FAILED - cooling down");
-                }
-            }
-            else
-            {
-                Debug.Log($"[EnemyPresenter] Layer check FAILED - not player layer");
             }
         }
 
@@ -152,6 +96,23 @@ namespace CombatManager.Presenter
 
         private void InitializeComponents()
         {
+            // ✅ NEW: Validate enemy data
+            if (enemyData == null)
+            {
+                Debug.LogError($"[EnemyPresenter] {gameObject.name} has no EnemyDataSO assigned!");
+                return;
+            }
+
+            if (!enemyData.IsValid())
+            {
+                Debug.LogError($"[EnemyPresenter] EnemyDataSO '{enemyData.name}' is invalid!");
+                return;
+            }
+
+            // ✅ NEW: Set enemy ID
+            enemyId = enemyData.enemyId;
+            gameObject.name = $"{enemyData.enemyName}_{enemyId}";
+
             // Get required components
             rb = GetComponent<Rigidbody2D>();
             
@@ -161,47 +122,39 @@ namespace CombatManager.Presenter
             if (spriteRenderer == null)
                 spriteRenderer = GetComponent<SpriteRenderer>();
 
-            // Get view
             view = GetComponent<EnemyView>();
             if (view == null)
             {
                 view = gameObject.AddComponent<EnemyView>();
             }
 
-            // Find player
             Transform playerTransform = FindLocalPlayerTransform();
-            if (playerTransform == null)
-            {
-                Debug.LogWarning($"[EnemyPresenter] Player not found for {gameObject.name}");
-            }
 
-            // Sync inspector values to model
-            SyncInspectorToModel(playerTransform);
+            // ✅ NEW: Sync from EnemyDataSO instead of inspector
+            SyncFromEnemyData(playerTransform);
 
-            // Initialize services
             healthService = new EnemyHealthService(model);
             knockbackService = new EnemyKnockbackService(model);
             combatService = new EnemyCombatService(model);
             aiService = new EnemyAIService(model);
 
-            // Initialize each service
-            healthService.Initialize(maxHealth);
+            healthService.Initialize(enemyData.maxHealth);
             knockbackService.Initialize(this);
             combatService.Initialize(damagePopupPrefab);
             aiService.Initialize(transform);
 
             model.isInitialized = true;
 
-            // Initialize view
             if (view != null)
             {
                 view.Initialize(this);
             }
 
-            Debug.Log($"[EnemyPresenter] {gameObject.name} initialized successfully");
+            Debug.Log($"[EnemyPresenter] {gameObject.name} (ID: {enemyId}) initialized from {enemyData.name}");
         }
 
-        private void SyncInspectorToModel(Transform playerTransform)
+        // ✅ NEW: Load all settings from EnemyDataSO
+        private void SyncFromEnemyData(Transform playerTransform)
         {
             // Runtime references
             model.playerTransform = playerTransform;
@@ -210,140 +163,126 @@ namespace CombatManager.Presenter
             model.spriteRenderer = spriteRenderer;
 
             // Health
-            model.maxHealth = maxHealth;
-            model.currentHealth = maxHealth;
+            model.maxHealth = enemyData.maxHealth;
+            model.currentHealth = enemyData.maxHealth;
 
             // Detection
-            model.detectionRange = detectionRange;
-            model.attackRange = attackRange;
-            model.fieldOfViewAngle = fieldOfViewAngle;
-            model.playerLayer = playerLayer;
-            model.obstacleLayer = obstacleLayer;
+            model.detectionRange = enemyData.detectionRange;
+            model.attackRange = enemyData.attackRange;
+            model.fieldOfViewAngle = enemyData.fieldOfViewAngle;
+            model.playerLayer = LayerMask.GetMask("Player"); // Use your player layer
+            model.obstacleLayer = LayerMask.GetMask("Obstacle"); // Use your obstacle layer
 
             // Movement
-            model.moveSpeed = moveSpeed;
-            model.chaseSpeed = chaseSpeed;
-            model.wanderSpeed = wanderSpeed;
-            model.wanderRange = wanderRange;
+            model.moveSpeed = enemyData.moveSpeed;
+            model.chaseSpeed = enemyData.chaseSpeed;
+            model.wanderSpeed = enemyData.wanderSpeed;
+            model.wanderRange = enemyData.wanderRange;
 
             // Guard
-            model.guardDuration = guardDuration;
-            model.guardLookDuration = guardLookDuration;
+            model.guardDuration = enemyData.guardDuration;
+            model.guardLookDuration = enemyData.guardLookDuration;
 
             // Combat
-            model.damageAmount = damageAmount;
-            model.knockbackForce = knockbackForce;
-            model.damageThrottleTime = damageThrottleTime;
+            model.damageAmount = enemyData.damageAmount;
+            model.knockbackForce = enemyData.knockbackForce;
+            model.damageThrottleTime = enemyData.damageThrottleTime;
 
-            // Physics
-            model.friction = friction;
-            model.maxVelocity = maxVelocity;
+            // Physics (keep defaults or add to SO)
+            model.friction = 3f;
+            model.maxVelocity = 10f;
 
             // Knockback
-            model.knockbackDuration = knockbackDuration;
-            model.knockbackPushDistance = knockbackPushDistance;
-            model.squashPixels = squashPixels;
-            model.stretchPixels = stretchPixels;
-            model.waveDuration = waveDuration;
-            model.flashDuration = flashDuration;
-            model.flashCount = flashCount;
+            model.knockbackDuration = enemyData.knockbackDuration;
+            model.knockbackPushDistance = 3f;
+            model.squashPixels = enemyData.squashPixels;
+            model.stretchPixels = enemyData.stretchPixels;
+            model.waveDuration = enemyData.waveDuration;
+            model.flashDuration = enemyData.flashDuration;
+            model.flashCount = enemyData.flashCount;
         }
 
         private Transform FindLocalPlayerTransform()
         {
-            // Method 1: Find by "Player" tag (multiplayer spawn point)
             GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
             foreach (GameObject go in players)
             {
-                Photon.Pun.PhotonView pv = go.GetComponent<Photon.Pun.PhotonView>();
+                PhotonView pv = go.GetComponent<PhotonView>();
                 if (pv != null && pv.IsMine)
-                {
-                    Debug.Log($"[EnemyPresenter] Found local player via 'Player' tag: {go.name}");
                     return go.transform;
-                }
             }
 
-            // Method 2: Find by "PlayerEntity" tag (test scene)
             GameObject[] playerEntities = GameObject.FindGameObjectsWithTag("PlayerEntity");
             foreach (GameObject go in playerEntities)
             {
-                Photon.Pun.PhotonView pv = go.GetComponent<Photon.Pun.PhotonView>();
+                PhotonView pv = go.GetComponent<PhotonView>();
                 if (pv != null && pv.IsMine)
-                {
-                    Debug.Log($"[EnemyPresenter] Found local player via 'PlayerEntity' tag: {go.name}");
                     return go.transform;
-                }
             }
 
-            // Method 3: Fallback for test scenes (find by name)
             GameObject fallback = GameObject.Find("PlayerEntity");
             if (fallback != null)
-            {
-                Debug.LogWarning("[EnemyPresenter] Found PlayerEntity by name (fallback)");
                 return fallback.transform;
-            }
 
-            // Method 4: Find ANY object with PlayerHealthPresenter (ultra fallback)
             PlayerHealthPresenter healthPresenter = Object.FindObjectOfType<PlayerHealthPresenter>();
             if (healthPresenter != null)
-            {
-                Debug.LogWarning("[EnemyPresenter] Found player via PlayerHealthPresenter component");
                 return healthPresenter.transform;
-            }
 
-            Debug.LogError("[EnemyPresenter] Could not find player transform!");
             return null;
         }
 
         #endregion
 
-        #region Public API - Damage & Knockback
+        #region Public API
 
-        /// <summary>
-        /// Called when enemy takes damage (e.g., from player attack).
-        /// </summary>
         public void TakeDamage(int damage, Vector2 knockbackDirection, float knockbackForce)
         {
             if (!model.isInitialized)
                 return;
 
-            // Apply damage
             healthService.ChangeHealth(-damage);
-
-            // Apply knockback physics
             aiService.TakeKnockback(knockbackDirection, knockbackForce);
 
-            // Play visual effects
             StartCoroutine(knockbackService.PlayKnockbackEffect());
             StartCoroutine(knockbackService.PlayFlashEffect());
 
-            // ===== NEW: Show damage popup =====
             DamagePopupPresenter.Spawn(transform.position, damage);
-
-            // Alert AI
             aiService.OnHit();
 
-            Debug.Log($"[EnemyPresenter] {gameObject.name} took {damage} damage. Health: {healthService.GetCurrentHealth()}/{healthService.GetMaxHealth()}");
+            Debug.Log($"[EnemyPresenter] {enemyId} took {damage} damage. Health: {healthService.GetCurrentHealth()}/{healthService.GetMaxHealth()}");
         }
+
+        // ✅ NEW: Get enemy ID
+        public string GetEnemyId() => enemyId;
+        public EnemyDataSO GetEnemyData() => enemyData;
 
         #endregion
 
         #region Death
 
+        // ✅ NEW: Track if death has been handled
+        private bool deathHandled = false;
+
         private void HandleDeath()
         {
-            Debug.Log($"[EnemyPresenter] {gameObject.name} died");
+            // ✅ FIX: Only handle death ONCE
+            if (deathHandled)
+                return;
 
-            // Stop all movement
+            deathHandled = true;
+
+            Debug.Log($"[EnemyPresenter] {enemyId} died");
+
+            // ✅ Fire achievement event with enemy ID - called ONCE
+            GameEventBus.FireEnemyKilled(enemyId, 1);
+
             aiService.Stop();
 
-            // Play death animation (if exists)
             if (model.animator != null)
             {
                 model.animator.SetTrigger("Death");
             }
 
-            // Destroy after delay
             Destroy(gameObject, 1f);
         }
 
@@ -363,7 +302,7 @@ namespace CombatManager.Presenter
 
         #endregion
 
-        #region Public API for Other Systems
+        #region Services API
 
         public IEnemyHealthService GetHealthService() => healthService;
         public IEnemyKnockbackService GetKnockbackService() => knockbackService;
@@ -372,46 +311,37 @@ namespace CombatManager.Presenter
 
         #endregion
 
-        #region Debug
+        #region Debug Gizmos
 
         private void OnDrawGizmosSelected()
         {
             if (!Application.isPlaying)
             {
-                // Show detection range
                 Gizmos.color = Color.yellow;
-                Gizmos.DrawWireSphere(transform.position, detectionRange);
-
-                // Show attack range
+                Gizmos.DrawWireSphere(transform.position, 8f);
                 Gizmos.color = Color.red;
-                Gizmos.DrawWireSphere(transform.position, attackRange);
+                Gizmos.DrawWireSphere(transform.position, 1.5f);
                 return;
             }
 
             if (!model.isInitialized)
                 return;
 
-            // Detection range
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(transform.position, model.detectionRange);
 
-            // Attack range
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(transform.position, model.attackRange);
 
-            // Wander range
             Gizmos.color = Color.green;
             Gizmos.DrawWireSphere(model.startPosition, model.wanderRange);
 
-            // Wander target
             Gizmos.color = Color.blue;
             Gizmos.DrawLine(transform.position, model.wanderTarget);
             Gizmos.DrawWireSphere(model.wanderTarget, 0.3f);
 
-            // Field of view cone
             DrawFieldOfViewCone();
 
-            // State indicators
             if (model.isAlerted)
             {
                 Gizmos.color = Color.red;

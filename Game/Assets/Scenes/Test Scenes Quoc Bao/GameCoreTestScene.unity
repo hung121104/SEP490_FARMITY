@@ -1368,7 +1368,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 2755769633323637719, guid: 6f44644ef4acc4d478b728ce8359171e, type: 3}
+  m_Sprite: {fileID: 5507242318712754582, guid: 7dff94a1c3ab0be4ea0a0127ef9885dc, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1377,7 +1377,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 2
 --- !u!222 &49670882
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2478,7 +2478,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: -8191739510646017925, guid: b015256ec400c7a4ea29a2a844a75ca2, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2487,7 +2487,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 4
 --- !u!222 &98449235
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3205,6 +3205,10 @@ MonoBehaviour:
   displayDuration: 3
   showTrigger: Show
   hideTrigger: Hide
+  fallbackShowDuration: 0.25
+  fallbackHideDuration: 0.2
+  fallbackHideDelay: 0.5
+  slideDistance: 30
 --- !u!1 &200483212
 GameObject:
   m_ObjectHideFlags: 0
@@ -3899,6 +3903,8 @@ MonoBehaviour:
   hour: 0
   minute: 0
   gold: 0
+  weatherToday: 0
+  weatherTomorrow: 0
 --- !u!4 &244448537
 Transform:
   m_ObjectHideFlags: 0
@@ -5778,7 +5784,6 @@ MonoBehaviour:
   craftingInventoryAdapter: {fileID: 1786776223}
   cookingInventoryAdapter: {fileID: 1348603935}
   craftingInInventoryAdapter: {fileID: 435592459}
-  pickupKey: 102
 --- !u!1 &314174206
 GameObject:
   m_ObjectHideFlags: 0
@@ -6829,8 +6834,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4281742434
+  m_fontColor: {r: 0.38431376, g: 0.20392159, b: 0.21176472, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -6933,8 +6938,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 397.875, y: -0.00000047683716}
-  m_SizeDelta: {x: 795.75, y: 35.479996}
+  m_AnchoredPosition: {x: 403.14, y: -0.00000047683716}
+  m_SizeDelta: {x: 785.23, y: 35.48}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &398261542
 CanvasRenderer:
@@ -6973,8 +6978,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4281742434
+  m_fontColor: {r: 0.38431376, g: 0.20392159, b: 0.21176472, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -7191,55 +7196,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 417839803}
   m_CullTransparentMesh: 1
---- !u!1 &420053470
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 420053471}
-  - component: {fileID: 420053472}
-  m_Layer: 0
-  m_Name: EnemySpawnTest
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &420053471
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 420053470}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 894442419}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &420053472
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 420053470}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 73e5654965828c944bd6b7e22164840e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  enemyPrefab: {fileID: 7205149268433935669, guid: 9d5fc791692557741bafc5825c608b3f, type: 3}
-  spawnKey: 286
-  spawnDistance: 3
-  maxEnemies: 5
-  showSpawnLog: 1
 --- !u!1 &430628839
 GameObject:
   m_ObjectHideFlags: 0
@@ -7964,6 +7920,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b5a80d39402749742bdf97b2ac80fb08, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  debounceDelay: 0.5
+  autosaveInterval: 15
+  flushImmediatelyOnUnlockCandidate: 1
+  retryBaseDelay: 2
+  retryMaxDelay: 8
 --- !u!114 &475937338
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13447,8 +13408,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.000061035, y: -39.888}
-  m_SizeDelta: {x: 1085, y: 600.22}
+  m_AnchoredPosition: {x: -0.000061035, y: -30.9297}
+  m_SizeDelta: {x: 1085, y: 582.3035}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &803725205
 MonoBehaviour:
@@ -14619,6 +14580,56 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   presenter: {fileID: 864903644}
   showDebugInfo: 1
+--- !u!1 &869873723
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 869873724}
+  - component: {fileID: 869873725}
+  m_Layer: 0
+  m_Name: EnemySpawnTest
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &869873724
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 869873723}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 894442419}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &869873725
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 869873723}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73e5654965828c944bd6b7e22164840e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skeletonData: {fileID: 11400000, guid: 366d7b32c890fd843a53af4f5b229b91, type: 2}
+  otherEnemyData: []
+  spawnKey: 286
+  spawnDistance: 3
+  maxEnemies: 20
+  showSpawnLog: 1
 --- !u!1 &878961679
 GameObject:
   m_ObjectHideFlags: 0
@@ -15016,7 +15027,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 621075877}
-  - {fileID: 420053471}
+  - {fileID: 869873724}
   m_Father: {fileID: 1076200465}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &899780256
@@ -15673,8 +15684,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -39.887817}
-  m_SizeDelta: {x: 1085, y: 79.7757}
+  m_AnchoredPosition: {x: 3.1711, y: -39.887817}
+  m_SizeDelta: {x: 800, y: 79.7757}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &921236745
 MonoBehaviour:
@@ -15696,7 +15707,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 3328322039917956821, guid: 7dff94a1c3ab0be4ea0a0127ef9885dc, type: 3}
+  m_Sprite: {fileID: -8567643912832686301, guid: 7dff94a1c3ab0be4ea0a0127ef9885dc, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -16536,7 +16547,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0.0000000038999133, y: -22.85165}
+  m_AnchoredPosition: {x: -0.00085449, y: -30.89}
   m_SizeDelta: {x: 811.51, y: 45.7033}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &984763936
@@ -16576,8 +16587,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4281742434
+  m_fontColor: {r: 0.38431376, g: 0.20392159, b: 0.21176472, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -17179,17 +17190,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   killEntityId: goblin_01
   harvestCropId: wheat_01
-  plantSeedId: carrot_seed_01
-  fishId: salmon_01
   craftItemId: iron_sword_01
-  cookRecipeId: mushroom_soup_01
-  collectItemId: gold_coin_01
-  tradeItemId: wheat_01
-  areaId: forest_area_01
-  testLevel: 5
-  questId: quest_01
-  batchKillCount: 10
-  batchOptimized: 1
+  skeletonId: skeleton_01
+  stressCount: 1000
   showDebugLog: 1
 --- !u!1 &1005992855
 GameObject:
@@ -24995,7 +24998,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 5214576322002826026, guid: 6f44644ef4acc4d478b728ce8359171e, type: 3}
+  m_Sprite: {fileID: 5507242318712754582, guid: 7dff94a1c3ab0be4ea0a0127ef9885dc, type: 3}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -25004,7 +25007,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 2
+  m_PixelsPerUnitMultiplier: 3
 --- !u!222 &1510550636
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -28613,8 +28616,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -405.75, y: -33.0727}
-  m_SizeDelta: {x: 811.51, y: 30.665}
+  m_AnchoredPosition: {x: -400.49066, y: -33.0727}
+  m_SizeDelta: {x: 800.9913, y: 30.665}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1720548417
 CanvasRenderer:
@@ -28653,8 +28656,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4281742434
+  m_fontColor: {r: 0.38431376, g: 0.20392159, b: 0.21176472, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -29616,8 +29619,58 @@ Transform:
   - {fileID: 254223839}
   - {fileID: 200427657}
   - {fileID: 1004020370}
+  - {fileID: 1832908640}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1832908639
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1832908640}
+  - component: {fileID: 1832908641}
+  m_Layer: 0
+  m_Name: AchievementTestPanelUI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1832908640
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1832908639}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1832904186}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1832908641
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1832908639}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f33f257503618a64ba42c067e0b34886, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  showOnStart: 0
+  toggleKey: 289
+  panelWidth: 430
+  panelHeight: 600
+  testTrigger: {fileID: 1004020371}
 --- !u!1 &1839607806
 GameObject:
   m_ObjectHideFlags: 0
@@ -30842,8 +30895,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4281742434
+  m_fontColor: {r: 0.38431376, g: 0.20392159, b: 0.21176472, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -31697,6 +31750,7 @@ MonoBehaviour:
   timeManager: {fileID: 76351687}
   enableGrowth: 1
   growthSpeedMultiplier: 1
+  waterDecayDurationMinutes: 24
   cropVisualsParent: {fileID: 0}
   showDebugLogs: 0
 --- !u!4 &1955384471
@@ -32709,8 +32763,11 @@ MonoBehaviour:
   updateInterval: 1
   unloadDelay: 5
   visualizeCrops: 1
+  cropVisualPrefab: {fileID: 0}
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   tilledTilemapName: TilledOverlayTilemap
+  wateredTile: {fileID: 0}
+  wateredTilemapName: WateredOverlayTilemap
   showDebugLogs: 0
   showLoadedChunksGizmos: 0
   enableDailyReload: 1

@@ -701,6 +701,7 @@ MonoBehaviour:
   testLevel: 5
   questId: quest_01
   batchKillCount: 10
+  batchOptimized: 1
   showDebugLog: 1
 --- !u!1 &204443540
 GameObject:
@@ -1195,7 +1196,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73e5654965828c944bd6b7e22164840e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enemyPrefab: {fileID: 7205149268433935669, guid: 9d5fc791692557741bafc5825c608b3f, type: 3}
+  skeletonData: {fileID: 11400000, guid: 366d7b32c890fd843a53af4f5b229b91, type: 2}
+  otherEnemyData: []
   spawnKey: 286
   spawnDistance: 3
   maxEnemies: 5
@@ -3117,7 +3119,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   panelRoot: {fileID: 1403729470}
   inProgressContainer: {fileID: 294337699}
-  achievedContainer: {fileID: 1794028429}
   achievementItemPrefab: {fileID: 8921796703043059680, guid: 04564cbf6c68adb4287cfe6e795b70e0, type: 3}
   closeButton: {fileID: 1692858520}
   refreshButton: {fileID: 527442266}
@@ -4099,6 +4100,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b5a80d39402749742bdf97b2ac80fb08, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  debounceDelay: 0.5
 --- !u!114 &722292466
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25655,11 +25657,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3412998753931084269, guid: 79f6bc42335333f4c9cc04b30ea2016d, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.1500015
+      value: 3.6500015
       objectReference: {fileID: 0}
     - target: {fileID: 3412998753931084269, guid: 79f6bc42335333f4c9cc04b30ea2016d, type: 3}
       propertyPath: m_LocalPosition.z
       value: -50
+      objectReference: {fileID: 0}
+    - target: {fileID: 3954716499937748241, guid: 79f6bc42335333f4c9cc04b30ea2016d, type: 3}
+      propertyPath: sceneViewId
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4645773019411297606, guid: 79f6bc42335333f4c9cc04b30ea2016d, type: 3}
+      propertyPath: sceneViewId
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 5639540635812324173, guid: 79f6bc42335333f4c9cc04b30ea2016d, type: 3}
       propertyPath: Lens.OrthographicSize

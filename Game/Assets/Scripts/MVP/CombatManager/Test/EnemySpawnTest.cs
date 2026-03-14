@@ -1,17 +1,20 @@
 using UnityEngine;
 using Photon.Pun;
+using CombatManager.SO;
+using CombatManager.Presenter;
 
 namespace CombatManager.Test
 {
     /// <summary>
-    /// Simple enemy spawn test for main scene.
-    /// Spawns enemy prefab near local player.
-    /// Assign enemy prefab in Inspector.
+    /// Enemy spawn test - now spawns from EnemyDataSO.
     /// </summary>
     public class EnemySpawnTest : MonoBehaviour
     {
+        [Header("Enemy Templates")]
+        [SerializeField] private EnemyDataSO skeletonData;
+        [SerializeField] private EnemyDataSO[] otherEnemyData;
+
         [Header("Spawn Settings")]
-        [SerializeField] private GameObject enemyPrefab;
         [SerializeField] private KeyCode spawnKey = KeyCode.F5;
         [SerializeField] private float spawnDistance = 3f;
         [SerializeField] private int maxEnemies = 5;
@@ -26,18 +29,24 @@ namespace CombatManager.Test
         private void Update()
         {
             if (Input.GetKeyDown(spawnKey))
-                TrySpawnEnemy();
+                TrySpawnEnemy(skeletonData);
         }
 
         #endregion
 
         #region Spawn
 
-        private void TrySpawnEnemy()
+        private void TrySpawnEnemy(EnemyDataSO enemyData)
         {
-            if (enemyPrefab == null)
+            if (enemyData == null)
             {
-                Debug.LogError("[EnemySpawnTest] Enemy prefab not assigned in Inspector!");
+                Debug.LogError("[EnemySpawnTest] Enemy data not assigned!");
+                return;
+            }
+
+            if (!enemyData.IsValid())
+            {
+                Debug.LogError($"[EnemySpawnTest] EnemyDataSO '{enemyData.name}' is invalid!");
                 return;
             }
 
@@ -55,17 +64,27 @@ namespace CombatManager.Test
             }
 
             Vector3 spawnPos = GetSpawnPosition(playerTransform);
-            GameObject enemy = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
-            enemy.name = $"Enemy_Test_{spawnedCount + 1}";
+            // ✅ Spawn from prefab in EnemyDataSO
+            GameObject enemy = Instantiate(enemyData.enemyPrefab, spawnPos, Quaternion.identity);
+            enemy.name = $"{enemyData.enemyId}_{spawnedCount + 1}";
+
+            // ✅ Assign EnemyDataSO to the presenter
+            EnemyPresenter presenter = enemy.GetComponent<EnemyPresenter>();
+            if (presenter != null)
+            {
+                // The presenter will read enemyData from inspector
+                // BUT we need a way to set it at runtime...
+                // For now, make sure it's already assigned in prefab
+            }
+
             spawnedCount++;
 
             if (showSpawnLog)
-                Debug.Log($"[EnemySpawnTest] Spawned '{enemy.name}' at {spawnPos} (Total: {spawnedCount}/{maxEnemies})");
+                Debug.Log($"[EnemySpawnTest] Spawned '{enemy.name}' ({enemyData.enemyName}) at {spawnPos}");
         }
 
         private Vector3 GetSpawnPosition(Transform playerTransform)
         {
-            // Spawn at random angle around player
             float randomAngle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
             Vector3 offset = new Vector3(
                 Mathf.Cos(randomAngle) * spawnDistance,
@@ -81,7 +100,6 @@ namespace CombatManager.Test
 
         private Transform FindLocalPlayer()
         {
-            // Method 1: Photon local player by tag
             GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
             foreach (GameObject go in players)
             {
@@ -90,7 +108,6 @@ namespace CombatManager.Test
                     return go.transform;
             }
 
-            // Method 2: PlayerEntity tag
             GameObject[] entities = GameObject.FindGameObjectsWithTag("PlayerEntity");
             foreach (GameObject go in entities)
             {
@@ -99,13 +116,9 @@ namespace CombatManager.Test
                     return go.transform;
             }
 
-            // Method 3: Fallback by name (test scene)
             GameObject fallback = GameObject.Find("PlayerEntity");
             if (fallback != null)
-            {
-                Debug.LogWarning("[EnemySpawnTest] Found player by name (fallback)");
                 return fallback.transform;
-            }
 
             return null;
         }
@@ -116,7 +129,6 @@ namespace CombatManager.Test
 
         private void OnDrawGizmosSelected()
         {
-            // Show spawn radius around this GO
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(transform.position, spawnDistance);
         }
