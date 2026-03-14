@@ -52,6 +52,7 @@ MonoBehaviour:
   - RPC_TriggerPlow
   - RPC_SyncFishingAnimation
   - RPC_RestoreAppearance
+  - RPC_TriggerWater
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

@@ -76,6 +76,15 @@ public class CropHarvestingService : ICropHarvestingService
         cropManagerView?.UnregisterCrop(worldX, worldY);
         syncManager?.BroadcastCropRemoved(worldX, worldY);
 
+        // If it's raining, re-water the remaining tilled tile
+        if (WeatherView.IsRaining && worldData.IsTilledAtWorldPosition(snappedPos))
+        {
+            worldData.WaterTileAtWorldPosition(snappedPos);
+
+            if (syncManager != null && PhotonNetwork.IsConnected)
+                syncManager.BroadcastTileWatered(worldX, worldY);
+        }
+
         if (loadingManager != null)
         {
             Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(snappedPos);

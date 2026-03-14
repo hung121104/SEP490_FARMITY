@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -68,9 +68,9 @@ public class InventoryPresenter
     }
 
     /// <summary>
-    /// Called by external systems (e.g. CraftingInventoryAdapter) to notify that
-    /// the user is performing an action on a secondary view.
-    /// This resets the cooldown so HandleRemoteInventoryChanged defers the echo.
+    /// Called by external systems to notify that the user is performing
+    /// an action on a secondary view. Resets the cooldown so
+    /// HandleRemoteInventoryChanged defers the echo.
     /// </summary>
     public void NotifyExternalAction()
     {

@@ -14,6 +14,19 @@ public class CropGrowthService : ICropGrowthService
     private readonly WorldDataManager worldData;
     private readonly ChunkDataSyncManager syncManager;
 
+    // Cached to avoid FindAnyObjectByType per decay tick
+    private ChunkLoadingManager _chunkLoader;
+
+    // ── Configuration ─────────────────────────────────────────────────────
+    /// <inheritdoc/>
+    public float WateringSpeedMultiplier { get; set; } = 2f;
+
+    /// <inheritdoc/>
+    public float WaterDecayDurationMinutes { get; set; } = 24f;
+
+    /// <inheritdoc/>
+    public bool IsRaining { get; set; }
+
     // ── Events ────────────────────────────────────────────────────────────
     /// <inheritdoc/>
     public event System.Action<int, int, byte> OnCropStageChanged;
@@ -128,8 +141,7 @@ public class CropGrowthService : ICropGrowthService
 
                     // ── Per-tile speed multiplier from watering / fertilizer ──
                     float speedMult = 1f;
-                    if (tile.Crop.IsWatered)    speedMult *= 2f;
-                    else                        speedMult *= 0.5f;
+                    if (tile.Crop.IsWatered)    speedMult *= WateringSpeedMultiplier;
                     if (tile.Crop.IsFertilized) speedMult *= 1.5f;
 
                     float addedTime = deltaTime * speedMult;
@@ -167,6 +179,52 @@ public class CropGrowthService : ICropGrowthService
         }
     }
 
+    public void TickWaterDecay(float gameMinutesDelta)
+    {
+        if (worldData == null || gameMinutesDelta <= 0f) return;
+
+        // Pause water decay while it's raining
+        if (IsRaining) return;
+
+        for (int s = 0; s < worldData.sectionConfigs.Count; s++)
+        {
+            var sectionConfig = worldData.sectionConfigs[s];
+            if (!sectionConfig.IsActive) continue;
+
+            var section = worldData.GetSection(sectionConfig.SectionId);
+            if (section == null) continue;
+
+            foreach (var chunkPair in section)
+            {
+                UnifiedChunkData chunk = chunkPair.Value;
+
+                foreach (var tile in chunk.GetAllTiles())
+                {
+                    if (!tile.IsTilled || !tile.Crop.IsWatered) continue;
+
+                    // Accumulate decay time
+                    chunk.AddWaterDecayTime(tile.WorldX, tile.WorldY, gameMinutesDelta);
+
+                    if (tile.Crop.WaterDecayTimer + gameMinutesDelta >= WaterDecayDurationMinutes)
+                    {
+                        chunk.UnwaterTile(tile.WorldX, tile.WorldY);
+
+                        // Remove the watered overlay tile from the tilemap directly
+                        if (_chunkLoader == null)
+                            _chunkLoader = UnityEngine.Object.FindAnyObjectByType<ChunkLoadingManager>();
+
+                        _chunkLoader?.ClearWateredTileAt(new Vector3(tile.WorldX, tile.WorldY, 0));
+
+                        if (PhotonNetwork.IsConnected && syncManager != null)
+                            syncManager.BroadcastTileUnwatered(tile.WorldX, tile.WorldY);
+
+                        Debug.Log($"[CropGrowthService] Water evaporated at ({tile.WorldX},{tile.WorldY}) after {WaterDecayDurationMinutes} game-minutes.");
+                    }
+                }
+            }
+        }
+    }
+
     public void ForceGrowCrop(int worldX, int worldY)
     {
         if (worldData == null) return;
@@ -193,5 +251,40 @@ public class CropGrowthService : ICropGrowthService
 
         OnCropStageChanged?.Invoke(worldX, worldY, newStage);
         Debug.Log($"[CropGrowthService] Force-grew ({worldX},{worldY}) → stage {newStage}.");
+    }
+
+    public void WaterAllTilledTiles()
+    {
+        if (worldData == null) return;
+
+        int count = 0;
+
+        for (int s = 0; s < worldData.sectionConfigs.Count; s++)
+        {
+            var sectionConfig = worldData.sectionConfigs[s];
+            if (!sectionConfig.IsActive) continue;
+
+            var section = worldData.GetSection(sectionConfig.SectionId);
+            if (section == null) continue;
+
+            foreach (var chunkPair in section)
+            {
+                UnifiedChunkData chunk = chunkPair.Value;
+
+                foreach (var tile in chunk.GetAllTiles())
+                {
+                    if (!tile.IsTilled || tile.Crop.IsWatered) continue;
+
+                    chunk.WaterTile(tile.WorldX, tile.WorldY);
+                    count++;
+
+                    if (PhotonNetwork.IsConnected && syncManager != null)
+                        syncManager.BroadcastTileWatered(tile.WorldX, tile.WorldY);
+                }
+            }
+        }
+
+        if (count > 0)
+            Debug.Log($"[CropGrowthService] Rain watered {count} tilled tiles.");
     }
 }
