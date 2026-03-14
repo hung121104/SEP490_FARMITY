@@ -30591,6 +30591,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2062326645}
   - component: {fileID: 2062326647}
+  - component: {fileID: 2062326648}
   - component: {fileID: 2062326646}
   m_Layer: 0
   m_Name: StructureSystem
@@ -30633,7 +30634,7 @@ MonoBehaviour:
   ghostPreview: {fileID: 162738858}
   validColor: {r: 0, g: 1, b: 0, a: 0.5}
   invalidColor: {r: 1, g: 0, b: 0, a: 0.5}
-  showDebugLogs: 1
+  showDebugLogs: 0
 --- !u!114 &2062326647
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -30652,6 +30653,26 @@ MonoBehaviour:
   structureCatalog:
   - {fileID: 11400000, guid: 7c973bba67aec7e4eb8c1c3ffd9d4e93, type: 2}
   - {fileID: 11400000, guid: 1390210e212423346b91ea5e6b129cb2, type: 2}
+--- !u!114 &2062326648
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2062326644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea4887873f9c31e4db0e713ed190f9b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  validTools: 030000000200000000000000
+  regenDelaySeconds: 10
+  interactionRange: 2
+  showDebugLogs: 1
+  flashColor: {r: 1, g: 0, b: 0, a: 1}
+  flashDuration: 0.1
+  shakeIntensity: 0.1
+  shakeDuration: 0.2
 --- !u!1 &2066821487
 GameObject:
   m_ObjectHideFlags: 0

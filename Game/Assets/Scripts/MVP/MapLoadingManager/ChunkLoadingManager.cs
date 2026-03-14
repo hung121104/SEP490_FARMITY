@@ -653,6 +653,27 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
+    /// Returns the visual GameObject for a structure at a specific world position, if loaded.
+    /// </summary>
+    public GameObject GetStructureVisualAt(Vector3Int worldPos)
+    {
+        Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(new Vector3(worldPos.x, worldPos.y, 0f));
+        if (chunkStructureVisuals.TryGetValue(chunkPos, out var list))
+        {
+            foreach (var tuple in list)
+            {
+                if (tuple.go != null && 
+                    Mathf.Approximately(tuple.go.transform.position.x, worldPos.x) && 
+                    Mathf.Approximately(tuple.go.transform.position.y, worldPos.y))
+                {
+                    return tuple.go;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Ensure a chunk is loaded and visuals are spawned. Safe to call from other managers.
     /// </summary>
     public void EnsureChunkLoaded(Vector2Int chunkPos)

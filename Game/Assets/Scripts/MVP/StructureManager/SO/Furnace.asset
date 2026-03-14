@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Furnace
   m_EditorClassIdentifier: 
   StructureId: stone_furnace
-  Prefab: {fileID: 2204487346316466391, guid: 74a7d0ef12dd9314593a27a7383229e4, type: 3}
+  Prefab: {fileID: 2204487346316466391, guid: 779dbfe70f1f3ff4ab6efec935d02926, type: 3}
   InteractionType: 3
   MaxHealth: 3
   StorageSlots: 0
