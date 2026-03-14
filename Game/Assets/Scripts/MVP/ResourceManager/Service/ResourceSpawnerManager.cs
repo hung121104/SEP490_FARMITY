@@ -30,7 +30,21 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     private readonly Dictionary<string, Sprite> _spriteCache =
         new Dictionary<string, Sprite>();
 
+    [Header("Debug")]
+    public bool showDebugLogs = true;
+
     private TimeManagerView _timeManager;
+    private Coroutine _bindTimeManagerRoutine;
+
+    private struct TileScanStats
+    {
+        public int TotalTilesChecked;
+        public int InvalidSpawnMask;
+        public int BlockedByTilled;
+        public int BlockedByCrop;
+        public int BlockedByStructure;
+        public int BlockedByResource;
+    }
 
     private void Awake()
     {
@@ -53,14 +67,10 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     {
         PhotonNetwork.AddCallbackTarget(this);
 
-        _timeManager = FindAnyObjectByType<TimeManagerView>();
-        if (_timeManager != null)
+        TryBindTimeManager();
+        if (_timeManager == null)
         {
-            _timeManager.OnDayChanged += TriggerNewDaySpawning;
-        }
-        else
-        {
-            Debug.LogWarning("[ResourceSpawnerManager] TimeManagerView not found in scene!");
+            _bindTimeManagerRoutine = StartCoroutine(BindTimeManagerWhenReady());
         }
     }
 
@@ -68,10 +78,82 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     {
         PhotonNetwork.RemoveCallbackTarget(this);
 
-        if (_timeManager != null)
+        if (_bindTimeManagerRoutine != null)
         {
-            _timeManager.OnDayChanged -= TriggerNewDaySpawning;
+            StopCoroutine(_bindTimeManagerRoutine);
+            _bindTimeManagerRoutine = null;
         }
+
+        UnbindTimeManager();
+    }
+
+    private void TryBindTimeManager()
+    {
+        TimeManagerView found = FindAnyObjectByType<TimeManagerView>();
+        if (found == null)
+            return;
+
+        BindTimeManager(found);
+    }
+
+    private IEnumerator BindTimeManagerWhenReady()
+    {
+        int attempts = 0;
+
+        while (_timeManager == null)
+        {
+            attempts++;
+            TryBindTimeManager();
+            if (_timeManager == null)
+            {
+                if (attempts == 1 || attempts % 10 == 0)
+                {
+                    Debug.LogWarning(
+                        "[ResourceSpawnerManager] Waiting for TimeManagerView in scene to subscribe OnDayChanged.");
+                }
+
+                yield return new WaitForSeconds(0.5f);
+            }
+        }
+
+        _bindTimeManagerRoutine = null;
+    }
+
+    private void BindTimeManager(TimeManagerView manager)
+    {
+        if (manager == null)
+            return;
+
+        if (_timeManager == manager)
+        {
+            // Defensive de-duplication in case lifecycle methods re-enter.
+            _timeManager.OnDayChanged -= TriggerNewDaySpawning;
+            _timeManager.OnDayChanged += TriggerNewDaySpawning;
+            return;
+        }
+
+        UnbindTimeManager();
+        _timeManager = manager;
+        _timeManager.OnDayChanged += TriggerNewDaySpawning;
+        LogDebug("Subscribed to TimeManagerView.OnDayChanged.");
+    }
+
+    private void UnbindTimeManager()
+    {
+        if (_timeManager == null)
+            return;
+
+        _timeManager.OnDayChanged -= TriggerNewDaySpawning;
+        LogDebug("Unsubscribed from TimeManagerView.OnDayChanged.");
+        _timeManager = null;
+    }
+
+    private void LogDebug(string message)
+    {
+        if (!showDebugLogs)
+            return;
+
+        Debug.Log($"[ResourceSpawnerManager] {message}");
     }
 
     public bool IsValidSpawnTile(int chunkX, int chunkY, int tileIndex)
@@ -85,10 +167,22 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
     public void TriggerNewDaySpawning()
     {
+        LogDebug($"OnDayChanged received. IsMasterClient={PhotonNetwork.IsMasterClient}, InRoom={PhotonNetwork.InRoom}");
+
         if (!PhotonNetwork.IsMasterClient) return;
 
         var worldData = WorldDataManager.Instance;
         var catalog = ResourceCatalogManager.Instance;
+        int totalSpawned = 0;
+        int activeSections = 0;
+        int nullSections = 0;
+        int chunksChecked = 0;
+        int chunksLoaded = 0;
+        int chunksAtCapacity = 0;
+        int chunksNoSpawnBudget = 0;
+        int chunksNoValidTiles = 0;
+        int totalValidTilesFound = 0;
+        TileScanStats totalTileScanStats = new TileScanStats();
 
         if (worldData == null || !worldData.IsInitialized)
         {
@@ -108,26 +202,55 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         foreach (var sectionConfig in worldData.sectionConfigs)
         {
             if (!sectionConfig.IsActive) continue;
+            activeSections++;
 
             Dictionary<Vector2Int, UnifiedChunkData> section =
                 worldData.GetSection(sectionConfig.SectionId);
-            if (section == null) continue;
+            if (section == null)
+            {
+                nullSections++;
+                continue;
+            }
 
             foreach (var pair in section)
             {
+                chunksChecked++;
                 UnifiedChunkData chunk = pair.Value;
                 if (chunk == null || !chunk.IsLoaded) continue;
+                chunksLoaded++;
 
                 int currentResources = chunk.GetResourceCount();
-                if (currentResources >= maxResourcesPerChunk) continue;
+                if (currentResources >= maxResourcesPerChunk)
+                {
+                    chunksAtCapacity++;
+                    continue;
+                }
 
                 int amountToSpawn = Mathf.Min(
                     dailySpawnRate,
                     maxResourcesPerChunk - currentResources);
-                if (amountToSpawn <= 0) continue;
+                if (amountToSpawn <= 0)
+                {
+                    chunksNoSpawnBudget++;
+                    continue;
+                }
 
-                List<int> validTiles = FindValidEmptyTiles(chunk, chunkSize);
-                if (validTiles.Count == 0) continue;
+                TileScanStats scanStats;
+                List<int> validTiles = FindValidEmptyTiles(chunk, chunkSize, out scanStats);
+                totalTileScanStats.TotalTilesChecked += scanStats.TotalTilesChecked;
+                totalTileScanStats.InvalidSpawnMask += scanStats.InvalidSpawnMask;
+                totalTileScanStats.BlockedByTilled += scanStats.BlockedByTilled;
+                totalTileScanStats.BlockedByCrop += scanStats.BlockedByCrop;
+                totalTileScanStats.BlockedByStructure += scanStats.BlockedByStructure;
+                totalTileScanStats.BlockedByResource += scanStats.BlockedByResource;
+
+                if (validTiles.Count == 0)
+                {
+                    chunksNoValidTiles++;
+                    continue;
+                }
+
+                totalValidTilesFound += validTiles.Count;
 
                 Shuffle(validTiles);
                 int spawnCount = Mathf.Min(amountToSpawn, validTiles.Count);
@@ -151,6 +274,8 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
                         worldTile.y);
                     if (!placed) continue;
 
+                    totalSpawned++;
+
                     chunk.IsDirty = true;
                     WorldSaveManager.TryMarkChunkDirty(
                         chunk.ChunkX,
@@ -166,6 +291,19 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
                         pickedId);
                 }
             }
+        }
+
+        LogDebug(
+            $"Daily spawn pass complete. Spawned={totalSpawned}, ActiveSections={activeSections}, NullSections={nullSections}, " +
+            $"ChunksChecked={chunksChecked}, ChunksLoaded={chunksLoaded}, AtCapacity={chunksAtCapacity}, NoBudget={chunksNoSpawnBudget}, " +
+            $"NoValidTiles={chunksNoValidTiles}, TotalValidTiles={totalValidTilesFound}.");
+
+        if (totalSpawned == 0)
+        {
+            LogDebug(
+                $"Zero-spawn diagnostics: TilesChecked={totalTileScanStats.TotalTilesChecked}, InvalidSpawnMask={totalTileScanStats.InvalidSpawnMask}, " +
+                $"BlockedTilled={totalTileScanStats.BlockedByTilled}, BlockedCrop={totalTileScanStats.BlockedByCrop}, " +
+                $"BlockedStructure={totalTileScanStats.BlockedByStructure}, BlockedResource={totalTileScanStats.BlockedByResource}.");
         }
     }
 
@@ -274,20 +412,45 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         }
     }
 
-    private List<int> FindValidEmptyTiles(UnifiedChunkData chunk, int chunkSize)
+    private List<int> FindValidEmptyTiles(UnifiedChunkData chunk, int chunkSize, out TileScanStats stats)
     {
+        stats = new TileScanStats();
         List<int> valid = new List<int>();
         int totalTiles = chunkSize * chunkSize;
 
         for (int tileIndex = 0; tileIndex < totalTiles; tileIndex++)
         {
-            if (!IsValidSpawnTile(chunk.ChunkX, chunk.ChunkY, tileIndex)) continue;
+            stats.TotalTilesChecked++;
+            if (!IsValidSpawnTile(chunk.ChunkX, chunk.ChunkY, tileIndex))
+            {
+                stats.InvalidSpawnMask++;
+                continue;
+            }
 
             Vector2Int worldTile = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
-            if (chunk.IsTilled(worldTile.x, worldTile.y)) continue;
-            if (chunk.HasCrop(worldTile.x, worldTile.y)) continue;
-            if (chunk.HasStructure(worldTile.x, worldTile.y)) continue;
-            if (chunk.HasResource(worldTile.x, worldTile.y)) continue;
+            if (chunk.IsTilled(worldTile.x, worldTile.y))
+            {
+                stats.BlockedByTilled++;
+                continue;
+            }
+
+            if (chunk.HasCrop(worldTile.x, worldTile.y))
+            {
+                stats.BlockedByCrop++;
+                continue;
+            }
+
+            if (chunk.HasStructure(worldTile.x, worldTile.y))
+            {
+                stats.BlockedByStructure++;
+                continue;
+            }
+
+            if (chunk.HasResource(worldTile.x, worldTile.y))
+            {
+                stats.BlockedByResource++;
+                continue;
+            }
 
             valid.Add(tileIndex);
         }
