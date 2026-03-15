@@ -433,8 +433,6 @@ MonoBehaviour:
   triggerPlant: Plant
   triggerWater: watering
   paramActionX: ActionX
-  plowLockDuration: 0.5
-  waterLockDuration: 0.5
   _animator: {fileID: 2254480422919081186}
   MoveDirection: {x: 0, y: 0}
   LastDirection: {x: 0, y: 0}

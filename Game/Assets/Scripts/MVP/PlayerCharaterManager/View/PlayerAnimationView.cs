@@ -29,11 +29,7 @@ public class PlayerAnimationView : MonoBehaviour
     [Tooltip("Animator Float: -1 = left, 1 = right.")]
     [SerializeField] private string paramActionX = "ActionX";
 
-    [Header("Movement Lock Durations")]
-    [Tooltip("How long (seconds) to lock movement during the plow animation. Match this to your plow clip length.")]
-    [SerializeField] private float plowLockDuration = 0.5f;
-    [Tooltip("How long (seconds) to lock movement during the watering animation. Match this to your watering clip length.")]
-    [SerializeField] private float waterLockDuration = 0.5f;
+    // Movement locks are now dynamic based on checking the animator state.
 
     // ── Runtime refs ──────────────────────────────────────────────────────
     [SerializeField]private Animator    _animator;
@@ -55,14 +51,14 @@ public class PlayerAnimationView : MonoBehaviour
 
     private void OnEnable()
     {
-        CropPlowingView.OnPlowAnimationRequested  += HandlePlowAnimation;
-        CropWateringView.OnWaterAnimationRequested += HandleWaterAnimation;
+        UseToolService.OnHoeRequested += HandleHoeAnimation;
+        UseToolService.OnWateringCanRequested += HandleWaterAnimation;
     }
 
     private void OnDisable()
     {
-        CropPlowingView.OnPlowAnimationRequested  -= HandlePlowAnimation;
-        CropWateringView.OnWaterAnimationRequested -= HandleWaterAnimation;
+        UseToolService.OnHoeRequested -= HandleHoeAnimation;
+        UseToolService.OnWateringCanRequested -= HandleWaterAnimation;
     }
 
     // ── Called by PlayerMovement every frame ──────────────────────────────
@@ -93,24 +89,82 @@ public class PlayerAnimationView : MonoBehaviour
         }
     }
 
-    private void HandlePlowAnimation(Vector2 plowDirection)
+    private void HandleHoeAnimation(ToolData tool, Vector3 targetPos)
     {
         if (_photonView != null && !_photonView.IsMine) return;
 
-        _animator?.SetFloat(paramActionX, plowDirection.x);
+        float rawX = targetPos.x - transform.position.x;
+        float dirX = rawX >= 0 ? 1f : -1f;
+
+        _animator?.SetFloat(paramActionX, dirX);
         _animator?.SetTrigger(triggerPlow);
 
-        StartCoroutine(LockFor(plowLockDuration));
+        if (_animator != null)
+        {
+            StartCoroutine(LockUntilAnimationFinishes());
+        }
 
         if (_photonView != null && PhotonNetwork.IsConnected)
-            _photonView.RPC(nameof(RPC_TriggerPlow), RpcTarget.Others, plowDirection.x);
+            _photonView.RPC(nameof(RPC_TriggerPlow), RpcTarget.Others, dirX);
     }
 
-    /// <summary>Lock movement for <paramref name="duration"/> seconds then release.</summary>
-    private IEnumerator LockFor(float duration)
+    /// <summary>
+    /// Locks movement until the current action animation is completely finished.
+    /// This dynamically waits for the Animator rather than using hardcoded durations.
+    /// </summary>
+    private IEnumerator LockUntilAnimationFinishes()
     {
         IsMovementLocked = true;
-        yield return new WaitForSeconds(duration);
+
+        if (_animator == null)
+        {
+            IsMovementLocked = false;
+            yield break;
+        }
+
+        // 1. Wait until the Animator has actually begun responding to the trigger.
+        // We capture the current state (e.g., Idle/Walk), then wait until we are either 
+        // transitioning or have fully entered the new Action state.
+        int initialHash = _animator.GetCurrentAnimatorStateInfo(0).fullPathHash;
+        
+        float timeout = 0.5f;
+        while (timeout > 0f)
+        {
+            if (_animator.IsInTransition(0) || _animator.GetCurrentAnimatorStateInfo(0).fullPathHash != initialHash)
+                break;
+                
+            timeout -= Time.deltaTime;
+            yield return null;
+        }
+
+        // 2. Wait until the transition INTO the Action state is complete.
+        while (_animator.IsInTransition(0))
+        {
+            yield return null;
+        }
+
+        // 3. Now we are officially in the Action state. Wait until it finishes.
+        int actionStateHash = _animator.GetCurrentAnimatorStateInfo(0).fullPathHash;
+
+        while (true)
+        {
+            AnimatorStateInfo currentState = _animator.GetCurrentAnimatorStateInfo(0);
+            
+            // If the Animator is no longer in the Action state, we are done.
+            if (currentState.fullPathHash != actionStateHash)
+                break;
+                
+            // If the Animator has started transitioning out (e.g., to Idle), we are done.
+            if (_animator.IsInTransition(0))
+                break;
+                
+            // If the animation clip has finished playing (normalized time >= 1).
+            if (currentState.normalizedTime >= 1.0f)
+                break;
+
+            yield return null;
+        }
+
         IsMovementLocked = false;
     }
 
@@ -121,17 +175,23 @@ public class PlayerAnimationView : MonoBehaviour
         _animator?.SetTrigger(triggerPlow);
     }
 
-    private void HandleWaterAnimation(Vector2 waterDirection)
+    private void HandleWaterAnimation(ToolData tool, Vector3 targetPos)
     {
         if (_photonView != null && !_photonView.IsMine) return;
 
-        _animator?.SetFloat(paramActionX, waterDirection.x);
+        float rawX = targetPos.x - transform.position.x;
+        float dirX = rawX >= 0 ? 1f : -1f;
+
+        _animator?.SetFloat(paramActionX, dirX);
         _animator?.SetTrigger(triggerWater);
 
-        StartCoroutine(LockFor(waterLockDuration));
+        if (_animator != null)
+        {
+            StartCoroutine(LockUntilAnimationFinishes());
+        }
 
         if (_photonView != null && PhotonNetwork.IsConnected)
-            _photonView.RPC(nameof(RPC_TriggerWater), RpcTarget.Others, waterDirection.x);
+            _photonView.RPC(nameof(RPC_TriggerWater), RpcTarget.Others, dirX);
     }
 
     [PunRPC]

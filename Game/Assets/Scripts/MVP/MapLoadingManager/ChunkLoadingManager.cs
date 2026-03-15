@@ -511,12 +511,12 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 GameObject visual;
                 if (cropVisualPrefab != null)
                 {
-                    visual = Instantiate(cropVisualPrefab, new Vector3(tile.WorldX, tile.WorldY, 0), Quaternion.identity);
+                    visual = Instantiate(cropVisualPrefab, new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.5f, 0f), Quaternion.identity);
                 }
                 else
                 {
                     visual = new GameObject();
-                    visual.transform.position = new Vector3(tile.WorldX, tile.WorldY, 0);
+                    visual.transform.position = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.5f, 0f);
                 }
 
                 visual.name = $"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}";

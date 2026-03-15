@@ -39,6 +39,12 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private const byte STRUCTURE_REMOVED_EVENT = 91;
     private const byte TILE_WATERED_EVENT      = 120;
     private const byte TILE_UNWATERED_EVENT    = 121;
+    private const byte RESOURCE_HP_UPDATED_EVENT = 122;
+    private const byte RESOURCE_REMOVED_EVENT    = 123;
+    
+    // Static events for Visual Managers to hook into
+    public static event Action<int, int, int> OnResourceHpUpdated;
+    public static event Action<int, int>      OnResourceRemoved;
     
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
@@ -187,6 +193,14 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
             case TILE_UNWATERED_EVENT:
                 HandleTileUnwatered(photonEvent.CustomData);
+                break;
+
+            case RESOURCE_HP_UPDATED_EVENT:
+                HandleResourceHpUpdated(photonEvent.CustomData);
+                break;
+
+            case RESOURCE_REMOVED_EVENT:
+                HandleResourceRemoved(photonEvent.CustomData);
                 break;
         }
     }
@@ -968,6 +982,87 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 }
             }
         }
+    }
+
+    // ── Resource Broadcasts & Handlers ────────────────────────────────────
+
+    public void BroadcastResourceHpUpdated(int worldX, int worldY, int newHp)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY, newHp };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            RESOURCE_HP_UPDATED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleResourceHpUpdated(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+        int newHp  = (int)dataArray[2];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        
+        // Ensure WorldDataManager is robust enough to not explode here.
+        WorldDataManager.Instance.UpdateResourceHpAtWorldPosition(worldPos, newHp);
+
+        // Fire C# event so ResourceSpawnerManager can play hit animation
+        OnResourceHpUpdated?.Invoke(worldX, worldY, newHp);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received Resource HP Updated at ({worldX},{worldY}) -> {newHp}");
+    }
+
+    public void BroadcastResourceRemoved(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            RESOURCE_REMOVED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleResourceRemoved(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+
+        // Remove from local RAM
+        WorldDataManager.Instance.RemoveResourceAtWorldPosition(worldPos);
+
+        // Fire C# event so ResourceSpawnerManager can destroy the visual GameObject
+        OnResourceRemoved?.Invoke(worldX, worldY);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received Resource Removed at ({worldX},{worldY})");
     }
 
     #region Serialization Helpers

@@ -56,6 +56,8 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         public int BlockedByResource;
     }
 
+    private ResourceHarvestingService _resourceHarvestingService;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -65,6 +67,12 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         }
 
         Instance = this;
+
+        _resourceHarvestingService = new ResourceHarvestingService(
+            WorldDataManager.Instance,
+            FindAnyObjectByType<ChunkDataSyncManager>(),
+            FindAnyObjectByType<InventoryGameView>()
+        );
     }
 
     private void OnDestroy()
@@ -82,6 +90,9 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         {
             _bindTimeManagerRoutine = StartCoroutine(BindTimeManagerWhenReady());
         }
+
+        ChunkDataSyncManager.OnResourceHpUpdated += HandleResourceHpUpdated;
+        ChunkDataSyncManager.OnResourceRemoved   += HandleResourceRemoved;
     }
 
     private void OnDisable()
@@ -95,6 +106,9 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         }
 
         UnbindTimeManager();
+
+        ChunkDataSyncManager.OnResourceHpUpdated -= HandleResourceHpUpdated;
+        ChunkDataSyncManager.OnResourceRemoved   -= HandleResourceRemoved;
     }
 
     private void TryBindTimeManager()
@@ -584,4 +598,58 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     public void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps) { }
     public void OnMasterClientSwitched(Player newMasterClient) { }
 
+    private void HandleResourceHpUpdated(int worldX, int worldY, int newHp)
+    {
+        if (TryGetVisualFromWorld(worldX, worldY, out GameObject visual))
+        {
+            StartCoroutine(HitFlashVisual(visual));
+        }
+    }
+
+    private void HandleResourceRemoved(int worldX, int worldY)
+    {
+        if (WorldTileToVisualKey(worldX, worldY, out string key))
+        {
+            if (_spawnedVisuals.TryGetValue(key, out GameObject visual) && visual != null)
+            {
+                Destroy(visual);
+            }
+            _spawnedVisuals.Remove(key);
+        }
+    }
+
+    private IEnumerator HitFlashVisual(GameObject visual)
+    {
+        if (visual == null) yield break;
+        Vector3 origScale = visual.transform.localScale;
+        visual.transform.localScale = origScale * 0.8f;
+        yield return new WaitForSeconds(0.1f);
+        if (visual != null) visual.transform.localScale = origScale;
+    }
+
+    private bool TryGetVisualFromWorld(int worldX, int worldY, out GameObject visual)
+    {
+        visual = null;
+        if (!WorldTileToVisualKey(worldX, worldY, out string key)) return false;
+        return _spawnedVisuals.TryGetValue(key, out visual) && visual != null;
+    }
+
+    private bool WorldTileToVisualKey(int worldX, int worldY, out string key)
+    {
+        key = null;
+        WorldDataManager worldData = WorldDataManager.Instance;
+        if (worldData == null) return false;
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        Vector2Int chunkPos = worldData.WorldToChunkCoords(worldPos);
+        
+        int chunkSize = worldData.chunkSizeTiles;
+        int localX = worldX - (chunkPos.x * chunkSize);
+        int localY = worldY - (chunkPos.y * chunkSize);
+
+        int tileIndex = localY * chunkSize + localX;
+        
+        key = MakeVisualKey(chunkPos.x, chunkPos.y, tileIndex);
+        return true;
+    }
 }
