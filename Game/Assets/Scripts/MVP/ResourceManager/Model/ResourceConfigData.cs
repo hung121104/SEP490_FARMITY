@@ -22,7 +22,8 @@ public class ResourceConfigData
     public string resourceId = "";
     public string name = "";
     public int maxHp = 1;
-    public string requiredToolId;
+    public ToolType requiredToolType = ToolType.Axe;
+    public int minToolPower = 1;
     public string spriteUrl;
     public string resourceType = "tree";
     public int spawnWeight = 1;

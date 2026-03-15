@@ -825,7 +825,8 @@ Depending on `itemType`, specific extra fields must be included:
           "resourceId": "string",
           "name": "string",
           "maxHp": 100,
-          "requiredToolId": "string|null",
+          "requiredToolType": "string",
+          "minToolPower": 1,
           "spriteUrl": "string|null",
           "dropTable": [
             {
@@ -859,7 +860,8 @@ Depending on `itemType`, specific extra fields must be included:
 | `maxHp` | int | ✅ | Initial HP used by host RAM state |
 | `resourceType` | string | ✅ | Classification of the resource (`tree`, `rock`, or `ore`) for prefab/collider selection |
 | `spawnWeight` | int | — | Relative probability weight for random spawning within chunks (default is 1) |
-| `requiredToolId` | string\|null | — | Optional minimum/required tool identifier |
+| `requiredToolType` | string | — | Required tool type to harvest this resource (default `Axe`) |
+| `minToolPower` | int | — | Minimum tool power required to harvest (default 1) |
 | `spriteUrl` | string\|null | — | Cloudinary URL for the resource sprite. **Auto-filled** if a `sprite` file is uploaded. |
 | `dropTable` | array | ✅ | Array of item drops with chance and amount range |
 

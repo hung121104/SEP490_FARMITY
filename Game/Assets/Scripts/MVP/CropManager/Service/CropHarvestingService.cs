@@ -193,19 +193,15 @@ public class ResourceHarvestingService : IResourceHarvestingService
 
     private void HandleAxeRequested(ToolData tool, Vector3 pos)
     {
-        TryHitResource(tool, pos, "tree");
+        TryHitResource(tool, pos);
     }
 
     private void HandlePickaxeRequested(ToolData tool, Vector3 pos)
     {
-        // Pickaxe works on both rocks and ores
-        if (!TryHitResource(tool, pos, "rock"))
-        {
-            TryHitResource(tool, pos, "ore");
-        }
+        TryHitResource(tool, pos);
     }
 
-    private bool TryHitResource(ToolData tool, Vector3 worldPos, string requiredResourceType)
+    private bool TryHitResource(ToolData tool, Vector3 worldPos)
     {
         if (worldData == null) return false;
         
@@ -223,22 +219,17 @@ public class ResourceHarvestingService : IResourceHarvestingService
         ResourceConfigData configData = ResourceCatalogManager.Instance?.GetResourceConfig(tileData.ResourceId);
         if (configData == null) return false;
 
-        // Ensure tool matches the required resource type
-        if (!string.Equals(configData.resourceType, requiredResourceType, System.StringComparison.OrdinalIgnoreCase))
+        // Ensure tool matches the required tool type and has sufficient power
+        if (tool.toolType != configData.requiredToolType || tool.toolPower < configData.minToolPower)
         {
-            if (configData.resourceType == "ore" && requiredResourceType == "rock") 
-            {
-                // Accept Pickaxe for ore as well
-            }
-            else
-            {
-                return false;
-            }
+            return false;
         }
 
-        // Apply Damage
-        int damage = Mathf.Max(1, tool.toolPower);
-        int newHp = tileData.CurrentHp - damage;
+        // Apply Damage Formula: tool power + (tool power - minimum tool power)
+        int calculatedDamage = tool.toolPower + (tool.toolPower - configData.minToolPower);
+        if (calculatedDamage <= 0) calculatedDamage = 1;
+
+        int newHp = tileData.CurrentHp - calculatedDamage;
 
         if (newHp > 0)
         {
