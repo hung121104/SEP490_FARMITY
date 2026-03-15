@@ -187,6 +187,8 @@ public class ShopPresenter
         _view.OnItemDroppedToSell -= HandleItemDroppedToSell;
         _view.OnSellSlotClicked -= ReturnItemToInventory;
         if (_inventoryUI != null) _inventoryUI.OnSlotClicked -= HandleInventorySlotClicked;
+
+        Debug.Log("[ShopPresenter] Unsubscribed from all inventory events");
     }
 
     private void HandleCloseShop() { ShopSystemManager.Instance.CloseShopUI(); }
