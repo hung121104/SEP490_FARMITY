@@ -41,10 +41,12 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private const byte TILE_UNWATERED_EVENT    = 121;
     private const byte RESOURCE_HP_UPDATED_EVENT = 122;
     private const byte RESOURCE_REMOVED_EVENT    = 123;
+    private const byte RESOURCE_SPAWNED_EVENT    = 124;
     
     // Static events for Visual Managers to hook into
     public static event Action<int, int, int> OnResourceHpUpdated;
     public static event Action<int, int>      OnResourceRemoved;
+    public static event Action<int, int, string> OnResourceSpawned;
     
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
@@ -201,6 +203,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
             case RESOURCE_REMOVED_EVENT:
                 HandleResourceRemoved(photonEvent.CustomData);
+                break;
+
+            case RESOURCE_SPAWNED_EVENT:
+                HandleResourceSpawned(photonEvent.CustomData);
                 break;
         }
     }
@@ -988,6 +994,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
     public void BroadcastResourceHpUpdated(int worldX, int worldY, int newHp)
     {
+        // Fire locally so the initiating player sees their own VFX
+        OnResourceHpUpdated?.Invoke(worldX, worldY, newHp);
+
         if (!PhotonNetwork.IsConnected) return;
 
         object[] data = new object[] { worldX, worldY, newHp };
@@ -1024,10 +1033,15 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received Resource HP Updated at ({worldX},{worldY}) -> {newHp}");
+
+        MarkDirty(worldX, worldY);
     }
 
     public void BroadcastResourceRemoved(int worldX, int worldY)
     {
+        // Fire locally so the initiating player destroys the visual
+        OnResourceRemoved?.Invoke(worldX, worldY);
+
         if (!PhotonNetwork.IsConnected) return;
 
         object[] data = new object[] { worldX, worldY };
@@ -1063,6 +1077,49 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received Resource Removed at ({worldX},{worldY})");
+
+        MarkDirty(worldX, worldY);
+    }
+
+    public void BroadcastResourceSpawned(int worldX, int worldY, string resourceId, int currentHp)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY, resourceId, currentHp };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            RESOURCE_SPAWNED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleResourceSpawned(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+        string resourceId = (string)dataArray[2];
+        int currentHp = (int)dataArray[3];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+
+        // Add to local RAM
+        WorldDataManager.Instance.PlaceResourceAtWorldPosition(worldPos, resourceId, currentHp);
+
+        // Fire C# event so ResourceSpawnerManager can instantiate the visual GameObject
+        OnResourceSpawned?.Invoke(worldX, worldY, resourceId);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received Resource Spawned at ({worldX},{worldY}) -> {resourceId}");
     }
 
     #region Serialization Helpers

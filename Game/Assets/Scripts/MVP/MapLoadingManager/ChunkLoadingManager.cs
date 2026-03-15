@@ -571,13 +571,12 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 }
             }
 
-            // If tile has a resource, spawn/refresh its visual using ResourceSpawnerManager.
             if (visualizeResources && tile.HasResource && resourceSpawner != null && !string.IsNullOrEmpty(tile.Resource.ResourceId))
             {
                 int tileIndex = WorldTileToTileIndex(chunk.ChunkX, chunk.ChunkY, tile.WorldX, tile.WorldY);
                 if (tileIndex >= 0)
                 {
-                    resourceSpawner.RPC_SpawnResourceVisual(
+                    resourceSpawner.SpawnResourceVisualLocally(
                         chunk.ChunkX,
                         chunk.ChunkY,
                         tileIndex,

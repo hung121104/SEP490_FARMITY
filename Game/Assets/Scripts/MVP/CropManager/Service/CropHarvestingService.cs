@@ -244,7 +244,7 @@ public class ResourceHarvestingService : IResourceHarvestingService
         {
             // Resource survives
             worldData.UpdateResourceHpAtWorldPosition(snappedPos, newHp);
-            if (PhotonNetwork.IsConnected && syncManager != null)
+            if (syncManager != null)
             {
                 syncManager.BroadcastResourceHpUpdated(wx, wy, newHp);
             }
@@ -255,7 +255,7 @@ public class ResourceHarvestingService : IResourceHarvestingService
             // Resource Destroyed!
             worldData.RemoveResourceAtWorldPosition(snappedPos);
             
-            if (PhotonNetwork.IsConnected && syncManager != null)
+            if (syncManager != null)
             {
                 syncManager.BroadcastResourceRemoved(wx, wy);
             }

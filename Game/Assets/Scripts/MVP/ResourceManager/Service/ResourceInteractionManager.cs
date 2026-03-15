@@ -69,12 +69,12 @@ public class ResourceInteractionManager : MonoBehaviourPun
             chunk.IsDirty = true;
             WorldSaveManager.TryMarkChunkDirty(chunkX, chunkY, sectionId);
 
-            photonView.RPC(
-                nameof(RPC_Client_PlayHitEffect),
-                RpcTarget.All,
-                chunkX,
-                chunkY,
-                tileIndex);
+            ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
+            if (syncManager != null)
+            {
+                syncManager.BroadcastResourceHpUpdated(Mathf.FloorToInt(worldTile.x), Mathf.FloorToInt(worldTile.y), newHp);
+            }
+            PlayHitEffectLocally(chunkX, chunkY, tileIndex);
             return;
         }
 
@@ -86,16 +86,15 @@ public class ResourceInteractionManager : MonoBehaviourPun
         Vector3 worldPos = new Vector3(worldTile.x, worldTile.y, 0f);
         SpawnLootDrops(config, worldPos);
 
-        photonView.RPC(
-            nameof(RPC_Client_DestroyResource),
-            RpcTarget.All,
-            chunkX,
-            chunkY,
-            tileIndex);
+        ChunkDataSyncManager syncManagerEnd = FindAnyObjectByType<ChunkDataSyncManager>();
+        if (syncManagerEnd != null)
+        {
+            syncManagerEnd.BroadcastResourceRemoved(Mathf.FloorToInt(worldTile.x), Mathf.FloorToInt(worldTile.y));
+        }
+        DestroyResourceLocally(chunkX, chunkY, tileIndex);
     }
 
-    [PunRPC]
-    public void RPC_Client_PlayHitEffect(int chunkX, int chunkY, int tileIndex)
+    public void PlayHitEffectLocally(int chunkX, int chunkY, int tileIndex)
     {
         if (!TryFindResourceVisual(chunkX, chunkY, tileIndex, out GameObject visual))
             return;
@@ -109,8 +108,7 @@ public class ResourceInteractionManager : MonoBehaviourPun
             animator.SetTrigger(hitAnimatorTrigger);
     }
 
-    [PunRPC]
-    public void RPC_Client_DestroyResource(int chunkX, int chunkY, int tileIndex)
+    public void DestroyResourceLocally(int chunkX, int chunkY, int tileIndex)
     {
         if (ResourceSpawnerManager.Instance != null)
         {

@@ -200,7 +200,10 @@ public class UnifiedChunkData : BaseChunkData
         slot.Crop    = default;
 
         if (!slot.IsTilled && !slot.HasStructure && !slot.HasResource)
+        {
             tiles.Remove(key);
+            PendingUntilledPositions.Add((worldX, worldY));
+        }
         else
             tiles[key] = slot;
 
@@ -473,7 +476,10 @@ public class UnifiedChunkData : BaseChunkData
         slot.HasStructure = false;
         slot.Structure    = default;
         if (!slot.IsTilled && !slot.HasCrop && !slot.HasResource)
+        {
             tiles.Remove(key);
+            PendingUntilledPositions.Add((worldX, worldY));
+        }
         else
             tiles[key] = slot;
         IsDirty = true;
@@ -563,7 +569,10 @@ public class UnifiedChunkData : BaseChunkData
         slot.Resource = default;
 
         if (!slot.IsTilled && !slot.HasCrop && !slot.HasStructure)
+        {
             tiles.Remove(key);
+            PendingUntilledPositions.Add((worldX, worldY));
+        }
         else
             tiles[key] = slot;
 

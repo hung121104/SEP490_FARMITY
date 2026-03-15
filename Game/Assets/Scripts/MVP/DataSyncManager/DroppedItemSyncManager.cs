@@ -12,24 +12,24 @@ using ExitGames.Client.Photon;
 /// isSyncing flag, late-join batch sync, Master authority).
 ///
 /// Event Codes:
-///   120 - ITEM_DROP_REQUEST    (client → master)
-///   121 - ITEM_SPAWNED         (master → all)
-///   122 - ITEM_PICKUP_REQUEST  (client → master)
-///   123 - ITEM_REMOVED         (master → all, includes pickedByActor)
-///   124 - ITEM_SYNC_REQUEST    (late joiner → master)
-///   125 - ITEM_SYNC_BATCH      (master → late joiner)
-///   126 - ITEM_DESPAWN_NOTIFY  (master → all, TTL expired)
+///   140 - ITEM_DROP_REQUEST    (client → master)
+///   141 - ITEM_SPAWNED         (master → all)
+///   142 - ITEM_PICKUP_REQUEST  (client → master)
+///   143 - ITEM_REMOVED         (master → all, includes pickedByActor)
+///   144 - ITEM_SYNC_REQUEST    (late joiner → master)
+///   145 - ITEM_SYNC_BATCH      (master → late joiner)
+///   146 - ITEM_DESPAWN_NOTIFY  (master → all, TTL expired)
 /// </summary>
 public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
 {
     // ── Event Codes ──────────────────────────────────────────
-    private const byte ITEM_DROP_REQUEST    = 120;
-    private const byte ITEM_SPAWNED         = 121;
-    private const byte ITEM_PICKUP_REQUEST  = 122;
-    private const byte ITEM_REMOVED         = 123;
-    private const byte ITEM_SYNC_REQUEST    = 124;
-    private const byte ITEM_SYNC_BATCH      = 125;
-    private const byte ITEM_DESPAWN_NOTIFY  = 126;
+    private const byte ITEM_DROP_REQUEST    = 140;
+    private const byte ITEM_SPAWNED         = 141;
+    private const byte ITEM_PICKUP_REQUEST  = 142;
+    private const byte ITEM_REMOVED         = 143;
+    private const byte ITEM_SYNC_REQUEST    = 144;
+    private const byte ITEM_SYNC_BATCH      = 145;
+    private const byte ITEM_DESPAWN_NOTIFY  = 146;
 
     [Header("Sync Settings")]
     [Tooltip("Maximum items per batch during late-join sync")]

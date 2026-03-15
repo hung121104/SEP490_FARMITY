@@ -93,6 +93,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
         ChunkDataSyncManager.OnResourceHpUpdated += HandleResourceHpUpdated;
         ChunkDataSyncManager.OnResourceRemoved   += HandleResourceRemoved;
+        ChunkDataSyncManager.OnResourceSpawned   += HandleResourceSpawned;
     }
 
     private void OnDisable()
@@ -109,6 +110,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
         ChunkDataSyncManager.OnResourceHpUpdated -= HandleResourceHpUpdated;
         ChunkDataSyncManager.OnResourceRemoved   -= HandleResourceRemoved;
+        ChunkDataSyncManager.OnResourceSpawned   -= HandleResourceSpawned;
     }
 
     private void TryBindTimeManager()
@@ -360,13 +362,12 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
                         chunk.ChunkY,
                         chunk.SectionId);
 
-                    photonView.RPC(
-                        nameof(RPC_SpawnResourceVisual),
-                        RpcTarget.All,
-                        chunk.ChunkX,
-                        chunk.ChunkY,
-                        tileIndex,
-                        pickedId);
+                    ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
+                    if (syncManager != null)
+                    {
+                        syncManager.BroadcastResourceSpawned(worldTile.x, worldTile.y, pickedId, Mathf.Max(1, configData.maxHp));
+                    }
+                    SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, tileIndex, pickedId);
                 }
             }
         }
@@ -385,8 +386,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         }
     }
 
-    [PunRPC]
-    public void RPC_SpawnResourceVisual(int chunkX, int chunkY, int tileIndex, string resourceId)
+    public void SpawnResourceVisualLocally(int chunkX, int chunkY, int tileIndex, string resourceId)
     {
         string visualKey = MakeVisualKey(chunkX, chunkY, tileIndex);
         if (_spawnedVisuals.TryGetValue(visualKey, out GameObject existing))
@@ -616,6 +616,23 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
             }
             _spawnedVisuals.Remove(key);
         }
+    }
+
+    private void HandleResourceSpawned(int worldX, int worldY, string resourceId)
+    {
+        WorldDataManager worldData = WorldDataManager.Instance;
+        if (worldData == null) return;
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        Vector2Int chunkPos = worldData.WorldToChunkCoords(worldPos);
+        
+        int chunkSize = worldData.chunkSizeTiles;
+        int localX = worldX - (chunkPos.x * chunkSize);
+        int localY = worldY - (chunkPos.y * chunkSize);
+
+        int tileIndex = localY * chunkSize + localX;
+
+        SpawnResourceVisualLocally(chunkPos.x, chunkPos.y, tileIndex, resourceId);
     }
 
     private IEnumerator HitFlashVisual(GameObject visual)
