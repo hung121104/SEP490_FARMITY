@@ -17,6 +17,7 @@ import {
   UploadedFile,
   UploadedFiles,
   BadRequestException,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
@@ -1163,7 +1164,7 @@ export class GatewayController {
     if (!accountId) throw new UnauthorizedException('Missing account');
     try {
       return await firstValueFrom(
-        this.playerDataClient.send('get-player-achievements', String(accountId)),
+        this.authClient.send('get-player-achievements', String(accountId)),
       );
     } catch (err) {
       throw this.rpcError(err);
@@ -1180,9 +1181,30 @@ export class GatewayController {
     if (!accountId) throw new UnauthorizedException('Missing account');
     try {
       return await firstValueFrom(
-        this.playerDataClient.send('update-achievement-progress', {
+        this.authClient.send('update-achievement-progress', {
           ...dto,
           accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/achievement/progress/batch — update progress for multiple requirements in one call */
+  @Put('player-data/achievement/progress/batch')
+  async updateAchievementProgressBatch(
+    @Body(new ParseArrayPipe({ items: UpdateAchievementProgressDto }))
+    updates: UpdateAchievementProgressDto[],
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    try {
+      return await firstValueFrom(
+        this.authClient.send('update-achievement-progress-batch', {
+          accountId: String(accountId),
+          updates,
         }),
       );
     } catch (err) {
