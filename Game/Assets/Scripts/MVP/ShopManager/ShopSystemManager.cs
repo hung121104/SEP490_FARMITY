@@ -10,11 +10,11 @@ public class ShopSystemManager : MonoBehaviour
     [SerializeField] private InventoryDropZone inventoryDropZone;
 
     [Header("Time System")]
-
     [SerializeField] private TimeManagerView timeManager;
 
     [Header("UI Shop Views")]
     [SerializeField] private ShopView shopMainView;
+    [Tooltip("Kéo object InventoryDockPanel vào đây để nhét túi đồ vào")]
     [SerializeField] private Transform shopMainPanel;
 
     private IInventoryService inventoryService;
@@ -28,7 +28,6 @@ public class ShopSystemManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-
         shopMainView?.SetVisible(false);
     }
 
@@ -36,18 +35,13 @@ public class ShopSystemManager : MonoBehaviour
     {
         InitializeInventoryReferences();
 
-        if (timeManager == null)
-        {
-            timeManager = FindFirstObjectByType<TimeManagerView>();
-        }
+        if (timeManager == null) timeManager = FindFirstObjectByType<TimeManagerView>();
 
         if (timeManager != null)
         {
             timeManager.OnDayChanged -= ResetAllShopsForNewDay;
             timeManager.OnDayChanged += ResetAllShopsForNewDay;
-            
         }
-        
     }
 
     private void InitializeInventoryReferences()
@@ -61,7 +55,6 @@ public class ShopSystemManager : MonoBehaviour
 
     public void OpenShopUI(ItemType shopType)
     {
-       
         currentOpenShopType = shopType;
         isShopOpen = true;
 
@@ -73,57 +66,45 @@ public class ShopSystemManager : MonoBehaviour
         }
 
         IShopService currentShopService = dailyShopsMemory[shopType];
-
         shopPresenter = new ShopPresenter(shopMainView, currentShopService, inventoryGameView, inventoryService);
 
         shopMainView.SetVisible(true);
-        if (inventoryGameView != null) inventoryGameView.OpenInventory();
 
-        shopMainView.ToggleExternalInventory(true);
-        shopMainView.ToggleInventoryTabs(false);
-        shopMainView.ToggleHotbar(false);
-
-        if (inventoryDropZone != null)
+        if (inventoryGameView != null)
         {
-            inventoryDropZone.AllowDropOutside = false;
+            inventoryGameView.OpenCraftingInventory(shopMainPanel);
         }
-       
+
+        if (inventoryDropZone != null) inventoryDropZone.AllowDropOutside = false;
+        shopMainView.ToggleHotbar(false);
     }
 
     public void CloseShopUI()
     {
-        
         isShopOpen = false;
-
         shopPresenter?.CloseShop();
         shopPresenter = null;
-        shopMainView.SetVisible(false);
-        inventoryGameView?.CloseInventory();
-        shopMainView.ToggleExternalInventory(false);
-        shopMainView.ToggleInventoryTabs(true);
-        shopMainView.ToggleHotbar(true);
 
-        if (inventoryDropZone != null)
+        shopMainView.SetVisible(false);
+
+        if (inventoryGameView != null)
         {
-            inventoryDropZone.AllowDropOutside = true;
+            inventoryGameView.CloseInventory();
         }
+
+        if (inventoryDropZone != null) inventoryDropZone.AllowDropOutside = true;
+        shopMainView.ToggleHotbar(true);
     }
 
     private void ResetAllShopsForNewDay()
     {
         dailyShopsMemory.Clear();
-
         if (isShopOpen && shopPresenter != null)
         {
-         
             IShopService refreshedShopService = new ShopService(currentOpenShopType);
             refreshedShopService.GenerateDailyItems();
-
             dailyShopsMemory.Add(currentOpenShopType, refreshedShopService);
-
             shopPresenter.RefreshShopData(refreshedShopService);
         }
-
-        Debug.Log("[Shop] Shop reset.");
     }
 }

@@ -53,6 +53,8 @@ MonoBehaviour:
   - RPC_SyncFishingAnimation
   - RPC_RestoreAppearance
   - RPC_TriggerWater
+  - RPC_AllSyncGold
+  - RPC_MasterHandleGoldChange
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1
