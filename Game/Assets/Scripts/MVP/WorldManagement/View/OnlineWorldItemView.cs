@@ -8,6 +8,7 @@ public class OnlineWorldItemView : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI roomNameText;
     [SerializeField] private TextMeshProUGUI playerCountText;
+    [SerializeField] private TextMeshProUGUI lockStateText;
     [SerializeField] private Button joinButton;
 
     private string roomName;
@@ -31,6 +32,10 @@ public class OnlineWorldItemView : MonoBehaviour
 
         if (playerCountText != null)
             playerCountText.text = $"{roomInfo.PlayerCount}/{roomInfo.MaxPlayers}";
+
+        bool hasPassword = WorldRoomProperties.GetBool(roomInfo.CustomProperties, WorldRoomProperties.HasPassword, false);
+        if (lockStateText != null)
+            lockStateText.text = hasPassword ? "Locked" : "Open";
 
         if (joinButton != null)
         {

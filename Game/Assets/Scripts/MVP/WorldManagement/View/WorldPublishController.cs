@@ -13,6 +13,8 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
     [Header("Publish Controls")]
     [SerializeField] private Toggle publicToggle;
+    [SerializeField] private Toggle passwordToggle;
+    [SerializeField] private TMP_InputField passwordInput;
     [SerializeField] private Button applyButton;
     [SerializeField] private TextMeshProUGUI statusText;
 
@@ -26,6 +28,9 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
         if (applyButton != null)
             applyButton.onClick.AddListener(ApplyPublishSettings);
+
+        if (passwordToggle != null)
+            passwordToggle.onValueChanged.AddListener(OnPasswordToggleChanged);
 
         if (optionPanel != null)
             optionPanel.SetActive(false);
@@ -43,6 +48,9 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
         if (applyButton != null)
             applyButton.onClick.RemoveListener(ApplyPublishSettings);
+
+        if (passwordToggle != null)
+            passwordToggle.onValueChanged.RemoveListener(OnPasswordToggleChanged);
     }
 
     public override void OnJoinedRoom()
@@ -84,17 +92,41 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
         }
 
         bool makePublic = publicToggle != null && publicToggle.isOn;
+        bool usePassword = passwordToggle != null && passwordToggle.isOn;
+        string plainPassword = passwordInput != null ? (passwordInput.text ?? string.Empty) : string.Empty;
+
+        if (!makePublic)
+        {
+            usePassword = false;
+            plainPassword = string.Empty;
+        }
+
+        if (makePublic && usePassword && string.IsNullOrWhiteSpace(plainPassword))
+        {
+            SetStatus("Password is required when password mode is enabled.");
+            return;
+        }
 
         PhotonNetwork.CurrentRoom.IsVisible = makePublic;
         PhotonNetwork.CurrentRoom.IsOpen = makePublic;
 
         var props = new Hashtable
         {
-            { WorldRoomProperties.IsPublic, makePublic }
+            { WorldRoomProperties.IsPublic, makePublic },
+            { WorldRoomProperties.HasPassword, usePassword },
+            { WorldRoomProperties.PasswordHash, usePassword ? WorldRoomProperties.ComputeSha256(plainPassword) : string.Empty }
         };
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
 
-        SetStatus(makePublic ? "World is now public." : "World is now private.");
+        SetStatus(makePublic
+            ? (usePassword ? "World is now public with password." : "World is now public.")
+            : "World is now private.");
+    }
+
+    private void OnPasswordToggleChanged(bool enabled)
+    {
+        if (passwordInput != null)
+            passwordInput.interactable = enabled;
     }
 
     private bool CanEditPublishState()
@@ -126,11 +158,23 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
             PhotonNetwork.CurrentRoom.CustomProperties,
             WorldRoomProperties.IsPublic,
             PhotonNetwork.CurrentRoom.IsVisible);
+        bool hasPassword = WorldRoomProperties.GetBool(
+            PhotonNetwork.CurrentRoom.CustomProperties,
+            WorldRoomProperties.HasPassword,
+            false);
 
         if (publicToggle != null)
             publicToggle.isOn = isPublic;
 
-        SetStatus(isPublic ? "Current: Public" : "Current: Private");
+        if (passwordToggle != null)
+            passwordToggle.isOn = hasPassword;
+
+        if (passwordInput != null)
+            passwordInput.interactable = hasPassword;
+
+        SetStatus(isPublic
+            ? (hasPassword ? "Current: Public (password protected)" : "Current: Public")
+            : "Current: Private");
     }
 
     private void SetStatus(string message)
