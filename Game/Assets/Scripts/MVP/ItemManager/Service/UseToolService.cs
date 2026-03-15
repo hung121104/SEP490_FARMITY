@@ -13,8 +13,20 @@ public class UseToolService : IUseToolService
     public static event Action<ToolData, Vector3> OnWateringCanRequested;
     public static event Action<ToolData, Vector3> OnPickaxeRequested;
     public static event Action<ToolData, Vector3> OnAxeRequested;
+    public static event Action<ToolData, Vector3> OnPickaxeImpactRequested;
+    public static event Action<ToolData, Vector3> OnAxeImpactRequested;
     public static event Action<ToolData, Vector3> OnFishingRodRequested;
     public static event Action<PollenData, Vector3> OnPollenRequested;
+
+    public static void RaiseAxeImpact(ToolData item, Vector3 pos)
+    {
+        OnAxeImpactRequested?.Invoke(item, pos);
+    }
+
+    public static void RaisePickaxeImpact(ToolData item, Vector3 pos)
+    {
+        OnPickaxeImpactRequested?.Invoke(item, pos);
+    }
 
     // ── IUseToolService implementation ────────────────────────────────────
     public bool UseHoe(ToolData item, Vector3 pos)

@@ -51,17 +51,26 @@ public class ResourceInteractionManager : MonoBehaviourPun
         if (config == null)
             return;
 
-        // Optional/mock tool validation.
-        if (!string.IsNullOrEmpty(config.requiredToolId) &&
-            !string.Equals(config.requiredToolId, toolId, System.StringComparison.OrdinalIgnoreCase))
+        ToolData hitTool = ItemCatalogService.Instance?.GetItemData<ToolData>(toolId);
+        if (hitTool == null)
         {
-            Debug.Log(
-                $"[ResourceInteraction] Reject hit from actor {info.Sender.ActorNumber}: " +
-                $"tool '{toolId}' does not satisfy required '{config.requiredToolId}' for {resourceTile.ResourceId}.");
+            Debug.Log($"[ResourceInteraction] Reject hit from actor {info.Sender.ActorNumber}: tool '{toolId}' not found or not a ToolData.");
             return;
         }
 
-        int newHp = Mathf.Max(0, resourceTile.CurrentHp - damage);
+        if (hitTool.toolType != config.requiredToolType || hitTool.toolPower < config.minToolPower)
+        {
+            Debug.Log(
+                $"[ResourceInteraction] Reject hit from actor {info.Sender.ActorNumber}: " +
+                $"tool '{toolId}' (Type: {hitTool.toolType}, Power: {hitTool.toolPower}) does not satisfy required {config.requiredToolType} with minimum power {config.minToolPower}.");
+            return;
+        }
+
+        // Calculate Damage: tool power + (tool power - minimum tool power)
+        int calculatedDamage = hitTool.toolPower + (hitTool.toolPower - config.minToolPower);
+        if (calculatedDamage <= 0) calculatedDamage = 1; // Fallback safeguard
+
+        int newHp = Mathf.Max(0, resourceTile.CurrentHp - calculatedDamage);
 
         if (newHp > 0)
         {

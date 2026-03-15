@@ -45,7 +45,13 @@ export class CreateResourceConfigDto {
 
   @IsOptional()
   @IsString()
-  requiredToolId?: string | null;
+  @IsIn(['Hoe', 'WateringCan', 'Pickaxe', 'Axe', 'FishingRod'])
+  requiredToolType?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  minToolPower?: number;
 
   @IsOptional()
   @IsString()
