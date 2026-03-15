@@ -220,7 +220,19 @@ public class WorldDataManager : MonoBehaviour
                     }
                 }
 
-                // —— Restore structure ——
+                // ── Restore resource ──
+                if (td.type == "resource" && !string.IsNullOrEmpty(td.resourceId))
+                {
+                    int sectionId = GetSectionIdFromWorldPosition(worldPos);
+                    var chunkPos = WorldToChunkCoords(worldPos);
+                    var chunkData = CropData?.GetChunk(sectionId, chunkPos);
+                    if (chunkData != null)
+                    {
+                        int hp = td.currentHp > 0 ? td.currentHp : 1;
+                        chunkData.PlaceResource(td.resourceId, hp, worldX, worldY);
+                    }
+                }
+
                 tilesApplied++;
             }
         }

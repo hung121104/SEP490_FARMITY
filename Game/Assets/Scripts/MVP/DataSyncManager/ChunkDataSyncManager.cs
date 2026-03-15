@@ -39,6 +39,14 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private const byte STRUCTURE_REMOVED_EVENT = 91;
     private const byte TILE_WATERED_EVENT      = 120;
     private const byte TILE_UNWATERED_EVENT    = 121;
+    private const byte RESOURCE_HP_UPDATED_EVENT = 122;
+    private const byte RESOURCE_REMOVED_EVENT    = 123;
+    private const byte RESOURCE_SPAWNED_EVENT    = 124;
+    
+    // Static events for Visual Managers to hook into
+    public static event Action<int, int, int> OnResourceHpUpdated;
+    public static event Action<int, int>      OnResourceRemoved;
+    public static event Action<int, int, string> OnResourceSpawned;
     
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
@@ -188,6 +196,18 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             case TILE_UNWATERED_EVENT:
                 HandleTileUnwatered(photonEvent.CustomData);
                 break;
+
+            case RESOURCE_HP_UPDATED_EVENT:
+                HandleResourceHpUpdated(photonEvent.CustomData);
+                break;
+
+            case RESOURCE_REMOVED_EVENT:
+                HandleResourceRemoved(photonEvent.CustomData);
+                break;
+
+            case RESOURCE_SPAWNED_EVENT:
+                HandleResourceSpawned(photonEvent.CustomData);
+                break;
         }
     }
     
@@ -232,7 +252,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             foreach (var chunkPair in section)
             {
                 UnifiedChunkData chunk = chunkPair.Value;
-                if (chunk.GetCropCount() == 0 && chunk.GetTilledCount() == 0 && chunk.GetStructureCount() == 0) continue; // Skip truly empty chunks
+                if (chunk.GetCropCount() == 0 && chunk.GetTilledCount() == 0 && chunk.GetStructureCount() == 0 && chunk.GetResourceCount() == 0) continue; // Skip truly empty chunks
 
                 var allSlots = chunk.GetAllTiles();
                 var entries  = new SyncTileEntry[allSlots.Count];
@@ -247,7 +267,11 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         HasCrop      = slot.HasCrop,
                         Crop         = slot.Crop,
                         HasStructure = slot.HasStructure,
-                        StructureId  = slot.HasStructure ? slot.Structure.StructureId : null
+                        StructureId  = slot.HasStructure ? slot.Structure.StructureId : null,
+                        HasResource  = slot.HasResource,
+                        ResourceId   = slot.HasResource ? slot.Resource.ResourceId : null,
+                        ResourceHp   = slot.HasResource ? (byte)slot.Resource.CurrentHp : (byte)0,
+                        IsWatered    = slot.IsTilled && slot.Crop.IsWatered
                     };
                 }
                 ChunkSyncData syncData = new ChunkSyncData
@@ -344,13 +368,16 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 continue;
             }
             
-            // Clear existing data and load synced tiles (tilled, crops, and structures)
+            // Clear existing data and load synced tiles (tilled, crops, resources, and structures)
             chunk.Clear();
 
             foreach (var entry in chunkData.Tiles)
             {
                 if (entry.IsTilled)
                     chunk.TillTile(entry.WorldX, entry.WorldY);
+                
+                if (entry.IsWatered)
+                    chunk.WaterTile(entry.WorldX, entry.WorldY);
 
                 if (entry.HasCrop)
                 {
@@ -366,6 +393,12 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 if (entry.HasStructure && !string.IsNullOrEmpty(entry.StructureId))
                 {
                     chunk.PlaceStructure(entry.StructureId, entry.WorldX, entry.WorldY);
+                }
+
+                // Restore resource data
+                if (entry.HasResource && !string.IsNullOrEmpty(entry.ResourceId))
+                {
+                    chunk.PlaceResource(entry.ResourceId, entry.ResourceHp > 0 ? entry.ResourceHp : 1, entry.WorldX, entry.WorldY);
                 }
             }
 
@@ -606,6 +639,11 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.TillTileAtWorldPosition(worldPos);
+        
+        if (WeatherView.IsRaining)
+        {
+            WorldDataManager.Instance.WaterTileAtWorldPosition(worldPos);
+        }
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received tile tilled at ({worldX}, {worldY})");
@@ -952,6 +990,138 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         }
     }
 
+    // ── Resource Broadcasts & Handlers ────────────────────────────────────
+
+    public void BroadcastResourceHpUpdated(int worldX, int worldY, int newHp)
+    {
+        // Fire locally so the initiating player sees their own VFX
+        OnResourceHpUpdated?.Invoke(worldX, worldY, newHp);
+
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY, newHp };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            RESOURCE_HP_UPDATED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleResourceHpUpdated(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+        int newHp  = (int)dataArray[2];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        
+        // Ensure WorldDataManager is robust enough to not explode here.
+        WorldDataManager.Instance.UpdateResourceHpAtWorldPosition(worldPos, newHp);
+
+        // Fire C# event so ResourceSpawnerManager can play hit animation
+        OnResourceHpUpdated?.Invoke(worldX, worldY, newHp);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received Resource HP Updated at ({worldX},{worldY}) -> {newHp}");
+
+        MarkDirty(worldX, worldY);
+    }
+
+    public void BroadcastResourceRemoved(int worldX, int worldY)
+    {
+        // Fire locally so the initiating player destroys the visual
+        OnResourceRemoved?.Invoke(worldX, worldY);
+
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            RESOURCE_REMOVED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleResourceRemoved(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+
+        // Remove from local RAM
+        WorldDataManager.Instance.RemoveResourceAtWorldPosition(worldPos);
+
+        // Fire C# event so ResourceSpawnerManager can destroy the visual GameObject
+        OnResourceRemoved?.Invoke(worldX, worldY);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received Resource Removed at ({worldX},{worldY})");
+
+        MarkDirty(worldX, worldY);
+    }
+
+    public void BroadcastResourceSpawned(int worldX, int worldY, string resourceId, int currentHp)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY, resourceId, currentHp };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            RESOURCE_SPAWNED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleResourceSpawned(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+        string resourceId = (string)dataArray[2];
+        int currentHp = (int)dataArray[3];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+
+        // Add to local RAM
+        WorldDataManager.Instance.PlaceResourceAtWorldPosition(worldPos, resourceId, currentHp);
+
+        // Fire C# event so ResourceSpawnerManager can instantiate the visual GameObject
+        OnResourceSpawned?.Invoke(worldX, worldY, resourceId);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received Resource Spawned at ({worldX},{worldY}) -> {resourceId}");
+    }
+
     #region Serialization Helpers
     
     [System.Serializable]
@@ -978,6 +1148,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         public UnifiedChunkData.CropTileData Crop;
         public bool   HasStructure;
         public string StructureId;
+        public bool   HasResource;
+        public string ResourceId;
+        public byte   ResourceHp;
+        public bool   IsWatered;
     }
     
     // Wire format per tile entry:
@@ -1011,6 +1185,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 if (entry.IsTilled)     flags |= 1;
                 if (entry.HasCrop)      flags |= 2;
                 if (entry.HasStructure) flags |= 4;
+                if (entry.HasResource)  flags |= 8;
+                if (entry.IsWatered)    flags |= 16;
                 bytes.Add(flags);                                            // 1
 
                 if (entry.HasCrop)
@@ -1032,6 +1208,16 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         : System.Text.Encoding.UTF8.GetBytes(entry.StructureId);
                     bytes.Add((byte)structIdBytes.Length);                   // 1
                     bytes.AddRange(structIdBytes);                           // N
+                }
+
+                if (entry.HasResource)
+                {
+                    byte[] resIdBytes = string.IsNullOrEmpty(entry.ResourceId)
+                        ? System.Array.Empty<byte>()
+                        : System.Text.Encoding.UTF8.GetBytes(entry.ResourceId);
+                    bytes.Add((byte)resIdBytes.Length);
+                    bytes.AddRange(resIdBytes);
+                    bytes.Add(entry.ResourceHp);
                 }
             }
         }
@@ -1067,6 +1253,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 entry.IsTilled     = (flags & 1) != 0;
                 entry.HasCrop      = (flags & 2) != 0;
                 entry.HasStructure = (flags & 4) != 0;
+                entry.HasResource  = (flags & 8) != 0;
+                entry.IsWatered    = (flags & 16) != 0;
 
                 if (entry.HasCrop)
                 {
@@ -1085,6 +1273,15 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     entry.StructureId = structIdLen > 0
                         ? System.Text.Encoding.UTF8.GetString(data, offset, structIdLen) : string.Empty;
                     offset += structIdLen;
+                }
+
+                if (entry.HasResource)
+                {
+                    int resIdLen = offset < data.Length ? data[offset++] : 0;
+                    entry.ResourceId = resIdLen > 0
+                        ? System.Text.Encoding.UTF8.GetString(data, offset, resIdLen) : string.Empty;
+                    offset += resIdLen;
+                    entry.ResourceHp = offset < data.Length ? data[offset++] : (byte)0;
                 }
 
                 chunk.Tiles[j] = entry;

@@ -128,6 +128,18 @@ public class CropPlowingService : ICropPlowingService
             return false;
         }
 
+        if (WorldDataManager.Instance.HasStructureAtWorldPosition(worldPosition))
+        {
+            Debug.LogWarning($"[PlowTile] FAIL: tile at ({worldPosition.x:F1}, {worldPosition.y:F1}) has a structure.");
+            return false;
+        }
+
+        if (WorldDataManager.Instance.HasResourceAtWorldPosition(worldPosition))
+        {
+            Debug.LogWarning($"[PlowTile] FAIL: tile at ({worldPosition.x:F1}, {worldPosition.y:F1}) has a resource.");
+            return false;
+        }
+
         // Find the TillableTilemap for this world position
         Tilemap tillableTilemap = FindTilemapAtPosition(worldPosition, "TillableTilemap");
         if (tillableTilemap == null)
