@@ -18,6 +18,9 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
     [SerializeField] private Button applyButton;
     [SerializeField] private TextMeshProUGUI statusText;
 
+    private bool suppressToggleEvents;
+    private bool hasLocalUnsavedChanges;
+
     private void Start()
     {
         if (openPanelButton != null)
@@ -28,6 +31,9 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
         if (applyButton != null)
             applyButton.onClick.AddListener(ApplyPublishSettings);
+
+        if (publicToggle != null)
+            publicToggle.onValueChanged.AddListener(OnPublicToggleChanged);
 
         if (passwordToggle != null)
             passwordToggle.onValueChanged.AddListener(OnPasswordToggleChanged);
@@ -49,6 +55,9 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
         if (applyButton != null)
             applyButton.onClick.RemoveListener(ApplyPublishSettings);
 
+        if (publicToggle != null)
+            publicToggle.onValueChanged.RemoveListener(OnPublicToggleChanged);
+
         if (passwordToggle != null)
             passwordToggle.onValueChanged.RemoveListener(OnPasswordToggleChanged);
     }
@@ -60,6 +69,13 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
     {
+        if (!HasPublishPropertyChange(propertiesThatChanged))
+            return;
+
+        // Keep the user's in-progress edits while the panel is open.
+        if (optionPanel != null && optionPanel.activeSelf && hasLocalUnsavedChanges)
+            return;
+
         RefreshFromRoom();
     }
 
@@ -68,6 +84,7 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
         if (optionPanel != null)
             optionPanel.SetActive(true);
 
+        hasLocalUnsavedChanges = false;
         RefreshFromRoom();
     }
 
@@ -75,6 +92,8 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
     {
         if (optionPanel != null)
             optionPanel.SetActive(false);
+
+        hasLocalUnsavedChanges = false;
     }
 
     public void ApplyPublishSettings()
@@ -118,15 +137,40 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
         };
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
 
+        hasLocalUnsavedChanges = false;
+
         SetStatus(makePublic
             ? (usePassword ? "World is now public with password." : "World is now public.")
             : "World is now private.");
     }
 
+    private void OnPublicToggleChanged(bool isPublic)
+    {
+        if (suppressToggleEvents)
+            return;
+
+        hasLocalUnsavedChanges = true;
+
+        bool allowPassword = isPublic;
+        if (passwordToggle != null)
+            passwordToggle.interactable = allowPassword;
+
+        if (!allowPassword && passwordToggle != null)
+            passwordToggle.isOn = false;
+
+        if (passwordInput != null)
+            passwordInput.interactable = allowPassword && passwordToggle != null && passwordToggle.isOn;
+    }
+
     private void OnPasswordToggleChanged(bool enabled)
     {
+        if (suppressToggleEvents)
+            return;
+
+        hasLocalUnsavedChanges = true;
+
         if (passwordInput != null)
-            passwordInput.interactable = enabled;
+            passwordInput.interactable = enabled && publicToggle != null && publicToggle.isOn;
     }
 
     private bool CanEditPublishState()
@@ -163,14 +207,22 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
             WorldRoomProperties.HasPassword,
             false);
 
+        suppressToggleEvents = true;
+
         if (publicToggle != null)
             publicToggle.isOn = isPublic;
 
         if (passwordToggle != null)
+        {
             passwordToggle.isOn = hasPassword;
+            passwordToggle.interactable = isPublic;
+        }
 
         if (passwordInput != null)
-            passwordInput.interactable = hasPassword;
+            passwordInput.interactable = isPublic && hasPassword;
+
+        suppressToggleEvents = false;
+        hasLocalUnsavedChanges = false;
 
         SetStatus(isPublic
             ? (hasPassword ? "Current: Public (password protected)" : "Current: Public")
@@ -183,5 +235,15 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
             statusText.text = message;
 
         Debug.Log("[WorldPublishController] " + message);
+    }
+
+    private bool HasPublishPropertyChange(Hashtable changedProps)
+    {
+        if (changedProps == null)
+            return false;
+
+        return changedProps.ContainsKey(WorldRoomProperties.IsPublic)
+            || changedProps.ContainsKey(WorldRoomProperties.HasPassword)
+            || changedProps.ContainsKey(WorldRoomProperties.PasswordHash);
     }
 }
