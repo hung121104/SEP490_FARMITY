@@ -730,6 +730,27 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
+    /// Returns the visual GameObject for a structure at a specific world position, if loaded.
+    /// </summary>
+    public GameObject GetStructureVisualAt(Vector3Int worldPos)
+    {
+        Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(new Vector3(worldPos.x, worldPos.y, 0f));
+        if (chunkStructureVisuals.TryGetValue(chunkPos, out var list))
+        {
+            foreach (var tuple in list)
+            {
+                if (tuple.go != null && 
+                    Mathf.Approximately(tuple.go.transform.position.x, worldPos.x) && 
+                    Mathf.Approximately(tuple.go.transform.position.y, worldPos.y))
+                {
+                    return tuple.go;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Removes the watered overlay tile at a single world position.
     /// Called directly by CropGrowthService on water decay — avoids a full chunk re-render.
     /// </summary>

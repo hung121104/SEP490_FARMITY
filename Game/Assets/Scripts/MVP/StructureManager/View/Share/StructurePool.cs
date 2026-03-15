@@ -1,11 +1,57 @@
 using UnityEngine;
-using UnityEngine.Pool;
 using System.Collections.Generic;
+
+/// <summary>
+/// A simple FIFO queue-based object pool to prevent instance swapping 
+/// when structures are batch-released and re-acquired deterministically.
+/// </summary>
+public class FifoObjectPool<T> where T : class
+{
+    private readonly Queue<T> m_Queue;
+    private readonly System.Func<T> m_CreateFunc;
+    private readonly System.Action<T> m_ActionOnGet;
+    private readonly System.Action<T> m_ActionOnRelease;
+    private readonly System.Action<T> m_ActionOnDestroy;
+    private readonly int m_MaxSize;
+
+    public FifoObjectPool(
+        System.Func<T> createFunc,
+        System.Action<T> actionOnGet = null,
+        System.Action<T> actionOnRelease = null,
+        System.Action<T> actionOnDestroy = null,
+        bool collectionCheck = true,
+        int defaultCapacity = 10,
+        int maxSize = 10000)
+    {
+        m_Queue = new Queue<T>(defaultCapacity);
+        m_CreateFunc = createFunc;
+        m_ActionOnGet = actionOnGet;
+        m_ActionOnRelease = actionOnRelease;
+        m_ActionOnDestroy = actionOnDestroy;
+        m_MaxSize = maxSize;
+    }
+
+    public T Get()
+    {
+        T item = m_Queue.Count == 0 ? m_CreateFunc() : m_Queue.Dequeue();
+        m_ActionOnGet?.Invoke(item);
+        return item;
+    }
+
+    public void Release(T element)
+    {
+        m_ActionOnRelease?.Invoke(element);
+        if (m_Queue.Count < m_MaxSize)
+            m_Queue.Enqueue(element);
+        else
+            m_ActionOnDestroy?.Invoke(element);
+    }
+}
 
 /// <summary>
 /// Object pool for structure GameObjects.
 /// Maintains one pool per StructureId so different structure types share nothing.
-/// Uses Unity's built-in ObjectPool.
+/// Uses a FIFO pool to prevent objects swapping places.
 /// Attach this MonoBehaviour to a persistent manager GameObject in the scene.
 /// </summary>
 public class StructurePool : MonoBehaviour
@@ -26,8 +72,8 @@ public class StructurePool : MonoBehaviour
     public List<StructureDataSO> structureCatalog = new List<StructureDataSO>();
 
     // Pools keyed by StructureId
-    private readonly Dictionary<string, ObjectPool<GameObject>> pools
-        = new Dictionary<string, ObjectPool<GameObject>>();
+    private readonly Dictionary<string, FifoObjectPool<GameObject>> pools
+        = new Dictionary<string, FifoObjectPool<GameObject>>();
 
     // Lookup StructureId → SO for prefab reference
     private readonly Dictionary<string, StructureDataSO> catalogLookup
@@ -99,7 +145,7 @@ public class StructurePool : MonoBehaviour
         // Prefab-based pool (complex structures with custom scripts)
         GameObject prefab = data.Prefab;
 
-        pools[structureId] = new ObjectPool<GameObject>(
+        pools[structureId] = new FifoObjectPool<GameObject>(
             createFunc: () =>
             {
                 var go = Instantiate(prefab);
@@ -170,7 +216,7 @@ public class StructurePool : MonoBehaviour
 
         GameObject template = defaultSimplePrefab;
 
-        pools[structureId] = new ObjectPool<GameObject>(
+        pools[structureId] = new FifoObjectPool<GameObject>(
             createFunc: () =>
             {
                 var go = Instantiate(template);
@@ -219,7 +265,7 @@ public class StructurePool : MonoBehaviour
     /// </summary>
     private void CreateFallbackPool(string structureId)
     {
-        pools[structureId] = new ObjectPool<GameObject>(
+        pools[structureId] = new FifoObjectPool<GameObject>(
             createFunc:      () => new GameObject($"Structure_{structureId}"),
             actionOnGet:     go => go.SetActive(true),
             actionOnRelease: go => go.SetActive(false),
