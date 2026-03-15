@@ -13,9 +13,6 @@ using Photon.Pun;
 ///   - Handle drop/pickup request flow
 ///   - Decide when to spawn/despawn visuals based on chunk state
 ///   - Trigger inventory integration for local player pickups
-///
-/// All Unity-specific operations (Instantiate, Destroy, FindObject) are in the View.
-/// All business logic (data creation, registry) is in the Service.
 /// </summary>
 public class DroppedItemPresenter
 {

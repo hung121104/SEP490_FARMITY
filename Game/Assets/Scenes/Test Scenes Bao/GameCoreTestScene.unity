@@ -19706,6 +19706,7 @@ MonoBehaviour:
   inventoryRoot: {fileID: 1101669709}
   inventoryPanel: {fileID: 1526296355}
   dragPreviewObject: {fileID: 827106754}
+  inventoryRootParent: {fileID: 829286150}
   slotContainer: {fileID: 1725918564}
   slotPrefab: {fileID: 2736571544642351649, guid: 52e3370fdc781354a895a9ddb92c5fe6, type: 3}
   slotsPerRow: 9
