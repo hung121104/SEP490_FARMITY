@@ -545,8 +545,13 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                     StructureDataSO structData = cachedStructurePool.GetStructureData(structId);
                     if (structData != null)
                     {
-                        GameObject structObj = cachedStructurePool.Get(structId);
-                        Vector3 structPos = new Vector3(tile.WorldX, tile.WorldY, 0f);
+                        Vector3Int structPosInt = new Vector3Int(tile.WorldX, tile.WorldY, 0);
+                        GameObject structObj = cachedStructurePool.Get(structId, structPosInt);
+                        
+                        if (showDebugLogs)
+                            Debug.Log($"[ChunkLoading] Spawned structure '{structId}' at ({tile.WorldX},{tile.WorldY}) from pool, obj={structObj?.GetInstanceID()}");
+                        
+                        Vector3 structPos = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.5f, 0f);
                         structObj.transform.position = structPos;
 
                         SpriteRenderer sr = structObj.GetComponentInChildren<SpriteRenderer>(true)
@@ -563,6 +568,12 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                         if (!chunkStructureVisuals.ContainsKey(chunkPos))
                             chunkStructureVisuals[chunkPos] = new List<(string, GameObject)>();
                         chunkStructureVisuals[chunkPos].Add((structId, structObj));
+                        
+                        // Store position for keyed release
+                        structObj.name = $"Structure_{structId}_{tile.WorldX}_{tile.WorldY}";
+                        
+                        if (showDebugLogs)
+                            Debug.Log($"[ChunkLoading] chunkStructureVisuals[{chunkPos}] now has {chunkStructureVisuals[chunkPos].Count} structures");
                     }
                     else if (showDebugLogs)
                     {
@@ -807,6 +818,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Returns all structure GameObjects for the given chunk back to the pool.
+    /// Only processes active objects to avoid double-releasing.
     /// </summary>
     private void ReleaseChunkStructures(Vector2Int chunkPos)
     {
@@ -819,16 +831,25 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         foreach (var (structureId, go) in chunkStructureVisuals[chunkPos])
         {
             if (go == null) continue;
-            if (cachedStructurePool != null)
-                cachedStructurePool.Release(structureId, go);
-            else
-                Destroy(go);
+            // Only release if object is still active - prevents double-release if already pooled
+            if (!go.activeInHierarchy) continue;
+
+            // Parse position from name for keyed release
+            Vector3Int? position = null;
+            var parts = go.name.Split('_');
+            if (parts.Length >= 4 && int.TryParse(parts[parts.Length - 2], out int px) && int.TryParse(parts[parts.Length - 1], out int py))
+            {
+                position = new Vector3Int(px, py, 0);
+            }
+
+            cachedStructurePool.Release(structureId, go, position);
         }
         chunkStructureVisuals.Remove(chunkPos);
     }
 
     /// <summary>
     /// Returns the visual GameObject for a structure at a specific world position, if loaded.
+    /// Accounts for the +0.5f offset used when spawning structures.
     /// </summary>
     public GameObject GetStructureVisualAt(Vector3Int worldPos)
     {
@@ -837,9 +858,21 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         {
             foreach (var tuple in list)
             {
-                if (tuple.go != null && 
-                    Mathf.Approximately(tuple.go.transform.position.x, worldPos.x) && 
-                    Mathf.Approximately(tuple.go.transform.position.y, worldPos.y))
+                if (tuple.go == null) continue;
+                
+                // Structure positions have +0.5f offset, so check both integer and offset positions
+                float visualX = tuple.go.transform.position.x;
+                float visualY = tuple.go.transform.position.y;
+                
+                // Check if matches integer position (worldPos)
+                bool matchesIntegerPos = Mathf.Approximately(visualX, worldPos.x) && 
+                                         Mathf.Approximately(visualY, worldPos.y);
+                
+                // Check if matches offset position (worldPos + 0.5f)
+                bool matchesOffsetPos = Mathf.Approximately(visualX, worldPos.x + 0.5f) && 
+                                      Mathf.Approximately(visualY, worldPos.y + 0.5f);
+                
+                if (matchesIntegerPos || matchesOffsetPos)
                 {
                     return tuple.go;
                 }
