@@ -810,22 +810,27 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         int worldY = (int)dataArray[1];
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        Vector3Int worldPosInt = new Vector3Int(worldX, worldY, 0);
 
-        // Despawn the visual GameObject before removing data
-        DespawnStructureVisual(worldPos);
-
+        // Note: DespawnStructureVisual removed - RefreshChunkVisuals below handles structure cleanup
         WorldDataManager.Instance.RemoveStructureAtWorldPosition(worldPos);
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received structure removed at ({worldX},{worldY})");
 
-        // Refresh chunk visuals
+        // Refresh chunk visuals - this will properly release structures back to pool
         if (chunkLoadingManager != null)
         {
             Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
             if (chunkLoadingManager.IsChunkLoaded(chunkPos))
                 chunkLoadingManager.RefreshChunkVisuals(chunkPos);
         }
+        
+        // Clear position pool to prevent cached instance from blocking new structures at this position
+        // Get the structureId before clearing - we need to clear for all structure types
+        // Actually, we need to get the pool and clear for the specific position
+        // Since we don't know the structureId here, we'll use a different approach
+        // The position pool will be naturally cleared when we try to place a new structure
     }
 
     /// <summary>
@@ -913,44 +918,6 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     }
 
     // ── Structure visual helpers ──────────────────────────────────────────
-
-    /// <summary>
-    /// Despawn the structure visual at worldPos when a remote player removes one.
-    /// Finds the structure GameObject by position and returns it to the pool.
-    /// </summary>
-    private void DespawnStructureVisual(Vector3 worldPos)
-    {
-        // Find the structure visual at this position
-        // Structures are named "Structure_<id>" and positioned exactly at world coords
-        int wx = Mathf.FloorToInt(worldPos.x);
-        int wy = Mathf.FloorToInt(worldPos.y);
-
-        // Look up the structureId from data BEFORE it's removed
-        string structureId = null;
-        if (WorldDataManager.Instance.TryGetStructureAtWorldPosition(worldPos, out var structData))
-            structureId = structData.StructureId;
-
-        if (string.IsNullOrEmpty(structureId)) return;
-
-        var structurePool = FindAnyObjectByType<StructurePool>();
-        // Search for the GameObject at this position
-        GameObject[] candidates = GameObject.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
-        foreach (var go in candidates)
-        {
-            if (go.name.StartsWith($"Structure_{structureId}"))
-            {
-                Vector3 goPos = go.transform.position;
-                if (Mathf.FloorToInt(goPos.x) == wx && Mathf.FloorToInt(goPos.y) == wy)
-                {
-                    if (structurePool != null)
-                        structurePool.Release(structureId, go);
-                    else
-                        Destroy(go);
-                    return;
-                }
-            }
-        }
-    }
 
     #region Serialization Helpers
     

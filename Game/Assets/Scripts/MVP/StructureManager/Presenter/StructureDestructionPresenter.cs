@@ -52,34 +52,9 @@ public class StructureDestructionPresenter
                         // Remove from world
                         structureService.RemoveStructure(tilePos, structureData);
 
-                        // Try to add to inventory first, otherwise drop item
-                        if (inventoryService == null || !inventoryService.AddItem(structureId))
-                        {
-                            DropStructureItem(structureId, tilePos);
-                        }
+                        // AddItem auto-handles dropping when inventory is full
+                        inventoryService?.AddItem(structureId);
                     }
-                }
-            }
-        }
-    }
-
-    private void DropStructureItem(string structureId, Vector3Int tilePos)
-    {
-        // Offset slightly to center of tile
-        Vector3 dropPos = new Vector3(tilePos.x + 0.5f, tilePos.y + 0.5f, 0f);
-
-        // Fetch ItemModel for dropping
-        if (ItemCatalogService.Instance != null)
-        {
-            ItemData itemData = ItemCatalogService.Instance.GetItemData(structureId);
-            if (itemData != null)
-            {
-                ItemModel dropModel = new ItemModel(itemData);
-                var sync = Object.FindAnyObjectByType<DroppedItemSyncManager>();
-                if (sync != null)
-                {
-                    DroppedItemData dropData = DroppedItemData.FromItemModel(dropModel, dropPos.x, dropPos.y);
-                    sync.SendDropRequest(dropData);
                 }
             }
         }

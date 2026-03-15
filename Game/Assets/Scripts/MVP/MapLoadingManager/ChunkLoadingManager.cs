@@ -528,7 +528,12 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                     StructureDataSO structData = cachedStructurePool.GetStructureData(structId);
                     if (structData != null)
                     {
-                        GameObject structObj = cachedStructurePool.Get(structId);
+                        Vector3Int structPosInt = new Vector3Int(tile.WorldX, tile.WorldY, 0);
+                        GameObject structObj = cachedStructurePool.Get(structId, structPosInt);
+                        
+                        if (showDebugLogs)
+                            Debug.Log($"[ChunkLoading] Spawned structure '{structId}' at ({tile.WorldX},{tile.WorldY}) from pool, obj={structObj?.GetInstanceID()}");
+                        
                         Vector3 structPos = new Vector3(tile.WorldX, tile.WorldY, 0f);
                         structObj.transform.position = structPos;
 
@@ -546,6 +551,12 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                         if (!chunkStructureVisuals.ContainsKey(chunkPos))
                             chunkStructureVisuals[chunkPos] = new List<(string, GameObject)>();
                         chunkStructureVisuals[chunkPos].Add((structId, structObj));
+                        
+                        // Store position for keyed release
+                        structObj.name = $"Structure_{structId}_{tile.WorldX}_{tile.WorldY}";
+                        
+                        if (showDebugLogs)
+                            Debug.Log($"[ChunkLoading] chunkStructureVisuals[{chunkPos}] now has {chunkStructureVisuals[chunkPos].Count} structures");
                     }
                     else if (showDebugLogs)
                     {
@@ -709,6 +720,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Returns all structure GameObjects for the given chunk back to the pool.
+    /// Only processes active objects to avoid double-releasing.
     /// </summary>
     private void ReleaseChunkStructures(Vector2Int chunkPos)
     {
@@ -721,10 +733,18 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
         foreach (var (structureId, go) in chunkStructureVisuals[chunkPos])
         {
             if (go == null) continue;
-            if (cachedStructurePool != null)
-                cachedStructurePool.Release(structureId, go);
-            else
-                Destroy(go);
+            // Only release if object is still active - prevents double-release if already pooled
+            if (!go.activeInHierarchy) continue;
+
+            // Parse position from name for keyed release
+            Vector3Int? position = null;
+            var parts = go.name.Split('_');
+            if (parts.Length >= 4 && int.TryParse(parts[parts.Length - 2], out int px) && int.TryParse(parts[parts.Length - 1], out int py))
+            {
+                position = new Vector3Int(px, py, 0);
+            }
+
+            cachedStructurePool.Release(structureId, go, position);
         }
         chunkStructureVisuals.Remove(chunkPos);
     }

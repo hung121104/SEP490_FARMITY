@@ -26189,6 +26189,7 @@ MonoBehaviour:
   showDebugLogs: 0
   showLoadedChunksGizmos: 0
   enableDailyReload: 1
+  disableStructurePooling: 0
 --- !u!4 &2021699365
 Transform:
   m_ObjectHideFlags: 0
