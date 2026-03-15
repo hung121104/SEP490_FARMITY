@@ -32,6 +32,14 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         }
     }
 
+    private void OnDestroy()
+    {
+        if (refreshButton != null)
+        {
+            refreshButton.onClick.RemoveListener(RefreshRoomList);
+        }
+    }
+
     private void Start()
     {
         if (PhotonNetwork.IsConnected)
@@ -142,7 +150,9 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
     {
         foreach (RoomInfo info in roomList)
         {
-            if (!info.IsOpen || !info.IsVisible || info.RemovedFromList)
+            bool isPublic = WorldRoomProperties.GetBool(info.CustomProperties, WorldRoomProperties.IsPublic, info.IsVisible);
+
+            if (!info.IsOpen || !info.IsVisible || info.RemovedFromList || !isPublic)
             {
                 cachedRoomList.Remove(info.Name);
             }

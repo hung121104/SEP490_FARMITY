@@ -22,9 +22,9 @@ public class OnlineWorldItemView : MonoBehaviour
         {
             // Use displayName from custom properties, fallback to room name
             string displayName = roomInfo.Name;
-            if (roomInfo.CustomProperties != null && roomInfo.CustomProperties.ContainsKey("displayName"))
+            if (roomInfo.CustomProperties != null && roomInfo.CustomProperties.ContainsKey(WorldRoomProperties.DisplayName))
             {
-                displayName = roomInfo.CustomProperties["displayName"].ToString();
+                displayName = roomInfo.CustomProperties[WorldRoomProperties.DisplayName].ToString();
             }
             roomNameText.text = displayName;
         }

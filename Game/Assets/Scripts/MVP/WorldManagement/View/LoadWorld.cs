@@ -66,15 +66,21 @@ public class LoadWorld : MonoBehaviourPunCallbacks
         string displayName = !string.IsNullOrEmpty(manager.WorldName) 
             ? manager.WorldName 
             : selectedId;
-        customProps["displayName"] = displayName;
+        customProps[WorldRoomProperties.DisplayName] = displayName;
+        customProps[WorldRoomProperties.IsPublic] = false;
+        customProps[WorldRoomProperties.OwnerId] = SessionManager.Instance?.UserId ?? string.Empty;
         
         var roomOptions = new RoomOptions 
         { 
             MaxPlayers = 4, 
-            IsVisible = true, 
-            IsOpen = true,
+            IsVisible = false,
+            IsOpen = false,
             CustomRoomProperties = customProps,
-            CustomRoomPropertiesForLobby = new string[] { "displayName" },
+            CustomRoomPropertiesForLobby = new string[]
+            {
+                WorldRoomProperties.DisplayName,
+                WorldRoomProperties.IsPublic
+            },
             EmptyRoomTtl = 0,
         };
         
