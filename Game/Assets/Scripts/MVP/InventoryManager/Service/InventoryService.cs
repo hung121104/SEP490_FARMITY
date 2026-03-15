@@ -59,7 +59,7 @@ public class InventoryService : IInventoryService
 
     #region Add Operations
 
-    public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal)
+    public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
     {
         var data = ItemCatalogService.Instance?.GetItemData(itemId);
         if (data == null)
@@ -67,10 +67,10 @@ public class InventoryService : IInventoryService
             Debug.LogWarning($"[InventoryService] Item '{itemId}' not found in catalog.");
             return false;
         }
-        return AddItem(data, quantity, quality);
+        return AddItem(data, quantity, quality, dropOffset);
     }
 
-    public bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal)
+    public bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
     {
         if (itemData == null || quantity <= 0)
             return false;
@@ -107,7 +107,11 @@ public class InventoryService : IInventoryService
         {
             int emptySlot = model.FindEmptySlot();
             if (emptySlot == -1)
+            {
+                // Not enough space: drop remaining into the world
+                HandleRemainingItemDrop(itemData, quality, remainingQuantity, dropOffset);
                 return false;
+            }
 
             int stackSize = itemData.isStackable
                 ? Mathf.Min(remainingQuantity, itemData.maxStack)
@@ -124,6 +128,29 @@ public class InventoryService : IInventoryService
         }
 
         return true;
+    }
+
+    private void HandleRemainingItemDrop(ItemData itemData, Quality quality, int quantity, Vector2? dropOffset)
+    {
+        Vector2 finalOffset = dropOffset ?? new Vector2(1f, 1f);
+        
+        var sync = UnityEngine.Object.FindAnyObjectByType<DroppedItemSyncManager>();
+        if (sync != null)
+        {
+            GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
+            Vector3 basePos = player != null ? player.transform.position : Vector3.zero;
+            Vector3 dropPos = basePos + new Vector3(finalOffset.x, finalOffset.y, 0f);
+
+            var dropModel = new ItemModel(itemData, quality, quantity, -1);
+            var dropData = DroppedItemData.FromItemModel(dropModel, dropPos.x, dropPos.y);
+            sync.SendDropRequest(dropData);
+
+            Debug.LogWarning($"[InventoryService] Inventory full! Dropped item '{itemData.itemName}' x{quantity} at {dropPos}");
+        }
+        else
+        {
+            Debug.LogWarning($"[InventoryService] Inventory full and no DroppedItemSyncManager found! Failed to drop '{itemData.itemName}'");
+        }
     }
 
     #endregion
@@ -310,6 +337,35 @@ public class InventoryService : IInventoryService
                 count++;
         }
         return count;
+    }
+
+    public int GetAddableQuantity(ItemData itemData, int quantity, Quality quality = Quality.Normal)
+    {
+        if (itemData == null || quantity <= 0) return 0;
+        int remainingQuantity = quantity;
+
+        // Check space in existing stacks
+        if (itemData.isStackable)
+        {
+            var existingSlots = model.GetSlotsWithItem(itemData.itemID, quality);
+            foreach (int slotIndex in existingSlots)
+            {
+                var existingItem = model.GetItemAtSlot(slotIndex);
+                int canAdd = Mathf.Min(remainingQuantity, itemData.maxStack - existingItem.Quantity);
+                if (canAdd > 0)
+                {
+                    remainingQuantity -= canAdd;
+                    if (remainingQuantity <= 0) return quantity;
+                }
+            }
+        }
+
+        // Check space in empty slots
+        int emptyCount = GetEmptySlotCount();
+        int canAddBySlots = emptyCount * (itemData.isStackable ? itemData.maxStack : 1);
+        
+        remainingQuantity -= canAddBySlots;
+        return quantity - Mathf.Max(0, remainingQuantity);
     }
 
     public List<ItemModel> GetAllItems()

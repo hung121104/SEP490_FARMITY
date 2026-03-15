@@ -30,6 +30,8 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
     private const byte ITEM_SYNC_REQUEST    = 144;
     private const byte ITEM_SYNC_BATCH      = 145;
     private const byte ITEM_DESPAWN_NOTIFY  = 146;
+    private const byte ITEM_PARTIAL_PICKUP_REQUEST = 147;
+    private const byte ITEM_PARTIAL_PICKUP_BROADCAST = 148;
 
     [Header("Sync Settings")]
     [Tooltip("Maximum items per batch during late-join sync")]
@@ -51,6 +53,9 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
 
     /// <summary>Fired on ALL clients when an item is removed (pickup or despawn).</summary>
     public event Action<string, int> OnItemRemoved;  // (dropId, pickedByActorNumber) — 0 if despawn
+
+    /// <summary>Fired on ALL clients when an item is partially picked up.</summary>
+    public event Action<string, int, int> OnItemPartiallyPicked; // (dropId, amountPicked, pickedByActorNumber)
 
     /// <summary>Fired on late-join client when a batch of items arrives.</summary>
     public event Action<DroppedItemData[]> OnSyncBatchReceived;
@@ -115,6 +120,27 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
 
         if (showDebugLogs)
             Debug.Log($"[DroppedItemSync] Sent PICKUP_REQUEST: {dropId}");
+    }
+
+    /// <summary>
+    /// Client sends a partial pickup request to Master (when inventory is almost full).
+    /// Master subtracts the amount, and broadcasts ITEM_PARTIAL_PICKUP.
+    /// </summary>
+    public void SendPartialPickupRequest(string dropId, int amount)
+    {
+        if (!PhotonNetwork.IsConnected || string.IsNullOrEmpty(dropId) || amount <= 0) return;
+
+        byte[] idBytes = System.Text.Encoding.UTF8.GetBytes(dropId);
+        var payload = new List<byte>();
+        payload.AddRange(BitConverter.GetBytes(idBytes.Length)); // 4 bytes: id length
+        payload.AddRange(idBytes);                               // N bytes: dropId
+        payload.AddRange(BitConverter.GetBytes(amount));         // 4 bytes: amount
+
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
+        PhotonNetwork.RaiseEvent(ITEM_PARTIAL_PICKUP_REQUEST, payload.ToArray(), opts, SendOptions.SendReliable);
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemSync] Sent PARTIAL_PICKUP_REQUEST: {dropId} x{amount}");
     }
 
     /// <summary>
@@ -206,6 +232,15 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
             case ITEM_DESPAWN_NOTIFY:
                 HandleDespawnNotify(photonEvent.CustomData);
                 break;
+
+            case ITEM_PARTIAL_PICKUP_REQUEST:
+                if (PhotonNetwork.IsMasterClient)
+                    HandlePartialPickupRequest(photonEvent.CustomData, photonEvent.Sender);
+                break;
+                
+            case ITEM_PARTIAL_PICKUP_BROADCAST:
+                HandlePartialPickupBroadcast(photonEvent.CustomData);
+                break;
         }
     }
 
@@ -237,18 +272,6 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
             item.chunkY = chunkPos.y;
         }
 
-        // Persist to MongoDB (fire-and-forget from network perspective)
-        // ── [API DISABLED] DB persistence temporarily disabled — commented out to run without backend ──
-        // StartCoroutine(DroppedItemApi.CreateDroppedItem(
-        //     SessionManager.Instance.JwtToken,
-        //     item,
-        //     (success, response) =>
-        //     {
-        //         if (!success)
-        //             Debug.LogError($"[DroppedItemSync] Failed to persist dropped item: {response}");
-        //     }
-        // ));
-
         // Broadcast ITEM_SPAWNED to all clients (including self)
         byte[] payload = SerializeSingleItem(item);
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.All };
@@ -277,18 +300,6 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
             return;
         }
 
-        // Delete from MongoDB (fire-and-forget)
-        // ── [API DISABLED] DB deletion temporarily disabled — commented out to run without backend ──
-        // StartCoroutine(DroppedItemApi.DeleteDroppedItem(
-        //     SessionManager.Instance.JwtToken,
-        //     dropId,
-        //     (success, response) =>
-        //     {
-        //         if (!success)
-        //             Debug.LogWarning($"[DroppedItemSync] Failed to delete item from DB: {response}");
-        //     }
-        // ));
-
         // Broadcast ITEM_REMOVED to all clients
         // Payload: dropId bytes + 4 bytes actorNumber
         byte[] idBytes = System.Text.Encoding.UTF8.GetBytes(dropId);
@@ -302,6 +313,56 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
 
         if (showDebugLogs)
             Debug.Log($"[DroppedItemSync] Master: broadcast ITEM_REMOVED dropId={dropId}, pickedBy={senderActorNumber}");
+    }
+
+    /// <summary>
+    /// Master receives PARTIAL_PICKUP_REQUEST: validate, update quantity, broadcast.
+    /// If requested amount >= current quantity, treats it as a full pickup.
+    /// </summary>
+    private void HandlePartialPickupRequest(object data, int senderActorNumber)
+    {
+        if (data is not byte[] bytes) return;
+
+        int offset = 0;
+        int idLen = BitConverter.ToInt32(bytes, offset); offset += 4;
+        string dropId = System.Text.Encoding.UTF8.GetString(bytes, offset, idLen); offset += idLen;
+        int amount = BitConverter.ToInt32(bytes, offset);
+
+        var manager = DroppedItemManagerView.Instance;
+        if (manager == null || !manager.HasDroppedItem(dropId))
+        {
+            if (showDebugLogs)
+                Debug.Log($"[DroppedItemSync] Master: PARTIAL_PICKUP for '{dropId}' not found, ignoring");
+            return;
+        }
+
+        var itemData = DroppedItemManagerView.Instance.GetAllDroppedItems();
+        DroppedItemData targetItem = null;
+        foreach (var i in itemData) { if (i.dropId == dropId) { targetItem = i; break; } }
+        
+        if (targetItem == null) return;
+
+        if (amount >= targetItem.quantity)
+        {
+            // Just do full pickup instead
+            byte[] idBytes = System.Text.Encoding.UTF8.GetBytes(dropId);
+            HandlePickupRequest(idBytes, senderActorNumber);
+            return;
+        }
+
+        // Broadcast PARTIAL_PICKUP
+        var payload = new List<byte>();
+        var idBytes2 = System.Text.Encoding.UTF8.GetBytes(dropId);
+        payload.AddRange(BitConverter.GetBytes(idBytes2.Length));
+        payload.AddRange(idBytes2);
+        payload.AddRange(BitConverter.GetBytes(amount)); // amount picked
+        payload.AddRange(BitConverter.GetBytes(senderActorNumber));
+
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.All };
+        PhotonNetwork.RaiseEvent(ITEM_PARTIAL_PICKUP_BROADCAST, payload.ToArray(), opts, SendOptions.SendReliable);
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemSync] Master: broadcash PARTIAL_PICKUP drop={dropId}, amt={amount}, by={senderActorNumber}");
     }
 
     /// <summary>
@@ -445,74 +506,24 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
         OnItemRemoved?.Invoke(dropId, 0);
     }
 
-    // ── Master Client Switchover ─────────────────────────────
-
     /// <summary>
-    /// When master leaves, the new master reloads the dropped item registry from MongoDB.
+    /// All clients: item was partially picked up.
+    /// Updates local quantity and notifies listeners.
     /// </summary>
-    public override void OnMasterClientSwitched(Player newMasterClient)
+    private void HandlePartialPickupBroadcast(object data)
     {
-        if (newMasterClient.IsLocal)
-        {
-            if (showDebugLogs)
-                Debug.Log("[DroppedItemSync] This client is the new Master — reloading registry from DB");
+        if (data is not byte[] bytes) return;
 
-            StartCoroutine(ReloadRegistryFromDatabase());
-        }
-    }
+        int offset = 0;
+        int idLen = BitConverter.ToInt32(bytes, offset); offset += 4;
+        string dropId = System.Text.Encoding.UTF8.GetString(bytes, offset, idLen); offset += idLen;
+        int amountPicked = BitConverter.ToInt32(bytes, offset); offset += 4;
+        int pickedByActor = BitConverter.ToInt32(bytes, offset);
 
-    /// <summary>
-    /// Reload all dropped items from MongoDB and rebuild local registry.
-    /// Called when this client becomes the new Master.
-    /// </summary>
-    private IEnumerator ReloadRegistryFromDatabase()
-    {
-        // ── [API DISABLED] Registry reload from DB temporarily disabled — commented out to run without backend ──
-        // When Master switches, the registry will not be reloaded from DB.
-        // Items already in the new Master's memory will continue to work normally via Photon sync.
         if (showDebugLogs)
-            Debug.Log("[DroppedItemSync] ReloadRegistryFromDatabase skipped (API disabled).");
-        yield break;
+            Debug.Log($"[DroppedItemSync] ITEM_PARTIAL_PICKUP: {dropId}, amount={amountPicked}, by={pickedByActor}");
 
-        // string roomName = PhotonNetwork.CurrentRoom?.Name ?? "";
-        // if (string.IsNullOrEmpty(roomName))
-        // {
-        //     Debug.LogWarning("[DroppedItemSync] Cannot reload registry — no room name");
-        //     yield break;
-        // }
-        //
-        // bool done = false;
-        // DroppedItemData[] items = null;
-        //
-        // yield return DroppedItemApi.GetDroppedItemsByRoom(
-        //     SessionManager.Instance.JwtToken,
-        //     roomName,
-        //     result =>
-        //     {
-        //         items = result;
-        //         done = true;
-        //     }
-        // );
-        //
-        // // Wait for callback
-        // while (!done)
-        //     yield return null;
-        //
-        // if (items == null)
-        // {
-        //     Debug.LogWarning("[DroppedItemSync] Failed to reload registry from DB");
-        //     yield break;
-        // }
-        //
-        // // Rebuild registry and visuals via DroppedItemManagerView
-        // var manager = DroppedItemManagerView.Instance;
-        // if (manager != null)
-        // {
-        //     manager.RebuildFromDatabase(items);
-        // }
-        //
-        // if (showDebugLogs)
-        //     Debug.Log($"[DroppedItemSync] Registry reloaded: {items.Length} items from DB");
+        OnItemPartiallyPicked?.Invoke(dropId, amountPicked, pickedByActor);
     }
 
     // ── Binary Serialization (same pattern as ChunkDataSyncManager) ──
