@@ -850,7 +850,6 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         Vector3Int worldPosInt = new Vector3Int(worldX, worldY, 0);
 
-        // Note: DespawnStructureVisual removed - RefreshChunkVisuals below handles structure cleanup
         WorldDataManager.Instance.RemoveStructureAtWorldPosition(worldPos);
 
         if (showDebugLogs)
@@ -861,14 +860,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         {
             Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
             if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+                // RefreshChunkVisuals handles structure cleanup
                 chunkLoadingManager.RefreshChunkVisuals(chunkPos);
         }
-        
-        // Clear position pool to prevent cached instance from blocking new structures at this position
-        // Get the structureId before clearing - we need to clear for all structure types
-        // Actually, we need to get the pool and clear for the specific position
-        // Since we don't know the structureId here, we'll use a different approach
-        // The position pool will be naturally cleared when we try to place a new structure
     }
 
     /// <summary>
@@ -954,8 +948,6 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         // Remove only the single watered overlay tile — no full chunk re-render needed
         chunkLoadingManager?.ClearWateredTileAt(worldPos);
     }
-
-    // ── Structure visual helpers ──────────────────────────────────────────
 
     // ── Resource Broadcasts & Handlers ────────────────────────────────────
 
