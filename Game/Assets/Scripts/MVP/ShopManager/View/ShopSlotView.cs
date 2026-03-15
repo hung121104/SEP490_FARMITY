@@ -1,57 +1,79 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System;
-using System.Collections;
 
+[RequireComponent(typeof(Button))]
 public class ShopSlotView : MonoBehaviour
 {
     [Header("UI References")]
-    [SerializeField] private Image iconImage;
-    [SerializeField] private TextMeshProUGUI nameText;
-    [SerializeField] private TextMeshProUGUI priceText;
+    [SerializeField] private Image itemIcon;
+    [SerializeField] private TextMeshProUGUI itemNameText;
+    [SerializeField] private TextMeshProUGUI itemPriceText;
 
-    [Tooltip("Nút mua (Có thể là nút bọc lấy cái priceText hoặc cả ô đồ)")]
-    [SerializeField] private Button buyButton;
+    [SerializeField] private Image backgroundImage;
 
+    private Button _buyButton;
     private int _slotIndex;
+
     public event Action<int> OnBuyClicked;
 
-    private Coroutine _flashCoroutine;
+    private void Awake()
+    {
+        InitButton();
+    }
+
+    
+    private void InitButton()
+    {
+        if (_buyButton == null)
+        {
+            _buyButton = GetComponent<Button>();
+            if (_buyButton != null)
+            {
+                _buyButton.onClick.RemoveAllListeners(); 
+                _buyButton.onClick.AddListener(() => OnBuyClicked?.Invoke(_slotIndex));
+            }
+        }
+    }
 
     public void Setup(int index, Sprite icon, string name, int price, bool isSoldOut)
     {
         _slotIndex = index;
-        iconImage.sprite = icon;
-        nameText.text = name;
-        priceText.text = price.ToString();
 
         
-        buyButton.interactable = !isSoldOut;
+        InitButton();
 
-        buyButton.onClick.RemoveAllListeners();
-        buyButton.onClick.AddListener(() => OnBuyClicked?.Invoke(_slotIndex));
+        if (itemIcon != null) itemIcon.sprite = icon;
+        if (itemNameText != null) itemNameText.text = name;
+        if (itemPriceText != null) itemPriceText.text = price.ToString();
+        if (_buyButton != null)
+        {
+            if (isSoldOut)
+            {
+                _buyButton.interactable = false;
+                if (backgroundImage != null) backgroundImage.color = new Color(0.5f, 0.5f, 0.5f, 1f);
+            }
+            else
+            {
+                _buyButton.interactable = true;
+                if (backgroundImage != null) backgroundImage.color = Color.white;
+            }
+        }
+       
     }
 
     public void FlashRed()
     {
-        if (_flashCoroutine != null) StopCoroutine(_flashCoroutine);
-        _flashCoroutine = StartCoroutine(DoFlashRed());
+        if (backgroundImage != null)
+        {
+            backgroundImage.color = new Color(1f, 0.5f, 0.5f, 1f);
+            Invoke(nameof(ResetColor), 0.2f);
+        }
     }
 
-    private IEnumerator DoFlashRed()
+    private void ResetColor()
     {
-        Color originalColor = Color.white; 
-
-        
-        for (int i = 0; i < 2; i++)
-        {
-            priceText.color = Color.red;
-            yield return new WaitForSeconds(0.15f);
-            priceText.color = originalColor;
-            yield return new WaitForSeconds(0.15f);
-        }
-
-        priceText.color = originalColor;
+        if (backgroundImage != null) backgroundImage.color = Color.white;
     }
 }

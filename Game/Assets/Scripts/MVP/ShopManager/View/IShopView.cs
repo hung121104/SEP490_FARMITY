@@ -1,21 +1,21 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 public interface IShopView
 {
     void UpdateShopSlots(List<ShopItemModel> items);
-
-    // effect
     void FlashPriceRed(int slotIndex);
-
     void SetVisible(bool isVisible);
-    void ShowItemToSell(ItemModel item, int sellPrice);
-   
-    void ClearSellSlot();
-
     void ToggleExternalInventory(bool isVisible);
-    event Action<int> OnBuyClicked; 
-    event Action OnOpenInventoryToSellClicked; 
-    event Action OnConfirmSellClicked; 
-    event Action OnCloseClicked; 
+    void ToggleInventoryTabs(bool isVisible);
+    void ToggleHotbar(bool isVisible);
+
+    void UpdateSellArea(List<ItemModel> itemsInSellCart, int totalPrice);
+
+    event Action<int> OnBuyClicked;
+    event Action OnConfirmSellClicked;
+    event Action OnCloseClicked;
+    event Action<GameObject, int> OnItemDroppedToSell;
+    event Action<int> OnSellSlotClicked;
 }

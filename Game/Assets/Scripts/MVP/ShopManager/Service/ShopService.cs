@@ -21,50 +21,27 @@ public class ShopService : IShopService
     /// </summary>
     public void GenerateDailyItems()
     {
-        if (ItemCatalogService.Instance == null || !ItemCatalogService.Instance.IsReady)
-        {
-            Debug.LogWarning("[ShopService] ItemCatalog chưa sẵn sàng!");
-            return;
-        }
+        if (ItemCatalogService.Instance == null || !ItemCatalogService.Instance.IsReady) return;
 
-        // 1. use reflection to access the private _catalog field in ItemCatalogService
         FieldInfo fieldInfo = typeof(ItemCatalogService).GetField("_catalog", BindingFlags.NonPublic | BindingFlags.Instance);
         if (fieldInfo == null) return;
 
         var hiddenCatalog = (Dictionary<string, ItemData>)fieldInfo.GetValue(ItemCatalogService.Instance);
-
-        // 2. Filter by ItemType and canBeBought
         var validItems = hiddenCatalog.Values
             .Where(item => item.canBeBought && item.itemType == _model.ShopType)
             .ToList();
 
-        if (validItems.Count == 0)
+        var newShopItems = new List<ShopItemModel>();
+
+        foreach (var itemData in validItems)
         {
-            Debug.LogWarning($"[ShopService] Không tìm thấy vật phẩm nào cho loại {_model.ShopType}");
-            return;
+          
+            int finalPrice = itemData.buyPrice;
+            newShopItems.Add(new ShopItemModel(itemData.itemID, finalPrice));
         }
 
-        // 3. Random 5 item 
-        var newDailyItems = new List<ShopItemModel>();
-        int itemsToPick = Mathf.Min(ITEMS_PER_DAY, validItems.Count);
-
-        System.Random rng = new System.Random();
-        var shuffledItems = validItems.OrderBy(a => rng.Next()).ToList();
-
-        for (int i = 0; i < itemsToPick; i++)
-        {
-            ItemData itemData = shuffledItems[i];
-
-            
-            float randomMultiplier = UnityEngine.Random.Range(0.9f, 1.2f);
-            int finalPrice = Mathf.Max(1, Mathf.RoundToInt(itemData.buyPrice * randomMultiplier));
-            // original price
-            //int finalPrice = itemData.buyPrice;
-            newDailyItems.Add(new ShopItemModel(itemData.itemID, finalPrice));
-        }
-
-        _model.SetDailyItems(newDailyItems);
-        Debug.Log($"[ShopService] Đã tạo mới {newDailyItems.Count} vật phẩm cho {_model.ShopType}");
+        _model.SetDailyItems(newShopItems);
+        Debug.Log($"[ShopService] Load all Item {newShopItems.Count} item {_model.ShopType}");
     }
     public bool TryBuyItem(int slotIndex, IInventoryService playerInventory)
     {
