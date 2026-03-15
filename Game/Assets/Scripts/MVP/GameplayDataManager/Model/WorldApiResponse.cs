@@ -98,7 +98,7 @@ public class ChunkResponseData
 [Serializable]
 public class TileResponseData
 {
-    /// <summary>"crop", "tilled", "empty", etc.</summary>
+    /// <summary>"crop", "tilled", "resource", "empty", etc.</summary>
     public string type;
 
     /// <summary>Plant identifier string, e.g. "plant_corn". Null for tilled-only tiles.</summary>
@@ -111,4 +111,7 @@ public class TileResponseData
     public float waterDecayTimer;
     public bool isFertilized;
     public bool isPollinated;
+
+    public string resourceId;
+    public int currentHp;
 }
