@@ -886,4 +886,3 @@ Depending on `itemType`, specific extra fields must be included:
   - `RPC_Client_PlayHitEffect(...)` plays local hit VFX/animation.
   - `RPC_Client_DestroyResource(...)` destroys local spawned resource visual.
 
-

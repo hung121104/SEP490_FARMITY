@@ -34,6 +34,7 @@ public class CropPlowingView : MonoBehaviour
     public CropPlowingPresenter GetPresenter() => presenter;
     private Transform playerTransform;
     private HotbarView hotbarView;
+    private IUseToolService toolUseService;
     private float _mouseHoldTimer = 0f;
     private SpriteRenderer _previewSR;
     private Vector3 _lastMouseWorldPos;  // raw mouse pos before tile snap — used for anim direction    
@@ -44,6 +45,7 @@ public class CropPlowingView : MonoBehaviour
         ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
         ICropPlowingService service = new CropPlowingService(syncManager, showDebugLogs);
         presenter = new CropPlowingPresenter(this, service);
+        toolUseService = new UseToolService();
         
         // Initialize the presenter with tilled tile reference
         presenter.Initialize(tilledTile);
@@ -103,7 +105,7 @@ public class CropPlowingView : MonoBehaviour
         }
 
         Vector3 tile = GetPreviewTargetTile();
-        if (tile == Vector3.zero)
+        if (tile == Vector3.zero || presenter == null || !presenter.IsTillable(tile))
         {
             _previewSR.enabled = false;
             return;
@@ -142,8 +144,8 @@ public class CropPlowingView : MonoBehaviour
                 Vector3 snappedTile = CropTileSelector.GetDirectionalTile(
                     playerTransform.position, mouseWorldPos, plowingRange, ref dummy);
 
-                if (snappedTile != Vector3.zero)
-                    presenter.HandlePlowAction(snappedTile);
+                if (snappedTile != Vector3.zero && presenter.IsTillable(snappedTile))
+                    toolUseService?.UseHoe(currentItem, mouseWorldPos);
             }
         }
         else

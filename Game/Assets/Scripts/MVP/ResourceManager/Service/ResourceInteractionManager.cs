@@ -1,6 +1,7 @@
 using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
 /// Handles client -> host resource hit requests and host-authoritative damage/loot flow.
@@ -14,6 +15,33 @@ public class ResourceInteractionManager : MonoBehaviourPun
 
     [Header("FX")]
     [SerializeField] private string hitAnimatorTrigger = "Hit";
+    [SerializeField] private float shakeIntensity = 0.1f;
+    [SerializeField] private float shakeDuration = 0.2f;
+
+    public void OnEnable()
+    {
+        ChunkDataSyncManager.OnResourceHpUpdated += HandleResourceHpUpdated;
+    }
+
+    public void OnDisable()
+    {
+        ChunkDataSyncManager.OnResourceHpUpdated -= HandleResourceHpUpdated;
+    }
+
+    private void HandleResourceHpUpdated(int worldX, int worldY, int newHp)
+    {
+        // Play the hit effect when we receive a health update (means it was hit but not destroyed)
+        if (WorldDataManager.Instance == null) return;
+        
+        int chunkX = Mathf.FloorToInt(worldX / (float)WorldDataManager.Instance.chunkSizeTiles);
+        int chunkY = Mathf.FloorToInt(worldY / (float)WorldDataManager.Instance.chunkSizeTiles);
+        
+        int localX = worldX - (chunkX * WorldDataManager.Instance.chunkSizeTiles);
+        int localY = worldY - (chunkY * WorldDataManager.Instance.chunkSizeTiles);
+        int tileIndex = localY * WorldDataManager.Instance.chunkSizeTiles + localX;
+        
+        PlayHitEffectLocally(chunkX, chunkY, tileIndex);
+    }
 
     public void RequestHitResource(int chunkX, int chunkY, int tileIndex, int damage, string toolId)
     {
@@ -83,7 +111,6 @@ public class ResourceInteractionManager : MonoBehaviourPun
             {
                 syncManager.BroadcastResourceHpUpdated(Mathf.FloorToInt(worldTile.x), Mathf.FloorToInt(worldTile.y), newHp);
             }
-            PlayHitEffectLocally(chunkX, chunkY, tileIndex);
             return;
         }
 
@@ -115,6 +142,28 @@ public class ResourceInteractionManager : MonoBehaviourPun
         Animator animator = visual.GetComponentInChildren<Animator>(true);
         if (animator != null && !string.IsNullOrEmpty(hitAnimatorTrigger))
             animator.SetTrigger(hitAnimatorTrigger);
+
+        StartCoroutine(ShakeRoutine(visual.transform));
+    }
+
+    private IEnumerator ShakeRoutine(Transform target)
+    {
+        Vector3 originalPos = target.position;
+        float elapsed = 0f;
+
+        while (elapsed < shakeDuration)
+        {
+            if (target == null) yield break;
+
+            float offsetX = Random.Range(-1f, 1f) * shakeIntensity;
+            float offsetY = Random.Range(-1f, 1f) * shakeIntensity;
+            target.position = originalPos + new Vector3(offsetX, offsetY, 0f);
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (target != null) target.position = originalPos;
     }
 
     public void DestroyResourceLocally(int chunkX, int chunkY, int tileIndex)
