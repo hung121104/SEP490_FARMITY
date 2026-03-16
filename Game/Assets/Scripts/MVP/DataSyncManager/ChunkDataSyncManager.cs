@@ -287,6 +287,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         Crop         = slot.Crop,
                         HasStructure = slot.HasStructure,
                         StructureId  = slot.HasStructure ? slot.Structure.StructureId : null,
+                        StructureHp  = slot.HasStructure ? slot.Structure.CurrentHp : 0,
                         HasResource  = slot.HasResource,
                         ResourceId   = slot.HasResource ? slot.Resource.ResourceId : null,
                         ResourceHp   = slot.HasResource ? (byte)slot.Resource.CurrentHp : (byte)0,
@@ -408,10 +409,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         chunk.IncrementPollenHarvestCount(entry.WorldX, entry.WorldY);
                 }
 
-                // Restore structure data
+                // Restore structure data with HP
                 if (entry.HasStructure && !string.IsNullOrEmpty(entry.StructureId))
                 {
-                    chunk.PlaceStructure(entry.StructureId, entry.WorldX, entry.WorldY);
+                    chunk.PlaceStructure(entry.StructureId, entry.WorldX, entry.WorldY, entry.StructureHp);
                 }
 
                 // Restore resource data
@@ -1311,6 +1312,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         public UnifiedChunkData.CropTileData Crop;
         public bool   HasStructure;
         public string StructureId;
+        public int    StructureHp;  // ADDED: Structure HP for late-join sync
         public bool   HasResource;
         public string ResourceId;
         public byte   ResourceHp;
@@ -1320,7 +1322,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     // Wire format per tile entry:
     //   WorldX(4) WorldY(4) flags(1)
     //   [if HasCrop:      PlantIdLen(1) PlantId(N) Stage(1) GrowthTimer(4) PollenCount(1)]
-    //   [if HasStructure:  StructIdLen(1) StructId(N)]
+    //   [if HasStructure:  StructIdLen(1) StructId(N) StructureHp(4)]
     // flags: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure
     private byte[] SerializeBatch(ChunkSyncData[] batch)
     {
@@ -1371,6 +1373,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         : System.Text.Encoding.UTF8.GetBytes(entry.StructureId);
                     bytes.Add((byte)structIdBytes.Length);                   // 1
                     bytes.AddRange(structIdBytes);                           // N
+                    bytes.AddRange(System.BitConverter.GetBytes(entry.StructureHp)); // 4
                 }
 
                 if (entry.HasResource)
@@ -1436,6 +1439,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     entry.StructureId = structIdLen > 0
                         ? System.Text.Encoding.UTF8.GetString(data, offset, structIdLen) : string.Empty;
                     offset += structIdLen;
+                    entry.StructureHp = offset + 4 <= data.Length
+                        ? System.BitConverter.ToInt32(data, offset)
+                        : 0;
+                    offset += 4;
                 }
 
                 if (entry.HasResource)
