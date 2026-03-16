@@ -37,6 +37,7 @@ public class UnifiedChunkData : BaseChunkData
     {
         public string StructureId;  // structure identifier (e.g. "fence_wood")
         public int    PlacedDay;    // in-game day the structure was placed
+        public int    CurrentHp;    // remaining hp for destruction logic
     }
 
     [Serializable]
@@ -424,7 +425,7 @@ public class UnifiedChunkData : BaseChunkData
     /// Fails if a crop is already present (mutual exclusion).
     /// Structures CANNOT be placed on tilled soil.
     /// </summary>
-    public bool PlaceStructure(string structureId, int worldX, int worldY)
+    public bool PlaceStructure(string structureId, int worldX, int worldY, int initialHp = 0)
     {
         long key = GetKey(worldX, worldY);
 
@@ -451,7 +452,7 @@ public class UnifiedChunkData : BaseChunkData
                 return false;
             }
             slot.HasStructure = true;
-            slot.Structure    = new StructureTileData { StructureId = structureId };
+            slot.Structure    = new StructureTileData { StructureId = structureId, CurrentHp = initialHp };
             tiles[key]        = slot;
         }
         else
@@ -461,7 +462,7 @@ public class UnifiedChunkData : BaseChunkData
                 WorldX       = worldX,
                 WorldY       = worldY,
                 HasStructure = true,
-                Structure    = new StructureTileData { StructureId = structureId }
+                Structure    = new StructureTileData { StructureId = structureId, CurrentHp = initialHp }
             };
         }
 
@@ -518,6 +519,27 @@ public class UnifiedChunkData : BaseChunkData
         foreach (var slot in tiles.Values)
             if (slot.HasStructure) count++;
         return count;
+    }
+
+    public bool UpdateStructureHp(int worldX, int worldY, int currentHp)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.HasStructure) return false;
+
+        slot.Structure.CurrentHp = currentHp;
+        tiles[key] = slot;
+        IsDirty = true;
+        return true;
+    }
+
+    public int GetStructureHp(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        if (tiles.TryGetValue(key, out TileSlot slot) && slot.HasStructure)
+        {
+            return slot.Structure.CurrentHp;
+        }
+        return 0;
     }
 
     // ══════════════════════════════════════════════════════════════════════

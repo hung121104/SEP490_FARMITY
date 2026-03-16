@@ -86,9 +86,10 @@ public class StructureService : IStructureService
         int anchorX = Mathf.FloorToInt(worldPosition.x);
         int anchorY = Mathf.FloorToInt(worldPosition.y);
 
-        // Write the single tile to WorldDataManager
+        // Write the single tile to WorldDataManager with full HP
         Vector3 tileWorld = new Vector3(anchorX, anchorY, 0f);
-        bool ok = WorldDataManager.Instance.PlaceStructureAtWorldPosition(tileWorld, data.StructureId);
+        int initialHp = data.MaxHealth; // Initialize with full HP
+        bool ok = WorldDataManager.Instance.PlaceStructureAtWorldPosition(tileWorld, data.StructureId, initialHp);
         if (!ok)
         {
             Debug.LogError($"[StructureService] Failed to write tile ({anchorX},{anchorY}).");
@@ -96,7 +97,7 @@ public class StructureService : IStructureService
         }
 
         if (showDebugLogs)
-            Debug.Log($"[StructureService] ✓ Placed '{data.StructureId}' at ({anchorX},{anchorY})");
+            Debug.Log($"[StructureService] ✓ Placed '{data.StructureId}' at ({anchorX},{anchorY}) with HP={initialHp}");
 
         // Refresh visuals
         RefreshAffectedChunks(anchorX, anchorY, 1, 1);
