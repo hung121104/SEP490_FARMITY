@@ -425,9 +425,12 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             // Ensure visuals are spawned for this chunk on the client
             if (chunkLoadingManager != null)
             {
-                chunkLoadingManager.EnsureChunkLoaded(chunkPos);
+                if (!chunkLoadingManager.IsChunkLoaded(chunkPos))
+                {
+                    chunkLoadingManager.EnsureChunkLoaded(chunkPos);
+                }
                 // Refresh visuals to apply tilled tiles, crops, and structures
-                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+                // chunkLoadingManager.RefreshChunkVisuals(chunkPos);
             }
         }
         
