@@ -24,6 +24,7 @@ public class PlayerAnimationView : MonoBehaviour
     [SerializeField] private string triggerPlow  = "Plow";
     [SerializeField] private string triggerPlant = "Plant";
     [SerializeField] private string triggerWater = "watering";
+    [SerializeField] private string triggerChop  = "chop";
 
     [Header("Action Direction Parameters")]
     [Tooltip("Animator Float: -1 = left, 1 = right.")]
@@ -34,6 +35,10 @@ public class PlayerAnimationView : MonoBehaviour
     // ── Runtime refs ──────────────────────────────────────────────────────
     [SerializeField]private Animator    _animator;
     private PhotonView  _photonView;
+    private ToolData _pendingChopTool;
+    private Vector3 _pendingChopTargetPos;
+    private bool _hasPendingChopImpact;
+    private Coroutine _chopImpactDispatchRoutine;
 
     /// <summary>True while any action is locking player movement.</summary>
     public bool IsMovementLocked { get; private set; }
@@ -53,12 +58,26 @@ public class PlayerAnimationView : MonoBehaviour
     {
         UseToolService.OnHoeRequested += HandleHoeAnimation;
         UseToolService.OnWateringCanRequested += HandleWaterAnimation;
+        UseToolService.OnAxeRequested += HandleChopAnimation;
+        UseToolService.OnPickaxeRequested += HandleChopAnimation;
     }
 
     private void OnDisable()
     {
         UseToolService.OnHoeRequested -= HandleHoeAnimation;
         UseToolService.OnWateringCanRequested -= HandleWaterAnimation;
+        UseToolService.OnAxeRequested -= HandleChopAnimation;
+        UseToolService.OnPickaxeRequested -= HandleChopAnimation;
+
+        if (_chopImpactDispatchRoutine != null)
+        {
+            StopCoroutine(_chopImpactDispatchRoutine);
+            _chopImpactDispatchRoutine = null;
+        }
+
+        _hasPendingChopImpact = false;
+        _pendingChopTool = null;
+        _pendingChopTargetPos = Vector3.zero;
     }
 
     // ── Called by PlayerMovement every frame ──────────────────────────────
@@ -106,6 +125,97 @@ public class PlayerAnimationView : MonoBehaviour
 
         if (_photonView != null && PhotonNetwork.IsConnected)
             _photonView.RPC(nameof(RPC_TriggerPlow), RpcTarget.Others, dirX);
+    }
+
+    private void HandleChopAnimation(ToolData tool, Vector3 targetPos)
+    {
+        if (_photonView != null && !_photonView.IsMine) return;
+
+        float rawX = targetPos.x - transform.position.x;
+        float dirX = rawX >= 0 ? 1f : -1f;
+
+        _pendingChopTool = tool;
+        _pendingChopTargetPos = targetPos;
+        _hasPendingChopImpact = true;
+
+        _animator?.SetFloat(paramActionX, dirX);
+        _animator?.SetTrigger(triggerChop);
+
+        if (_chopImpactDispatchRoutine != null)
+        {
+            StopCoroutine(_chopImpactDispatchRoutine);
+            _chopImpactDispatchRoutine = null;
+        }
+        _chopImpactDispatchRoutine = StartCoroutine(DispatchChopImpactAfterAnimationStarts());
+
+        if (_animator != null)
+        {
+            StartCoroutine(LockUntilAnimationFinishes());
+        }
+
+        if (_photonView != null && PhotonNetwork.IsConnected)
+            _photonView.RPC(nameof(RPC_TriggerChop), RpcTarget.Others, dirX);
+    }
+
+    private IEnumerator DispatchChopImpactAfterAnimationStarts()
+    {
+        if (!_hasPendingChopImpact)
+        {
+            _chopImpactDispatchRoutine = null;
+            yield break;
+        }
+
+        if (_animator == null)
+        {
+            DispatchPendingChopImpact();
+            _chopImpactDispatchRoutine = null;
+            yield break;
+        }
+
+        int initialHash = _animator.GetCurrentAnimatorStateInfo(0).fullPathHash;
+        float timeout = 0.5f;
+
+        while (timeout > 0f)
+        {
+            if (_animator.IsInTransition(0) || _animator.GetCurrentAnimatorStateInfo(0).fullPathHash != initialHash)
+                break;
+
+            timeout -= Time.deltaTime;
+            yield return null;
+        }
+
+        while (_animator.IsInTransition(0))
+            yield return null;
+
+        DispatchPendingChopImpact();
+        _chopImpactDispatchRoutine = null;
+    }
+
+    // Optional animation-event hook: call this at the exact chop impact frame.
+    // If the event is configured in the clip, impact timing becomes frame-accurate.
+    public void OnChopImpactAnimationEvent()
+    {
+        DispatchPendingChopImpact();
+    }
+
+    private void DispatchPendingChopImpact()
+    {
+        if (!_hasPendingChopImpact || _pendingChopTool == null)
+            return;
+
+        switch (_pendingChopTool.toolType)
+        {
+            case ToolType.Axe:
+                UseToolService.RaiseAxeImpact(_pendingChopTool, _pendingChopTargetPos);
+                break;
+            case ToolType.Pickaxe:
+                UseToolService.RaisePickaxeImpact(_pendingChopTool, _pendingChopTargetPos);
+                break;
+        }
+
+        _hasPendingChopImpact = false;
+        _pendingChopTool = null;
+        _pendingChopTargetPos = Vector3.zero;
     }
 
     /// <summary>
@@ -193,12 +303,18 @@ public class PlayerAnimationView : MonoBehaviour
         if (_photonView != null && PhotonNetwork.IsConnected)
             _photonView.RPC(nameof(RPC_TriggerWater), RpcTarget.Others, dirX);
     }
-
     [PunRPC]
     private void RPC_TriggerWater(float dirX)
     {
         _animator?.SetFloat(paramActionX, dirX);
         _animator?.SetTrigger(triggerWater);
+    }
+
+    [PunRPC]
+    private void RPC_TriggerChop(float dirX)
+    {
+        _animator?.SetFloat(paramActionX, dirX);
+        _animator?.SetTrigger(triggerChop);
     }
 
     // ── Photon sync (locomotion) ───────────────────────────────────────────

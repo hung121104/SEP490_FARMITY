@@ -40,6 +40,12 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     private readonly Dictionary<string, Sprite> _spriteCache =
         new Dictionary<string, Sprite>();
 
+    private readonly Dictionary<string, Vector3> _baseVisualScales =
+        new Dictionary<string, Vector3>();
+
+    private readonly Dictionary<string, Coroutine> _activeHitFlashCoroutines =
+        new Dictionary<string, Coroutine>();
+
     [Header("Debug")]
     public bool showDebugLogs = true;
 
@@ -111,6 +117,8 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         ChunkDataSyncManager.OnResourceHpUpdated -= HandleResourceHpUpdated;
         ChunkDataSyncManager.OnResourceRemoved   -= HandleResourceRemoved;
         ChunkDataSyncManager.OnResourceSpawned   -= HandleResourceSpawned;
+
+        StopAllHitFlashCoroutines();
     }
 
     private void TryBindTimeManager()
@@ -393,6 +401,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         {
             if (existing != null) return;
             _spawnedVisuals.Remove(visualKey);
+            ClearVisualTracking(visualKey);
         }
 
         ResourceConfigData configData = ResourceCatalogManager.Instance?.GetResourceConfig(resourceId);
@@ -424,6 +433,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         GameObject visual = Instantiate(prefabToUse, worldPos, Quaternion.identity);
         visual.name = $"Resource_{resourceId}_{chunkX}_{chunkY}_{tileIndex}";
         _spawnedVisuals[visualKey] = visual;
+        _baseVisualScales[visualKey] = visual.transform.localScale;
 
         if (string.IsNullOrEmpty(configData.spriteUrl))
         {
@@ -491,7 +501,10 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
             return true;
 
         if (_spawnedVisuals.ContainsKey(key))
+        {
             _spawnedVisuals.Remove(key);
+            ClearVisualTracking(key);
+        }
 
         visual = null;
         return false;
@@ -502,6 +515,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         string key = MakeVisualKey(chunkX, chunkY, tileIndex);
         if (_spawnedVisuals.TryGetValue(key, out GameObject visual))
         {
+            ClearVisualTracking(key);
             if (visual != null)
                 Destroy(visual);
             _spawnedVisuals.Remove(key);
@@ -600,16 +614,23 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
     private void HandleResourceHpUpdated(int worldX, int worldY, int newHp)
     {
-        if (TryGetVisualFromWorld(worldX, worldY, out GameObject visual))
+        if (!WorldTileToVisualKey(worldX, worldY, out string key))
+            return;
+
+        if (!_spawnedVisuals.TryGetValue(key, out GameObject visual) || visual == null)
         {
-            StartCoroutine(HitFlashVisual(visual));
+            ClearVisualTracking(key);
+            return;
         }
+
+        StartOrRestartHitFlash(key, visual);
     }
 
     private void HandleResourceRemoved(int worldX, int worldY)
     {
         if (WorldTileToVisualKey(worldX, worldY, out string key))
         {
+            ClearVisualTracking(key);
             if (_spawnedVisuals.TryGetValue(key, out GameObject visual) && visual != null)
             {
                 Destroy(visual);
@@ -635,13 +656,80 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         SpawnResourceVisualLocally(chunkPos.x, chunkPos.y, tileIndex, resourceId);
     }
 
-    private IEnumerator HitFlashVisual(GameObject visual)
+    private void StartOrRestartHitFlash(string key, GameObject visual)
     {
-        if (visual == null) yield break;
-        Vector3 origScale = visual.transform.localScale;
-        visual.transform.localScale = origScale * 0.8f;
+        if (visual == null)
+        {
+            ClearVisualTracking(key);
+            return;
+        }
+
+        if (!_baseVisualScales.TryGetValue(key, out Vector3 baseScale))
+        {
+            baseScale = visual.transform.localScale;
+            _baseVisualScales[key] = baseScale;
+        }
+
+        if (_activeHitFlashCoroutines.TryGetValue(key, out Coroutine running) && running != null)
+        {
+            StopCoroutine(running);
+        }
+
+        // Always reset to canonical scale before replaying hit feedback.
+        visual.transform.localScale = baseScale;
+        _activeHitFlashCoroutines[key] = StartCoroutine(HitFlashVisual(key, visual, baseScale));
+    }
+
+    private IEnumerator HitFlashVisual(string key, GameObject visual, Vector3 baseScale)
+    {
+        if (visual == null)
+        {
+            ClearVisualTracking(key);
+            yield break;
+        }
+
+        visual.transform.localScale = baseScale * 0.95f;
         yield return new WaitForSeconds(0.1f);
-        if (visual != null) visual.transform.localScale = origScale;
+
+        if (visual != null)
+            visual.transform.localScale = baseScale;
+
+        _activeHitFlashCoroutines.Remove(key);
+    }
+
+    private void ClearVisualTracking(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return;
+
+        if (_activeHitFlashCoroutines.TryGetValue(key, out Coroutine running) && running != null)
+        {
+            StopCoroutine(running);
+        }
+
+        _activeHitFlashCoroutines.Remove(key);
+        _baseVisualScales.Remove(key);
+    }
+
+    private void StopAllHitFlashCoroutines()
+    {
+        foreach (Coroutine running in _activeHitFlashCoroutines.Values)
+        {
+            if (running != null)
+                StopCoroutine(running);
+        }
+
+        _activeHitFlashCoroutines.Clear();
+
+        foreach (string key in _spawnedVisuals.Keys)
+        {
+            if (_spawnedVisuals.TryGetValue(key, out GameObject visual) && visual != null &&
+                _baseVisualScales.TryGetValue(key, out Vector3 baseScale))
+            {
+                visual.transform.localScale = baseScale;
+            }
+        }
+
+        _baseVisualScales.Clear();
     }
 
     private bool TryGetVisualFromWorld(int worldX, int worldY, out GameObject visual)

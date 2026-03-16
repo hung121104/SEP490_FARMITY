@@ -29,8 +29,11 @@ export class ResourceConfig {
   @Prop({ required: true, min: 1 })
   maxHp: number;
 
-  @Prop({ default: null })
-  requiredToolId: string | null;
+  @Prop({ default: 'Axe' })
+  requiredToolType: string;
+
+  @Prop({ default: 1 })
+  minToolPower: number;
 
   @Prop({ default: null })
   spriteUrl: string | null;

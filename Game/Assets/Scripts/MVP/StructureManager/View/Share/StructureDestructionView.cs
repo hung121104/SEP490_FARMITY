@@ -40,8 +40,8 @@ public class StructureDestructionView : MonoBehaviour
         presenter = new StructureDestructionPresenter(this, destService, structService, invService, syncManager, showDebugLogs);
 
         // Subscribe to tool events
-        UseToolService.OnAxeRequested += HandleToolUse;
-        UseToolService.OnPickaxeRequested += HandleToolUse;
+        UseToolService.OnAxeImpactRequested += HandleToolUse;
+        UseToolService.OnPickaxeImpactRequested += HandleToolUse;
         UseToolService.OnHoeRequested += HandleToolUse;
         UseToolService.OnWateringCanRequested += HandleToolUse;
         UseToolService.OnFishingRodRequested += HandleToolUse;
@@ -49,8 +49,8 @@ public class StructureDestructionView : MonoBehaviour
 
     private void OnDestroy()
     {
-        UseToolService.OnAxeRequested -= HandleToolUse;
-        UseToolService.OnPickaxeRequested -= HandleToolUse;
+        UseToolService.OnAxeImpactRequested -= HandleToolUse;
+        UseToolService.OnPickaxeImpactRequested -= HandleToolUse;
         UseToolService.OnHoeRequested -= HandleToolUse;
         UseToolService.OnWateringCanRequested -= HandleToolUse;
         UseToolService.OnFishingRodRequested -= HandleToolUse;
