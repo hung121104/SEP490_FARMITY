@@ -21,6 +21,11 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     public int maxResourcesPerChunk = 40;
     public int dailySpawnRate = 5;
 
+    [Header("Harvest Settings")]
+    [Min(0.1f)]
+    [Tooltip("Max distance from local player to target tile when harvesting resources.")]
+    [SerializeField] private float interactionRange = 2f;
+
     [Header("Noise Spawn System")]
     [Tooltip("Size/Frequency of the noise map. Lower is larger clusters.")]
     public float noiseScale = 0.1f;
@@ -77,7 +82,8 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         _resourceHarvestingService = new ResourceHarvestingService(
             WorldDataManager.Instance,
             FindAnyObjectByType<ChunkDataSyncManager>(),
-            FindAnyObjectByType<InventoryGameView>()
+            FindAnyObjectByType<InventoryGameView>(),
+            interactionRange
         );
     }
 

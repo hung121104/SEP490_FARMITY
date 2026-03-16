@@ -30290,8 +30290,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1341802801}
   - component: {fileID: 1341802800}
-  - component: {fileID: 1341802799}
   - component: {fileID: 1341802798}
+  - component: {fileID: 1341802799}
   m_Layer: 0
   m_Name: ResourceSystem
   m_TagString: Untagged
@@ -30313,6 +30313,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lootPrefabName: LootPrefabName
   hitAnimatorTrigger: Hit
+  shakeIntensity: 0.1
+  shakeDuration: 0.2
 --- !u!114 &1341802799
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -30350,6 +30352,7 @@ MonoBehaviour:
   spawnZoneMap: {fileID: 695224742}
   maxResourcesPerChunk: 40
   dailySpawnRate: 5
+  interactionRange: 2
   noiseScale: 0.5
   noiseThreshold: 0.9
   treePrefab: {fileID: 2815193234366554513, guid: e7de6b242ac47e847a5df47722c71653, type: 3}
