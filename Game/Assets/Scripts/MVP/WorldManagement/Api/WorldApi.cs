@@ -20,7 +20,7 @@ public static class WorldApi
     [Serializable]
     public class TileDataDto
     {
-        /// <summary>"crop" | "tilled" | "empty"</summary>
+        /// <summary>"crop" | "tilled" | "resource" | "empty"</summary>
         [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
         public string type;
 

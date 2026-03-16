@@ -21,6 +21,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
    - [Plants Catalog](#plants-catalog)
    - [Crafting Recipes](#crafting-recipes)
    - [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
+  - [Resource Config Catalog](#resource-config-catalog)
    - [Material Catalog](#material-catalog)
 5. [Player Data](#player-data)
    - [World Management](#world-management)
@@ -804,5 +805,85 @@ Depending on `itemType`, specific extra fields must be included:
 - For each entry, `SkinCatalogManager.Instance.LoadExternalSheet(materialId, spritesheetUrl, cellSize)` is called, registering the sheet under `materialId` as the configId.
 - `ItemUsageController` looks up `tool.toolMaterialId` via `MaterialCatalogService.Instance.GetMaterial(id)` and passes `materialEntry.materialId` directly to `EquipmentManager.EquipTool()` as the configId.
 - To add a new material tier: `POST /game-data/materials` once — no code changes required.
+
+---
+
+### Resource Config Catalog
+
+> Defines harvestable world resources (trees, rocks, etc.) consumed by Unity `ResourceCatalogManager` and runtime host-authoritative spawn/HP logic.
+>
+> **Status:** In progress. Schema/DTO support is in place in `admin-service`, but gateway HTTP routes are not yet fully wired.
+
+#### Planned HTTP Endpoints
+
+- **GET** `/game-data/resource-configs/catalog`: Get full resource catalog in Unity-client format (public).
+  - Response:
+    ```json
+    {
+      "resources": [
+        {
+          "resourceId": "string",
+          "name": "string",
+          "maxHp": 100,
+          "requiredToolType": "string",
+          "minToolPower": 1,
+          "spriteUrl": "string|null",
+          "dropTable": [
+            {
+              "itemId": "string",
+              "minAmount": 1,
+              "maxAmount": 3,
+              "dropChance": 0.5
+            }
+          ]
+        }
+      ]
+    }
+    ```
+  - Note: Consumed by `ResourceCatalogManager.cs` on client startup.
+
+- **POST** `/game-data/resource-configs` *(admin only, planned)*: Create a resource config.
+  - Content-Type: `multipart/form-data`
+  - Fields: `sprite` (file) and all Resource Config text fields (with `dropTable` as a JSON string).
+- **PUT** `/game-data/resource-configs/:resourceId` *(admin only, planned)*: Update a resource config.
+  - Content-Type: `multipart/form-data`
+  - Fields: Optional `sprite` file to replace the current sprite, and any text fields.
+- **DELETE** `/game-data/resource-configs/:resourceId` *(admin only, planned)*: Delete a resource config.
+
+#### Resource Config Fields
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `sprite` | file (PNG) | — | Resource sprite. Uploaded to Cloudinary automatically; sets `spriteUrl`. |
+| `resourceId` | string | ✅ | Stable game-side identifier (e.g., `oak_tree`, `stone_rock`) |
+| `name` | string | ✅ | Display name |
+| `maxHp` | int | ✅ | Initial HP used by host RAM state |
+| `resourceType` | string | ✅ | Classification of the resource (`tree`, `rock`, or `ore`) for prefab/collider selection |
+| `spawnWeight` | int | — | Relative probability weight for random spawning within chunks (default is 1) |
+| `requiredToolType` | string | — | Required tool type to harvest this resource (default `Axe`) |
+| `minToolPower` | int | — | Minimum tool power required to harvest (default 1) |
+| `spriteUrl` | string\|null | — | Cloudinary URL for the resource sprite. **Auto-filled** if a `sprite` file is uploaded. |
+| `dropTable` | array | ✅ | Array of item drops with chance and amount range |
+
+---
+
+### Resource Interaction (Photon PUN RPC)
+
+> Resource hit/destroy is **not** an HTTP endpoint. It is host-authoritative PUN2 RPC flow.
+
+- Client -> Host request:
+  - `RequestHitResource(chunkX, chunkY, tileIndex, damage, toolId)`
+  - Sends `RPC_Host_ProcessHit(..., PhotonMessageInfo)` to `RpcTarget.MasterClient`.
+
+- Host processing (single source of truth):
+  - Validates tile is a resource in RAM.
+  - Applies damage to `currentHp`.
+  - Marks chunk dirty (`IsDirty = true`, `WorldSaveManager.TryMarkChunkDirty(...)`).
+  - If HP > 0: broadcasts `RPC_Client_PlayHitEffect(...)`.
+  - If HP <= 0: removes resource from RAM, rolls dropTable loot, spawns loot room objects, broadcasts `RPC_Client_DestroyResource(...)`.
+
+- Client visual sync:
+  - `RPC_Client_PlayHitEffect(...)` plays local hit VFX/animation.
+  - `RPC_Client_DestroyResource(...)` destroys local spawned resource visual.
 
 

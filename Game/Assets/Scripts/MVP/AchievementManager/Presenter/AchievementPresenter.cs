@@ -119,6 +119,9 @@ namespace AchievementManager.Presenter
             // ✅ Restore counters AFTER model is loaded
             tracker.RestoreCountersFromServer(achievements);
 
+            // Reconcile any gameplay events buffered before model load completed
+            tracker.ReconcileBufferedProgressAfterLoad();
+
             // ✅ No tracker.Initialize() here anymore - already done in Awake!
 
             panelView?.RefreshIfOpen(model.GetAllAchievements());

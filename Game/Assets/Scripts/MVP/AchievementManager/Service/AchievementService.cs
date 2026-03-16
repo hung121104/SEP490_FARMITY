@@ -13,6 +13,7 @@ namespace AchievementManager.Service
     {
         private const string ACHIEVEMENT_ENDPOINT = "/player-data/achievement";
         private const string PROGRESS_ENDPOINT    = "/player-data/achievement/progress";
+        private const string PROGRESS_BATCH_ENDPOINT = "/player-data/achievement/progress/batch";
         private const int    RETRY_DELAY_SECONDS  = 2;
 
         #region Fetch All Achievements
@@ -167,6 +168,105 @@ namespace AchievementManager.Service
             Debug.Log($"[AchievementService] Retrying update in {RETRY_DELAY_SECONDS}s...");
             yield return new WaitForSeconds(RETRY_DELAY_SECONDS);
             yield return UpdateProgress(progressRequest, onSuccess, onError);
+        }
+
+        #endregion
+
+        #region Update Progress Batch
+
+        public IEnumerator UpdateProgressBatch(
+            List<UpdateProgressRequest> progressRequests,
+            Action<BatchUpdateProgressResponse> onSuccess,
+            Action<string> onError)
+        {
+            if (progressRequests == null || progressRequests.Count == 0)
+            {
+                onSuccess?.Invoke(new BatchUpdateProgressResponse
+                {
+                    summary = new BatchUpdateSummary
+                    {
+                        total = 0,
+                        updated = 0,
+                        noop = 0,
+                        failed = 0
+                    },
+                    results = new List<BatchUpdateResult>(),
+                    updatedAchievements = new List<AchievementData>()
+                });
+                yield break;
+            }
+
+            string token = SessionManager.Instance?.JwtToken;
+            if (string.IsNullOrEmpty(token))
+            {
+                onError?.Invoke("No JWT token - not logged in!");
+                yield break;
+            }
+
+            string url = $"{AppConfig.ApiBaseUrl}{PROGRESS_BATCH_ENDPOINT}";
+            string json = JsonConvert.SerializeObject(progressRequests);
+            byte[] body = Encoding.UTF8.GetBytes(json);
+
+            Debug.Log($"[AchievementService] PUT {url} | BatchCount: {progressRequests.Count}");
+
+            using UnityWebRequest request = new UnityWebRequest(url, "PUT");
+            request.uploadHandler = new UploadHandlerRaw(body);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.certificateHandler = new BypassCertificateHandler();
+            SetAuthHeader(request, token);
+            SetJsonContentType(request);
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                HandleBatchUpdateSuccess(request.downloadHandler.text, onSuccess, onError);
+            }
+            else
+            {
+                yield return HandleError(
+                    request,
+                    () => RetryBatchUpdate(progressRequests, onSuccess, onError),
+                    onError
+                );
+            }
+        }
+
+        private void HandleBatchUpdateSuccess(
+            string json,
+            Action<BatchUpdateProgressResponse> onSuccess,
+            Action<string> onError)
+        {
+            try
+            {
+                BatchUpdateProgressResponse response =
+                    JsonConvert.DeserializeObject<BatchUpdateProgressResponse>(json);
+
+                if (response == null)
+                {
+                    onError?.Invoke("Failed to parse batch update response");
+                    return;
+                }
+
+                Debug.Log($"[AchievementService] Batch updated | total={response.summary?.total} " +
+                          $"updated={response.summary?.updated} noop={response.summary?.noop} failed={response.summary?.failed}");
+
+                onSuccess?.Invoke(response);
+            }
+            catch (Exception e)
+            {
+                onError?.Invoke($"JSON parse error: {e.Message}");
+            }
+        }
+
+        private IEnumerator RetryBatchUpdate(
+            List<UpdateProgressRequest> progressRequests,
+            Action<BatchUpdateProgressResponse> onSuccess,
+            Action<string> onError)
+        {
+            Debug.Log($"[AchievementService] Retrying batch update in {RETRY_DELAY_SECONDS}s...");
+            yield return new WaitForSeconds(RETRY_DELAY_SECONDS);
+            yield return UpdateProgressBatch(progressRequests, onSuccess, onError);
         }
 
         #endregion
