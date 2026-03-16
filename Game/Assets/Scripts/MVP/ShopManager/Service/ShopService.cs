@@ -48,7 +48,7 @@ public class ShopService : IShopService
         if (slotIndex < 0 || slotIndex >= _model.DailyItems.Count) return false;
 
         var shopItem = _model.DailyItems[slotIndex];
-        if (shopItem.IsSoldOut) return false;
+        //if (shopItem.IsSoldOut) return false;
 
        
         if (!playerInventory.HasSpace())
@@ -63,7 +63,7 @@ public class ShopService : IShopService
             // 
             playerInventory.AddItem(shopItem.ItemId, 1);
             // just by 1 item at a time, if you want to buy more, you can call this method multiple times
-            shopItem.IsSoldOut = true; 
+            //shopItem.IsSoldOut = true; 
             return true;
         }
 
