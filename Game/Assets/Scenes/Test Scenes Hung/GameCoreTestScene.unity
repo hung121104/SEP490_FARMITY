@@ -72847,8 +72847,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lootPrefabName: LootPrefabName
   hitAnimatorTrigger: Hit
-  shakeIntensity: 0.1
-  shakeDuration: 0.2
+  shakeIntensity: 0.05
+  shakeDuration: 0.1
 --- !u!114 &1341802799
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -78548,7 +78548,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
-  tillableTilemap: {fileID: 1220243033}
   playerTag: PlayerEntity
   plowingRange: 2
   showDebugLogs: 0

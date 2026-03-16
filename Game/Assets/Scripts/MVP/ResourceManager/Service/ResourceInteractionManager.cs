@@ -18,6 +18,31 @@ public class ResourceInteractionManager : MonoBehaviourPun
     [SerializeField] private float shakeIntensity = 0.1f;
     [SerializeField] private float shakeDuration = 0.2f;
 
+    public void OnEnable()
+    {
+        ChunkDataSyncManager.OnResourceHpUpdated += HandleResourceHpUpdated;
+    }
+
+    public void OnDisable()
+    {
+        ChunkDataSyncManager.OnResourceHpUpdated -= HandleResourceHpUpdated;
+    }
+
+    private void HandleResourceHpUpdated(int worldX, int worldY, int newHp)
+    {
+        // Play the hit effect when we receive a health update (means it was hit but not destroyed)
+        if (WorldDataManager.Instance == null) return;
+        
+        int chunkX = Mathf.FloorToInt(worldX / (float)WorldDataManager.Instance.chunkSizeTiles);
+        int chunkY = Mathf.FloorToInt(worldY / (float)WorldDataManager.Instance.chunkSizeTiles);
+        
+        int localX = worldX - (chunkX * WorldDataManager.Instance.chunkSizeTiles);
+        int localY = worldY - (chunkY * WorldDataManager.Instance.chunkSizeTiles);
+        int tileIndex = localY * WorldDataManager.Instance.chunkSizeTiles + localX;
+        
+        PlayHitEffectLocally(chunkX, chunkY, tileIndex);
+    }
+
     public void RequestHitResource(int chunkX, int chunkY, int tileIndex, int damage, string toolId)
     {
         photonView.RPC(
@@ -86,7 +111,6 @@ public class ResourceInteractionManager : MonoBehaviourPun
             {
                 syncManager.BroadcastResourceHpUpdated(Mathf.FloorToInt(worldTile.x), Mathf.FloorToInt(worldTile.y), newHp);
             }
-            PlayHitEffectLocally(chunkX, chunkY, tileIndex);
             return;
         }
 
