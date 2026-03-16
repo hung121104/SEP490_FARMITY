@@ -536,6 +536,14 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             // If tile has a structure, spawn the structure visual via pool
             if (tile.HasStructure)
             {
+                // Skip spawning if structure HP is negative (explicitly marked as destroyed)
+                if (tile.Structure.CurrentHp <= 0)
+                {
+                    if (showDebugLogs)
+                        Debug.Log($"[ChunkLoading] Skipping destroyed structure '{tile.Structure.StructureId}' at ({tile.WorldX},{tile.WorldY}) - HP is {tile.Structure.CurrentHp}");
+                    continue;
+                }
+                
                 if (cachedStructurePool == null)
                     cachedStructurePool = FindAnyObjectByType<StructurePool>();
 

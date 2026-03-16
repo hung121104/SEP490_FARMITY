@@ -38,6 +38,13 @@ public class FifoObjectPool<T> where T : class
     private readonly System.Action<T> m_ActionOnDestroy;
     private readonly int m_MaxSize;
     private readonly bool m_UseIPoolable;
+    private bool m_ShowDebugLogs;
+
+    public bool ShowDebugLogs
+    {
+        get => m_ShowDebugLogs;
+        set => m_ShowDebugLogs = value;
+    }
 
     public FifoObjectPool(
         System.Func<T> createFunc,
@@ -60,9 +67,19 @@ public class FifoObjectPool<T> where T : class
         m_UseIPoolable = typeof(IPoolable).IsAssignableFrom(typeof(T));
     }
 
-    /// <summary>
-    /// Pre-create objects during initialization to avoid runtime spikes.
-    /// </summary>
+    public FifoObjectPool(
+        System.Func<T> createFunc,
+        System.Action<T> actionOnGet,
+        System.Action<T> actionOnRelease,
+        System.Action<T> actionOnDestroy,
+        bool collectionCheck,
+        int defaultCapacity,
+        int maxSize,
+        bool usePositionCache,
+        bool showDebugLogs) : this(createFunc, actionOnGet, actionOnRelease, actionOnDestroy, collectionCheck, defaultCapacity, maxSize, usePositionCache)
+    {
+        m_ShowDebugLogs = showDebugLogs;
+    }
     public void Prewarm(int count)
     {
         for (int i = 0; i < count; i++)
@@ -78,7 +95,8 @@ public class FifoObjectPool<T> where T : class
             }
         }
 #if UNITY_EDITOR
-        Debug.Log($"[FifoObjectPool] Prewarmed {count} objects, pool size now {m_Queue.Count}");
+        if (m_ShowDebugLogs)
+            Debug.Log($"[FifoObjectPool] Prewarmed {count} objects, pool size now {m_Queue.Count}");
 #endif
     }
 
@@ -107,7 +125,8 @@ public class FifoObjectPool<T> where T : class
                 m_PositionCache.Remove(position.Value);
                 SetInPool(cachedItem, false);
 #if UNITY_EDITOR
-                Debug.Log($"[FifoObjectPool] Get from position cache at {position.Value}, obj={(cachedItem as Object)?.GetInstanceID()}");
+                if (m_ShowDebugLogs)
+                    Debug.Log($"[FifoObjectPool] Get from position cache at {position.Value}, obj={(cachedItem as Object)?.GetInstanceID()}");
 #endif
                 m_ActionOnGet?.Invoke(cachedItem);
                 return cachedItem;
@@ -117,7 +136,8 @@ public class FifoObjectPool<T> where T : class
             T newItem = m_CreateFunc();
             SetInPool(newItem, false);
 #if UNITY_EDITOR
-            Debug.Log($"[FifoObjectPool] Create new for position {position.Value}, obj={(newItem as Object)?.GetInstanceID()}");
+            if (m_ShowDebugLogs)
+                Debug.Log($"[FifoObjectPool] Create new for position {position.Value}, obj={(newItem as Object)?.GetInstanceID()}");
 #endif
             m_ActionOnGet?.Invoke(newItem);
             return newItem;
@@ -139,7 +159,8 @@ public class FifoObjectPool<T> where T : class
         if (IsInPool(element))
         {
 #if UNITY_EDITOR
-            Debug.LogWarning($"[FifoObjectPool] Attempted to release object that is already in pool. Skipping.");
+            if (m_ShowDebugLogs)
+                Debug.LogWarning($"[FifoObjectPool] Attempted to release object that is already in pool. Skipping.");
 #endif
             return;
         }
@@ -155,14 +176,16 @@ public class FifoObjectPool<T> where T : class
                 SetInPool(element, true);
                 m_PositionCache[position.Value] = element;
 #if UNITY_EDITOR
-                Debug.Log($"[FifoObjectPool] Release to position cache at {position.Value}, obj={(element as Object)?.GetInstanceID()}");
+                if (m_ShowDebugLogs)
+                    Debug.Log($"[FifoObjectPool] Release to position cache at {position.Value}, obj={(element as Object)?.GetInstanceID()}");
 #endif
             }
             else
             {
                 // Position already has cached object, destroy this one
 #if UNITY_EDITOR
-                Debug.Log($"[FifoObjectPool] Position {position.Value} already has cached object, destroying obj={(element as Object)?.GetInstanceID()}");
+                if (m_ShowDebugLogs)
+                    Debug.Log($"[FifoObjectPool] Position {position.Value} already has cached object, destroying obj={(element as Object)?.GetInstanceID()}");
 #endif
                 m_ActionOnDestroy?.Invoke(element);
             }
@@ -263,7 +286,8 @@ public class FifoObjectPool<T> where T : class
         }
         
 #if UNITY_EDITOR
-        Debug.Log($"[FifoObjectPool] Cleared {items.Count} position pools across {processed / itemsPerFrame} frames");
+        if (m_ShowDebugLogs)
+            Debug.Log($"[FifoObjectPool] Cleared {items.Count} position pools across {processed / itemsPerFrame} frames");
 #endif
     }
 }
@@ -289,6 +313,10 @@ public class StructurePool : MonoBehaviour
     [Header("Structure Catalog")]
     [Tooltip("Assign all StructureDataSO assets here so the pool knows how to create each type")]
     public List<StructureDataSO> structureCatalog = new List<StructureDataSO>();
+
+    [Header("Debug")]
+    [Tooltip("Enable debug logging for pool operations")]
+    public bool showPoolDebugLogs = false;
 
     // Pools keyed by StructureId
     private readonly Dictionary<string, FifoObjectPool<GameObject>> pools
@@ -423,7 +451,8 @@ public class StructurePool : MonoBehaviour
             collectionCheck: false,
             defaultCapacity: defaultCapacity,
             maxSize: maxSize,
-            usePositionCache: true);
+            usePositionCache: true,
+            showDebugLogs: showPoolDebugLogs);
     }
 
     // ── Dynamic Registration ──────────────────────────────────────────────
@@ -515,7 +544,8 @@ public class StructurePool : MonoBehaviour
             collectionCheck: false,
             defaultCapacity: defaultCapacity,
             maxSize: maxSize,
-            usePositionCache: true);
+            usePositionCache: true,
+            showDebugLogs: showPoolDebugLogs);
 
         Debug.Log($"[StructurePool] Created dynamic pool for '{structureId}' from template prefab.");
     }
@@ -540,6 +570,7 @@ public class StructurePool : MonoBehaviour
             collectionCheck: false,
             defaultCapacity: defaultCapacity,
             maxSize:         maxSize,
-            usePositionCache: true);
+            usePositionCache: true,
+            showDebugLogs: showPoolDebugLogs);
     }
 }

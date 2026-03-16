@@ -26181,6 +26181,7 @@ MonoBehaviour:
   updateInterval: 1
   unloadDelay: 5
   visualizeCrops: 1
+  visualizeResources: 1
   cropVisualPrefab: {fileID: 0}
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   tilledTilemapName: TilledOverlayTilemap
@@ -26189,7 +26190,6 @@ MonoBehaviour:
   showDebugLogs: 0
   showLoadedChunksGizmos: 0
   enableDailyReload: 1
-  disableStructurePooling: 0
 --- !u!4 &2021699365
 Transform:
   m_ObjectHideFlags: 0
@@ -26408,6 +26408,7 @@ GameObject:
   - component: {fileID: 2062326647}
   - component: {fileID: 2062326648}
   - component: {fileID: 2062326646}
+  - component: {fileID: 2062326649}
   m_Layer: 0
   m_Name: StructureSystem
   m_TagString: Untagged
@@ -26468,6 +26469,7 @@ MonoBehaviour:
   structureCatalog:
   - {fileID: 11400000, guid: 7c973bba67aec7e4eb8c1c3ffd9d4e93, type: 2}
   - {fileID: 11400000, guid: 1390210e212423346b91ea5e6b129cb2, type: 2}
+  showPoolDebugLogs: 0
 --- !u!114 &2062326648
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26488,6 +26490,28 @@ MonoBehaviour:
   flashDuration: 0.1
   shakeIntensity: 0.1
   shakeDuration: 0.2
+--- !u!114 &2062326649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2062326644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b77907bd3c014045b03368b42bac018, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  structureIds: []
+  spawnCount: 100
+  spawnCenter: {x: 0, y: 0}
+  spawnRadius: 50
+  minDistance: 2
+  useGridPattern: 1
+  gridSize: 5
+  gridSpacing: 5
+  syncToNetwork: 1
+  showDebugLogs: 0
 --- !u!1 &2066821487
 GameObject:
   m_ObjectHideFlags: 0
