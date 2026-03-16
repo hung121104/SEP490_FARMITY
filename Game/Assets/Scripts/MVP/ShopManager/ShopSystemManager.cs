@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
 
 public class ShopSystemManager : MonoBehaviour
@@ -89,6 +89,10 @@ public class ShopSystemManager : MonoBehaviour
 
         if (inventoryGameView != null)
         {
+            // Open first → forces inventory back to original parent while ACTIVE
+            // so Unity layout system can rebuild VerticalLayoutGroup/HorizontalLayoutGroup.
+            // Then close to hide it. Without this, slots don't render next time it's opened.
+            inventoryGameView.OpenInventory();
             inventoryGameView.CloseInventory();
         }
 
