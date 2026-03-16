@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using TMPro;
 using Photon.Pun;
 using Photon.Realtime;
+using UnityEngine.SceneManagement;
 
 public class OnlineWorldListView : MonoBehaviourPunCallbacks
 {
@@ -12,7 +13,9 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
     [SerializeField] private TextMeshProUGUI statusText;
     [SerializeField] private GameObject loadingPanel;
     [SerializeField] private Button refreshButton;
+    [SerializeField] private Button backButton;
     [SerializeField] private bool autoConnectOnStart = true;
+    [SerializeField] private string mainMenuSceneName = "MainMenuScene";
 
     [Header("Password Prompt (optional)")]
     [SerializeField] private GameObject passwordPanel;
@@ -39,6 +42,11 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
             refreshButton.onClick.AddListener(RefreshRoomList);
         }
 
+        if (backButton != null)
+        {
+            backButton.onClick.AddListener(OnBackButtonClicked);
+        }
+
         if (passwordConfirmButton != null)
         {
             passwordConfirmButton.onClick.AddListener(OnPasswordConfirmClicked);
@@ -60,6 +68,11 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         if (refreshButton != null)
         {
             refreshButton.onClick.RemoveListener(RefreshRoomList);
+        }
+
+        if (backButton != null)
+        {
+            backButton.onClick.RemoveListener(OnBackButtonClicked);
         }
 
         if (passwordConfirmButton != null)
@@ -258,6 +271,22 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         }
 
         JoinRoomByName(roomName);
+    }
+
+    public void OnBackButtonClicked()
+    {
+        ClosePasswordPanel();
+
+        // Avoid handling incoming Photon callbacks during scene transition.
+        PhotonNetwork.IsMessageQueueRunning = false;
+
+        if (string.IsNullOrEmpty(mainMenuSceneName))
+        {
+            Debug.LogError("OnlineWorldListView: Main menu scene name is empty.");
+            return;
+        }
+
+        SceneManager.LoadScene(mainMenuSceneName);
     }
 
     private void OnPasswordConfirmClicked()
