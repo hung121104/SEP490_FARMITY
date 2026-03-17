@@ -82,7 +82,7 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
         if (!HasPublishPropertyChange(propertiesThatChanged))
             return;
 
-        // Keep the user's in-progress edits while the panel is open.
+        // Keep the user's in-progress edits while the panel is open
         if (optionPanel != null && optionPanel.activeSelf && hasLocalUnsavedChanges)
             return;
 
