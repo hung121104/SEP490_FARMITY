@@ -299,6 +299,10 @@ public class FifoObjectPool<T> where T : class
 /// </summary>
 public class StructurePool : MonoBehaviour
 {
+    [Header("Dependencies")]
+    [Tooltip("Reference to StructureView - auto-found if not assigned")]
+    public StructureView structureView;
+
     [Header("Pool Settings")]
     [Tooltip("Default capacity per structure type")]
     public int defaultCapacity = 10;
@@ -306,33 +310,21 @@ public class StructurePool : MonoBehaviour
     [Tooltip("Maximum pooled objects per structure type")]
     public int maxSize = 50;
 
-    [Header("Dynamic Structure Template")]
-    [Tooltip("Prefab template used for all simple/dynamic structures (must have SpriteRenderer + Collider2D). Sprite is swapped at runtime from ItemCatalogService.")]
-    public GameObject defaultSimplePrefab;
-
-    [Header("Structure Catalog")]
-    [Tooltip("Assign all StructureDataSO assets here so the pool knows how to create each type")]
-    public List<StructureDataSO> structureCatalog = new List<StructureDataSO>();
-
     [Header("Debug")]
     [Tooltip("Enable debug logging for pool operations")]
     public bool showPoolDebugLogs = false;
+
+    // Dependencies
+    private StructureView _structureView;
 
     // Pools keyed by StructureId
     private readonly Dictionary<string, FifoObjectPool<GameObject>> pools
         = new Dictionary<string, FifoObjectPool<GameObject>>();
 
-    // Lookup StructureId → SO for prefab reference
-    private readonly Dictionary<string, StructureDataSO> catalogLookup
-        = new Dictionary<string, StructureDataSO>();
-
     private void Awake()
     {
-        foreach (var so in structureCatalog)
-        {
-            if (so == null || string.IsNullOrEmpty(so.StructureId)) continue;
-            catalogLookup[so.StructureId] = so;
-        }
+        // Find StructureView if not assigned
+        _structureView = structureView ?? FindAnyObjectByType<StructureView>();
     }
 
     /// <summary>
@@ -389,17 +381,11 @@ public class StructurePool : MonoBehaviour
     }
 
     /// <summary>
-    /// Look up the StructureDataSO for a given structureId.
-    /// If not found in the manual catalog, attempts to auto-register a
-    /// dynamic (sprite + collider) entry from ItemCatalogService.
+    /// Look up the StructureData for a given structureId from StructureView.
     /// </summary>
-    public StructureDataSO GetStructureData(string structureId)
+    public StructureData GetStructureData(string structureId)
     {
-        if (catalogLookup.TryGetValue(structureId, out var data))
-            return data;
-
-        // Auto-register simple structures from ItemCatalogService
-        return TryRegisterDynamic(structureId);
+        return _structureView?.GetStructureData(structureId);
     }
 
     // ── Internal ──────────────────────────────────────────────────────────
@@ -408,23 +394,27 @@ public class StructurePool : MonoBehaviour
     {
         if (pools.ContainsKey(structureId)) return;
 
-        if (!catalogLookup.TryGetValue(structureId, out StructureDataSO data))
+        // Get StructureData from StructureView
+        StructureData data = _structureView?.GetStructureData(structureId);
+        
+        if (data == null)
         {
-            Debug.LogError($"[StructurePool] No catalog entry for '{structureId}'. Creating fallback pool.");
+            Debug.LogError($"[StructurePool] No StructureData found for '{structureId}' from StructureView. Creating fallback pool.");
             CreateFallbackPool(structureId);
             return;
         }
 
-        // Dynamic structure (registered from ItemCatalogService, no prefab)
-        if (data.Prefab == null)
+        // Use prefab from StructureData (resolved by StructureView)
+        GameObject prefab = data.Prefab;
+
+        if (prefab == null)
         {
-            CreateDynamicPool(structureId);
+            Debug.LogError($"[StructurePool] Structure '{structureId}' has no prefab. Creating fallback pool.");
+            CreateFallbackPool(structureId);
             return;
         }
 
-        // Prefab-based pool (complex structures with custom scripts)
-        GameObject prefab = data.Prefab;
-
+        // Create pool with resolved prefab
         pools[structureId] = new FifoObjectPool<GameObject>(
             createFunc: () =>
             {
@@ -453,101 +443,8 @@ public class StructurePool : MonoBehaviour
             maxSize: maxSize,
             usePositionCache: true,
             showDebugLogs: showPoolDebugLogs);
-    }
 
-    // ── Dynamic Registration ──────────────────────────────────────────────
-
-    /// <summary>
-    /// Attempts to auto-register a simple structure from ItemCatalogService.
-    /// Only succeeds if the item exists in the catalog with itemType == Structure.
-    /// Creates a runtime StructureDataSO with Prefab = null (signals dynamic pool).
-    /// </summary>
-    private StructureDataSO TryRegisterDynamic(string structureId)
-    {
-        if (ItemCatalogService.Instance == null || !ItemCatalogService.Instance.IsReady)
-            return null;
-
-        ItemData itemData = ItemCatalogService.Instance.GetItemData(structureId);
-        if (itemData == null || itemData.itemType != ItemType.Structure)
-            return null;
-
-        // Create a runtime-only ScriptableObject (not saved as asset)
-        var so = ScriptableObject.CreateInstance<StructureDataSO>();
-        so.StructureId     = structureId;
-        so.Prefab          = null;  // null → EnsurePool will use CreateDynamicPool
-        so.InteractionType = StructureInteractionType.None;
-        so.MaxHealth       = 3;
-        so.name            = $"DynamicSO_{structureId}";
-
-        catalogLookup[structureId] = so;
-
-        Debug.Log($"[StructurePool] Auto-registered dynamic structure '{structureId}' from ItemCatalogService.");
-        return so;
-    }
-
-    /// <summary>
-    /// Creates a pool that builds simple GameObjects at runtime
-    /// with SpriteRenderer + BoxCollider2D. Sprite is fetched from ItemCatalogService.
-    /// Used for decorative / simple structures that don't need custom prefabs.
-    /// </summary>
-    private void CreateDynamicPool(string structureId)
-    {
-        if (defaultSimplePrefab == null)
-        {
-            Debug.LogError($"[StructurePool] defaultSimplePrefab is not assigned! Cannot create dynamic pool for '{structureId}'. Falling back.");
-            CreateFallbackPool(structureId);
-            return;
-        }
-
-        GameObject template = defaultSimplePrefab;
-
-        pools[structureId] = new FifoObjectPool<GameObject>(
-            createFunc: () =>
-            {
-                var go = Instantiate(template);
-                go.name = $"Structure_{structureId}";
-
-                // Swap sprite to match this specific structure
-                var sr = go.GetComponentInChildren<SpriteRenderer>(true);
-                if (sr != null)
-                {
-                    Sprite sprite = ItemCatalogService.Instance?.GetCachedSprite(structureId);
-                    if (sprite != null)
-                        sr.sprite = sprite;
-                }
-
-                go.SetActive(false);
-                // Add PoolableObject component for IPoolable support
-                var poolable = go.GetComponent<PoolableObject>() ?? go.AddComponent<PoolableObject>();
-                poolable.IsInPool = true;
-                return go;
-            },
-            actionOnGet: go =>
-            {
-                // Refresh sprite in case it was downloaded after pool creation
-                var sr = go.GetComponentInChildren<SpriteRenderer>(true);
-                if (sr != null && sr.sprite == null)
-                {
-                    Sprite sprite = ItemCatalogService.Instance?.GetCachedSprite(structureId);
-                    if (sprite != null) sr.sprite = sprite;
-                }
-                go.SetActive(true);
-            },
-            actionOnRelease: go =>
-            {
-                go.SetActive(false);
-            },
-            actionOnDestroy: go =>
-            {
-                Destroy(go);
-            },
-            collectionCheck: false,
-            defaultCapacity: defaultCapacity,
-            maxSize: maxSize,
-            usePositionCache: true,
-            showDebugLogs: showPoolDebugLogs);
-
-        Debug.Log($"[StructurePool] Created dynamic pool for '{structureId}' from template prefab.");
+        Debug.Log($"[StructurePool] Created pool for '{structureId}' with prefab '{prefab.name}'.");
     }
 
     /// <summary>

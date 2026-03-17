@@ -217,6 +217,12 @@ export class UpdateItemDto {
   @IsBoolean()
   autoConsume?: boolean;
 
-  // ── Structure (itemType: 13) / Fertilizer (itemType: 14) ─────────────────
+  // ── Structure (itemType: 13) ─────────────────────────────────────────────────
+
+  @IsOptional()
+  @IsInt()
+  structureInteractionType?: number;
+
+  // ── Fertilizer (itemType: 14) ─────────────────
   // No additional fields beyond the shared base item properties.
 }

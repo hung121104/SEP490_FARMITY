@@ -139,9 +139,10 @@ public enum ToolType
 
 public enum StructureInteractionType
 {
-    None,       // Decorative only — no interaction
     Storage,    // Opens Storage UI (Chest)
     Crafting,   // Opens Crafting UI (Workbench)
-    Smelting    // Opens Smelting/Furnace UI
+    Smelting,    // Opens Smelting/Furnace UI
+    Fence,
+    Decoration
 }
 
