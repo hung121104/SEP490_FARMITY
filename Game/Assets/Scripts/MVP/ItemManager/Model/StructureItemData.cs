@@ -1,3 +1,5 @@
+using CombatManager.Model;
+
 [System.Serializable]
 public class StructureItemData : ItemData
 {
