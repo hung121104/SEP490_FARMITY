@@ -45,6 +45,10 @@ import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
+import {
+  UpdateWorldBlacklistDto,
+  WorldBlacklistQueryDto,
+} from './dto/world-blacklist.dto';
 
 @Controller()
 export class GatewayController {
@@ -180,6 +184,71 @@ export class GatewayController {
         message = payload.message || payload.error || JSON.stringify(payload);
       }
       throw new HttpException(message, status);
+    }
+  }
+
+  @Get('player-data/world/blacklist')
+  async getWorldBlacklist(@Query() query: WorldBlacklistQueryDto, @Req() req: Request) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('get-world-blacklist', {
+          worldId: query._id,
+          requesterId,
+          requesterIsAdmin,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('player-data/world/blacklist')
+  async addWorldBlacklistPlayer(
+    @Body() dto: UpdateWorldBlacklistDto,
+    @Req() req: Request,
+  ) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('add-world-blacklist-player', {
+          worldId: dto._id,
+          requesterId,
+          requesterIsAdmin,
+          playerId: dto.playerId,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('player-data/world/blacklist')
+  async removeWorldBlacklistPlayer(
+    @Body() dto: UpdateWorldBlacklistDto,
+    @Req() req: Request,
+  ) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('remove-world-blacklist-player', {
+          worldId: dto._id,
+          requesterId,
+          requesterIsAdmin,
+          playerId: dto.playerId,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
     }
   }
 
