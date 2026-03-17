@@ -7,7 +7,7 @@ public class HideUiButton : MonoBehaviour
 {
     [SerializeField] private CanvasGroup uiCanvasGroup;
 
-    private InputAction _toggleSettingsAction;
+    private InputAction _hideUiEscapeAction;
     private Button _button;
     private Coroutine _reenableToggleRoutine;
 
@@ -21,21 +21,23 @@ public class HideUiButton : MonoBehaviour
 
     private void OnEnable()
     {
-        TryBindToggleInput();
+        BindEscapeInput();
     }
 
     private void Update()
     {
-        if (_toggleSettingsAction == null)
-            TryBindToggleInput();
+        if (_hideUiEscapeAction == null)
+            BindEscapeInput();
     }
 
     private void OnDisable()
     {
-        if (_toggleSettingsAction != null)
+        if (_hideUiEscapeAction != null)
         {
-            _toggleSettingsAction.performed -= OnToggleSettings;
-            _toggleSettingsAction = null;
+            _hideUiEscapeAction.performed -= OnToggleSettings;
+            _hideUiEscapeAction.Disable();
+            _hideUiEscapeAction.Dispose();
+            _hideUiEscapeAction = null;
         }
 
         if (_reenableToggleRoutine != null)
@@ -57,22 +59,19 @@ public class HideUiButton : MonoBehaviour
         }
     }
 
-    private void TryBindToggleInput()
+    private void BindEscapeInput()
     {
-        if (_toggleSettingsAction != null || InputManager.Instance == null)
+        if (_hideUiEscapeAction != null)
             return;
 
-        _toggleSettingsAction = InputManager.Instance.Actions.Player.ToggleSettings;
-        if (_toggleSettingsAction != null)
-            _toggleSettingsAction.performed += OnToggleSettings;
+        _hideUiEscapeAction = new InputAction("HideUiEscape", InputActionType.Button, "<Keyboard>/escape");
+        _hideUiEscapeAction.performed += OnToggleSettings;
+        _hideUiEscapeAction.Enable();
     }
 
     private void OnToggleSettings(InputAction.CallbackContext _)
     {
         if (uiCanvasGroup == null || uiCanvasGroup.alpha <= 0f)
-            return;
-
-        if (ToggleInGameSettingMenu.IsGlobalToggleAllowed)
             return;
 
         HideUI();

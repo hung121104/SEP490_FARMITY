@@ -10,19 +10,19 @@ public interface IStructureService
     /// Validates whether a structure can be placed at the given anchor position.
     /// Checks: active section, TillableTilemap (buildable area), occupancy for every tile in NxM footprint.
     /// </summary>
-    bool CanPlaceStructure(Vector3 worldPosition, StructureDataSO data);
+    bool CanPlaceStructure(Vector3 worldPosition, StructureData data);
 
     /// <summary>
     /// Places a structure at the given anchor position. Updates WorldDataManager,
     /// refreshes chunk visuals, and broadcasts placement to other clients.
     /// </summary>
-    bool PlaceStructure(Vector3 worldPosition, StructureDataSO data);
+    bool PlaceStructure(Vector3 worldPosition, StructureData data);
 
     /// <summary>
     /// Removes the structure at the given position. Updates WorldDataManager,
     /// refreshes chunk visuals, and broadcasts removal to other clients.
     /// </summary>
-    bool RemoveStructure(Vector3 worldPosition, StructureDataSO data);
+    bool RemoveStructure(Vector3 worldPosition, StructureData data);
 
     /// <summary>Checks if a position is within an active world section.</summary>
     bool IsPositionInActiveSection(Vector3 worldPosition);

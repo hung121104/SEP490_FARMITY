@@ -1,14 +1,31 @@
 using UnityEngine;
 using Photon.Pun;
+using System.Collections.Generic;
 
 /// <summary>
-/// View component for structure placement following the MVP pattern.
-/// Manages the ghost preview, handles player input, and delegates
-/// business logic to the StructurePresenter.
+/// View component for structure placement following MVP pattern.
+/// Manages ghost preview, player input, and holds prefab references.
+/// Merged functionality from StructureCatalogController.
 /// </summary>
 public class StructureView : MonoBehaviourPunCallbacks
 {
     public static StructureView Instance { get; private set; }
+
+    [Header("Prefabs by Interaction Type")]
+    [Tooltip("Storage (type = 0)")]
+    public GameObject StoragePrefab;
+
+    [Tooltip("Crafting (type = 1)")]
+    public GameObject CraftingPrefab;
+
+    [Tooltip("Smelting (type = 2)")]
+    public GameObject SmeltingPrefab;
+
+    [Tooltip("Fence (type = 3)")]
+    public GameObject FencePrefab;
+
+    [Tooltip("Decoration (type = 4)")]
+    public GameObject DecorationPrefab;
 
     [Header("Placement Settings")]
     [Tooltip("Maximum distance from the player to place a structure")]
@@ -21,7 +38,7 @@ public class StructureView : MonoBehaviourPunCallbacks
     public string playerCameraTag = "MainCamera";
 
     [Header("Ghost Preview")]
-    [Tooltip("Assign a dedicated GameObject here to use as ghost preview instead of the object pool.")]
+    [Tooltip("Assign a dedicated GameObject here to use as ghost preview")]
     [SerializeField] private GameObject ghostPreview;
 
     [Tooltip("Color tint when placement is valid")]
@@ -46,9 +63,9 @@ public class StructureView : MonoBehaviourPunCallbacks
     private SpriteRenderer ghostRenderer;
 
     // Active structure being placed 
-    private StructureDataSO activeStructureData;
+    private StructureData activeStructureData;
 
-    // Active item from inventory — used to resolve the sprite via ItemCatalogService
+    // Active item from inventory
     private ItemModel activeItemModel;
 
     // Pool reference
@@ -61,10 +78,6 @@ public class StructureView : MonoBehaviourPunCallbacks
     private Vector3 currentSnappedPos;
     private bool    currentCanPlace;
 
-    /// <summary>
-    /// Optional hook invoked after a structure is successfully placed.
-    /// StructureView handles consumption internally; this is for external listeners only.
-    /// </summary>
     public System.Action OnStructurePlaced;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -103,7 +116,62 @@ public class StructureView : MonoBehaviourPunCallbacks
         HandlePlacementInput();
     }
 
-    // ── Auto-activate ghost when a Structure item is selected in hotbar ──────
+    /// <summary>
+    /// Get default prefab based on structure interaction type.
+    /// </summary>
+    public GameObject GetDefaultPrefab(StructureInteractionType interactionType)
+    {
+        return interactionType switch
+        {
+            StructureInteractionType.Storage => StoragePrefab,
+            StructureInteractionType.Crafting => CraftingPrefab,
+            StructureInteractionType.Smelting => SmeltingPrefab,
+            StructureInteractionType.Fence => FencePrefab,
+            StructureInteractionType.Decoration => DecorationPrefab,          
+            _ => DecorationPrefab
+        };
+    }
+
+    /// <summary>
+    /// Build StructureData from ItemData.
+    /// </summary>
+    public StructureData BuildStructureData(StructureItemData itemData)
+    {
+        if (itemData == null) return null;
+
+        StructureInteractionType interactionType = (StructureInteractionType)itemData.structureInteractionType;
+
+        int maxHealth = itemData.maxHealth;
+
+        // Resolve prefab
+        GameObject prefab = GetDefaultPrefab(interactionType);
+
+        if (prefab == null)
+        {
+            Debug.LogWarning($"[StructureView] No prefab for '{itemData.itemID}'");
+            return null;
+        }
+ 
+        return new StructureData
+        {
+            StructureId = itemData.itemID,
+            DisplayName = itemData.itemName,
+            InteractionType = interactionType,
+            MaxHealth = maxHealth,
+            Prefab = prefab
+        };
+    }
+
+    /// <summary>
+    /// Get StructureData for an itemID.
+    /// </summary>
+    public StructureData GetStructureData(string itemID)
+    {
+        var itemData = ItemCatalogService.Instance?.GetItemData(itemID) as StructureItemData;
+        return BuildStructureData(itemData);
+    }
+
+    // ── Auto-activate ghost when a Structure item is selected ──────────────
 
     private void UpdateActiveStructureFromHotbar()
     {
@@ -112,23 +180,18 @@ public class StructureView : MonoBehaviourPunCallbacks
 
         if (currentItem != null && currentItem.itemType == ItemType.Structure)
         {
-            if (structurePool == null)
-                structurePool = FindAnyObjectByType<StructurePool>();
-
-            var so = structurePool?.GetStructureData(currentItem.itemID);
-            if (so != null)
+            var data = GetStructureData(currentItem.itemID);
+            if (data != null)
             {
-                // Already showing ghost for this structure
-                if (activeStructureData != null && activeStructureData.StructureId == so.StructureId)
+                if (activeStructureData != null && activeStructureData.StructureId == data.StructureId)
                     return;
 
                 activeItemModel = currentItemModel;
-                EnterPlacementMode(so);
+                EnterPlacementMode(data);
                 return;
             }
         }
 
-        // Current hotbar item is not a structure — exit placement mode
         if (activeStructureData != null)
             ExitPlacementMode();
     }
@@ -141,20 +204,14 @@ public class StructureView : MonoBehaviourPunCallbacks
         var loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
 
         structureService = new StructureService(syncManager, loadingManager, showDebugLogs);
-        presenter        = new StructurePresenter(structureService, showDebugLogs);
     }
 
-    // ── Public API (called by HotbarView or Inventory) ────────────────────
+    // ── Public API ───────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Enter placement mode for the given structure type.
-    /// Shows the ghost preview (ghostPreview) and starts listening for placement clicks.
-    /// </summary>
-    public void EnterPlacementMode(StructureDataSO data)
+    public void EnterPlacementMode(StructureData data)
     {
         if (data == null) return;
 
-        // Exit previous mode if active
         if (activeStructureData != null)
             ExitPlacementMode();
 
@@ -162,7 +219,7 @@ public class StructureView : MonoBehaviourPunCallbacks
 
         if (ghostPreview == null)
         {
-            Debug.LogWarning("[StructureView] ghostPreview is not assigned — ghost preview will not display.");
+            Debug.LogWarning("[StructureView] ghostPreview is not assigned.");
             return;
         }
 
@@ -171,30 +228,24 @@ public class StructureView : MonoBehaviourPunCallbacks
         ghostRenderer = ghostInstance.GetComponentInChildren<SpriteRenderer>(true)
             ?? ghostInstance.AddComponent<SpriteRenderer>();
 
-        // Update sprite to match current item
         Sprite itemSprite = activeItemModel?.Icon
             ?? ItemCatalogService.Instance?.GetCachedSprite(data.StructureId);
         if (itemSprite != null)
             ghostRenderer.sprite = itemSprite;
 
-        // Disable colliders so ghost does not interfere with physics
         foreach (var col in ghostInstance.GetComponentsInChildren<Collider2D>())
             col.enabled = false;
 
         ghostInstance.SetActive(true);
 
         if (showDebugLogs)
-            Debug.Log($"[StructureView] Entered placement mode: {data.name}");
+            Debug.Log($"[StructureView] Entered placement mode: {data.DisplayName}");
     }
 
-    /// <summary>
-    /// Exit placement mode — hide the ghost preview object.
-    /// </summary>
     public void ExitPlacementMode()
     {
         if (ghostInstance != null)
         {
-            // Reset tint and hide — never pool or destroy the override object
             if (ghostRenderer != null)
                 ghostRenderer.color = Color.white;
 
@@ -212,11 +263,7 @@ public class StructureView : MonoBehaviourPunCallbacks
         OnStructurePlaced  = null;
     }
 
-    /// <summary>Whether we are currently in placement mode.</summary>
     public bool IsInPlacementMode => activeStructureData != null;
-
-    /// <summary>Provides <see cref="StructurePresenter"/> so external code (ChunkDataSyncManager) can relay network events.</summary>
-    public StructurePresenter Presenter => presenter;
 
     // ── Ghost Preview ─────────────────────────────────────────────────────
 
@@ -232,13 +279,11 @@ public class StructureView : MonoBehaviourPunCallbacks
             return;
         }
 
-        // Snap to grid (offset by +0.5 to align sprite center with tile)
         currentSnappedPos = new Vector3(Mathf.Floor(tile.x) + 0.5f, Mathf.Floor(tile.y) + 0.5f, 0f);
         ghostInstance.transform.position = currentSnappedPos;
         ghostInstance.SetActive(true);
 
-        // Validate and tint
-        currentCanPlace = presenter.CanPlace(currentSnappedPos, activeStructureData);
+        currentCanPlace = structureService.CanPlaceStructure(currentSnappedPos, activeStructureData);
         if (ghostRenderer != null)
             ghostRenderer.color = currentCanPlace ? validColor : invalidColor;
     }
@@ -251,16 +296,13 @@ public class StructureView : MonoBehaviourPunCallbacks
         if (!currentCanPlace) return;
         if (activeStructureData == null) return;
 
-        bool placed = presenter.HandlePlaceStructure(currentSnappedPos, activeStructureData);
+        bool placed = structureService.PlaceStructure(currentSnappedPos, activeStructureData);
         if (placed)
         {
             if (showDebugLogs)
                 Debug.Log($"[StructureView] Structure placed at {currentSnappedPos}");
 
-            // Consume one item from hotbar — mirrors CropPlantingView pattern
             hotbarView?.GetPresenter()?.ConsumeCurrentItem(1);
-
-            // Notify external listeners (optional)
             OnStructurePlaced?.Invoke();
         }
     }

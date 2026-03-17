@@ -124,7 +124,7 @@ public class StructureDestructionService : IStructureDestructionService
             }
 
             string structureId = structureData.StructureId;
-            StructureDataSO so = structurePool.GetStructureData(structureId);
+            StructureData so = structurePool.GetStructureData(structureId);
             if (so == null) return false;
 
             // Get current HP from chunk
@@ -225,7 +225,7 @@ public class StructureDestructionService : IStructureDestructionService
         int currentHp = chunk.GetStructureHp(pos.x, pos.y);
         if (currentHp > 0) return; // Already has HP, no need to regenerate
 
-        StructureDataSO so = structurePool.GetStructureData(structureData.StructureId);
+        StructureData so = structurePool.GetStructureData(structureData.StructureId);
         int maxHp = so?.MaxHealth ?? 3;
 
         if (showDebugLogs)

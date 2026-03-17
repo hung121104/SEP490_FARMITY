@@ -56,7 +56,28 @@ public class FishingService : IFishingService
     }
     public bool CatchFish()
     {
-        if (fishDatabase == null) return false;
+        if (fishDatabase == null)
+        {
+            Debug.LogError("[FishingService] FishDatabase is null!");
+            return false;
+        }
+
+        // Fallback: Try to get inventory service if it's null
+        if (inventoryService == null)
+        {
+            InventoryGameView inventoryManager = Object.FindAnyObjectByType<InventoryGameView>();
+            if (inventoryManager != null)
+            {
+                inventoryService = inventoryManager.GetInventoryService();
+            }
+            
+            if (inventoryService == null)
+            {
+                Debug.LogError("[FishingService] InventoryService not available!");
+                return false;
+            }
+        }
+
         float luckBonus = 0f;
 
         switch (fishingModel.currentRodID)
@@ -84,21 +105,17 @@ public class FishingService : IFishingService
             return false;
         }
 
-        if (inventoryService != null)
+        bool added = inventoryService.AddItem(caughtFishID, 1);
+        if (added)
         {
-            bool added = inventoryService.AddItem(caughtFishID, 1);
-            if (added)
-            {
-                fishingModel.lastCaughtFishID = caughtFishID;
-                Debug.Log($"[FishingService] Fishing complete! Add '{caughtFishID}' to inventory.");
-                return true;
-            }
-            else
-            {
-                Debug.LogWarning("[FishingService] inventory full!");
-                return false;
-            }
+            fishingModel.lastCaughtFishID = caughtFishID;
+            Debug.Log($"[FishingService] Fishing complete! Add '{caughtFishID}' to inventory.");
+            return true;
         }
-        return false;
+        else
+        {
+            Debug.LogWarning("[FishingService] inventory full!");
+            return false;
+        }
     }
 }

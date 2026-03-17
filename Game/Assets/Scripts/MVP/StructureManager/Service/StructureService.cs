@@ -24,7 +24,7 @@ public class StructureService : IStructureService
 
     // ── Validation ────────────────────────────────────────────────────────
 
-    public bool CanPlaceStructure(Vector3 worldPosition, StructureDataSO data)
+    public bool CanPlaceStructure(Vector3 worldPosition, StructureData data)
     {
         if (data == null) return false;
 
@@ -78,7 +78,7 @@ public class StructureService : IStructureService
 
     // ── Placement ─────────────────────────────────────────────────────────
 
-    public bool PlaceStructure(Vector3 worldPosition, StructureDataSO data)
+    public bool PlaceStructure(Vector3 worldPosition, StructureData data)
     {
         if (!CanPlaceStructure(worldPosition, data))
             return false;
@@ -111,7 +111,7 @@ public class StructureService : IStructureService
 
     // ── Removal ───────────────────────────────────────────────────────────
 
-    public bool RemoveStructure(Vector3 worldPosition, StructureDataSO data)
+    public bool RemoveStructure(Vector3 worldPosition, StructureData data)
     {
         if (data == null) return false;
 
