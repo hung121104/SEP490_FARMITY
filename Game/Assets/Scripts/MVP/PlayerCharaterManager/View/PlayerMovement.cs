@@ -67,10 +67,11 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
                 return;
             }
 
-            float rawX = Input.GetAxisRaw("Horizontal");
-            float rawY = Input.GetAxisRaw("Vertical");
+            Vector2 rawInput = Vector2.zero;
+            if (InputManager.Instance != null)
+                rawInput = InputManager.Instance.Move.ReadValue<Vector2>();
 
-            Vector2 direction = presenter.CalculateMovementDirection(rawX, rawY);
+            Vector2 direction = presenter.CalculateMovementDirection(rawInput.x, rawInput.y);
 
             if (direction != Vector2.zero)
                 lastInput = direction;

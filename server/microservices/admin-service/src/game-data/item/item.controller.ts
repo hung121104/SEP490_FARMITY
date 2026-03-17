@@ -52,4 +52,41 @@ export class ItemController {
   async deleteItem(@Payload() itemID: string) {
     return this.itemService.delete(itemID);
   }
+
+  @MessagePattern('create-fertilizer')
+  async createFertilizer(@Payload() createItemDto: CreateItemDto) {
+    return this.itemService.createFertilizer(createItemDto);
+  }
+
+  @MessagePattern('get-fertilizer-catalog')
+  async getFertilizerCatalog() {
+    return this.itemService.getFertilizerCatalog();
+  }
+
+  @MessagePattern('get-all-fertilizers')
+  async getAllFertilizers() {
+    return this.itemService.findAllFertilizers();
+  }
+
+  @MessagePattern('get-fertilizer-by-id')
+  async getFertilizerById(@Payload() id: string) {
+    return this.itemService.findFertilizerById(id);
+  }
+
+  @MessagePattern('get-fertilizer-by-item-id')
+  async getFertilizerByItemId(@Payload() itemID: string) {
+    return this.itemService.findFertilizerByItemID(itemID);
+  }
+
+  @MessagePattern('update-fertilizer')
+  async updateFertilizer(
+    @Payload() payload: { itemID: string; dto: UpdateItemDto },
+  ) {
+    return this.itemService.updateFertilizer(payload.itemID, payload.dto);
+  }
+
+  @MessagePattern('delete-fertilizer')
+  async deleteFertilizer(@Payload() itemID: string) {
+    return this.itemService.deleteFertilizer(itemID);
+  }
 }

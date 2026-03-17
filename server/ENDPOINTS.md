@@ -18,6 +18,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
    - [Media Gallery](#media-gallery)
 4. [Game Data Management](#game-data-management)
    - [Items Catalog](#items-catalog)
+  - [Fertilizer Catalog](#fertilizer-catalog)
    - [Plants Catalog](#plants-catalog)
    - [Crafting Recipes](#crafting-recipes)
    - [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
@@ -396,7 +397,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 
 ## Game Data Management
 
-> Managed by `admin-service`. These endpoints control the game's item and plant catalogs consumed by Unity clients.
+> Managed by `admin-service`. These endpoints control the game's item, fertilizer, and plant catalogs consumed by Unity clients.
 
 ### Items Catalog
 
@@ -483,6 +484,76 @@ Depending on `itemType`, specific extra fields must be included:
 | `10` | Resource | `isOre`<br>`requiresSmelting`<br>`smeltedResultId` | bool: (default `false`)<br>bool: (default `false`)<br>string: ID of smelt output (default `""`) |
 | `11` | Gift | `isUniversalLike`<br>`isUniversalLove` | bool: (default `false`)<br>bool: (default `false`) |
 | `12` | Quest | `relatedQuestID`<br>`autoConsume` | string: Related quest ID (e.g., `"quest_goblins_01"`)<br>bool: (default `false`) |
+| `13` | Structure | *(none)* | Placeable structure items such as chests and crafting tables |
+| `14` | Fertilizer | *(none)* | Stackable fertilizer item consumed on successful crop fertilization |
+
+---
+
+### Fertilizer Catalog
+
+> Dedicated CRUD facade for fertilizer entries in the item catalog. These routes always persist `itemType = 14` and are intended for stackable fertilizer items used by the crop fertilizing mechanic.
+
+#### HTTP Endpoints
+
+- **POST** `/game-data/fertilizers/create`: Create a new fertilizer definition (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Fields:
+    - `icon` *(file, required)* — Fertilizer icon image (max 5 MB). Uploaded to Cloudinary internally; `iconUrl` set automatically.
+    - Shared base item fields as form-data text fields: `itemID`, `itemName`, `description`, `itemCategory`, `maxStack`, `isStackable`, `basePrice`, `buyPrice`, `canBeSold`, `canBeBought`, `isQuestItem`, `isArtifact`, `isRareItem`, `npcPreferenceNames`, `npcPreferenceReactions`.
+  - Response: Saved fertilizer document including `_id`, `iconUrl`, and `itemType: 14`
+  - Note: Returns `409 Conflict` if an item with the same `itemID` already exists
+
+- **GET** `/game-data/fertilizers/catalog`: Get the fertilizer catalog in Unity-client format.
+  - Response: `{ "items": [ ...fertilizerObjects ] }`
+
+- **GET** `/game-data/fertilizers/all`: Get flat array of all fertilizer documents.
+  - Response: `[ ...fertilizerObjects ]`
+
+- **GET** `/game-data/fertilizers/by-item-id/:itemID`: Find fertilizer by game-side string ID.
+  - Path param: `itemID` - Snake_case string identifier (e.g., `fertilizer_basic`)
+  - Response: Fertilizer document or `null`
+
+- **GET** `/game-data/fertilizers/:id`: Find fertilizer by MongoDB `_id`.
+  - Path param: `id` - MongoDB ObjectId string
+  - Response: Fertilizer document or `null`
+
+- **PUT** `/game-data/fertilizers/:itemID`: Update an existing fertilizer by game-side `itemID` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Path param: `itemID` - game-side string identifier (e.g., `fertilizer_basic`)
+  - Fields: Any subset of the shared base item fields as form-data text fields (all optional). Include an `icon` file to replace the icon (max 5 MB, re-uploaded to Cloudinary automatically).
+  - Response: Updated fertilizer document
+  - Note: Returns `404` if fertilizer not found
+
+- **DELETE** `/game-data/fertilizers/:itemID`: Delete a fertilizer by game-side `itemID` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `itemID` - game-side string identifier (e.g., `fertilizer_basic`)
+  - Response: Deleted fertilizer document
+  - Note: Returns `404` if fertilizer not found
+
+#### Fertilizer Fields
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `itemID` | string | ✅ | Unique fertilizer identifier used by the client |
+| `itemName` | string | ✅ | Display name |
+| `description` | string | ✅ | Item tooltip text |
+| `icon` | file | ✅ on create | Uploaded icon image; gateway stores resulting `iconUrl` |
+| `itemCategory` | int | ✅ | Category enum value, typically Farming |
+| `maxStack` | int | ✅ | Maximum stack size |
+| `isStackable` | bool | ✅ | Typically `true` for fertilizer |
+| `basePrice` | int | ✅ | Base sell price |
+| `buyPrice` | int | ✅ | Shop price |
+| `canBeSold` | bool | ✅ | Whether fertilizer can be sold |
+| `canBeBought` | bool | ✅ | Whether fertilizer can be bought |
+| `isQuestItem` | bool | ✅ | Quest flag |
+| `isArtifact` | bool | ✅ | Artifact flag |
+| `isRareItem` | bool | ✅ | Rare item flag |
+| `npcPreferenceNames` | string[] | — | Optional NPC preference names |
+| `npcPreferenceReactions` | int[] | — | Optional NPC reaction values |
+
+`itemType` is forced to `14` by the gateway and does not need to be supplied.
 
 ---
 
@@ -885,5 +956,4 @@ Depending on `itemType`, specific extra fields must be included:
 - Client visual sync:
   - `RPC_Client_PlayHitEffect(...)` plays local hit VFX/animation.
   - `RPC_Client_DestroyResource(...)` destroys local spawned resource visual.
-
 
