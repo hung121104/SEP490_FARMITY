@@ -45,6 +45,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private const byte RESOURCE_HP_UPDATED_EVENT = 122;
     private const byte RESOURCE_REMOVED_EVENT    = 123;
     private const byte RESOURCE_SPAWNED_EVENT    = 124;
+    private const byte TILE_FERTILIZED_EVENT     = 125;
     
     // Static events for Structure Destruction System
     public static event Action<int, int, int> OnResourceHpUpdated;
@@ -203,6 +204,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 HandleTileUnwatered(photonEvent.CustomData);
                 break;
 
+            case TILE_FERTILIZED_EVENT:
+                HandleTileFertilized(photonEvent.CustomData);
+                break;
+
             case RESOURCE_HP_UPDATED_EVENT:
                 HandleResourceHpUpdated(photonEvent.CustomData);
                 break;
@@ -291,7 +296,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         HasResource  = slot.HasResource,
                         ResourceId   = slot.HasResource ? slot.Resource.ResourceId : null,
                         ResourceHp   = slot.HasResource ? (byte)slot.Resource.CurrentHp : (byte)0,
-                        IsWatered    = slot.IsTilled && slot.Crop.IsWatered
+                        IsWatered    = slot.IsTilled && slot.Crop.IsWatered,
+                        IsFertilized = slot.HasCrop && slot.Crop.IsFertilized
                     };
                 }
                 ChunkSyncData syncData = new ChunkSyncData
@@ -407,6 +413,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     // Restore pollen count (UpdateCropStage resets it, so do this after)
                     for (byte p = 0; p < entry.Crop.PollenHarvestCount; p++)
                         chunk.IncrementPollenHarvestCount(entry.WorldX, entry.WorldY);
+
+                    // Restore fertilized state
+                    if (entry.IsFertilized)
+                        chunk.FertilizeTile(entry.WorldX, entry.WorldY);
                 }
 
                 // Restore structure data with HP
@@ -1157,6 +1167,52 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         chunkLoadingManager?.ClearWateredTileAt(worldPos);
     }
 
+    // ── Fertilizer Broadcasts & Handlers ──────────────────────────────────
+
+    /// <summary>
+    /// Broadcast tile fertilized event to all other players.
+    /// </summary>
+    public void BroadcastTileFertilized(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            TILE_FERTILIZED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleTileFertilized(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        WorldDataManager.Instance.FertilizeTileAtWorldPosition(worldPos);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received tile fertilized at ({worldX},{worldY})");
+
+        if (chunkLoadingManager != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+        }
+    }
+
     // ── Resource Broadcasts & Handlers ────────────────────────────────────
 
     public void BroadcastResourceHpUpdated(int worldX, int worldY, int newHp)
@@ -1320,6 +1376,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         public string ResourceId;
         public byte   ResourceHp;
         public bool   IsWatered;
+        public bool   IsFertilized;
     }
     
     // Wire format per tile entry:
@@ -1355,6 +1412,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 if (entry.HasStructure) flags |= 4;
                 if (entry.HasResource)  flags |= 8;
                 if (entry.IsWatered)    flags |= 16;
+                if (entry.IsFertilized) flags |= 32;
                 bytes.Add(flags);                                            // 1
 
                 if (entry.HasCrop)
@@ -1424,6 +1482,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 entry.HasStructure = (flags & 4) != 0;
                 entry.HasResource  = (flags & 8) != 0;
                 entry.IsWatered    = (flags & 16) != 0;
+                entry.IsFertilized = (flags & 32) != 0;
 
                 if (entry.HasCrop)
                 {

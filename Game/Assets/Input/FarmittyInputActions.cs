@@ -36,6 +36,7 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
                         { ""name"": ""Attack"",        ""type"": ""Button"", ""id"": ""55555555-5555-5555-5555-555555555555"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""UseSkill"",      ""type"": ""Button"", ""id"": ""66666666-6666-6666-6666-666666666666"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""OpenChat"",      ""type"": ""Button"", ""id"": ""77777777-7777-7777-7777-777777777777"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""ToggleSettings"", ""type"": ""Button"", ""id"": ""88888888-8888-8888-8888-888888888888"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""UseItem"",       ""type"": ""Button"", ""id"": ""aaaa0001-0001-0001-0001-000000000001"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""ScrollItem"",    ""type"": ""Value"",  ""id"": ""aaaa0002-0001-0001-0001-000000000001"", ""expectedControlType"": ""Axis"",    ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""HotbarSlot1"",   ""type"": ""Button"", ""id"": ""bbbb0001-0001-0001-0001-000000000001"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
@@ -65,6 +66,7 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
                         { ""name"": """", ""id"": ""b0000006-0001-0001-0001-000000000001"", ""path"": ""<Mouse>/leftButton"",        ""action"": ""Attack"",        ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/q"",              ""action"": ""UseSkill"",      ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000008-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/enter"",          ""action"": ""OpenChat"",      ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000009-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/escape"",         ""action"": ""ToggleSettings"", ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""cc000001-0001-0001-0001-000000000001"", ""path"": ""<Mouse>/leftButton"",        ""action"": ""UseItem"",       ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""cc000002-0001-0001-0001-000000000001"", ""path"": ""<Mouse>/scroll/y"",          ""action"": ""ScrollItem"",    ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""dd000001-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/1"",              ""action"": ""HotbarSlot1"",   ""isComposite"": false, ""isPartOfComposite"": false },
@@ -151,6 +153,7 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
         public InputAction Attack        => _wrapper.asset.FindAction("Player/Attack",        throwIfNotFound: true);
         public InputAction UseSkill      => _wrapper.asset.FindAction("Player/UseSkill",      throwIfNotFound: true);
         public InputAction OpenChat      => _wrapper.asset.FindAction("Player/OpenChat",      throwIfNotFound: true);
+        public InputAction ToggleSettings => _wrapper.asset.FindAction("Player/ToggleSettings", throwIfNotFound: true);
 
         // ── Hotbar / Item actions ──
         public InputAction UseItem       => _wrapper.asset.FindAction("Player/UseItem",       throwIfNotFound: true);

@@ -60,5 +60,9 @@ public class ItemData
         return Mathf.RoundToInt(basePrice * multiplier);
     }
 
-    public bool IsValidGift() => !isQuestItem && canBeSold && itemType != ItemType.Tool;
+    public bool IsValidGift() =>
+        !isQuestItem &&
+        canBeSold &&
+        itemType != ItemType.Tool &&
+        itemType != ItemType.Fertilizer;
 }
