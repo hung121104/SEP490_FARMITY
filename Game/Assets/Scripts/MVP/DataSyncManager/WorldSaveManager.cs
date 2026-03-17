@@ -314,7 +314,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
                 foreach (var slot in chunkData.GetAllTiles())
                 {
-                    if (!slot.IsTilled && !slot.HasCrop) continue;  // skip empty slots
+                    if (!slot.IsTilled && !slot.HasCrop && !slot.HasResource) continue;  // skip empty slots
 
                     // localIndex = localX + localY * 30
                     int localX     = slot.WorldX - chunkX * 30;
@@ -331,6 +331,15 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                         // when fields are added to CropTileData in the future.
                         var cropFields = Newtonsoft.Json.Linq.JObject.FromObject(slot.Crop);
                         td._extra = cropFields.ToObject<Dictionary<string, Newtonsoft.Json.Linq.JToken>>();
+                    }
+                    else if (slot.HasResource)
+                    {
+                        td.type = "resource";
+                        td._extra = new Dictionary<string, Newtonsoft.Json.Linq.JToken>
+                        {
+                            ["resourceId"] = slot.Resource.ResourceId,
+                            ["currentHp"] = slot.Resource.CurrentHp,
+                        };
                     }
                     else  // tilled only — still need to persist watered state
                     {

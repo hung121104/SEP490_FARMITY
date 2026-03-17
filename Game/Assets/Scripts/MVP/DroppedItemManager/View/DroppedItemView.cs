@@ -258,8 +258,11 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         // Auto-pickup: player is in range, delay has elapsed, and we haven’t already requested
         if (_playerInRange && !_pickupRequested && Time.time - _spawnTime >= pickupDelay)
         {
-            _pickupRequested = true;
-            OnPickupRequested(_data.dropId);
+            _pickupRequested = OnPickupRequested(_data.dropId);
+
+            // If request wasn't accepted (e.g. inventory still full), retry after pickupDelay.
+            if (!_pickupRequested)
+                _spawnTime = Time.time;
         }
     }
 
@@ -270,23 +273,24 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     /// Delegates to DroppedItemManagerView which handles the Photon request flow.
     /// </summary>
     /// <param name="dropId">The unique drop ID to pick up.</param>
-    private void OnPickupRequested(string dropId)
+    private bool OnPickupRequested(string dropId)
     {
-        if (_data == null) return;
+        if (_data == null) return false;
         if (_data.IsExpired)
         {
             Debug.Log($"[DroppedItemView] Item '{dropId}' already expired, ignoring pickup.");
-            return;
+            return false;
         }
 
         var manager = DroppedItemManagerView.Instance;
         if (manager != null)
         {
-            manager.RequestPickupItem(dropId);
+            return manager.RequestPickupItem(dropId);
         }
         else
         {
             Debug.LogError("[DroppedItemView] DroppedItemManagerView.Instance is null!");
+            return false;
         }
     }
 

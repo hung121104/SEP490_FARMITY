@@ -29,19 +29,19 @@ public class StructureDestructionView : MonoBehaviour
         
         // Initialize MVP
         StructurePool pool = FindAnyObjectByType<StructurePool>();
-        IStructureDestructionService destService = new StructureDestructionService(pool, showDebugLogs);
-        
         ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
+        IStructureDestructionService destService = new StructureDestructionService(pool, syncManager, showDebugLogs);
+        
         IStructureService structService = new StructureService(syncManager, chunkLoadingManager, showDebugLogs);
         
         InventoryGameView invGameView = FindAnyObjectByType<InventoryGameView>();
         IInventoryService invService = invGameView != null ? invGameView.GetInventoryService() : null;
         
-        presenter = new StructureDestructionPresenter(this, destService, structService, invService, showDebugLogs);
+        presenter = new StructureDestructionPresenter(this, destService, structService, invService, syncManager, showDebugLogs);
 
         // Subscribe to tool events
-        UseToolService.OnAxeRequested += HandleToolUse;
-        UseToolService.OnPickaxeRequested += HandleToolUse;
+        UseToolService.OnAxeImpactRequested += HandleToolUse;
+        UseToolService.OnPickaxeImpactRequested += HandleToolUse;
         UseToolService.OnHoeRequested += HandleToolUse;
         UseToolService.OnWateringCanRequested += HandleToolUse;
         UseToolService.OnFishingRodRequested += HandleToolUse;
@@ -49,8 +49,8 @@ public class StructureDestructionView : MonoBehaviour
 
     private void OnDestroy()
     {
-        UseToolService.OnAxeRequested -= HandleToolUse;
-        UseToolService.OnPickaxeRequested -= HandleToolUse;
+        UseToolService.OnAxeImpactRequested -= HandleToolUse;
+        UseToolService.OnPickaxeImpactRequested -= HandleToolUse;
         UseToolService.OnHoeRequested -= HandleToolUse;
         UseToolService.OnWateringCanRequested -= HandleToolUse;
         UseToolService.OnFishingRodRequested -= HandleToolUse;

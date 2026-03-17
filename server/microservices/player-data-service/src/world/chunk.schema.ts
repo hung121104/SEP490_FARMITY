@@ -5,16 +5,19 @@ export type ChunkDocument = Chunk & Document;
 
 /**
  * TileData sub-document stored inside the `tiles` Map.
- * `strict: false` allows any extra crop fields sent by the client to be stored
- * in MongoDB automatically — no schema change needed when CropTileData evolves.
- * The explicitly declared @Prop fields are kept for backwards-compatibility with
- * existing documents and to ensure sensible defaults on upsert.
+ * `strict: true` ensures only declared fields are persisted, preventing
+ * duplicate/mis-cased keys (e.g. "CropStage" vs "cropStage") in MongoDB.
  */
-@Schema({ _id: false, strict: false })
+@Schema({ _id: false, strict: true })
 export class TileData {
-  /** Tile category string, e.g. 'crop', 'tilled', 'empty' */
-  @Prop({ default: 'empty' })
+  /** Tile category: 'empty' | 'tilled' | 'crop' | 'resource' */
+  @Prop({
+    default: 'empty',
+    enum: ['empty', 'tilled', 'crop', 'resource'],
+  })
   type: string;
+
+  // ── Crop fields ──────────────────────────────────────────────────────────
 
   /** Game-side plant ID string, e.g. 'plant_corn' */
   @Prop({ default: null })
@@ -40,6 +43,16 @@ export class TileData {
 
   @Prop({ default: false })
   isPollinated: boolean;
+
+  // ── Resource fields (trees, rocks, etc.) ─────────────────────────────────
+
+  /** Catalog ID of the spawned resource, e.g. 'oak_tree', 'iron_rock' */
+  @Prop({ default: null })
+  resourceId: string | null;
+
+  /** Remaining hit-points; when 0 the resource is destroyed */
+  @Prop({ default: 0 })
+  currentHp: number;
 }
 
 export const TileDataSchema = SchemaFactory.createForClass(TileData);

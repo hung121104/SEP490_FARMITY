@@ -35,6 +35,9 @@ public class CropPlowingService : ICropPlowingService
         // Find all tilemaps with the specified name
         Tilemap[] tilemaps = Object.FindObjectsByType<Tilemap>(FindObjectsSortMode.None);
         
+        Tilemap closestTilemap = null;
+        float closestDistance = float.MaxValue;
+        
         foreach (Tilemap tilemap in tilemaps)
         {
             if (tilemap.gameObject.name == tilemapName)
@@ -42,19 +45,33 @@ public class CropPlowingService : ICropPlowingService
                 // Convert world position to cell position
                 Vector3Int cellPos = tilemap.WorldToCell(worldPosition);
                 
-                // Convert back to world position to check if this tilemap covers this area
-                Vector3 cellWorldPos = tilemap.GetCellCenterWorld(cellPos);
-                
-                // Check if the distance is reasonable (within the same grid)
-                float distance = Vector3.Distance(cellWorldPos, worldPosition);
-                if (distance < 10f) // Assuming cells are smaller than 10 units
+                // For TillableTilemap, we ONLY care if it actually has a tile here!
+                // If it does, this is 100% the tilemap we want to use.
+                if (tilemapName == "TillableTilemap" && tilemap.HasTile(cellPos))
                 {
                     return tilemap;
+                }
+                
+                // For other tilemaps (TilledOverlay, Watered, etc) which might be empty,
+                // we find the one closest to the world position (i.e. the chunk this position belongs to).
+                // Measure distance from the Tilemap's transform to the world position.
+                float distance = Vector2.Distance(
+                    new Vector2(cellPos.x, cellPos.y), // Using grid coords could be another way, but transform position is safer
+                    new Vector2(tilemap.transform.position.x, tilemap.transform.position.y)
+                );
+                
+                // Actual distance from world position to the transform is better:
+                float distToTransform = Vector3.Distance(tilemap.transform.position, worldPosition);
+                
+                if (distToTransform < closestDistance)
+                {
+                    closestDistance = distToTransform;
+                    closestTilemap = tilemap;
                 }
             }
         }
         
-        return null;
+        return closestTilemap;
     }
     
     private Tilemap FindTilledTilemapFromTillable(Tilemap tillableTilemap)
@@ -125,6 +142,18 @@ public class CropPlowingService : ICropPlowingService
         if (WorldDataManager.Instance.IsTilledAtWorldPosition(worldPosition))
         {
             Debug.LogWarning($"[PlowTile] FAIL: tile at ({worldPosition.x:F1}, {worldPosition.y:F1}) is already tilled.");
+            return false;
+        }
+
+        if (WorldDataManager.Instance.HasStructureAtWorldPosition(worldPosition))
+        {
+            Debug.LogWarning($"[PlowTile] FAIL: tile at ({worldPosition.x:F1}, {worldPosition.y:F1}) has a structure.");
+            return false;
+        }
+
+        if (WorldDataManager.Instance.HasResourceAtWorldPosition(worldPosition))
+        {
+            Debug.LogWarning($"[PlowTile] FAIL: tile at ({worldPosition.x:F1}, {worldPosition.y:F1}) has a resource.");
             return false;
         }
 

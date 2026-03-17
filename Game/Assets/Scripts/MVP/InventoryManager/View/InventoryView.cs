@@ -12,6 +12,8 @@ public class InventoryView : MonoBehaviour, IInventoryView
     [SerializeField] private RectTransform inventoryRoot;
     [SerializeField] private GameObject inventoryPanel;
     [SerializeField] private GameObject dragPreviewObject;
+    [Tooltip("Drag the original parent of the inventory root here.")]
+    [SerializeField] private Transform inventoryRootParent;
 
     [Header("Slot Container")]
     [SerializeField] private Transform slotContainer;
@@ -67,7 +69,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
         RectTransform root = inventoryRoot != null ? inventoryRoot : (inventoryPanel != null ? inventoryPanel.GetComponent<RectTransform>() : null);
         if (root != null)
         {
-            originalParent = root.parent;
+            originalParent = inventoryRootParent != null ? inventoryRootParent : root.parent;
             originalPosition = root.anchoredPosition;
         }
 

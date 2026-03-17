@@ -34,19 +34,18 @@ public class CropPlowingView : MonoBehaviour
     public CropPlowingPresenter GetPresenter() => presenter;
     private Transform playerTransform;
     private HotbarView hotbarView;
+    private IUseToolService toolUseService;
     private float _mouseHoldTimer = 0f;
     private SpriteRenderer _previewSR;
-    private Vector3 _lastMouseWorldPos;  // raw mouse pos before tile snap — used for anim direction
+    private Vector3 _lastMouseWorldPos;  // raw mouse pos before tile snap — used for anim direction    
 
-    /// <summary>Fired when a tile is successfully plowed. Carries the plow direction (cardinal Vector2).</summary>
-    public static event System.Action<Vector2> OnPlowAnimationRequested;
-    
     private void Start()
     {
         // Initialize the MVP pattern
         ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
         ICropPlowingService service = new CropPlowingService(syncManager, showDebugLogs);
         presenter = new CropPlowingPresenter(this, service);
+        toolUseService = new UseToolService();
         
         // Initialize the presenter with tilled tile reference
         presenter.Initialize(tilledTile);
@@ -106,7 +105,7 @@ public class CropPlowingView : MonoBehaviour
         }
 
         Vector3 tile = GetPreviewTargetTile();
-        if (tile == Vector3.zero)
+        if (tile == Vector3.zero || presenter == null || !presenter.IsTillable(tile))
         {
             _previewSR.enabled = false;
             return;
@@ -116,8 +115,8 @@ public class CropPlowingView : MonoBehaviour
 
         _previewSR.enabled = true;
         _previewSR.transform.position = new Vector3(
-            Mathf.Floor(tile.x),
-            Mathf.Floor(tile.y) + 0.062f,
+            Mathf.Floor(tile.x)+.5f,
+            Mathf.Floor(tile.y) + 0.5f,
             0f);
     }
 
@@ -145,8 +144,8 @@ public class CropPlowingView : MonoBehaviour
                 Vector3 snappedTile = CropTileSelector.GetDirectionalTile(
                     playerTransform.position, mouseWorldPos, plowingRange, ref dummy);
 
-                if (snappedTile != Vector3.zero)
-                    presenter.HandlePlowAction(snappedTile);
+                if (snappedTile != Vector3.zero && presenter.IsTillable(snappedTile))
+                    toolUseService?.UseHoe(currentItem, mouseWorldPos);
             }
         }
         else
@@ -172,16 +171,6 @@ public class CropPlowingView : MonoBehaviour
     public void OnPlowSuccess(Vector3Int tilePosition, Vector3 worldPosition)
     {
         Debug.Log($"Successfully plowed tile at {tilePosition}");
-
-        // Only left/right animations — use the X sign of player→mouse direction
-        Vector2 dir = Vector2.zero;
-        if (playerTransform != null && _lastMouseWorldPos != Vector3.zero)
-        {
-            float rawX = _lastMouseWorldPos.x - playerTransform.position.x;
-            dir = new Vector2(Mathf.Sign(rawX), 0f);
-        }
-        Debug.Log($"[CropPlowingView] Plowing direction: {dir}");
-        OnPlowAnimationRequested?.Invoke(dir);
     }
 
     

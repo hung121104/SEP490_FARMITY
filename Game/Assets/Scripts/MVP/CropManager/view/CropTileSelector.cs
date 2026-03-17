@@ -41,9 +41,9 @@ public static class CropTileSelector
     {
         mouseWorldPos.z = 0f;
 
-        // Snap the mouse world position directly to the nearest tile
-        int targetX = Mathf.RoundToInt(mouseWorldPos.x);
-        int targetY = Mathf.RoundToInt(mouseWorldPos.y);
+        // Snap the mouse world position directly to the nearest tile grid cell
+        int targetX = Mathf.FloorToInt(mouseWorldPos.x);
+        int targetY = Mathf.FloorToInt(mouseWorldPos.y);
         Vector2Int targetTile = new Vector2Int(targetX, targetY);
 
         // Range check — target must be within maxRange of the player

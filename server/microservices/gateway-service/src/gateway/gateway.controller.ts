@@ -435,6 +435,126 @@ export class GatewayController {
     }
   }
 
+  // ── Game Data: Resource Configs ─────────────────────────────────────────────
+
+  @Get('game-data/resource-configs/catalog')
+  async getResourceConfigCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-resource-config-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('game-data/resource-configs')
+  @UseInterceptors(
+    FileInterceptor('sprite', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createResourceConfig(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const dto: any = {
+        resourceId: body.resourceId,
+        name: body.name,
+        maxHp: Number(body.maxHp),
+      };
+
+      if (body.requiredToolId) dto.requiredToolId = body.requiredToolId;
+      if (body.resourceType) dto.resourceType = body.resourceType;
+      if (body.spawnWeight !== undefined)
+        dto.spawnWeight = Number(body.spawnWeight);
+
+      if (file) {
+        dto.spriteUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'resource-sprites',
+        );
+      }
+
+      if (body.dropTable) {
+        try {
+          dto.dropTable =
+            typeof body.dropTable === 'string'
+              ? JSON.parse(body.dropTable)
+              : body.dropTable;
+        } catch {
+          throw new BadRequestException('dropTable must be a valid JSON array');
+        }
+      } else {
+        dto.dropTable = [];
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('create-resource-config', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Put('game-data/resource-configs/:resourceId')
+  @UseInterceptors(
+    FileInterceptor('sprite', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateResourceConfig(
+    @Param('resourceId') resourceId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const dto: any = {};
+      if (body.name) dto.name = body.name;
+      if (body.maxHp !== undefined) dto.maxHp = Number(body.maxHp);
+      if (body.requiredToolId !== undefined)
+        dto.requiredToolId = body.requiredToolId;
+      if (body.resourceType !== undefined)
+        dto.resourceType = body.resourceType;
+      if (body.spawnWeight !== undefined)
+        dto.spawnWeight = Number(body.spawnWeight);
+
+      if (file) {
+        dto.spriteUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'resource-sprites',
+        );
+      }
+
+      if (body.dropTable !== undefined) {
+        try {
+          dto.dropTable =
+            typeof body.dropTable === 'string'
+              ? JSON.parse(body.dropTable)
+              : body.dropTable;
+        } catch {
+          throw new BadRequestException('dropTable must be a valid JSON array');
+        }
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('update-resource-config', { resourceId, dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('game-data/resource-configs/:resourceId')
+  async deleteResourceConfig(@Param('resourceId') resourceId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-resource-config', { resourceId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   // ── Game Data: Items ────────────────────────────────────────────────────────
 
   /** POST /game-data/items/create — accepts multipart/form-data with an icon file

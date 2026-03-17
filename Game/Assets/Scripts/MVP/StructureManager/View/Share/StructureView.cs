@@ -232,8 +232,8 @@ public class StructureView : MonoBehaviourPunCallbacks
             return;
         }
 
-        // Snap to grid
-        currentSnappedPos = new Vector3(Mathf.Floor(tile.x), Mathf.Floor(tile.y), 0f);
+        // Snap to grid (offset by +0.5 to align sprite center with tile)
+        currentSnappedPos = new Vector3(Mathf.Floor(tile.x) + 0.5f, Mathf.Floor(tile.y) + 0.5f, 0f);
         ghostInstance.transform.position = currentSnappedPos;
         ghostInstance.SetActive(true);
 

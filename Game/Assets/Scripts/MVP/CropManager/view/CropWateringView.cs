@@ -29,9 +29,6 @@ public class CropWateringView : MonoBehaviour
     [Header("Debug")]
     [SerializeField] private bool showDebugLogs = false;
 
-    /// <summary>Fired when a tile is successfully watered. Carries the watering direction (cardinal Vector2).</summary>
-    public static event System.Action<Vector2> OnWaterAnimationRequested;
-
     // ── Internal state ────────────────────────────────────────────────────
     private CropWateringPresenter presenter;
     private Transform playerTransform;
@@ -105,15 +102,6 @@ public class CropWateringView : MonoBehaviour
     {
         if (showDebugLogs)
             Debug.Log($"[CropWateringView] ✓ Watered tile at {worldPosition}.");
-
-        Vector2 dir = Vector2.zero;
-        if (playerTransform != null && _lastMouseWorldPos != Vector3.zero)
-        {
-            float rawX = _lastMouseWorldPos.x - playerTransform.position.x;
-            dir = new Vector2(Mathf.Sign(rawX), 0f);
-        }
-
-        OnWaterAnimationRequested?.Invoke(dir);
     }
 
     /// <summary>Called by the Presenter when watering fails.</summary>

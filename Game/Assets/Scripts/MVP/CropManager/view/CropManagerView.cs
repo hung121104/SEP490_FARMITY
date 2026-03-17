@@ -102,8 +102,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         if (growthService == null) return;
         growthService.IsRaining = true;
 
-        // Only MasterClient performs the bulk water + visual refresh
-        if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient) return;
+        // Allow all clients to perform the bulk water locally — no network broadcast needed!
 
         growthService.WaterAllTilledTiles();
 

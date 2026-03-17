@@ -236,15 +236,15 @@ public class DroppedItemManagerView : MonoBehaviour
     /// Delegates to Presenter which sends pickup request through Photon.
     /// </summary>
     /// <param name="dropId">The unique ID of the item to pick up.</param>
-    public void RequestPickupItem(string dropId)
+    public bool RequestPickupItem(string dropId)
     {
-        if (presenter == null) return;
+        if (presenter == null) return false;
         
         var allItems = presenter.GetAllDroppedItems();
         DroppedItemData data = null;
         foreach (var item in allItems) { if (item.dropId == dropId) { data = item; break; } }
         
-        if (data == null) return;
+        if (data == null) return false;
 
         var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
         if (inventoryGameView != null)
@@ -258,18 +258,21 @@ public class DroppedItemManagerView : MonoBehaviour
                 if (addable <= 0)
                 {
                     if (showDebugLogs) Debug.Log($"[DroppedItemManagerView] Inventory full! Cannot pick up {data.itemName}");
-                    return; // inventory is fully packed, do not pickup at all
+                    return false; // inventory is fully packed, do not pickup at all
                 }
                 else if (addable < data.quantity)
                 {
                     if (showDebugLogs) Debug.Log($"[DroppedItemManagerView] Partial pickup: can fit {addable} out of {data.quantity}");
-                    syncManager?.SendPartialPickupRequest(dropId, addable);
-                    return;
+                    if (syncManager == null) return false;
+                    syncManager.SendPartialPickupRequest(dropId, addable);
+                    return true;
                 }
             }
         }
 
-        presenter?.RequestPickupItem(dropId);
+        if (presenter == null) return false;
+        presenter.RequestPickupItem(dropId);
+        return true;
     }
 
     /// <summary>Check if a dropped item exists in the registry.</summary>
