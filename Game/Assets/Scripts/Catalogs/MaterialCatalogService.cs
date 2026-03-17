@@ -14,20 +14,14 @@ using Newtonsoft.Json;
 ///
 /// Usage:
 ///   1. Add to a persistent GameObject (same scene as SkinCatalogManager).
-///   2. Assign <see cref="catalogApiUrl"/> in the Inspector.
-///   3. Wait for <see cref="IsReady"/> == true before calling GetMaterial().
-///   4. var mat = MaterialCatalogService.Instance.GetMaterial(tool.toolMaterialId);
+///   2. Wait for <see cref="IsReady"/> == true before calling GetMaterial().
+///   3. var mat = MaterialCatalogService.Instance.GetMaterial(tool.toolMaterialId);
 ///      equipmentManager.EquipTool(mat?.materialId);
 /// </summary>
 public class MaterialCatalogService : MonoBehaviour
 {
     // ── Singleton ─────────────────────────────────────────────────────────────
     public static MaterialCatalogService Instance { get; private set; }
-
-    // ── Inspector ─────────────────────────────────────────────────────────────
-    [Header("Catalog Source")]
-    [Tooltip("Live NestJS endpoint (e.g. https://api.farmity.com/game-data/materials/catalog).")]
-    [SerializeField] private string catalogApiUrl = "";
 
     // ── State ─────────────────────────────────────────────────────────────────
     private readonly Dictionary<string, MaterialEntry> _catalog = new();
@@ -56,10 +50,8 @@ public class MaterialCatalogService : MonoBehaviour
         while (SkinCatalogManager.Instance == null)
             yield return null;
 
-        if (!string.IsNullOrEmpty(catalogApiUrl))
-            yield return LoadCatalogFromUrl(catalogApiUrl);
-        else
-            Debug.LogWarning("[MaterialCatalogService] catalogApiUrl is not assigned.");
+        CatalogProgressManager.NotifyStarted();
+        yield return FetchCatalog();
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -80,10 +72,12 @@ public class MaterialCatalogService : MonoBehaviour
 
     // ── Loading ───────────────────────────────────────────────────────────────
 
-    private IEnumerator LoadCatalogFromUrl(string url)
+    private IEnumerator FetchCatalog()
     {
         IsReady = false;
         _catalog.Clear();
+
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/materials/catalog";
 
         using var req = UnityWebRequest.Get(url);
         req.timeout = 15;
@@ -111,6 +105,7 @@ public class MaterialCatalogService : MonoBehaviour
             Debug.LogWarning("[MaterialCatalogService] Catalog returned 0 materials.");
             IsReady = true;
             OnReady?.Invoke();
+            CatalogProgressManager.NotifyCompleted();
             yield break;
         }
 
@@ -121,6 +116,7 @@ public class MaterialCatalogService : MonoBehaviour
 
         // Register each spritesheet into SkinCatalogManager under materialId as configId.
         int pending = response.materials.Count;
+        int completed = 0;
 
         foreach (var mat in response.materials)
         {
@@ -132,11 +128,15 @@ public class MaterialCatalogService : MonoBehaviour
                 () =>
                 {
                     pending--;
+                    completed++;
+                    CatalogProgressManager.ReportProgress(completed, response.materials.Count, "Material Catalog");
+                    
                     if (pending <= 0)
                     {
                         IsReady = true;
                         OnReady?.Invoke();
                         Debug.Log("[MaterialCatalogService] All material sheets ready.");
+                        CatalogProgressManager.NotifyCompleted();
                     }
                 }
             ));

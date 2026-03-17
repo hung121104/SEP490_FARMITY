@@ -34,6 +34,7 @@ public class ResourceCatalogManager : MonoBehaviour
 
     private void Start()
     {
+        CatalogProgressManager.NotifyStarted();
         StartCoroutine(FetchCatalog());
     }
 
@@ -87,6 +88,7 @@ public class ResourceCatalogManager : MonoBehaviour
 
         IsReady = true;
         Debug.Log($"[ResourceCatalogManager] Catalog ready with {_resourceConfigs.Count} resource config(s).");
+        CatalogProgressManager.NotifyCompleted();
     }
 
     public ResourceConfigData GetResourceConfig(string resourceId)
