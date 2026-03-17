@@ -157,7 +157,7 @@ public class StructureSpawnTest : MonoBehaviour
         StructurePool pool = FindAnyObjectByType<StructurePool>();
         if (pool != null)
         {
-            StructureDataSO data = pool.GetStructureData(structureId);
+            StructureData data = pool.GetStructureData(structureId);
             if (data != null)
                 return data.MaxHealth;
         }

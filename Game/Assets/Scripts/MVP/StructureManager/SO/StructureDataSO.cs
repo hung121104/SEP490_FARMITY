@@ -19,7 +19,7 @@ public class StructureDataSO : ScriptableObject
 
     [Header("Interaction")]
     [Tooltip("What happens when the player interacts with this structure")]
-    public StructureInteractionType InteractionType = StructureInteractionType.None;
+    public StructureInteractionType InteractionType = StructureInteractionType.Decoration;
 
     [Header("Durability")]
     [Tooltip("Hit points before the structure is destroyed")]

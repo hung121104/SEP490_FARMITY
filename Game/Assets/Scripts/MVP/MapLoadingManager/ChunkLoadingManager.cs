@@ -550,7 +550,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 if (cachedStructurePool != null)
                 {
                     string structId = tile.Structure.StructureId;
-                    StructureDataSO structData = cachedStructurePool.GetStructureData(structId);
+                    StructureData structData = cachedStructurePool.GetStructureData(structId);
                     if (structData != null)
                     {
                         Vector3Int structPosInt = new Vector3Int(tile.WorldX, tile.WorldY, 0);
