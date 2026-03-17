@@ -216,4 +216,7 @@ export class UpdateItemDto {
   @IsOptional()
   @IsBoolean()
   autoConsume?: boolean;
+
+  // ── Structure (itemType: 13) / Fertilizer (itemType: 14) ─────────────────
+  // No additional fields beyond the shared base item properties.
 }

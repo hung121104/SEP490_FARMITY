@@ -3,8 +3,8 @@ using System;
 using Photon.Pun;
 
 /// <summary>
-/// Dispatches tool-use requests as static events.
-/// Each View system subscribes to the event for its tool type.
+/// Dispatches tool-use requests and closely related action-item requests as static events.
+/// Each View system subscribes to the event it handles.
 /// All types changed from "DataSO" to plain C# "Data" classes.
 /// </summary>
 public class UseToolService : IUseToolService
@@ -24,6 +24,7 @@ public class UseToolService : IUseToolService
     public static event Action<ToolData, Vector3> OnPickaxeImpactRequested;
     public static event Action<ToolData, Vector3> OnAxeImpactRequested;
     public static event Action<ToolData, Vector3> OnFishingRodRequested;
+    public static event Action<FertilizerData, Vector3> OnFertilizerRequested;
     public static event Action<PollenData, Vector3> OnPollenRequested;
 
     public static void RaiseAxeImpact(ToolData item, Vector3 pos)
@@ -83,6 +84,16 @@ public class UseToolService : IUseToolService
 
         Debug.Log("[UseToolService] UseFishingRod at: " + pos);
         OnFishingRodRequested?.Invoke(item, pos);
+        MarkToolUseDispatched();
+        return true;
+    }
+
+    public bool UseFertilizer(FertilizerData item, Vector3 pos)
+    {
+        if (IsToolUseBlockedByAnimation()) return false;
+
+        Debug.Log("[UseToolService] UseFertilizer at: " + pos);
+        OnFertilizerRequested?.Invoke(item, pos);
         MarkToolUseDispatched();
         return true;
     }

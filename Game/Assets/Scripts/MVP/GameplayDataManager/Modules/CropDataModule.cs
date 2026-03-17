@@ -236,6 +236,29 @@ public class CropDataModule : IWorldDataModule
         return chunk.AddWaterDecayTime(wx, wy, deltaMinutes);
     }
 
+    // ── Fertilizer ────────────────────────────────────────────────────────
+
+    public bool FertilizeTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
+            return false;
+
+        bool success = chunk.FertilizeTile(wx, wy);
+        if (success && showDebugLogs)
+        {
+            Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+            Debug.Log($"✓ Fertilized tile at ({wx},{wy}) [Chunk: {chunkPos}, Section: {sectionId}]");
+        }
+        return success;
+    }
+
+    public bool IsFertilizedAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.IsFertilizedAt(wx, wy);
+    }
+
     // ── IWorldDataModule ──────────────────────────────────────────────────
 
     public void ClearAll()
