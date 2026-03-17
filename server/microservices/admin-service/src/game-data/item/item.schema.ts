@@ -178,6 +178,11 @@ export class Item {
 
   @Prop()
   autoConsume?: boolean;
+
+  // ── itemType: 13 – Structure ──────────────────────────────────────────────
+
+  @Prop()
+  structureInteractionType?: number;
 }
 
 export const ItemSchema = SchemaFactory.createForClass(Item);

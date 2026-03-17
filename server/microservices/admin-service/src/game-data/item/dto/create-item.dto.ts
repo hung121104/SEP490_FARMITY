@@ -218,4 +218,10 @@ export class CreateItemDto {
   @IsOptional()
   @IsBoolean()
   autoConsume?: boolean;
+
+  // ── Structure (itemType: 13) ─────────────────────────────────────────────────
+
+  @IsOptional()
+  @IsInt()
+  structureInteractionType?: number;
 }

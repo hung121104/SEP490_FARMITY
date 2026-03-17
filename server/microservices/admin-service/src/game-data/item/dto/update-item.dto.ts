@@ -216,4 +216,10 @@ export class UpdateItemDto {
   @IsOptional()
   @IsBoolean()
   autoConsume?: boolean;
+
+  // ── Structure (itemType: 13) ─────────────────────────────────────────────────
+
+  @IsOptional()
+  @IsInt()
+  structureInteractionType?: number;
 }
