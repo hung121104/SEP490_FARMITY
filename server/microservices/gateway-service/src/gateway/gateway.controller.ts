@@ -46,6 +46,8 @@ import { HttpStatus } from '@nestjs/common';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
 
+const FERTILIZER_ITEM_TYPE = 14;
+
 @Controller()
 export class GatewayController {
   constructor(
@@ -73,6 +75,85 @@ export class GatewayController {
       message = payload.message || payload.error || JSON.stringify(payload);
     }
     return new HttpException(message, status);
+  }
+
+  private parseCrossResults(crossResults: any): any {
+    if (crossResults === undefined) return undefined;
+
+    try {
+      return typeof crossResults === 'string'
+        ? JSON.parse(crossResults)
+        : crossResults;
+    } catch {
+      throw new BadRequestException(
+        'crossResults must be a valid JSON array, e.g. [{"targetPlantId":"plant_corn","resultPlantId":"plant_hybrid_corn"}]',
+      );
+    }
+  }
+
+  private buildCreateItemDto(
+    body: any,
+    iconUrl: string,
+    forcedItemType?: number,
+  ): CreateItemDto {
+    const dto: CreateItemDto = {
+      ...body,
+      iconUrl,
+      itemType: forcedItemType ?? Number(body.itemType),
+      itemCategory: Number(body.itemCategory),
+      maxStack: Number(body.maxStack),
+      basePrice: Number(body.basePrice ?? 0),
+      buyPrice: Number(body.buyPrice ?? 0),
+      isStackable: body.isStackable === 'true' || body.isStackable === true,
+      canBeSold: body.canBeSold !== 'false' && body.canBeSold !== false,
+      canBeBought: body.canBeBought === 'true' || body.canBeBought === true,
+      isQuestItem: body.isQuestItem === 'true' || body.isQuestItem === true,
+      isArtifact: body.isArtifact === 'true' || body.isArtifact === true,
+      isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
+    };
+
+    const crossResults = this.parseCrossResults(body.crossResults);
+    if (crossResults !== undefined) dto.crossResults = crossResults;
+
+    return dto;
+  }
+
+  private buildUpdateItemDto(
+    body: any,
+    iconUrl?: string,
+    forcedItemType?: number,
+  ): UpdateItemDto {
+    const dto: UpdateItemDto = { ...body };
+
+    if (iconUrl) dto.iconUrl = iconUrl;
+    if (forcedItemType !== undefined) dto.itemType = forcedItemType;
+    else if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
+
+    if (body.itemCategory !== undefined)
+      dto.itemCategory = Number(body.itemCategory);
+    if (body.maxStack !== undefined) dto.maxStack = Number(body.maxStack);
+    if (body.basePrice !== undefined) dto.basePrice = Number(body.basePrice);
+    if (body.buyPrice !== undefined) dto.buyPrice = Number(body.buyPrice);
+    if (body.isStackable !== undefined)
+      dto.isStackable =
+        body.isStackable === 'true' || body.isStackable === true;
+    if (body.canBeSold !== undefined)
+      dto.canBeSold = body.canBeSold !== 'false' && body.canBeSold !== false;
+    if (body.canBeBought !== undefined)
+      dto.canBeBought =
+        body.canBeBought === 'true' || body.canBeBought === true;
+    if (body.isQuestItem !== undefined)
+      dto.isQuestItem =
+        body.isQuestItem === 'true' || body.isQuestItem === true;
+    if (body.isArtifact !== undefined)
+      dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
+    if (body.isRareItem !== undefined)
+      dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
+
+    const crossResults = this.parseCrossResults(body.crossResults);
+    if (crossResults !== undefined) dto.crossResults = crossResults;
+
+    return dto;
   }
 
   @Post('player-data/world')
@@ -579,36 +660,7 @@ export class GatewayController {
         body.folder || 'item-icons',
       );
 
-      // Parse numeric/boolean fields that arrive as strings from form-data
-      const dto: CreateItemDto = {
-        ...body,
-        iconUrl,
-        itemType: Number(body.itemType),
-        itemCategory: Number(body.itemCategory),
-        maxStack: Number(body.maxStack),
-        basePrice: Number(body.basePrice ?? 0),
-        buyPrice: Number(body.buyPrice ?? 0),
-        isStackable: body.isStackable === 'true' || body.isStackable === true,
-        canBeSold: body.canBeSold !== 'false' && body.canBeSold !== false,
-        canBeBought: body.canBeBought === 'true' || body.canBeBought === true,
-        isQuestItem: body.isQuestItem === 'true' || body.isQuestItem === true,
-        isArtifact: body.isArtifact === 'true' || body.isArtifact === true,
-        isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
-      };
-
-      // crossResults arrives as a JSON string in multipart form-data
-      if (body.crossResults !== undefined) {
-        try {
-          dto.crossResults =
-            typeof body.crossResults === 'string'
-              ? JSON.parse(body.crossResults)
-              : body.crossResults;
-        } catch {
-          throw new BadRequestException(
-            'crossResults must be a valid JSON array, e.g. [{"targetPlantId":"plant_corn","resultPlantId":"plant_hybrid_corn"}]',
-          );
-        }
-      }
+      const dto = this.buildCreateItemDto(body, iconUrl);
 
       return await firstValueFrom(this.adminClient.send('create-item', dto));
     } catch (err) {
@@ -673,51 +725,15 @@ export class GatewayController {
     @Body() body: any,
   ) {
     try {
-      const dto: UpdateItemDto = { ...body };
-
-      // If a new icon was uploaded, replace the iconUrl
+      let iconUrl: string | undefined;
       if (file) {
-        dto.iconUrl = await this.cloudinaryService.uploadFile(
+        iconUrl = await this.cloudinaryService.uploadFile(
           file,
           body.folder || 'item-icons',
         );
       }
 
-      // Parse numeric / boolean fields that arrive as strings from form-data
-      if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
-      if (body.itemCategory !== undefined)
-        dto.itemCategory = Number(body.itemCategory);
-      if (body.maxStack !== undefined) dto.maxStack = Number(body.maxStack);
-      if (body.basePrice !== undefined) dto.basePrice = Number(body.basePrice);
-      if (body.buyPrice !== undefined) dto.buyPrice = Number(body.buyPrice);
-      if (body.isStackable !== undefined)
-        dto.isStackable =
-          body.isStackable === 'true' || body.isStackable === true;
-      if (body.canBeSold !== undefined)
-        dto.canBeSold = body.canBeSold !== 'false' && body.canBeSold !== false;
-      if (body.canBeBought !== undefined)
-        dto.canBeBought =
-          body.canBeBought === 'true' || body.canBeBought === true;
-      if (body.isQuestItem !== undefined)
-        dto.isQuestItem =
-          body.isQuestItem === 'true' || body.isQuestItem === true;
-      if (body.isArtifact !== undefined)
-        dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
-      if (body.isRareItem !== undefined)
-        dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
-
-      if (body.crossResults !== undefined) {
-        try {
-          dto.crossResults =
-            typeof body.crossResults === 'string'
-              ? JSON.parse(body.crossResults)
-              : body.crossResults;
-        } catch {
-          throw new BadRequestException(
-            'crossResults must be a valid JSON array',
-          );
-        }
-      }
+      const dto = this.buildUpdateItemDto(body, iconUrl);
 
       return await firstValueFrom(
         this.adminClient.send('update-item', { itemID, dto }),
@@ -733,6 +749,123 @@ export class GatewayController {
   async deleteItem(@Param('itemID') itemID: string) {
     try {
       return await firstValueFrom(this.adminClient.send('delete-item', itemID));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('game-data/fertilizers/create')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createFertilizer(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'An icon file is required (field name: "icon")',
+      );
+
+    try {
+      const iconUrl = await this.cloudinaryService.uploadFile(
+        file,
+        body.folder || 'item-icons',
+      );
+      const dto = this.buildCreateItemDto(body, iconUrl, FERTILIZER_ITEM_TYPE);
+
+      return await firstValueFrom(
+        this.adminClient.send('create-fertilizer', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/catalog')
+  async getFertilizerCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/all')
+  async getAllFertilizers() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-fertilizers', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/by-item-id/:itemID')
+  async getFertilizerByItemId(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-by-item-id', itemID),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/:id')
+  async getFertilizerById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-by-id', id),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Put('game-data/fertilizers/:itemID')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateFertilizer(
+    @Param('itemID') itemID: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      let iconUrl: string | undefined;
+      if (file) {
+        iconUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'item-icons',
+        );
+      }
+
+      const dto = this.buildUpdateItemDto(
+        body,
+        iconUrl,
+        FERTILIZER_ITEM_TYPE,
+      );
+
+      return await firstValueFrom(
+        this.adminClient.send('update-fertilizer', { itemID, dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('game-data/fertilizers/:itemID')
+  async deleteFertilizer(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-fertilizer', itemID),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }

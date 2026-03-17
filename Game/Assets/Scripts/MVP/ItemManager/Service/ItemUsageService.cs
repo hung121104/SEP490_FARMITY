@@ -37,6 +37,18 @@ public class ItemUsageService : IItemUsageService
         };
     }
 
+    public bool UseFertilizer(ItemData item, Vector3 pos)
+    {
+        Debug.Log("[ItemUsageService] UseFertilizer: " + item.itemID + " at: " + pos);
+        if (item is not FertilizerData fertilizerData)
+        {
+            Debug.LogWarning("[ItemUsageService] UseFertilizer: item is not FertilizerData");
+            return false;
+        }
+
+        return useToolService.UseFertilizer(fertilizerData, pos);
+    }
+
     public (bool, int) UseSeed(ItemData item, Vector3 pos)
     {
         return useSeedService.UseSeed(item, pos);

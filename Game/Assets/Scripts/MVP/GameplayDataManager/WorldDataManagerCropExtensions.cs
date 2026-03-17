@@ -85,6 +85,12 @@ public static class WorldDataManagerCropExtensions
 
     public static bool AddWaterDecayTime(this WorldDataManager manager, Vector3 worldPos, float deltaMinutes)
         => manager.CropData?.AddWaterDecayTime(worldPos, deltaMinutes) ?? false;
+
+    public static bool FertilizeTileAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.FertilizeTileAtWorldPosition(worldPos) ?? false;
+
+    public static bool IsFertilizedAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.IsFertilizedAtWorldPosition(worldPos) ?? false;
 }
 
 /// <summary>
