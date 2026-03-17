@@ -34,6 +34,8 @@ MonoBehaviour:
     m_path: Assets/Scenes/Test Scenes Nhan/LoadGameScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Nhan/LobbyScene.unity
+  - m_enabled: 0
+    m_path: Assets/Scenes/Test Scenes Nhan/TEST/GameCoreTestScene23333.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Nhan/GameCoreTestScene.unity
   - m_enabled: 1
