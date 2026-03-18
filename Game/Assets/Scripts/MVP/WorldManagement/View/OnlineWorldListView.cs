@@ -25,6 +25,11 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
     [SerializeField] private Button passwordCancelButton;
     [SerializeField] private TextMeshProUGUI passwordPromptText;
 
+    [Header("Join Denied Panel (optional)")]
+    [SerializeField] private GameObject joinDeniedPanel;
+    [SerializeField] private TextMeshProUGUI joinDeniedText;
+    [SerializeField] private Button joinDeniedOkButton;
+
     private Dictionary<string, RoomInfo> cachedRoomList = new Dictionary<string, RoomInfo>();
     private Dictionary<string, GameObject> roomListEntries = new Dictionary<string, GameObject>();
     private RoomInfo pendingPasswordRoom;
@@ -66,6 +71,16 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         {
             passwordPanel.SetActive(false);
         }
+
+        if (joinDeniedOkButton != null)
+        {
+            joinDeniedOkButton.onClick.AddListener(HideJoinDeniedPanel);
+        }
+
+        if (joinDeniedPanel != null)
+        {
+            joinDeniedPanel.SetActive(false);
+        }
     }
 
     private void OnDestroy()
@@ -89,6 +104,11 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         {
             passwordCancelButton.onClick.RemoveListener(ClosePasswordPanel);
         }
+
+        if (joinDeniedOkButton != null)
+        {
+            joinDeniedOkButton.onClick.RemoveListener(HideJoinDeniedPanel);
+        }
     }
 
     private void Start()
@@ -109,7 +129,10 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         ShowLoading(true);
         UpdateStatus("Connecting...");
 
-        if (PhotonNetwork.IsConnected)
+        bool canJoinLobbyNow = PhotonNetwork.IsConnectedAndReady
+            || PhotonNetwork.NetworkClientState == ClientState.ConnectedToMasterServer;
+
+        if (canJoinLobbyNow)
         {
             if (!PhotonNetwork.InLobby)
             {
@@ -120,13 +143,18 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
                 ShowLoading(false);
             }
         }
-        else
+        else if (!PhotonNetwork.IsConnected)
         {
             if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
             {
                 PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
             }
             PhotonNetwork.ConnectUsingSettings();
+        }
+        else
+        {
+            // Already in a connecting state; wait for OnConnectedToMaster callback.
+            UpdateStatus("Connecting to master...");
         }
     }
 
@@ -183,6 +211,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
         UpdateStatus($"Join failed: {message}");
+        ShowJoinDeniedMessage("Unable to join this world right now. Please try another world.");
         ShowLoading(false);
     }
 
@@ -352,6 +381,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
             if (string.IsNullOrEmpty(worldId))
             {
                 UpdateStatus("Cannot join: world id is missing.");
+                ShowJoinDeniedMessage("Unable to join this world because its id is missing.");
                 return;
             }
 
@@ -359,6 +389,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
             if (blacklist == null)
             {
                 UpdateStatus("Cannot verify blacklist right now. Please try again.");
+                ShowJoinDeniedMessage("Cannot verify world access right now. Please try again.");
                 return;
             }
 
@@ -366,6 +397,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
             if (!string.IsNullOrEmpty(myId) && blacklist.Contains(myId))
             {
                 UpdateStatus("You are blacklisted from this world.");
+                ShowJoinDeniedMessage("You cannot join this world because you are blacklisted.");
                 return;
             }
 
@@ -427,6 +459,21 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
 
         if (passwordPanel != null)
             passwordPanel.SetActive(false);
+    }
+
+    private void ShowJoinDeniedMessage(string message)
+    {
+        if (joinDeniedText != null)
+            joinDeniedText.text = message;
+
+        if (joinDeniedPanel != null)
+            joinDeniedPanel.SetActive(true);
+    }
+
+    private void HideJoinDeniedPanel()
+    {
+        if (joinDeniedPanel != null)
+            joinDeniedPanel.SetActive(false);
     }
 
     private void JoinRoomByName(string roomName)
