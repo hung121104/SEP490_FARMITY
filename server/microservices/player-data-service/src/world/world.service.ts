@@ -395,13 +395,6 @@ export class WorldService {
     const world = await this.worldModel.findById(dto.worldId).exec();
     if (!world) throw new RpcException({ status: 404, message: 'World not found' });
 
-    const isAdmin = !!dto.requesterIsAdmin;
-    const requesterId = dto.requesterId;
-    const isOwner = !!requesterId && world.ownerId?.toString() === requesterId;
-    if (!isOwner && !isAdmin) {
-      throw new RpcException({ status: 401, message: 'Not authorized to manage this world blacklist' });
-    }
-
     return {
       worldId: world._id.toString(),
       blacklistedPlayerIds: Array.isArray(world.blacklistedPlayerIds) ? world.blacklistedPlayerIds : [],

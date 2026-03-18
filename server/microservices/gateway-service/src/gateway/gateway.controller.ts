@@ -81,6 +81,41 @@ export class GatewayController {
     return new HttpException(message, status);
   }
 
+  private async enrichBlacklistResponse(payload: any) {
+    const blacklistedPlayerIds: string[] = Array.isArray(payload?.blacklistedPlayerIds)
+      ? payload.blacklistedPlayerIds.map((id: unknown) => String(id))
+      : [];
+
+    if (blacklistedPlayerIds.length === 0) {
+      return {
+        ...payload,
+        blacklistedPlayers: [],
+      };
+    }
+
+    const uniqueIds = Array.from(new Set(blacklistedPlayerIds));
+    const lookup = await Promise.all(
+      uniqueIds.map(async (accountId) => {
+        try {
+          const account: any = await firstValueFrom(this.authClient.send('find-account', accountId));
+          return { accountId, username: account?.username ?? null };
+        } catch {
+          return { accountId, username: null };
+        }
+      }),
+    );
+
+    const usernameMap = new Map(lookup.map((item) => [item.accountId, item.username]));
+
+    return {
+      ...payload,
+      blacklistedPlayers: blacklistedPlayerIds.map((accountId) => ({
+        accountId,
+        username: usernameMap.get(accountId) ?? null,
+      })),
+    };
+  }
+
   private parseCrossResults(crossResults: any): any {
     if (crossResults === undefined) return undefined;
 
@@ -275,13 +310,14 @@ export class GatewayController {
     const requesterIsAdmin = !!req['user']?.isAdmin;
     if (!requesterId) throw new UnauthorizedException('Missing requester');
     try {
-      return await firstValueFrom(
+      const response = await firstValueFrom(
         this.playerDataClient.send('get-world-blacklist', {
           worldId: query._id,
           requesterId,
           requesterIsAdmin,
         }),
       );
+      return await this.enrichBlacklistResponse(response);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -297,7 +333,7 @@ export class GatewayController {
     const requesterIsAdmin = !!req['user']?.isAdmin;
     if (!requesterId) throw new UnauthorizedException('Missing requester');
     try {
-      return await firstValueFrom(
+      const response = await firstValueFrom(
         this.playerDataClient.send('add-world-blacklist-player', {
           worldId: dto._id,
           requesterId,
@@ -305,6 +341,7 @@ export class GatewayController {
           playerId: dto.playerId,
         }),
       );
+      return await this.enrichBlacklistResponse(response);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -320,7 +357,7 @@ export class GatewayController {
     const requesterIsAdmin = !!req['user']?.isAdmin;
     if (!requesterId) throw new UnauthorizedException('Missing requester');
     try {
-      return await firstValueFrom(
+      const response = await firstValueFrom(
         this.playerDataClient.send('remove-world-blacklist-player', {
           worldId: dto._id,
           requesterId,
@@ -328,6 +365,7 @@ export class GatewayController {
           playerId: dto.playerId,
         }),
       );
+      return await this.enrichBlacklistResponse(response);
     } catch (err) {
       throw this.rpcError(err);
     }
