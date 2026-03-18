@@ -1,30 +1,19 @@
 using UnityEngine;
 using Photon.Pun;
-using System.Collections.Generic;
 
 public class StructureDestructionPresenter
 {
     private readonly IStructureDestructionService destructionService;
-    private readonly IStructureService structureService;
-    private readonly DroppedItemManagerView droppedItemManager;
     private readonly StructureDestructionView view;
-    private readonly IInventoryService inventoryService;
     private readonly bool showDebugLogs;
-    private readonly ChunkDataSyncManager syncManager;
 
     public StructureDestructionPresenter(
         StructureDestructionView view,
         IStructureDestructionService destructionService,
-        IStructureService structureService,
-        IInventoryService inventoryService,
-        ChunkDataSyncManager syncManager,
         bool showDebugLogs = true)
     {
         this.view = view;
         this.destructionService = destructionService;
-        this.structureService = structureService;
-        this.inventoryService = inventoryService;
-        this.syncManager = syncManager;
         this.showDebugLogs = showDebugLogs;
 
         // Subscribe to HP update events for visual feedback
@@ -56,15 +45,8 @@ public class StructureDestructionPresenter
         
         Vector3Int tilePos = new Vector3Int(worldX, worldY, 0);
         
-        // Cast to concrete class to access ProcessHitRequest
-        if (destructionService is StructureDestructionService concreteService)
-        {
-            concreteService.ProcessHitRequest(tilePos, damage, playerActorId);
-        }
-        else if (showDebugLogs)
-        {
-            Debug.LogError($"[StructureDestructionPresenter] Cannot process hit request - service is not StructureDestructionService");
-        }
+        // Gọi qua interface — không cần cast sang concrete class
+        destructionService.ProcessHitRequest(tilePos, damage, playerActorId);
     }
 
     private void OnStructureHpUpdated(int worldX, int worldY, int newHp)
@@ -93,18 +75,12 @@ public class StructureDestructionPresenter
     {
         Vector3Int tilePos = new Vector3Int(Mathf.FloorToInt(targetWorldPos.x), Mathf.FloorToInt(targetWorldPos.y), 0);
 
-        // Check if already destroyed (HP = 0)
-        UnifiedChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(tilePos);
-        if (chunk != null)
+        // Delegate business logic check to Service — Presenter không truy cập WorldDataManager
+        if (destructionService.IsStructureAlreadyDestroyed(tilePos))
         {
-            int currentHp = chunk.GetStructureHp(tilePos.x, tilePos.y);
-            if (currentHp <= 0 && chunk.HasStructure(tilePos.x, tilePos.y))
-            {
-                // Structure already marked for destruction, don't process further hits
-                if (showDebugLogs)
-                    Debug.Log($"[StructureDestructionPresenter] Structure at {tilePos} already destroyed, ignoring hit");
-                return;
-            }
+            if (showDebugLogs)
+                Debug.Log($"[StructureDestructionPresenter] Structure at {tilePos} already destroyed, ignoring hit");
+            return;
         }
 
         bool success = destructionService.DealDamage(tilePos, tool.toolPower, out bool isRemoved, out string structureId);
