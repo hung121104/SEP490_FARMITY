@@ -45,7 +45,7 @@ public class StructureDestructionPresenter
         
         Vector3Int tilePos = new Vector3Int(worldX, worldY, 0);
         
-        // Gọi qua interface — không cần cast sang concrete class
+        // Call service
         destructionService.ProcessHitRequest(tilePos, damage, playerActorId);
     }
 
