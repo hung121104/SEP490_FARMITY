@@ -404,6 +404,7 @@ GameObject:
   - component: {fileID: 6412045840102000685}
   - component: {fileID: 8737184366194917002}
   - component: {fileID: 949327545480666551}
+  - component: {fileID: 8846110323758098484}
   m_Layer: 5
   m_Name: BlacklistedPlayersItem
   m_TagString: Untagged
@@ -470,3 +471,17 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 3
+--- !u!114 &8846110323758098484
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5464158040239932991}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9506e15702b183f4ea67696f632eb8f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerUsernameText: {fileID: 1004856421574282339}
+  removeButton: {fileID: 5532859351906717636}
