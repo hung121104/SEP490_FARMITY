@@ -1,5 +1,5 @@
 using UnityEngine;
-using System.Collections.Generic;
+using System;
 
 /// <summary>
 /// Presenter for structure placement / removal following the MVP pattern.
@@ -15,6 +15,47 @@ public class StructurePresenter
     {
         this.structureService = structureService;
         this.showDebugLogs = showDebugLogs;
+    }
+
+    // ── Data Building (moved from View) ───────────────────────────────────
+
+    /// <summary>
+    /// Builds a StructureData from raw item data.
+    /// The View passes a <paramref name="getPrefab"/> delegate because prefab selection
+    /// is a visual/Inspector concern that belongs to the View layer.
+    /// </summary>
+    public StructureData BuildStructureData(StructureItemData itemData,
+                                            Func<StructureInteractionType, GameObject> getPrefab)
+    {
+        if (itemData == null) return null;
+
+        StructureInteractionType interactionType =
+            (StructureInteractionType)itemData.structureInteractionType;
+
+        GameObject prefab = getPrefab(interactionType);
+        if (prefab == null)
+        {
+            Debug.LogWarning($"[StructurePresenter] No prefab for '{itemData.itemID}'");
+            return null;
+        }
+
+        return new StructureData
+        {
+            StructureId     = itemData.itemID,
+            DisplayName     = itemData.itemName,
+            InteractionType = interactionType,
+            Prefab          = prefab
+        };
+    }
+
+    /// <summary>
+    /// Resolves StructureData for an item ID using the catalog service.
+    /// The View provides the prefab resolver callback.
+    /// </summary>
+    public StructureData GetStructureData(string itemID, Func<StructureInteractionType, GameObject> getPrefab)
+    {
+        var itemData = ItemCatalogService.Instance?.GetItemData(itemID) as StructureItemData;
+        return BuildStructureData(itemData, getPrefab);
     }
 
     // ── Placement Validation (called every frame during ghost preview) ────

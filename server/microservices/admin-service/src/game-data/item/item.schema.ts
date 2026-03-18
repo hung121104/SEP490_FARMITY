@@ -184,6 +184,9 @@ export class Item {
   @Prop()
   structureInteractionType?: number;
 
+  @Prop()
+  structureLevel?: number;
+
   // ── itemType: 14 – Fertilizer ───────────────────────────
   // No additional persisted fields beyond the shared base item properties.
 }
