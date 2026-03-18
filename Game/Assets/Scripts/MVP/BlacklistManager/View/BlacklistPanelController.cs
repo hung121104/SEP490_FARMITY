@@ -6,7 +6,6 @@ using Photon.Realtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 
 public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallback
 {
@@ -23,9 +22,6 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
     [SerializeField] private Transform blacklistedContainer;
     [SerializeField] private GameObject blacklistedPlayersItemPrefab;
 
-    [Header("Redirect")]
-    [SerializeField] private string blockedPlayerRedirectScene = "OnlineWorldListScene";
-
     [Header("Status")]
     [SerializeField] private TextMeshProUGUI statusText;
 
@@ -37,7 +33,6 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
     private BlacklistPresenter presenter;
     private HashSet<string> blacklistedIds = new HashSet<string>();
     private bool wasPanelOpen;
-    private bool pendingBlockedRedirect;
 
     private void Awake()
     {
@@ -87,18 +82,6 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
     public override void OnMasterClientSwitched(Player newMasterClient)
     {
         _ = RefreshAllAsync();
-    }
-
-    public override void OnLeftRoom()
-    {
-        if (!pendingBlockedRedirect)
-            return;
-
-        pendingBlockedRedirect = false;
-        PhotonNetwork.IsMessageQueueRunning = false;
-
-        if (!string.IsNullOrEmpty(blockedPlayerRedirectScene))
-            SceneManager.LoadScene(blockedPlayerRedirectScene);
     }
 
     public async Task RefreshAllAsync()
@@ -443,14 +426,8 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
         if (PhotonNetwork.InRoom)
         {
             UpdateStatus("You are blacklisted from this world.");
-            pendingBlockedRedirect = true;
             PhotonNetwork.LeaveRoom();
-            return;
         }
-
-        PhotonNetwork.IsMessageQueueRunning = false;
-        if (!string.IsNullOrEmpty(blockedPlayerRedirectScene))
-            SceneManager.LoadScene(blockedPlayerRedirectScene);
     }
 
     private void RaiseForceLeaveEvent(string accountId)
