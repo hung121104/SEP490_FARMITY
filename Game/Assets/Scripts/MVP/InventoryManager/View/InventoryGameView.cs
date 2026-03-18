@@ -176,6 +176,20 @@ public class InventoryGameView : MonoBehaviour
         }
     }
 
+    public void OpenChestInventory(Transform container = null)
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneDefaultPos);
+        }
+
+        if (container != null)
+            inventoryView?.ShowWithParent(container);
+        else
+            inventoryView?.Show();
+    }
+
     public void OpenCraftingInventory(Transform container = null)
     {
         if (itemDeleteView != null)

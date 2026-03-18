@@ -27,6 +27,19 @@ public class StructureData
 
     // ── Storage-specific (only populated if InteractionType == Storage) ───
     public int StorageSlots { get; set; } = 0;
+    public int StructureLevel { get; set; } = 1;
+
+    // ── Slot count mapping (single source of truth) ──────────────────────
+    /// <summary>
+    /// Level 1 = 18, Level 2 = 27, Level 3 = 36 (mỗi level +9 slots, bắt đầu từ 18)
+    /// </summary>
+    public static int SlotsForLevel(int level) => level switch
+    {
+        1 => 18,
+        2 => 27,
+        3 => 36,
+        _ => 18
+    };
 
     // ── Constructor ───────────────────────────────────────────────────────
     public StructureData() { }
@@ -38,11 +51,11 @@ public class StructureData
         InteractionType = (StructureInteractionType)itemData.structureInteractionType;
         MaxHealth = 3; // Always default
         Prefab = prefab;
-        
-        // Storage slots from maxStack (convention)
+
         if (InteractionType == StructureInteractionType.Storage)
         {
-            StorageSlots = itemData.maxStack > 0 ? itemData.maxStack : 36; // Default 36 if not set
+            StructureLevel = itemData.structureLevel;
+            StorageSlots = SlotsForLevel(StructureLevel);
         }
     }
 }
