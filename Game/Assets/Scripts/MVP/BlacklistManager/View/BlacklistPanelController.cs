@@ -6,6 +6,7 @@ using Photon.Realtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallback
 {
@@ -22,10 +23,8 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
     [SerializeField] private Transform blacklistedContainer;
     [SerializeField] private GameObject blacklistedPlayersItemPrefab;
 
-    [Header("Kick Panel")]
-    [SerializeField] private GameObject kickPanel;
-    [SerializeField] private TextMeshProUGUI kickText;
-    [SerializeField] private Button kickAcceptButton;
+    [Header("Redirect")]
+    [SerializeField] private string blockedPlayerRedirectScene = "OnlineWorldListScene";
 
     [Header("Status")]
     [SerializeField] private TextMeshProUGUI statusText;
@@ -33,10 +32,12 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
     private readonly List<GameObject> inRoomItems = new List<GameObject>();
     private readonly List<GameObject> blacklistedItems = new List<GameObject>();
     private readonly Dictionary<string, Player> roomPlayersByAccountId = new Dictionary<string, Player>();
+    private readonly Dictionary<string, string> displayNameByAccountId = new Dictionary<string, string>();
 
     private BlacklistPresenter presenter;
     private HashSet<string> blacklistedIds = new HashSet<string>();
     private bool wasPanelOpen;
+    private bool pendingBlockedRedirect;
 
     private void Awake()
     {
@@ -45,21 +46,12 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
 
         presenter = new BlacklistPresenter(new BlacklistService());
 
-        if (kickAcceptButton != null)
-            kickAcceptButton.onClick.AddListener(HideKickPanel);
-
-        if (kickPanel != null)
-            kickPanel.SetActive(false);
-
         PhotonNetwork.AddCallbackTarget(this);
     }
 
     private void OnDestroy()
     {
         PhotonNetwork.RemoveCallbackTarget(this);
-
-        if (kickAcceptButton != null)
-            kickAcceptButton.onClick.RemoveListener(HideKickPanel);
     }
 
     private void Update()
@@ -95,6 +87,18 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
     public override void OnMasterClientSwitched(Player newMasterClient)
     {
         _ = RefreshAllAsync();
+    }
+
+    public override void OnLeftRoom()
+    {
+        if (!pendingBlockedRedirect)
+            return;
+
+        pendingBlockedRedirect = false;
+        PhotonNetwork.IsMessageQueueRunning = false;
+
+        if (!string.IsNullOrEmpty(blockedPlayerRedirectScene))
+            SceneManager.LoadScene(blockedPlayerRedirectScene);
     }
 
     public async Task RefreshAllAsync()
@@ -162,7 +166,6 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
         bool kicked = TryKickPlayer(newPlayer);
         if (kicked)
         {
-            ShowKickPanel($"Player {joiningAccountId} is blacklisted and was removed.");
             UpdateStatus($"Blocked blacklisted player: {joiningAccountId}");
         }
         else
@@ -199,9 +202,7 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
 
         if (roomPlayersByAccountId.TryGetValue(playerId, out Player player))
         {
-            bool kicked = TryKickPlayer(player);
-            if (kicked)
-                ShowKickPanel($"Player {playerId} was blacklisted and removed.");
+            _ = TryKickPlayer(player);
         }
 
         RenderInRoomPlayers();
@@ -240,6 +241,7 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
     private void BuildRoomPlayerLookup()
     {
         roomPlayersByAccountId.Clear();
+        displayNameByAccountId.Clear();
 
         if (!PhotonNetwork.InRoom)
             return;
@@ -249,8 +251,16 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
         {
             string accountId = GetPlayerAccountId(players[i]);
             if (!string.IsNullOrEmpty(accountId) && !roomPlayersByAccountId.ContainsKey(accountId))
+            {
                 roomPlayersByAccountId.Add(accountId, players[i]);
+                displayNameByAccountId[accountId] = GetPlayerDisplayName(players[i], accountId);
+            }
         }
+
+        string localAccountId = SessionManager.Instance?.UserId ?? string.Empty;
+        string localUsername = SessionManager.Instance?.Username ?? string.Empty;
+        if (!string.IsNullOrEmpty(localAccountId) && !string.IsNullOrEmpty(localUsername))
+            displayNameByAccountId[localAccountId] = localUsername;
     }
 
     private void RenderInRoomPlayers()
@@ -269,13 +279,15 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
             if (string.IsNullOrEmpty(accountId))
                 accountId = players[i].NickName;
 
+            string displayName = GetPlayerDisplayName(players[i], accountId);
+
             GameObject item = Instantiate(playersItemPrefab, inRoomContainer);
             InRoomPlayerItemView view = item.GetComponent<InRoomPlayerItemView>();
             if (view != null)
             {
                 bool isSelf = accountId == localId;
                 bool isBlacklisted = blacklistedIds.Contains(accountId);
-                view.Bind(accountId, isSelf, isBlacklisted, OnBlacklistClicked);
+                view.Bind(accountId, displayName, isSelf, isBlacklisted, OnBlacklistClicked);
             }
 
             inRoomItems.Add(item);
@@ -291,10 +303,12 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
 
         foreach (string id in blacklistedIds)
         {
+            string displayName = ResolveDisplayNameFromId(id);
+
             GameObject item = Instantiate(blacklistedPlayersItemPrefab, blacklistedContainer);
             BlacklistedPlayerItemView view = item.GetComponent<BlacklistedPlayerItemView>();
             if (view != null)
-                view.Bind(id, OnRemoveBlacklistClicked);
+                view.Bind(id, displayName, OnRemoveBlacklistClicked);
 
             blacklistedItems.Add(item);
         }
@@ -429,8 +443,14 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
         if (PhotonNetwork.InRoom)
         {
             UpdateStatus("You are blacklisted from this world.");
+            pendingBlockedRedirect = true;
             PhotonNetwork.LeaveRoom();
+            return;
         }
+
+        PhotonNetwork.IsMessageQueueRunning = false;
+        if (!string.IsNullOrEmpty(blockedPlayerRedirectScene))
+            SceneManager.LoadScene(blockedPlayerRedirectScene);
     }
 
     private void RaiseForceLeaveEvent(string accountId)
@@ -456,19 +476,23 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
         return photonEvent.Sender == master.ActorNumber;
     }
 
-    private void ShowKickPanel(string message)
+    private string ResolveDisplayNameFromId(string accountId)
     {
-        if (kickText != null)
-            kickText.text = message;
+        if (string.IsNullOrEmpty(accountId))
+            return string.Empty;
 
-        if (kickPanel != null)
-            kickPanel.SetActive(true);
+        if (displayNameByAccountId.TryGetValue(accountId, out string name) && !string.IsNullOrEmpty(name))
+            return name;
+
+        return accountId;
     }
 
-    private void HideKickPanel()
+    private string GetPlayerDisplayName(Player player, string fallback)
     {
-        if (kickPanel != null)
-            kickPanel.SetActive(false);
+        if (player != null && !string.IsNullOrEmpty(player.NickName))
+            return player.NickName;
+
+        return fallback;
     }
 
     private void UpdateStatus(string message)

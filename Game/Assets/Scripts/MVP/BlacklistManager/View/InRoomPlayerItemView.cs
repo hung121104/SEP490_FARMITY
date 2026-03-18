@@ -11,13 +11,13 @@ public class InRoomPlayerItemView : MonoBehaviour
     private string playerId;
     private Action<string> onBlacklistClicked;
 
-    public void Bind(string accountId, bool isSelf, bool isAlreadyBlacklisted, Action<string> blacklistCallback)
+    public void Bind(string accountId, string displayName, bool isSelf, bool isAlreadyBlacklisted, Action<string> blacklistCallback)
     {
         playerId = accountId;
         onBlacklistClicked = blacklistCallback;
 
         if (playerUsernameText != null)
-            playerUsernameText.text = accountId;
+            playerUsernameText.text = string.IsNullOrEmpty(displayName) ? accountId : displayName;
 
         if (blacklistButton == null)
             return;

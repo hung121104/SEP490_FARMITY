@@ -11,13 +11,13 @@ public class BlacklistedPlayerItemView : MonoBehaviour
     private string playerId;
     private Action<string> onRemoveClicked;
 
-    public void Bind(string accountId, Action<string> removeCallback)
+    public void Bind(string accountId, string displayName, Action<string> removeCallback)
     {
         playerId = accountId;
         onRemoveClicked = removeCallback;
 
         if (playerUsernameText != null)
-            playerUsernameText.text = accountId;
+            playerUsernameText.text = string.IsNullOrEmpty(displayName) ? accountId : displayName;
 
         if (removeButton == null)
             return;
