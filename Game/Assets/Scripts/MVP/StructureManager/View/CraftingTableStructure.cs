@@ -26,11 +26,15 @@ public class CraftingTableStructure : MonoBehaviour, IInteractable
 
     // Polling state instead of overlap counter.
     private bool _playerInRange = false;
-    private bool PlayerInRange => _playerInRange;
+    public bool IsPlayerInRange => _playerInRange;
 
     // Track mouse hover state
     private bool _isMouseHovering = false;
     private bool _isTargeted = false;
+
+    // ── IInteractable Properties ────────────────────────────────────────
+    public bool IsTargeted => _isTargeted;
+    public Vector3 HighlightOffset => highlightOffset;
 
     // Guard against double-subscribing.
     private bool _inputSubscribed = false;
@@ -117,12 +121,9 @@ public class CraftingTableStructure : MonoBehaviour, IInteractable
         {
             _playerInRange = foundPlayer;
             
-            if (showDebugLogs)
-                Debug.Log($"[CraftingTableStructure] PlayerInRange thay đổi thành ({_playerInRange})");
-
-            if (!_playerInRange && craftingSystemManager != null && craftingSystemManager.IsCraftingUIOpen())
+            if (!_playerInRange && IsUIOpen())
             {
-                craftingSystemManager.CloseCraftingUI();
+                CloseUI();
             }
 
             EvaluateTargetState();
@@ -174,7 +175,7 @@ public class CraftingTableStructure : MonoBehaviour, IInteractable
 
     private void EvaluateTargetState()
     {
-        bool shouldBeTargeted = PlayerInRange && _isMouseHovering;
+        bool shouldBeTargeted = IsPlayerInRange && _isMouseHovering;
 
         if (shouldBeTargeted && !_isTargeted)
         {
@@ -216,11 +217,11 @@ public class CraftingTableStructure : MonoBehaviour, IInteractable
 
         // If the UI is already open, any table the player is standing near can close it.
         // This solves the issue where hover is blocked by the UI itself.
-        if (craftingSystemManager.IsCraftingUIOpen())
+        if (IsUIOpen())
         {
-            if (PlayerInRange)
+            if (IsPlayerInRange)
             {
-                craftingSystemManager.CloseCraftingUI();
+                CloseUI();
             }
             return;
         }
@@ -236,11 +237,32 @@ public class CraftingTableStructure : MonoBehaviour, IInteractable
 
     public void Interact()
     {
+        OpenUI();
+    }
+
+    public bool IsUIOpen()
+    {
+        return craftingSystemManager != null && craftingSystemManager.IsCraftingUIOpen();
+    }
+
+    public void OpenUI()
+    {
         if (craftingSystemManager != null)
             craftingSystemManager.OpenCraftingUI();
         else
         {
             if (showDebugLogs) Debug.LogWarning("[CraftingTableStructure] CraftingSystemManager not found in scene!");
         }
+    }
+
+    public void CloseUI()
+    {
+        if (craftingSystemManager != null)
+            craftingSystemManager.CloseCraftingUI();
+    }
+
+    public void SetBeingPooled()
+    {
+        _isBeingPooled = true;
     }
 }
