@@ -5,6 +5,7 @@ public class WorldBlacklistResponse
 {
     public string worldId;
     public string[] blacklistedPlayerIds;
+    public BlacklistedPlayerInfo[] blacklistedPlayers;
 }
 
 [Serializable]
@@ -15,6 +16,14 @@ public class BlacklistMutateResponse
     public bool added;
     public bool removed;
     public string[] blacklistedPlayerIds;
+    public BlacklistedPlayerInfo[] blacklistedPlayers;
+}
+
+[Serializable]
+public class BlacklistedPlayerInfo
+{
+    public string accountId;
+    public string username;
 }
 
 [Serializable]

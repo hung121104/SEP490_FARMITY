@@ -110,14 +110,14 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
             return;
         }
 
-        HashSet<string> fetched = await presenter.GetBlacklistSet(worldId);
+        WorldBlacklistResponse fetched = await presenter.GetBlacklist(worldId);
         if (fetched == null)
         {
             UpdateStatus("Failed to load blacklist.");
             return;
         }
 
-        blacklistedIds = fetched;
+        ApplyBlacklistResponse(fetched.blacklistedPlayerIds, fetched.blacklistedPlayers);
         RenderInRoomPlayers();
         RenderBlacklistedPlayers();
         UpdateStatus($"Loaded {blacklistedIds.Count} blacklisted player(s).");
@@ -132,9 +132,9 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
         if (string.IsNullOrEmpty(worldId))
             return;
 
-        HashSet<string> fetched = await presenter.GetBlacklistSet(worldId);
+        WorldBlacklistResponse fetched = await presenter.GetBlacklist(worldId);
         if (fetched != null)
-            blacklistedIds = fetched;
+            ApplyBlacklistResponse(fetched.blacklistedPlayerIds, fetched.blacklistedPlayers);
 
         string joiningAccountId = await WaitForAccountIdAsync(newPlayer, 5f);
         if (string.IsNullOrEmpty(joiningAccountId))
@@ -174,14 +174,14 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
             return;
         }
 
-        HashSet<string> updated = await presenter.AddToBlacklist(worldId, playerId);
+        BlacklistMutateResponse updated = await presenter.AddToBlacklistResponse(worldId, playerId);
         if (updated == null)
         {
             UpdateStatus("Failed to blacklist player.");
             return;
         }
 
-        blacklistedIds = updated;
+        ApplyBlacklistResponse(updated.blacklistedPlayerIds, updated.blacklistedPlayers);
 
         if (roomPlayersByAccountId.TryGetValue(playerId, out Player player))
         {
@@ -208,14 +208,14 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
             return;
         }
 
-        HashSet<string> updated = await presenter.RemoveFromBlacklist(worldId, playerId);
+        BlacklistMutateResponse updated = await presenter.RemoveFromBlacklistResponse(worldId, playerId);
         if (updated == null)
         {
             UpdateStatus("Failed to remove from blacklist.");
             return;
         }
 
-        blacklistedIds = updated;
+        ApplyBlacklistResponse(updated.blacklistedPlayerIds, updated.blacklistedPlayers);
         RenderInRoomPlayers();
         RenderBlacklistedPlayers();
         UpdateStatus($"Removed from blacklist: {playerId}");
@@ -470,6 +470,32 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
             return player.NickName;
 
         return fallback;
+    }
+
+    private void ApplyBlacklistResponse(string[] ids, BlacklistedPlayerInfo[] players)
+    {
+        blacklistedIds.Clear();
+
+        if (ids != null)
+        {
+            for (int i = 0; i < ids.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(ids[i]))
+                    blacklistedIds.Add(ids[i]);
+            }
+        }
+
+        if (players == null)
+            return;
+
+        for (int i = 0; i < players.Length; i++)
+        {
+            BlacklistedPlayerInfo info = players[i];
+            if (info == null || string.IsNullOrEmpty(info.accountId) || string.IsNullOrEmpty(info.username))
+                continue;
+
+            displayNameByAccountId[info.accountId] = info.username;
+        }
     }
 
     private void UpdateStatus(string message)

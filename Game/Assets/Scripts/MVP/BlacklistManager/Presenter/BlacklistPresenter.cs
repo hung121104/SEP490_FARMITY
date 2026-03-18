@@ -11,9 +11,24 @@ public class BlacklistPresenter
         this.service = service;
     }
 
+    public async Task<WorldBlacklistResponse> GetBlacklist(string worldId)
+    {
+        return await service.GetBlacklist(worldId);
+    }
+
+    public async Task<BlacklistMutateResponse> AddToBlacklistResponse(string worldId, string playerId)
+    {
+        return await service.AddToBlacklist(worldId, playerId);
+    }
+
+    public async Task<BlacklistMutateResponse> RemoveFromBlacklistResponse(string worldId, string playerId)
+    {
+        return await service.RemoveFromBlacklist(worldId, playerId);
+    }
+
     public async Task<HashSet<string>> GetBlacklistSet(string worldId)
     {
-        WorldBlacklistResponse response = await service.GetBlacklist(worldId);
+        WorldBlacklistResponse response = await GetBlacklist(worldId);
         if (response == null)
             return null;
 
@@ -22,7 +37,7 @@ public class BlacklistPresenter
 
     public async Task<HashSet<string>> AddToBlacklist(string worldId, string playerId)
     {
-        BlacklistMutateResponse response = await service.AddToBlacklist(worldId, playerId);
+        BlacklistMutateResponse response = await AddToBlacklistResponse(worldId, playerId);
         if (response == null)
             return null;
 
@@ -31,7 +46,7 @@ public class BlacklistPresenter
 
     public async Task<HashSet<string>> RemoveFromBlacklist(string worldId, string playerId)
     {
-        BlacklistMutateResponse response = await service.RemoveFromBlacklist(worldId, playerId);
+        BlacklistMutateResponse response = await RemoveFromBlacklistResponse(worldId, playerId);
         if (response == null)
             return null;
 
