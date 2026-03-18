@@ -7,29 +7,18 @@ using Newtonsoft.Json;
 
 /// <summary>
 /// Singleton MonoBehaviour — the client-side plant catalog.
-/// Loads plant data from a local JSON mock (or future remote API endpoint),
+/// Fetches plant data from GET /game-data/plants/catalog,
 /// downloads stage icon sprites from CDN URLs, and provides typed plant lookups.
 ///
 /// Usage:
 ///   1. Add to a persistent GameObject in your scene (same one as ItemCatalogService).
-///   2. Assign <see cref="catalogJsonAsset"/> in the Inspector (TextAsset from Resources/).
-///   3. Await <see cref="IsReady"/> == true before calling any Get methods.
-///   4. Use <see cref="GetPlantData"/> / <see cref="GetStageSprite"/> to retrieve data.
-///
-/// Future: set <see cref="catalogApiUrl"/> to your NestJS /plants endpoint URL instead.
+///   2. Await <see cref="IsReady"/> == true before calling any Get methods.
+///   3. Use <see cref="GetPlantData"/> / <see cref="GetStageSprite"/> to retrieve data.
 /// </summary>
 public class PlantCatalogService : MonoBehaviour
 {
     // ── Singleton ─────────────────────────────────────────────────────────────
     public static PlantCatalogService Instance { get; private set; }
-
-    // ── Inspector ─────────────────────────────────────────────────────────────
-    [Header("Catalog Source")]
-    [Tooltip("Drag mock_plant_catalog.json here for local testing.")]
-    [SerializeField] private TextAsset catalogJsonAsset;
-
-    [Tooltip("Live NestJS endpoint URL (e.g. https://api.farmity.com/plants). Overrides TextAsset when set.")]
-    [SerializeField] private string catalogApiUrl = "";
 
     // ── Internal State ────────────────────────────────────────────────────────
     private readonly Dictionary<string, PlantData>               _catalog      = new();
@@ -45,13 +34,12 @@ public class PlantCatalogService : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+    }
 
-        if (!string.IsNullOrEmpty(catalogApiUrl))
-            StartCoroutine(LoadCatalogFromUrl(catalogApiUrl));
-        else if (catalogJsonAsset != null)
-            StartCoroutine(LoadCatalogFromJson(catalogJsonAsset));
-        else
-            Debug.LogWarning("[PlantCatalogService] No catalog source assigned.");
+    private void Start()
+    {
+        CatalogProgressManager.NotifyStarted();
+        StartCoroutine(FetchCatalog());
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -97,123 +85,110 @@ public class PlantCatalogService : MonoBehaviour
 
     // ── Loading ───────────────────────────────────────────────────────────────
 
-    /// <summary>Load catalog from a local Unity TextAsset (JSON in Resources/).</summary>
-    public IEnumerator LoadCatalogFromJson(TextAsset json)
+    private IEnumerator FetchCatalog()
     {
         IsReady = false;
         _catalog.Clear();
         _spriteCache.Clear();
 
-        if (json == null) { Debug.LogError("[PlantCatalogService] TextAsset is null."); yield break; }
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/plants/catalog";
+
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError(
+                $"[PlantCatalogService] Failed to fetch catalog from {url}: {request.error}");
+            yield break;
+        }
 
         PlantCatalogResponse response;
         try
         {
-            response = JsonConvert.DeserializeObject<PlantCatalogResponse>(json.text);
+            response = JsonConvert.DeserializeObject<PlantCatalogResponse>(
+                request.downloadHandler.text);
         }
-        catch (Exception e)
+        catch (System.Exception ex)
         {
-            Debug.LogError($"[PlantCatalogService] JSON parse error: {e.Message}");
+            Debug.LogError($"[PlantCatalogService] JSON parse error: {ex.Message}");
             yield break;
         }
 
         if (response?.plants == null || response.plants.Count == 0)
         {
-            Debug.LogError("[PlantCatalogService] Catalog parsed 0 plants. Check JSON.");
+            Debug.LogWarning("[PlantCatalogService] Catalog returned 0 plants.");
+            IsReady = true;
             yield break;
         }
 
-        foreach (var plant in response.plants)
-            _catalog[plant.plantId] = plant;
+        foreach (PlantData plant in response.plants)
+        {
+            if (plant == null || string.IsNullOrWhiteSpace(plant.plantId))
+            {
+                Debug.LogWarning("[PlantCatalogService] Skipping entry with missing plantId.");
+                continue;
+            }
 
-        Debug.Log($"[PlantCatalogService] Parsed {_catalog.Count} plants from local JSON.");
+            _catalog[plant.plantId] = plant;
+        }
+
+        Debug.Log($"[PlantCatalogService] Catalog ready with {_catalog.Count} plant(s).");
+        
+        // Download all sprites
         yield return DownloadAllSprites(response.plants);
 
         IsReady = true;
-        Debug.Log("[PlantCatalogService] Catalog ready.");
-    }
-
-    /// <summary>Load catalog from a remote URL (NestJS /plants endpoint).
-    /// Falls back to <see cref="catalogJsonAsset"/> automatically if the request fails.</summary>
-    public IEnumerator LoadCatalogFromUrl(string url)
-    {
-        IsReady = false;
-        _catalog.Clear();
-        _spriteCache.Clear();
-
-        using var req = UnityWebRequest.Get(url);
-        yield return req.SendWebRequest();
-
-        if (req.result != UnityWebRequest.Result.Success)
-        {
-            Debug.LogWarning($"[PlantCatalogService] Failed to fetch from {url}: {req.error}. Falling back to local mock.");
-            yield return FallbackToLocal();
-            yield break;
-        }
-
-        PlantCatalogResponse response = null;
-        bool parseFailed = false;
-        try
-        {
-            response = JsonConvert.DeserializeObject<PlantCatalogResponse>(req.downloadHandler.text);
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[PlantCatalogService] Remote JSON parse error: {e.Message}. Falling back to local mock.");
-            parseFailed = true;
-        }
-
-        if (parseFailed || response?.plants == null)
-        {
-            if (!parseFailed)
-                Debug.LogWarning("[PlantCatalogService] Remote catalog is empty. Falling back to local mock.");
-            yield return FallbackToLocal();
-            yield break;
-        }
-
-        foreach (var plant in response.plants)
-            _catalog[plant.plantId] = plant;
-
-        Debug.Log($"[PlantCatalogService] Fetched {_catalog.Count} plants from {url}");
-        yield return DownloadAllSprites(response.plants);
-
-        IsReady = true;
-        Debug.Log("[PlantCatalogService] Catalog ready (remote).");
-    }
-
-    // ── Fallback ──────────────────────────────────────────────────────────────
-
-    private IEnumerator FallbackToLocal()
-    {
-        if (catalogJsonAsset == null)
-        {
-            Debug.LogError("[PlantCatalogService] No fallback asset assigned — catalog unavailable.");
-            yield break;
-        }
-        yield return LoadCatalogFromJson(catalogJsonAsset);
+        CatalogProgressManager.NotifyCompleted();
     }
 
     // ── Sprite Download ───────────────────────────────────────────────────────
 
     private IEnumerator DownloadAllSprites(IEnumerable<PlantData> plants)
     {
-        foreach (var plant in plants)
+        var plantList = new System.Collections.Generic.List<PlantData>(plants);
+        int totalSprites = 0;
+        
+        // Count total sprites first
+        foreach (var plant in plantList)
+        {
+            totalSprites += plant.growthStages.Count;
+            if (plant.isHybrid)
+                totalSprites += 2; // hybrid_flower + hybrid_mature
+        }
+
+        int downloadedSprites = 0;
+
+        foreach (var plant in plantList)
         {
             // Download normal growth stage sprites
             for (int i = 0; i < plant.growthStages.Count; i++)
             {
                 var stage = plant.growthStages[i];
                 if (!string.IsNullOrEmpty(stage.stageIconUrl))
+                {
                     yield return DownloadSprite($"{plant.plantId}_{i}", stage.stageIconUrl);
+                    downloadedSprites++;
+                    CatalogProgressManager.ReportProgress(downloadedSprites, totalSprites, "Plant Catalog");
+                }
             }
 
             // Download hybrid-specific sprites
             if (plant.isHybrid)
             {
                 if (!string.IsNullOrEmpty(plant.hybridFlowerIconUrl))
+                {
                     yield return DownloadSprite($"{plant.plantId}_hybrid_flower", plant.hybridFlowerIconUrl);
+                    downloadedSprites++;
+                    CatalogProgressManager.ReportProgress(downloadedSprites, totalSprites, "Plant Catalog");
+                }
                 if (!string.IsNullOrEmpty(plant.hybridMatureIconUrl))
+                {
                     yield return DownloadSprite($"{plant.plantId}_hybrid_mature", plant.hybridMatureIconUrl);
+                    downloadedSprites++;
+                    CatalogProgressManager.ReportProgress(downloadedSprites, totalSprites, "Plant Catalog");
+                }
             }
         }
     }

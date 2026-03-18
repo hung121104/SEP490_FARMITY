@@ -8707,7 +8707,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
-  sceneViewId: 2
+  sceneViewId: 8
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!1 &533674826
@@ -33119,6 +33119,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4017cea81171db041a150da525cbab0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  StoragePrefab: {fileID: 0}
+  CraftingPrefab: {fileID: 0}
+  SmeltingPrefab: {fileID: 0}
+  FencePrefab: {fileID: 0}
+  DecorationPrefab: {fileID: 0}
   placementRange: 2
   playerTag: PlayerEntity
   playerCameraTag: MainCamera
@@ -33138,12 +33143,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5864917db142ca146bfb6536e71002e7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  structureView: {fileID: 0}
   defaultCapacity: 10
   maxSize: 50
-  defaultSimplePrefab: {fileID: 2204487346316466391, guid: 4cd27e6c78dae6340b8b850488c34994, type: 3}
-  structureCatalog:
-  - {fileID: 11400000, guid: 7c973bba67aec7e4eb8c1c3ffd9d4e93, type: 2}
-  - {fileID: 11400000, guid: 1390210e212423346b91ea5e6b129cb2, type: 2}
   showPoolDebugLogs: 0
 --- !u!114 &2062326648
 MonoBehaviour:

@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Attach to a Button in the game scene.
 /// Saves the world (master only), leaves the Photon room, destroys
-/// per-session DontDestroyOnLoad singletons, then loads MainMenuScene.
+/// per-session DontDestroyOnLoad singletons (except InputManager), then loads MainMenuScene.
 /// </summary>
 public class LeaveRoomButton : MonoBehaviourPunCallbacks
 {
@@ -70,7 +70,6 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
         TryDestroy(WorldDataManager.Instance?.gameObject);
         TryDestroy(WorldSelectionManager.Instance?.gameObject);
         TryDestroy(PlayerDataManager.Instance?.gameObject);
-        TryDestroy(InputManager.Instance?.gameObject);
     }
 
     private static void TryDestroy(GameObject go)

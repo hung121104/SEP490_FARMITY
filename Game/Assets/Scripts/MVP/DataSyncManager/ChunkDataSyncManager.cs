@@ -840,7 +840,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         StructurePool pool = FindAnyObjectByType<StructurePool>();
         if (pool != null)
         {
-            StructureDataSO structData = pool.GetStructureData(structureId);
+            StructureData structData = pool.GetStructureData(structureId);
             if (structData != null)
                 initialHp = structData.MaxHealth;
         }

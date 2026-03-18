@@ -69,6 +69,7 @@ public class SkinCatalogManager : MonoBehaviour
 
     private void Start()
     {
+        CatalogProgressManager.NotifyStarted();
         StartCoroutine(FetchCatalog());
     }
 
@@ -141,17 +142,26 @@ public class SkinCatalogManager : MonoBehaviour
         {
             Debug.LogWarning("[SkinCatalogManager] Catalog returned 0 entries.");
             MarkReady();
+            CatalogProgressManager.NotifyCompleted();
             yield break;
         }
 
         // Load all sheets concurrently via nested coroutines
         int pending = entries.Length;
+        int completed = 0;
         foreach (var entry in entries)
         {
             StartCoroutine(LoadSheet(entry, () =>
             {
+                completed++;
+                CatalogProgressManager.ReportProgress(completed, entries.Length, "Skin Catalog");
+                
                 pending--;
-                if (pending <= 0) MarkReady();
+                if (pending <= 0)
+                {
+                    MarkReady();
+                    CatalogProgressManager.NotifyCompleted();
+                }
             }));
         }
     }

@@ -7,29 +7,18 @@ using Newtonsoft.Json;
 
 /// <summary>
 /// Singleton MonoBehaviour — the client-side item catalog.
-/// Loads item data from a local JSON mock (or future remote API endpoint),
+/// Fetches item data from GET /game-data/items/catalog,
 /// downloads icon sprites from CDN URLs, and provides typed item lookups.
 ///
 /// Usage:
 ///   1. Add to a persistent GameObject in your scene.
-///   2. Assign <see cref="catalogJsonAsset"/> in the Inspector (TextAsset from Resources/).
-///   3. Await <see cref="IsReady"/> == true before calling any Get methods.
-///   4. Use <see cref="GetItemData"/> / <see cref="GetItemData{T}"/> to retrieve items.
-///
-/// Future: set <see cref="catalogApiUrl"/> to your NestJS /items endpoint URL instead.
+///   2. Await <see cref="IsReady"/> == true before calling any Get methods.
+///   3. Use <see cref="GetItemData"/> / <see cref="GetItemData{T}"/> to retrieve items.
 /// </summary>
 public class ItemCatalogService : MonoBehaviour
 {
     // ── Singleton ─────────────────────────────────────────────────────────────
     public static ItemCatalogService Instance { get; private set; }
-
-    // ── Inspector ─────────────────────────────────────────────────────────────
-    [Header("Catalog Source")]
-    [Tooltip("Drag mock_item_catalog.json here for local testing.")]
-    [SerializeField] private TextAsset catalogJsonAsset;
-
-    [Tooltip("Live NestJS endpoint URL (e.g. https://api.farmity.com/items). Overrides TextAsset when set.")]
-    [SerializeField] private string catalogApiUrl = "";
 
     // ── Internal State ────────────────────────────────────────────────────────
     private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
@@ -49,13 +38,12 @@ public class ItemCatalogService : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+    }
 
-        if (!string.IsNullOrEmpty(catalogApiUrl))
-            StartCoroutine(LoadCatalogFromUrl(catalogApiUrl));
-        else if (catalogJsonAsset != null)
-            StartCoroutine(LoadCatalogFromJson(catalogJsonAsset));
-        else
-            Debug.LogWarning("[ItemCatalogService] No catalog source assigned.");
+    private void Start()
+    {
+        CatalogProgressManager.NotifyStarted();
+        StartCoroutine(FetchCatalog());
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -84,110 +72,80 @@ public class ItemCatalogService : MonoBehaviour
 
     // ── Loading ───────────────────────────────────────────────────────────────
 
-    /// <summary>Load catalog from a local Unity TextAsset (JSON in Resources/).</summary>
-    public IEnumerator LoadCatalogFromJson(TextAsset json)
+    private IEnumerator FetchCatalog()
     {
         IsReady = false;
         _catalog.Clear();
         _spriteCache.Clear();
 
-        if (json == null) { Debug.LogError("[ItemCatalogService] TextAsset is null."); yield break; }
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/items/catalog";
+
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError(
+                $"[ItemCatalogService] Failed to fetch catalog from {url}: {request.error}");
+            yield break;
+        }
 
         ItemCatalogResponse response;
         try
         {
-            response = JsonConvert.DeserializeObject<ItemCatalogResponse>(json.text, _jsonSettings);
+            response = JsonConvert.DeserializeObject<ItemCatalogResponse>(
+                request.downloadHandler.text, _jsonSettings);
         }
-        catch (Exception e)
+        catch (System.Exception ex)
         {
-            Debug.LogError($"[ItemCatalogService] JSON parse error: {e.Message}");
+            Debug.LogError($"[ItemCatalogService] JSON parse error: {ex.Message}");
             yield break;
         }
 
         if (response?.items == null || response.items.Count == 0)
         {
-            Debug.LogError("[ItemCatalogService] Catalog parsed 0 items. Check JSON.");
+            Debug.LogWarning("[ItemCatalogService] Catalog returned 0 items.");
+            IsReady = true;
             yield break;
         }
 
-        foreach (var item in response.items)
-            _catalog[item.itemID] = item;
+        foreach (ItemData item in response.items)
+        {
+            if (item == null || string.IsNullOrWhiteSpace(item.itemID))
+            {
+                Debug.LogWarning("[ItemCatalogService] Skipping entry with missing itemID.");
+                continue;
+            }
 
-        Debug.Log($"[ItemCatalogService] Parsed {_catalog.Count} items from local JSON.");
+            _catalog[item.itemID] = item;
+        }
+
+        Debug.Log($"[ItemCatalogService] Catalog ready with {_catalog.Count} item(s).");
+        
+        // Download all sprites
         yield return DownloadAllSprites(response.items);
 
         IsReady = true;
-        Debug.Log("[ItemCatalogService] Catalog ready.");
-    }
-
-    /// <summary>Load catalog from a remote URL (NestJS /items endpoint).
-    /// Falls back to <see cref="catalogJsonAsset"/> automatically if the request fails.</summary>
-    public IEnumerator LoadCatalogFromUrl(string url)
-    {
-        IsReady = false;
-        _catalog.Clear();
-        _spriteCache.Clear();
-
-        using var req = UnityWebRequest.Get(url);
-        yield return req.SendWebRequest();
-
-        if (req.result != UnityWebRequest.Result.Success)
-        {
-            Debug.LogWarning($"[ItemCatalogService] Failed to fetch from {url}: {req.error}. Falling back to local mock.");
-            yield return FallbackToLocal();
-            yield break;
-        }
-
-        ItemCatalogResponse response = null;
-        bool parseFailed = false;
-        try
-        {
-            response = JsonConvert.DeserializeObject<ItemCatalogResponse>(req.downloadHandler.text, _jsonSettings);
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[ItemCatalogService] Remote JSON parse error: {e.Message}. Falling back to local mock.");
-            parseFailed = true;
-        }
-
-        if (parseFailed || response?.items == null)
-        {
-            if (!parseFailed)
-                Debug.LogWarning("[ItemCatalogService] Remote catalog is empty. Falling back to local mock.");
-            yield return FallbackToLocal();
-            yield break;
-        }
-
-        foreach (var item in response.items)
-            _catalog[item.itemID] = item;
-
-        Debug.Log($"[ItemCatalogService] Fetched {_catalog.Count} items from {url}");
-        yield return DownloadAllSprites(response.items);
-
-        IsReady = true;
-        Debug.Log("[ItemCatalogService] Catalog ready (remote).");
-    }
-
-    // ── Fallback ──────────────────────────────────────────────────────────────
-
-    private IEnumerator FallbackToLocal()
-    {
-        if (catalogJsonAsset == null)
-        {
-            Debug.LogError("[ItemCatalogService] No fallback asset assigned — catalog unavailable.");
-            yield break;
-        }
-        yield return LoadCatalogFromJson(catalogJsonAsset);
+        CatalogProgressManager.NotifyCompleted();
     }
 
     // ── Sprite Download ───────────────────────────────────────────────────────
 
     private IEnumerator DownloadAllSprites(IEnumerable<ItemData> items)
     {
-        foreach (var item in items)
+        var itemList = new System.Collections.Generic.List<ItemData>(items);
+        int totalSprites = itemList.Count;
+        int downloadedSprites = 0;
+
+        foreach (var item in itemList)
         {
             if (!string.IsNullOrEmpty(item.iconUrl))
+            {
                 yield return DownloadSprite(item.itemID, item.iconUrl);
+                downloadedSprites++;
+                CatalogProgressManager.ReportProgress(downloadedSprites, totalSprites, "Item Catalog");
+            }
         }
     }
 
