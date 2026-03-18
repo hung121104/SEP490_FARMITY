@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using TMPro;
 using Photon.Pun;
 using Photon.Realtime;
@@ -27,9 +28,13 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
     private Dictionary<string, RoomInfo> cachedRoomList = new Dictionary<string, RoomInfo>();
     private Dictionary<string, GameObject> roomListEntries = new Dictionary<string, GameObject>();
     private RoomInfo pendingPasswordRoom;
+    private BlacklistPresenter blacklistPresenter;
+    private bool isJoinValidationInProgress;
 
     private void Awake()
     {
+        blacklistPresenter = new BlacklistPresenter(new BlacklistService());
+
         PhotonNetwork.AutomaticallySyncScene = true;
         
         if (roomItemPrefab != null && roomItemPrefab.activeInHierarchy)
@@ -250,6 +255,9 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
 
     public void OnJoinRoomClicked(string roomName)
     {
+        if (isJoinValidationInProgress)
+            return;
+
         if (!PhotonNetwork.IsConnected || PhotonNetwork.InRoom)
         {
             UpdateStatus("Cannot join room!");
@@ -270,7 +278,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
             return;
         }
 
-        JoinRoomByName(roomName);
+        _ = ValidateAndJoinAsync(roomInfo);
     }
 
     public void OnBackButtonClicked()
@@ -291,6 +299,9 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
 
     private void OnPasswordConfirmClicked()
     {
+        if (isJoinValidationInProgress)
+            return;
+
         if (pendingPasswordRoom == null)
         {
             ClosePasswordPanel();
@@ -319,9 +330,66 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
             return;
         }
 
-        string roomName = pendingPasswordRoom.Name;
+        RoomInfo roomInfo = pendingPasswordRoom;
         ClosePasswordPanel();
-        JoinRoomByName(roomName);
+        _ = ValidateAndJoinAsync(roomInfo);
+    }
+
+    private async Task ValidateAndJoinAsync(RoomInfo roomInfo)
+    {
+        if (roomInfo == null)
+            return;
+
+        if (isJoinValidationInProgress)
+            return;
+
+        isJoinValidationInProgress = true;
+        ShowLoading(true);
+
+        try
+        {
+            string worldId = ResolveWorldIdFromRoomInfo(roomInfo);
+            if (string.IsNullOrEmpty(worldId))
+            {
+                UpdateStatus("Cannot join: world id is missing.");
+                return;
+            }
+
+            HashSet<string> blacklist = await blacklistPresenter.GetBlacklistSet(worldId);
+            if (blacklist == null)
+            {
+                UpdateStatus("Cannot verify blacklist right now. Please try again.");
+                return;
+            }
+
+            string myId = SessionManager.Instance != null ? SessionManager.Instance.UserId : string.Empty;
+            if (!string.IsNullOrEmpty(myId) && blacklist.Contains(myId))
+            {
+                UpdateStatus("You are blacklisted from this world.");
+                return;
+            }
+
+            JoinRoomByName(roomInfo.Name);
+        }
+        finally
+        {
+            isJoinValidationInProgress = false;
+            if (!PhotonNetwork.InRoom)
+                ShowLoading(false);
+        }
+    }
+
+    private static string ResolveWorldIdFromRoomInfo(RoomInfo roomInfo)
+    {
+        if (roomInfo == null)
+            return string.Empty;
+
+        string worldId = WorldRoomProperties.GetString(roomInfo.CustomProperties, WorldRoomProperties.WorldId, string.Empty);
+        if (!string.IsNullOrEmpty(worldId))
+            return worldId;
+
+        // Fallback to room name for older rooms missing worldId custom property.
+        return roomInfo.Name;
     }
 
     private void OpenPasswordPanel(RoomInfo roomInfo)
