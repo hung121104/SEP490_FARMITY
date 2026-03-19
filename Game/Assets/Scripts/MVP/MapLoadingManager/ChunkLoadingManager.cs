@@ -575,7 +575,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
 
                         var chestStructure = structObj.GetComponent<ChestStructure>();
                         if (chestStructure != null)
-                            chestStructure.Initialize(new ChestData(tile.WorldX, tile.WorldY, 1));
+                            chestStructure.Initialize(new ChestData(tile.WorldX, tile.WorldY, structData.StructureLevel));
 
                         if (!chunkStructureVisuals.ContainsKey(chunkPos))
                             chunkStructureVisuals[chunkPos] = new List<(string, GameObject)>();

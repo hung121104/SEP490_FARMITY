@@ -126,6 +126,7 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
 
     public void NotifyChestOpened(string chestId)
     {
+        if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
         byte[] payload = EncodeNotify(chestId, PhotonNetwork.LocalPlayer.ActorNumber);
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
         PhotonNetwork.RaiseEvent(CHEST_OPEN_NOTIFY, payload, opts, SendOptions.SendReliable);
@@ -133,6 +134,7 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
 
     public void NotifyChestClosed(string chestId)
     {
+        if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
         byte[] payload = EncodeNotify(chestId, PhotonNetwork.LocalPlayer.ActorNumber);
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
         PhotonNetwork.RaiseEvent(CHEST_CLOSE_NOTIFY, payload, opts, SendOptions.SendReliable);

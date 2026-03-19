@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -10,7 +11,7 @@ public class ChestPresenter
 {
     private readonly ChestData chestData;
     private readonly InventoryModel chestModel;
-    private readonly InventoryModel playerModel;
+    private readonly InventoryModel inventoryModel;
     private readonly IChestService transferService;
     private readonly IInventoryService chestInventoryService;
     private readonly IInventoryService playerInventoryService;
@@ -43,14 +44,14 @@ public class ChestPresenter
     public ChestPresenter(ChestData chestData,
                           InventoryModel chestModel,
                           IInventoryService chestInventoryService,
-                          InventoryModel playerModel,
+                          InventoryModel inventoryModel,
                           IInventoryService playerInventoryService,
                           IChestService transferService)
     {
         this.chestData = chestData;
         this.chestModel = chestModel;
         this.chestInventoryService = chestInventoryService;
-        this.playerModel = playerModel;
+        this.inventoryModel = inventoryModel;
         this.playerInventoryService = playerInventoryService;
         this.transferService = transferService;
 
@@ -315,7 +316,7 @@ public class ChestPresenter
         else
         {
             // Player → Chest: transfer with swap support
-            transferService.TransferToChest(playerModel, draggedSlot, chestModel, targetSlot);
+            transferService.TransferToChest(inventoryModel, draggedSlot, chestModel, targetSlot);
             SyncChestSlot(targetSlot);
             SyncPlayerSlot(draggedSlot);
             // Refresh both views
@@ -334,8 +335,6 @@ public class ChestPresenter
 
         if (!dragFromChest)
         {
-            // Player → Player: InventoryPresenter already handles this via the same event.
-            // Do nothing here to avoid calling MoveItem twice (which swaps items back).
             chestView?.HideDragPreview();
             draggedSlot = -1;
             return;
@@ -343,7 +342,7 @@ public class ChestPresenter
         else
         {
             // Chest → Player: transfer with swap support
-            transferService.TransferToPlayer(chestModel, draggedSlot, playerModel, targetSlot);
+            transferService.TransferToPlayer(chestModel, draggedSlot, inventoryModel, targetSlot);
             SyncChestSlot(draggedSlot);
             SyncPlayerSlot(targetSlot);
             // Refresh both views
@@ -429,7 +428,7 @@ public class ChestPresenter
     {
         if (InventorySyncManager.Instance == null) return;
 
-        var item = playerModel.GetItemAtSlot(slotIndex);
+        var item = inventoryModel.GetItemAtSlot(slotIndex);
         if (item == null || item.Quantity <= 0)
             InventorySyncManager.Instance.RequestClearSlot((byte)slotIndex);
         else
@@ -458,9 +457,9 @@ public class ChestPresenter
     private void RefreshPlayerView()
     {
         if (playerView == null) return;
-        for (int i = 0; i < playerModel.maxSlots; i++)
+        for (int i = 0; i < inventoryModel.maxSlots; i++)
         {
-            var item = playerModel.GetItemAtSlot(i);
+            var item = inventoryModel.GetItemAtSlot(i);
             if (item != null)
                 playerView.UpdateSlot(i, item);
             else
@@ -481,7 +480,7 @@ public class ChestPresenter
     private void RefreshPlayerSlot(int slotIndex)
     {
         if (playerView == null) return;
-        var item = playerModel.GetItemAtSlot(slotIndex);
+        var item = inventoryModel.GetItemAtSlot(slotIndex);
         if (item != null)
             playerView.UpdateSlot(slotIndex, item);
         else
@@ -532,11 +531,22 @@ public class ChestPresenter
         chestView?.CancelAllActions();
     }
 
+    // Reusable buffer for GetChestSlots — avoids allocation per call
+    private readonly List<ChestSlotEntry> tempSlotBuffer = new List<ChestSlotEntry>();
+
     public void LoadStateFromModule()
     {
-        var inv = WorldDataManager.Instance?.ChestData?.GetChest(chestData.ChestId);
-        if (inv == null) return;
-        chestInventoryService.ApplyRemoteInventoryState(inv, chestData.SlotCount);
+        var module = WorldDataManager.Instance?.ChestData;
+        if (module == null) return;
+
+        short tx = (short)chestData.TileX;
+        short ty = (short)chestData.TileY;
+
+        int count = module.GetChestSlots(tx, ty, tempSlotBuffer);
+        if (count == 0 && !module.HasChest(tx, ty)) return;
+
+        if (chestInventoryService is InventoryService concreteService)
+            concreteService.ApplyRemoteChestState(tempSlotBuffer, chestData.SlotCount);
     }
 
     public void Cleanup()

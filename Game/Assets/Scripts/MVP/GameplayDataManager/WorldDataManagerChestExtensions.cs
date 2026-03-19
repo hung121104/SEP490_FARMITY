@@ -4,13 +4,13 @@
 /// </summary>
 public static class WorldDataManagerChestExtensions
 {
-    public static CharacterInventory RegisterChest(
+    public static void RegisterChest(
         this WorldDataManager manager, string chestId, byte slotCount)
         => manager.ChestData?.RegisterChest(chestId, slotCount);
 
-    public static CharacterInventory GetChestInventory(
-        this WorldDataManager manager, string chestId)
-        => manager.ChestData?.GetChest(chestId);
+    public static void RegisterChest(
+        this WorldDataManager manager, short tileX, short tileY, byte maxSlots, byte structureLevel)
+        => manager.ChestData?.RegisterChest(tileX, tileY, maxSlots, structureLevel);
 
     public static bool SetChestSlot(
         this WorldDataManager manager, string chestId,

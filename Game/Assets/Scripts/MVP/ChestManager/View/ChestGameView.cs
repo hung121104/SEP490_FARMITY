@@ -38,7 +38,7 @@ public class ChestGameView : MonoBehaviour
 
     private void Awake()
     {
-        playerInventoryGameView = FindFirstObjectByType<InventoryGameView>();
+        playerInventoryGameView = FindFirstObjectByType<InventoryGameView>(FindObjectsInactive.Include);
 
         if (chestMainPanel != null)
             chestMainPanel.SetActive(false);

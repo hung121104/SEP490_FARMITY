@@ -54,11 +54,17 @@ public class ChestStructure : MonoBehaviour, IInteractable
             mouseHoverTrigger.OnHoverEnter += HandleHoverEnter;
             mouseHoverTrigger.OnHoverExit += HandleHoverExit;
         }
+        else
+        {
+            Debug.LogWarning($"[ChestStructure] mouseHoverTrigger is not assigned on '{gameObject.name}'. Chest cannot be targeted (hover required to open UI).", this);
+        }
     }
 
     private void Start()
     {
-        chestGameView = FindFirstObjectByType<ChestGameView>();
+        chestGameView = FindFirstObjectByType<ChestGameView>(FindObjectsInactive.Include);
+        if (chestGameView == null)
+            Debug.LogError("[ChestStructure] ChestGameView not found in scene! Chest interaction will not work.", this);
     }
 
     private void OnEnable()
