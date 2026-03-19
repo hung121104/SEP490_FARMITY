@@ -7,5 +7,5 @@ public class StructureItemData : ItemData
     /// Defines the interaction type for this structure item.
     /// </summary>
     public int structureInteractionType = 0;
-    public int maxHealth = 3;
+    public int structureLevel = 1;
 }

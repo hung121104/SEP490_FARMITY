@@ -25,11 +25,15 @@ public class CookingTableStructure : MonoBehaviour, IInteractable
 
     // Polling state instead of overlap counter.
     private bool _playerInRange = false;
-    private bool PlayerInRange => _playerInRange;
+    public bool IsPlayerInRange => _playerInRange;
 
     // Track mouse hover state
     private bool _isMouseHovering = false;
     private bool _isTargeted = false;
+
+    // ── IInteractable Properties ────────────────────────────────────────
+    public bool IsTargeted => _isTargeted;
+    public Vector3 HighlightOffset => highlightOffset;
 
     // Guard against double-subscribing.
     private bool _inputSubscribed = false;
@@ -116,13 +120,10 @@ public class CookingTableStructure : MonoBehaviour, IInteractable
         {
             _playerInRange = foundPlayer;
             
-            if (showDebugLogs)
-                Debug.Log($"[CookingTableStructure] PlayerInRange thay đổi thành ({_playerInRange})");
-
             // If player out of range and UI is open, close UI
-            if (!_playerInRange && craftingSystemManager != null && craftingSystemManager.IsCookingUIOpen())
+            if (!_playerInRange && IsUIOpen())
             {
-                craftingSystemManager.CloseCookingUI();
+                CloseUI();
             }
 
             EvaluateTargetState();
@@ -174,7 +175,7 @@ public class CookingTableStructure : MonoBehaviour, IInteractable
 
     private void EvaluateTargetState()
     {
-        bool shouldBeTargeted = PlayerInRange && _isMouseHovering;
+        bool shouldBeTargeted = IsPlayerInRange && _isMouseHovering;
 
         if (shouldBeTargeted && !_isTargeted)
         {
@@ -216,11 +217,11 @@ public class CookingTableStructure : MonoBehaviour, IInteractable
 
         // If the UI is already open, any table the player is standing near can close it.
         // This solves the issue where hover is blocked by the UI itself.
-        if (craftingSystemManager.IsCookingUIOpen())
+        if (IsUIOpen())
         {
-            if (PlayerInRange)
+            if (IsPlayerInRange)
             {
-                craftingSystemManager.CloseCookingUI();
+                CloseUI();
             }
             return;
         }
@@ -236,11 +237,32 @@ public class CookingTableStructure : MonoBehaviour, IInteractable
 
     public void Interact()
     {
+        OpenUI();
+    }
+
+    public bool IsUIOpen()
+    {
+        return craftingSystemManager != null && craftingSystemManager.IsCookingUIOpen();
+    }
+
+    public void OpenUI()
+    {
         if (craftingSystemManager != null)
             craftingSystemManager.OpenCookingUI();
         else
         {
             if (showDebugLogs) Debug.LogWarning("[CookingTableStructure] CraftingSystemManager not found in scene!");
         }
+    }
+
+    public void CloseUI()
+    {
+        if (craftingSystemManager != null)
+            craftingSystemManager.CloseCookingUI();
+    }
+
+    public void SetBeingPooled()
+    {
+        _isBeingPooled = true;
     }
 }
