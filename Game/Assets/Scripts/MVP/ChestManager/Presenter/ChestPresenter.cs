@@ -305,6 +305,9 @@ public class ChestPresenter
             if (draggedSlot != targetSlot)
             {
                 transferService.MoveWithinChest(chestModel, draggedSlot, targetSlot);
+                // ChestService bypasses InventoryService events — refresh view manually
+                RefreshChestSlot(draggedSlot);
+                RefreshChestSlot(targetSlot);
                 SyncChestSlot(draggedSlot);
                 SyncChestSlot(targetSlot);
             }
@@ -331,8 +334,11 @@ public class ChestPresenter
 
         if (!dragFromChest)
         {
-            // Within player inventory: delegate to player's own service
-            playerInventoryService.MoveItem(draggedSlot, targetSlot);
+            // Player → Player: InventoryPresenter already handles this via the same event.
+            // Do nothing here to avoid calling MoveItem twice (which swaps items back).
+            chestView?.HideDragPreview();
+            draggedSlot = -1;
+            return;
         }
         else
         {
