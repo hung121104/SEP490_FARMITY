@@ -1,9 +1,12 @@
 ﻿using UnityEngine;
+using System.Collections.Generic; // Thêm thư viện này
 
 [RequireComponent(typeof(Collider2D))]
 public class ShopTrigger : MonoBehaviour
 {
-    public ItemType npcShopType;
+    [Header("Shop Settings")]
+    public List<ItemType> npcShopTypes = new List<ItemType>();
+
     private bool _isPlayerInRange = false;
 
     private void Update()
@@ -13,7 +16,7 @@ public class ShopTrigger : MonoBehaviour
             if (ShopView.Instance != null && ShopView.Instance.IsVisible)
                 ShopSystemManager.Instance.CloseShopUI();
             else
-                ShopSystemManager.Instance.OpenShopUI(npcShopType);
+                ShopSystemManager.Instance.OpenShopUI(npcShopTypes); 
         }
     }
 
