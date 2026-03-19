@@ -21,7 +21,7 @@ export class Item {
 
   /** Discriminator: 0=Tool, 1=Seed, 2=Crop, 3=Pollen, 4=Consumable,
    *  5=Material, 6=Weapon, 7=Fish, 8=Cooking, 9=Forage, 10=Resource,
-   *  11=Gift, 12=Quest */
+   *  11=Gift, 12=Quest, 13=Structure, 14=Fertilizer */
   @Prop({ required: true })
   itemType: number;
 
@@ -55,6 +55,11 @@ export class Item {
   @Prop({ default: false })
   isRareItem: boolean;
 
+  /** SkinCatalogManager configId for the item's paper-doll spritesheet
+   *  (e.g. "gold_hoe", "copper_watering_can"). Empty/null = no sprite layer. */
+  @Prop({ default: '' })
+  skinConfigId: string;
+
   @Prop({ type: [String], default: [] })
   npcPreferenceNames: string[];
 
@@ -78,8 +83,9 @@ export class Item {
   @Prop()
   toolPower?: number;
 
+  /** References a Material document by materialId (e.g. 'mat_copper'). */
   @Prop()
-  toolMaterial?: number;
+  toolMaterialId?: string;
 
   // ── itemType: 3 – Pollen ───────────────────────────────────────────────────
 
@@ -126,8 +132,9 @@ export class Item {
   @Prop()
   attackSpeed?: number;
 
+  /** References a Material document by materialId (e.g. 'mat_steel'). */
   @Prop()
-  weaponMaterial?: number;
+  weaponMaterialId?: string;
 
   // ── itemType: 7 – Fish ─────────────────────────────────────────────────────
 
@@ -171,6 +178,17 @@ export class Item {
 
   @Prop()
   autoConsume?: boolean;
+
+  // ── itemType: 13 – Structure ──────────────────────────────────────────────
+
+  @Prop()
+  structureInteractionType?: number;
+
+  @Prop()
+  structureLevel?: number;
+
+  // ── itemType: 14 – Fertilizer ───────────────────────────
+  // No additional persisted fields beyond the shared base item properties.
 }
 
 export const ItemSchema = SchemaFactory.createForClass(Item);

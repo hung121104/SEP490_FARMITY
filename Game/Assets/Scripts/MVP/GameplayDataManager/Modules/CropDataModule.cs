@@ -150,18 +150,18 @@ public class CropDataModule : IWorldDataModule
         return chunk.UpdateCropStage(wx, wy, newStage);
     }
 
-    public bool UpdateCropAge(Vector3 worldPos, int newAge)
+    public bool UpdateGrowthTimer(Vector3 worldPos, float newTimer)
     {
         if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
             return false;
-        return chunk.UpdateCropAge(wx, wy, newAge);
+        return chunk.UpdateGrowthTimer(wx, wy, newTimer);
     }
 
-    public bool IncrementCropAge(Vector3 worldPos)
+    public bool AddGrowthTime(Vector3 worldPos, float deltaSeconds)
     {
         if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
             return false;
-        return chunk.IncrementCropAge(wx, wy);
+        return chunk.AddGrowthTime(wx, wy, deltaSeconds);
     }
 
     // ── Pollen ────────────────────────────────────────────────────────────
@@ -197,6 +197,66 @@ public class CropDataModule : IWorldDataModule
         if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
             return false;
         return chunk.IsPollinatedAt(wx, wy);
+    }
+
+    // ── Watering ──────────────────────────────────────────────────────────
+
+    public bool WaterTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
+            return false;
+
+        bool success = chunk.WaterTile(wx, wy);
+        if (success && showDebugLogs)
+        {
+            Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+            Debug.Log($"✓ Watered tile at ({wx},{wy}) [Chunk: {chunkPos}, Section: {sectionId}]");
+        }
+        return success;
+    }
+
+    public bool UnwaterTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.UnwaterTile(wx, wy);
+    }
+
+    public bool IsWateredAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.IsWateredAt(wx, wy);
+    }
+
+    public bool AddWaterDecayTime(Vector3 worldPos, float deltaMinutes)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.AddWaterDecayTime(wx, wy, deltaMinutes);
+    }
+
+    // ── Fertilizer ────────────────────────────────────────────────────────
+
+    public bool FertilizeTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
+            return false;
+
+        bool success = chunk.FertilizeTile(wx, wy);
+        if (success && showDebugLogs)
+        {
+            Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+            Debug.Log($"✓ Fertilized tile at ({wx},{wy}) [Chunk: {chunkPos}, Section: {sectionId}]");
+        }
+        return success;
+    }
+
+    public bool IsFertilizedAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.IsFertilizedAt(wx, wy);
     }
 
     // ── IWorldDataModule ──────────────────────────────────────────────────
@@ -267,11 +327,7 @@ public class CropDataModule : IWorldDataModule
         chunk     = null;
 
         if (sectionId == -1)
-        {
-            if (showDebugLogs)
-                Debug.LogWarning($"[CropDataModule] World pos ({worldPos.x:F1},{worldPos.y:F1}) not in any active section.");
             return false;
-        }
 
         Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
         chunk = GetChunk(sectionId, chunkPos);

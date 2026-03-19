@@ -17,6 +17,7 @@ import {
   UploadedFile,
   UploadedFiles,
   BadRequestException,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
@@ -30,17 +31,22 @@ import { UpdateNewsDto } from './dto/update-news.dto';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
 import { UploadSignatureDto } from './dto/upload-signature.dto';
-import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
-import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
+import { RequestResetDto } from './dto/request-admin-reset.dto';
+import { ConfirmResetDto } from './dto/confirm-admin-reset.dto';
 import { UpdateWorldDto } from './dto/update-world.dto';
 import { CreateItemDto } from './dto/create-item.dto';
 import { CreatePlantDto } from './dto/create-plant.dto';
 import { CreateCraftingRecipeDto } from './dto/create-crafting-recipe.dto';
 import { UpdateCraftingRecipeDto } from './dto/update-crafting-recipe.dto';
+import { VerifyRegistrationDto } from './dto/verify-registration.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { UpdatePlantDto } from './dto/update-plant.dto';
 import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
+import { CreateAchievementDto } from './dto/create-achievement.dto';
+import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
+
+const FERTILIZER_ITEM_TYPE = 14;
 
 @Controller()
 export class GatewayController {
@@ -69,6 +75,85 @@ export class GatewayController {
       message = payload.message || payload.error || JSON.stringify(payload);
     }
     return new HttpException(message, status);
+  }
+
+  private parseCrossResults(crossResults: any): any {
+    if (crossResults === undefined) return undefined;
+
+    try {
+      return typeof crossResults === 'string'
+        ? JSON.parse(crossResults)
+        : crossResults;
+    } catch {
+      throw new BadRequestException(
+        'crossResults must be a valid JSON array, e.g. [{"targetPlantId":"plant_corn","resultPlantId":"plant_hybrid_corn"}]',
+      );
+    }
+  }
+
+  private buildCreateItemDto(
+    body: any,
+    iconUrl: string,
+    forcedItemType?: number,
+  ): CreateItemDto {
+    const dto: CreateItemDto = {
+      ...body,
+      iconUrl,
+      itemType: forcedItemType ?? Number(body.itemType),
+      itemCategory: Number(body.itemCategory),
+      maxStack: Number(body.maxStack),
+      basePrice: Number(body.basePrice ?? 0),
+      buyPrice: Number(body.buyPrice ?? 0),
+      isStackable: body.isStackable === 'true' || body.isStackable === true,
+      canBeSold: body.canBeSold !== 'false' && body.canBeSold !== false,
+      canBeBought: body.canBeBought === 'true' || body.canBeBought === true,
+      isQuestItem: body.isQuestItem === 'true' || body.isQuestItem === true,
+      isArtifact: body.isArtifact === 'true' || body.isArtifact === true,
+      isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
+    };
+
+    const crossResults = this.parseCrossResults(body.crossResults);
+    if (crossResults !== undefined) dto.crossResults = crossResults;
+
+    return dto;
+  }
+
+  private buildUpdateItemDto(
+    body: any,
+    iconUrl?: string,
+    forcedItemType?: number,
+  ): UpdateItemDto {
+    const dto: UpdateItemDto = { ...body };
+
+    if (iconUrl) dto.iconUrl = iconUrl;
+    if (forcedItemType !== undefined) dto.itemType = forcedItemType;
+    else if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
+
+    if (body.itemCategory !== undefined)
+      dto.itemCategory = Number(body.itemCategory);
+    if (body.maxStack !== undefined) dto.maxStack = Number(body.maxStack);
+    if (body.basePrice !== undefined) dto.basePrice = Number(body.basePrice);
+    if (body.buyPrice !== undefined) dto.buyPrice = Number(body.buyPrice);
+    if (body.isStackable !== undefined)
+      dto.isStackable =
+        body.isStackable === 'true' || body.isStackable === true;
+    if (body.canBeSold !== undefined)
+      dto.canBeSold = body.canBeSold !== 'false' && body.canBeSold !== false;
+    if (body.canBeBought !== undefined)
+      dto.canBeBought =
+        body.canBeBought === 'true' || body.canBeBought === true;
+    if (body.isQuestItem !== undefined)
+      dto.isQuestItem =
+        body.isQuestItem === 'true' || body.isQuestItem === true;
+    if (body.isArtifact !== undefined)
+      dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
+    if (body.isRareItem !== undefined)
+      dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
+
+    const crossResults = this.parseCrossResults(body.crossResults);
+    if (crossResults !== undefined) dto.crossResults = crossResults;
+
+    return dto;
   }
 
   @Post('player-data/world')
@@ -139,28 +224,16 @@ export class GatewayController {
     const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
     try {
+      // Forward to save-world which handles time + characters + tile deltas
+      // inside a MongoDB transaction (falls back gracefully on standalone).
       return await firstValueFrom(
-        this.playerDataClient.send('update-world', { ...body, ownerId }),
+        this.playerDataClient.send('save-world', { ...body, ownerId }),
       );
     } catch (err) {
-      const payload = err?.message ?? err;
-      let status = 500;
-      let message = 'Internal server error';
-      if (typeof payload === 'string') {
-        try {
-          const parsed = JSON.parse(payload);
-          status = parsed.status || status;
-          message = parsed.message || parsed.error || payload;
-        } catch {
-          message = payload;
-        }
-      } else if (payload && typeof payload === 'object') {
-        status = payload.status || payload.code || status;
-        message = payload.message || payload.error || JSON.stringify(payload);
-      }
-      throw new HttpException(message, status);
+      throw this.rpcError(err);
     }
   }
+
 
   @Delete('player-data/world')
   async deleteWorld(@Query('_id') _id: string, @Req() req: Request) {
@@ -229,6 +302,17 @@ export class GatewayController {
     try {
       return await firstValueFrom(
         this.authClient.send('register', createAccountDto),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('auth/verify-registration')
+  async verifyRegistration(@Body() dto: VerifyRegistrationDto) {
+    try {
+      return await firstValueFrom(
+        this.authClient.send('verify-registration', dto),
       );
     } catch (err) {
       throw this.rpcError(err);
@@ -410,22 +494,142 @@ export class GatewayController {
     return this.adminClient.send('delete-media', id);
   }
 
-  @Post('auth/admin-reset/request')
-  async adminResetRequest(@Body() dto: RequestAdminResetDto) {
+  @Post('auth/reset/request')
+  async resetRequest(@Body() dto: RequestResetDto) {
     try {
       return await firstValueFrom(
-        this.authClient.send('admin-reset-request', dto),
+        this.authClient.send('reset-request', dto),
       );
     } catch (err) {
       throw this.rpcError(err);
     }
   }
 
-  @Post('auth/admin-reset/confirm')
-  async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
+  @Post('auth/reset/confirm')
+  async resetConfirm(@Body() dto: ConfirmResetDto) {
     try {
       return await firstValueFrom(
-        this.authClient.send('admin-reset-confirm', dto),
+        this.authClient.send('reset-confirm', dto),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Resource Configs ─────────────────────────────────────────────
+
+  @Get('game-data/resource-configs/catalog')
+  async getResourceConfigCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-resource-config-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('game-data/resource-configs')
+  @UseInterceptors(
+    FileInterceptor('sprite', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createResourceConfig(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const dto: any = {
+        resourceId: body.resourceId,
+        name: body.name,
+        maxHp: Number(body.maxHp),
+      };
+
+      if (body.requiredToolId) dto.requiredToolId = body.requiredToolId;
+      if (body.resourceType) dto.resourceType = body.resourceType;
+      if (body.spawnWeight !== undefined)
+        dto.spawnWeight = Number(body.spawnWeight);
+
+      if (file) {
+        dto.spriteUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'resource-sprites',
+        );
+      }
+
+      if (body.dropTable) {
+        try {
+          dto.dropTable =
+            typeof body.dropTable === 'string'
+              ? JSON.parse(body.dropTable)
+              : body.dropTable;
+        } catch {
+          throw new BadRequestException('dropTable must be a valid JSON array');
+        }
+      } else {
+        dto.dropTable = [];
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('create-resource-config', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Put('game-data/resource-configs/:resourceId')
+  @UseInterceptors(
+    FileInterceptor('sprite', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateResourceConfig(
+    @Param('resourceId') resourceId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const dto: any = {};
+      if (body.name) dto.name = body.name;
+      if (body.maxHp !== undefined) dto.maxHp = Number(body.maxHp);
+      if (body.requiredToolId !== undefined)
+        dto.requiredToolId = body.requiredToolId;
+      if (body.resourceType !== undefined)
+        dto.resourceType = body.resourceType;
+      if (body.spawnWeight !== undefined)
+        dto.spawnWeight = Number(body.spawnWeight);
+
+      if (file) {
+        dto.spriteUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'resource-sprites',
+        );
+      }
+
+      if (body.dropTable !== undefined) {
+        try {
+          dto.dropTable =
+            typeof body.dropTable === 'string'
+              ? JSON.parse(body.dropTable)
+              : body.dropTable;
+        } catch {
+          throw new BadRequestException('dropTable must be a valid JSON array');
+        }
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('update-resource-config', { resourceId, dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('game-data/resource-configs/:resourceId')
+  async deleteResourceConfig(@Param('resourceId') resourceId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-resource-config', { resourceId }),
       );
     } catch (err) {
       throw this.rpcError(err);
@@ -456,36 +660,7 @@ export class GatewayController {
         body.folder || 'item-icons',
       );
 
-      // Parse numeric/boolean fields that arrive as strings from form-data
-      const dto: CreateItemDto = {
-        ...body,
-        iconUrl,
-        itemType: Number(body.itemType),
-        itemCategory: Number(body.itemCategory),
-        maxStack: Number(body.maxStack),
-        basePrice: Number(body.basePrice ?? 0),
-        buyPrice: Number(body.buyPrice ?? 0),
-        isStackable: body.isStackable === 'true' || body.isStackable === true,
-        canBeSold: body.canBeSold !== 'false' && body.canBeSold !== false,
-        canBeBought: body.canBeBought === 'true' || body.canBeBought === true,
-        isQuestItem: body.isQuestItem === 'true' || body.isQuestItem === true,
-        isArtifact: body.isArtifact === 'true' || body.isArtifact === true,
-        isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
-      };
-
-      // crossResults arrives as a JSON string in multipart form-data
-      if (body.crossResults !== undefined) {
-        try {
-          dto.crossResults =
-            typeof body.crossResults === 'string'
-              ? JSON.parse(body.crossResults)
-              : body.crossResults;
-        } catch {
-          throw new BadRequestException(
-            'crossResults must be a valid JSON array, e.g. [{"targetPlantId":"plant_corn","resultPlantId":"plant_hybrid_corn"}]',
-          );
-        }
-      }
+      const dto = this.buildCreateItemDto(body, iconUrl);
 
       return await firstValueFrom(this.adminClient.send('create-item', dto));
     } catch (err) {
@@ -550,51 +725,15 @@ export class GatewayController {
     @Body() body: any,
   ) {
     try {
-      const dto: UpdateItemDto = { ...body };
-
-      // If a new icon was uploaded, replace the iconUrl
+      let iconUrl: string | undefined;
       if (file) {
-        dto.iconUrl = await this.cloudinaryService.uploadFile(
+        iconUrl = await this.cloudinaryService.uploadFile(
           file,
           body.folder || 'item-icons',
         );
       }
 
-      // Parse numeric / boolean fields that arrive as strings from form-data
-      if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
-      if (body.itemCategory !== undefined)
-        dto.itemCategory = Number(body.itemCategory);
-      if (body.maxStack !== undefined) dto.maxStack = Number(body.maxStack);
-      if (body.basePrice !== undefined) dto.basePrice = Number(body.basePrice);
-      if (body.buyPrice !== undefined) dto.buyPrice = Number(body.buyPrice);
-      if (body.isStackable !== undefined)
-        dto.isStackable =
-          body.isStackable === 'true' || body.isStackable === true;
-      if (body.canBeSold !== undefined)
-        dto.canBeSold = body.canBeSold !== 'false' && body.canBeSold !== false;
-      if (body.canBeBought !== undefined)
-        dto.canBeBought =
-          body.canBeBought === 'true' || body.canBeBought === true;
-      if (body.isQuestItem !== undefined)
-        dto.isQuestItem =
-          body.isQuestItem === 'true' || body.isQuestItem === true;
-      if (body.isArtifact !== undefined)
-        dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
-      if (body.isRareItem !== undefined)
-        dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
-
-      if (body.crossResults !== undefined) {
-        try {
-          dto.crossResults =
-            typeof body.crossResults === 'string'
-              ? JSON.parse(body.crossResults)
-              : body.crossResults;
-        } catch {
-          throw new BadRequestException(
-            'crossResults must be a valid JSON array',
-          );
-        }
-      }
+      const dto = this.buildUpdateItemDto(body, iconUrl);
 
       return await firstValueFrom(
         this.adminClient.send('update-item', { itemID, dto }),
@@ -615,6 +754,123 @@ export class GatewayController {
     }
   }
 
+  @Post('game-data/fertilizers/create')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createFertilizer(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'An icon file is required (field name: "icon")',
+      );
+
+    try {
+      const iconUrl = await this.cloudinaryService.uploadFile(
+        file,
+        body.folder || 'item-icons',
+      );
+      const dto = this.buildCreateItemDto(body, iconUrl, FERTILIZER_ITEM_TYPE);
+
+      return await firstValueFrom(
+        this.adminClient.send('create-fertilizer', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/catalog')
+  async getFertilizerCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/all')
+  async getAllFertilizers() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-fertilizers', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/by-item-id/:itemID')
+  async getFertilizerByItemId(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-by-item-id', itemID),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/:id')
+  async getFertilizerById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-by-id', id),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Put('game-data/fertilizers/:itemID')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateFertilizer(
+    @Param('itemID') itemID: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      let iconUrl: string | undefined;
+      if (file) {
+        iconUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'item-icons',
+        );
+      }
+
+      const dto = this.buildUpdateItemDto(
+        body,
+        iconUrl,
+        FERTILIZER_ITEM_TYPE,
+      );
+
+      return await firstValueFrom(
+        this.adminClient.send('update-fertilizer', { itemID, dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('game-data/fertilizers/:itemID')
+  async deleteFertilizer(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-fertilizer', itemID),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   // ── Game Data: Plants ───────────────────────────────────────────────────────
 
   /** POST /game-data/plants/create — multipart/form-data.
@@ -627,7 +883,7 @@ export class GatewayController {
    *
    *  Text fields:
    *    plantId, plantName, harvestedItemId  — required
-   *    growthStages  — JSON string: [{"stageNum":0,"age":0},{"stageNum":1,"age":3},…]
+   *    growthStages  — JSON string: [{"stageNum":0,"growthDurationMinutes":0},{"stageNum":1,"growthDurationMinutes":30},…]
    *                    stageIconUrl is injected automatically from the uploaded sprites.
    *    All other CreatePlantDto optional fields as plain strings.
    *
@@ -643,7 +899,7 @@ export class GatewayController {
   ) {
     try {
       // Parse growthStages JSON string sent as a form field
-      let stages: { stageNum: number; age: number; stageIconUrl?: string }[] =
+      let stages: { stageNum: number; growthDurationMinutes: number; stageIconUrl?: string }[] =
         [];
       if (body.growthStages) {
         try {
@@ -677,39 +933,14 @@ export class GatewayController {
         );
       }
 
-      // Sort stage files by the trailing number in the original filename
-      // e.g. "cabbage_0.png" → 0, "cabbage_2.png" → 2
-      const parseStageIndex = (filename: string): number => {
-        const match = filename.replace(/\.[^.]+$/, '').match(/(\d+)$/);
-        if (!match)
-          throw new BadRequestException(
-            `Stage sprite filename "${filename}" must end with a stage index, e.g. "cabbage_0.png"`,
-          );
-        return parseInt(match[1], 10);
-      };
-
-      const sortedStageFiles = [...stageFiles].sort(
-        (a, b) =>
-          parseStageIndex(a.originalname) - parseStageIndex(b.originalname),
-      );
-
-      // Validate that the parsed indices are 0..N-1 with no gaps
-      sortedStageFiles.forEach((f, i) => {
-        const idx = parseStageIndex(f.originalname);
-        if (idx !== i)
-          throw new BadRequestException(
-            `Stage sprite indices must be contiguous starting from 0. Got index ${idx} at position ${i}.`,
-          );
-      });
-
-      // Upload stage sprites sorted by index and inject stageIconUrl
+      // Use form order for stage sprites (first file → stage 0, second → stage 1, etc.)
       for (let i = 0; i < stages.length; i++) {
-        const publicId = sortedStageFiles[i].originalname.replace(
+        const publicId = stageFiles[i].originalname.replace(
           /\.[^.]+$/,
           '',
         );
         stages[i].stageIconUrl = await this.cloudinaryService.uploadFile(
-          sortedStageFiles[i],
+          stageFiles[i],
           'plant-sprites',
           publicId,
         );
@@ -851,7 +1082,7 @@ export class GatewayController {
 
       // Re-parse growthStages if provided
       if (body.growthStages) {
-        let stages: { stageNum: number; age: number; stageIconUrl?: string }[];
+        let stages: { stageNum: number; growthDurationMinutes: number; stageIconUrl?: string }[];
         try {
           stages = JSON.parse(body.growthStages);
         } catch {
@@ -869,25 +1100,14 @@ export class GatewayController {
               `Expected ${stages.length} stageSprites file(s), received ${stageFiles.length}`,
             );
           }
-          const parseStageIndex = (filename: string): number => {
-            const match = filename.replace(/\.[^.]+$/, '').match(/(\d+)$/);
-            if (!match)
-              throw new BadRequestException(
-                `Stage sprite filename "${filename}" must end with a stage index, e.g. "cabbage_0.png"`,
-              );
-            return parseInt(match[1], 10);
-          };
-          const sortedStageFiles = [...stageFiles].sort(
-            (a, b) =>
-              parseStageIndex(a.originalname) - parseStageIndex(b.originalname),
-          );
+          // Use form order for stage sprites (first file → stage 0, second → stage 1, etc.)
           for (let i = 0; i < stages.length; i++) {
-            const publicId = sortedStageFiles[i].originalname.replace(
+            const publicId = stageFiles[i].originalname.replace(
               /\.[^.]+$/,
               '',
             );
             stages[i].stageIconUrl = await this.cloudinaryService.uploadFile(
-              sortedStageFiles[i],
+              stageFiles[i],
               'plant-sprites',
               publicId,
             );
@@ -1080,6 +1300,416 @@ export class GatewayController {
       if (chunkY !== undefined) payload.chunkY = Number(chunkY);
       return await firstValueFrom(
         this.playerDataClient.send('get-dropped-items', payload),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Config ────────────────────────────────────────────────────────────
+
+  /** GET /game-config/main-menu — public (no auth).
+   *  Returns { currentBackgroundUrl, version } or null if not set. */
+  @Get('game-config/main-menu')
+  async getMainMenuConfig() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-main-menu-config', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-config/main-menu — admin-only, multipart/form-data.
+   *  Accepts a "background" image file. Uploads to Cloudinary, then
+   *  persists the URL in the GameConfig singleton document. */
+  @Put('game-config/main-menu')
+  @UseInterceptors(
+    FileInterceptor('background', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async updateMainMenuBackground(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'A background image file is required (field name: "background")',
+      );
+    try {
+      const url = await this.cloudinaryService.uploadFile(
+        file,
+        'game-config',
+      );
+      return await firstValueFrom(
+        this.adminClient.send('update-main-menu-background', { url }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Achievements (Admin) ────────────────────────────────────────
+
+  /** POST /game-data/achievements/create — create a new achievement definition (admin only) */
+  @Post('game-data/achievements/create')
+  async createAchievement(@Body() dto: CreateAchievementDto) {
+    try {
+      return await firstValueFrom(this.adminClient.send('create-achievement', dto));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/achievements/all — list all achievement definitions */
+  @Get('game-data/achievements/all')
+  async getAllAchievements() {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-all-achievements', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/achievements/:achievementId — get one definition */
+  @Get('game-data/achievements/:achievementId')
+  async getAchievementById(@Param('achievementId') achievementId: string) {
+    try {
+      return await firstValueFrom(this.adminClient.send('get-achievement-by-id', achievementId));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/achievements/:achievementId — update a definition (admin only) */
+  @Put('game-data/achievements/:achievementId')
+  async updateAchievement(
+    @Param('achievementId') achievementId: string,
+    @Body() dto: any,
+  ) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('update-achievement', { achievementId, dto }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/achievements/:achievementId — delete a definition (admin only) */
+  @Delete('game-data/achievements/:achievementId')
+  async deleteAchievement(@Param('achievementId') achievementId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-achievement', achievementId),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Player Achievements ─────────────────────────────────────────────────────
+
+  /** GET /player-data/achievement — get all achievements with this player's progress */
+  @Get('player-data/achievement')
+  async getPlayerAchievements(@Req() req: Request) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    try {
+      return await firstValueFrom(
+        this.authClient.send('get-player-achievements', String(accountId)),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/achievement/progress — update progress on one requirement */
+  @Put('player-data/achievement/progress')
+  async updateAchievementProgress(
+    @Body() dto: UpdateAchievementProgressDto,
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    try {
+      return await firstValueFrom(
+        this.authClient.send('update-achievement-progress', {
+          ...dto,
+          accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/achievement/progress/batch — update progress for multiple requirements in one call */
+  @Put('player-data/achievement/progress/batch')
+  async updateAchievementProgressBatch(
+    @Body(new ParseArrayPipe({ items: UpdateAchievementProgressDto }))
+    updates: UpdateAchievementProgressDto[],
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    try {
+      return await firstValueFrom(
+        this.authClient.send('update-achievement-progress-batch', {
+          accountId: String(accountId),
+          updates,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Skin Catalog (Paper Doll) ──────────────────────────────────────────────
+
+  /**
+   * GET /game-data/skin-configs — public (no auth required).
+   * Query param `layer` is optional (e.g. ?layer=tool).
+   * Unity SkinCatalogManager calls this on startup.
+   */
+  @Get('game-data/skin-configs')
+  async getSkinCatalog(@Query('layer') layer?: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-skin-catalog', { layer }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * POST /game-data/skin-configs — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — required.
+   * Text fields: configId, displayName, cellSize?, layer?
+   */
+  @Post('game-data/skin-configs')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async createSkinConfig(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'A spritesheet file is required (field name: "spritesheet")',
+      );
+    try {
+      const spritesheetUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'skin-spritesheets',
+        body.configId || undefined,
+      );
+      const dto = {
+        configId: body.configId,
+        displayName: body.displayName,
+        spritesheetUrl,
+        cellSize: body.cellSize !== undefined ? Number(body.cellSize) : undefined,
+        layer: body.layer,
+      };
+      return await firstValueFrom(
+        this.adminClient.send('create-skin-config', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * PUT /game-data/skin-configs/:configId — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — optional; omit to keep existing URL.
+   * Text fields: displayName?, cellSize?, layer?
+   */
+  @Put('game-data/skin-configs/:configId')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async updateSkinConfig(
+    @Param('configId') configId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const patch: Record<string, any> = {};
+      if (body.displayName !== undefined) patch.displayName = body.displayName;
+      if (body.cellSize !== undefined) patch.cellSize = Number(body.cellSize);
+      if (body.layer !== undefined) patch.layer = body.layer;
+
+      if (file) {
+        patch.spritesheetUrl = await this.cloudinaryService.uploadFile(
+          file,
+          'skin-spritesheets',
+          configId,
+        );
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('update-skin-config', { configId, ...patch }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * DELETE /game-data/skin-configs/:configId — admin-only.
+   */
+  @Delete('game-data/skin-configs/:configId')
+  async deleteSkinConfig(@Param('configId') configId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-skin-config', { configId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Material Catalog ──────────────────────────────────────────────────────────
+
+  /**
+   * GET /game-data/materials/catalog — public.
+   * Unity MaterialCatalogService calls this on startup.
+   * Returns { materials: MaterialEntry[] } sorted by materialTier.
+   */
+  @Get('game-data/materials/catalog')
+  async getMaterialCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-material-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * GET /game-data/materials — public, flat array.
+   */
+  @Get('game-data/materials')
+  async getAllMaterials() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-materials', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * GET /game-data/materials/:materialId — public.
+   */
+  @Get('game-data/materials/:materialId')
+  async getMaterialById(@Param('materialId') materialId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-material-by-id', { materialId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * POST /game-data/materials — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — required.
+   * Text fields: materialId, materialName, materialTier?, cellSize?, description?
+   * The spritesheet is uploaded to Cloudinary folder 'material-spritesheets'.
+   */
+  @Post('game-data/materials')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async createMaterial(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'A spritesheet file is required (field name: "spritesheet")',
+      );
+    try {
+      const spritesheetUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'material-spritesheets',
+        body.materialId || undefined,
+      );
+      const dto = {
+        materialId:    body.materialId,
+        materialName:  body.materialName,
+        spritesheetUrl,
+        materialTier:  body.materialTier  !== undefined ? Number(body.materialTier)  : undefined,
+        cellSize:      body.cellSize      !== undefined ? Number(body.cellSize)      : undefined,
+        description:   body.description,
+      };
+      return await firstValueFrom(
+        this.adminClient.send('create-material', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * PUT /game-data/materials/:materialId — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — optional.
+   * Text fields: materialName?, materialTier?, cellSize?, description?
+   */
+  @Put('game-data/materials/:materialId')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async updateMaterial(
+    @Param('materialId') materialId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const patch: Record<string, any> = { materialId };
+      if (body.materialName  !== undefined) patch.materialName  = body.materialName;
+      if (body.materialTier  !== undefined) patch.materialTier  = Number(body.materialTier);
+      if (body.cellSize      !== undefined) patch.cellSize      = Number(body.cellSize);
+      if (body.description   !== undefined) patch.description   = body.description;
+
+      if (file) {
+        patch.spritesheetUrl = await this.cloudinaryService.uploadFile(
+          file,
+          'material-spritesheets',
+          materialId,
+        );
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('update-material', patch),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * DELETE /game-data/materials/:materialId — admin-only.
+   */
+  @Delete('game-data/materials/:materialId')
+  async deleteMaterial(@Param('materialId') materialId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-material', { materialId }),
       );
     } catch (err) {
       throw this.rpcError(err);

@@ -24,7 +24,7 @@ export class CreateItemDto {
   toolType?: number;
   toolLevel?: number;
   toolPower?: number;
-  toolMaterial?: number;
+  toolMaterialId?: string;
 
   // Pollen
   sourcePlantId?: string;
@@ -41,7 +41,7 @@ export class CreateItemDto {
   damage?: number;
   critChance?: number;
   attackSpeed?: number;
-  weaponMaterial?: number;
+  weaponMaterialId?: string;
 
   // Fish
   difficulty?: number;

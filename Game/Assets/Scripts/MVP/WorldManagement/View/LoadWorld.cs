@@ -8,11 +8,43 @@ public class LoadWorld : MonoBehaviourPunCallbacks
 {
     private void Start()
     {
+        // Re-enable message queue in case it was disabled during scene transition
+        PhotonNetwork.IsMessageQueueRunning = true;
+
+        PhotonNetwork.PhotonServerSettings.AppSettings.FixedRegion = "hk";
+
+        if (PhotonNetwork.InLobby)
+        {
+            // Already in a lobby — go directly to room joining.
+            OnJoinedLobby();
+        }
+        else if (PhotonNetwork.IsConnectedAndReady ||
+            PhotonNetwork.NetworkClientState == Photon.Realtime.ClientState.ConnectedToMasterServer)
+        {
+            // Already connected after leaving a room — jump straight to lobby.
+            // Do NOT touch AuthValues here; Photon already holds a valid token.
+            PhotonNetwork.JoinLobby();
+        }
+        else if (!PhotonNetwork.IsConnected)
+        {
+            // Fresh connection — safe to set AuthValues now.
+            ConnectWithAuth();
+        }
+        // else: still transitioning (e.g. Disconnecting) — OnDisconnected will fire and reconnect.
+    }
+
+    public override void OnDisconnected(Photon.Realtime.DisconnectCause cause)
+    {
+        Debug.Log($"[LoadWorld] OnDisconnected: {cause}. Reconnecting...");
+        ConnectWithAuth();
+    }
+
+    private void ConnectWithAuth()
+    {
         if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
         {
             PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
         }
-        PhotonNetwork.PhotonServerSettings.AppSettings.FixedRegion = "hk";
         PhotonNetwork.ConnectUsingSettings();
     }
 
@@ -50,16 +82,26 @@ public class LoadWorld : MonoBehaviourPunCallbacks
         string displayName = !string.IsNullOrEmpty(manager.WorldName) 
             ? manager.WorldName 
             : selectedId;
-        customProps["displayName"] = displayName;
+        customProps[WorldRoomProperties.DisplayName] = displayName;
+        customProps[WorldRoomProperties.IsPublic] = false;
+        customProps[WorldRoomProperties.OwnerId] = SessionManager.Instance?.UserId ?? string.Empty;
+        customProps[WorldRoomProperties.HasPassword] = false;
+        customProps[WorldRoomProperties.PasswordHash] = string.Empty;
         
         var roomOptions = new RoomOptions 
         { 
             MaxPlayers = 4, 
-            IsVisible = true, 
-            IsOpen = true,
+            IsVisible = false,
+            IsOpen = false,
             CustomRoomProperties = customProps,
-            CustomRoomPropertiesForLobby = new string[] { "displayName" },
-            
+            CustomRoomPropertiesForLobby = new string[]
+            {
+                WorldRoomProperties.DisplayName,
+                WorldRoomProperties.IsPublic,
+                WorldRoomProperties.HasPassword,
+                WorldRoomProperties.PasswordHash
+            },
+            EmptyRoomTtl = 0,
         };
         
         PhotonNetwork.JoinOrCreateRoom(selectedId, roomOptions, TypedLobby.Default);

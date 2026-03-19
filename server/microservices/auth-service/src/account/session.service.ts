@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import * as crypto from 'crypto';
 import { Session, SessionDocument } from './session.schema';
 
 @Injectable()
@@ -11,26 +12,26 @@ export class SessionService {
 
 	
 	async createSession(
-		token: string,
 		userId: string,
 		inactivityTimeoutMinutes: number = 60,
 	): Promise<SessionDocument> {
+		const sessionId = crypto.randomUUID();
 		const session = new this.sessionModel({
-			token,
+			sessionId,
 			userId,
 			inactivityTimeoutMinutes,
 			lastActivityAt: new Date(),
 		});
 		const saved = await session.save();
-		console.log(`[session-service] Session created: userId=${userId}, timeout=${inactivityTimeoutMinutes}min`);
+		console.log(`[session-service] Session created: sid=${sessionId}, userId=${userId}, timeout=${inactivityTimeoutMinutes}min`);
 		return saved;
 	}
 
 	
-	async updateActivity(token: string): Promise<SessionDocument | null> {
+	async updateActivity(sessionId: string): Promise<SessionDocument | null> {
 		const updated = await this.sessionModel
 			.findOneAndUpdate(
-				{ token, isRevoked: false },
+				{ sessionId, isRevoked: false },
 				{ lastActivityAt: new Date() },
 				{ new: true },
 			)
@@ -42,21 +43,21 @@ export class SessionService {
 	}
 
 	
-	async getSession(token: string): Promise<SessionDocument | null> {
-		return this.sessionModel.findOne({ token, isRevoked: false }).exec();
+	async getSession(sessionId: string): Promise<SessionDocument | null> {
+		return this.sessionModel.findOne({ sessionId, isRevoked: false }).exec();
 	}
 
 	
-	async revokeSession(token: string): Promise<boolean> {
+	async revokeSession(sessionId: string): Promise<boolean> {
 		const result = await this.sessionModel
-			.findOneAndUpdate({ token }, { isRevoked: true }, { new: true })
+			.findOneAndUpdate({ sessionId }, { isRevoked: true }, { new: true })
 			.exec();
 		return !!result;
 	}
 
 	
-	async isSessionActive(token: string): Promise<boolean> {
-		const session = await this.getSession(token);
+	async isSessionActive(sessionId: string): Promise<boolean> {
+		const session = await this.getSession(sessionId);
 		if (!session) {
 			console.log('[session-service] Session not found');
 			return false;
@@ -70,7 +71,7 @@ export class SessionService {
 		console.log(`[session-service] Inactivity ${Math.round(timeSinceLastActivityMs / 1000)}s / ${session.inactivityTimeoutMinutes}min`);
 
 		if (timeSinceLastActivityMs > inactivityMs) {
-			await this.revokeSession(token);
+			await this.revokeSession(sessionId);
 			console.log('[session-service] Session auto-revoked due to inactivity');
 			return false;
 		}

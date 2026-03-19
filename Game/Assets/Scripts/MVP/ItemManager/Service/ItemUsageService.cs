@@ -8,11 +8,13 @@ public class ItemUsageService : IItemUsageService
 {
     private readonly IUseToolService useToolService;
     private readonly IUseSeedService useSeedService;
+    private readonly IUseStructureService useStructureService;
 
-    public ItemUsageService(IUseToolService useToolService, IUseSeedService useSeedService = null)
+    public ItemUsageService(IUseToolService useToolService, IUseSeedService useSeedService = null, IUseStructureService useStructureService = null)
     {
         this.useToolService = useToolService;
         this.useSeedService = useSeedService ?? new UseSeedService();
+        this.useStructureService = useStructureService ?? new UseStructureService();
     }
 
     public bool UseTool(ItemData item, Vector3 pos)
@@ -33,6 +35,18 @@ public class ItemUsageService : IItemUsageService
             ToolType.FishingRod  => useToolService.UseFishingRod(toolData, pos),
             _                    => LogUnknownTool(toolData)
         };
+    }
+
+    public bool UseFertilizer(ItemData item, Vector3 pos)
+    {
+        Debug.Log("[ItemUsageService] UseFertilizer: " + item.itemID + " at: " + pos);
+        if (item is not FertilizerData fertilizerData)
+        {
+            Debug.LogWarning("[ItemUsageService] UseFertilizer: item is not FertilizerData");
+            return false;
+        }
+
+        return useToolService.UseFertilizer(fertilizerData, pos);
     }
 
     public (bool, int) UseSeed(ItemData item, Vector3 pos)
@@ -67,5 +81,10 @@ public class ItemUsageService : IItemUsageService
     {
         Debug.LogWarning("[ItemUsageService] Unknown ToolType: " + toolData.toolType);
         return false;
+    }
+
+    public bool UseStructure(ItemData item, Vector3 pos)
+    {
+        return useStructureService.UseStructure(item, pos);
     }
 }

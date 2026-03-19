@@ -5,8 +5,8 @@ export type SessionDocument = Session & Document;
 
 @Schema({ timestamps: true })
 export class Session {
-	@Prop({ required: true })
-	token: string;
+	@Prop({ required: true, unique: true, index: true })
+	sessionId: string;
 
 	@Prop({ required: true })
 	userId: MongooseSchema.Types.ObjectId;

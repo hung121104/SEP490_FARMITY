@@ -24,7 +24,10 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
         rb             = GetComponent<Rigidbody2D>();
         animationView  = GetComponent<PlayerAnimationView>();
         _photonView    = GetComponent<PhotonView>();
-        spriteRenderer = GetComponent<SpriteRenderer>();
+        // With the Paper Doll hierarchy the SpriteRenderer lives on the Body
+        // child, not on the root PlayerEntity. Fall back to the first child renderer.
+        spriteRenderer = GetComponent<SpriteRenderer>()
+                      ?? GetComponentInChildren<SpriteRenderer>();
         presenter      = new PlayerMovementPresenter();
         playerCollider = GetComponent<CapsuleCollider2D>();
     }
@@ -64,10 +67,11 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
                 return;
             }
 
-            float rawX = Input.GetAxisRaw("Horizontal");
-            float rawY = Input.GetAxisRaw("Vertical");
+            Vector2 rawInput = Vector2.zero;
+            if (InputManager.Instance != null)
+                rawInput = InputManager.Instance.Move.ReadValue<Vector2>();
 
-            Vector2 direction = presenter.CalculateMovementDirection(rawX, rawY);
+            Vector2 direction = presenter.CalculateMovementDirection(rawInput.x, rawInput.y);
 
             if (direction != Vector2.zero)
                 lastInput = direction;
@@ -100,12 +104,16 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
         if (stream.IsWriting)
         {
             if (animationView != null) animationView.WriteNetworkState(stream);
-            stream.SendNext(spriteRenderer.flipX);
+            // Always send a value so the stream length stays consistent.
+            stream.SendNext(spriteRenderer != null && spriteRenderer.flipX);
         }
         else
         {
             if (animationView != null) animationView.ReadNetworkState(stream);
-            spriteRenderer.flipX = (bool)stream.ReceiveNext();
+            // Always consume the value to keep the stream in sync.
+            bool flipX = (bool)stream.ReceiveNext();
+            if (spriteRenderer != null)
+                spriteRenderer.flipX = flipX;
         }
     }
 

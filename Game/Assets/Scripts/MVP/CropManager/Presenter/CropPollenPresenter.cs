@@ -19,8 +19,11 @@ public class CropPollenPresenter
 
     public void HandleCollectPollen(Vector3 worldPos)
     {
+        Debug.Log($"[CropPollenPresenter] HandleCollectPollen at {worldPos}");
+
         if (!service.CanCollectPollen(worldPos))
         {
+            Debug.LogWarning($"[CropPollenPresenter] CanCollectPollen returned false at {worldPos} — crop may not be at pollen stage, or refs are null.");
             view.OnPollenCollectFailed(worldPos);
             return;
         }

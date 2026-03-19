@@ -51,9 +51,19 @@ public class NPCInteractor : MonoBehaviour
         Quest,
         SimpleDialogue
     }
-    private void Awake()
+    private void Start()
     {
-        inventoryGameView.GetInventoryService().OnInventoryChanged += UpdateQuestObjectives;
+        
+        var inventoryService = inventoryGameView.GetInventoryService();
+
+        if (inventoryService != null)
+        {
+            inventoryService.OnInventoryChanged += UpdateQuestObjectives;
+        }
+        else
+        {
+            Debug.LogError($"[NPCInteractor] InventoryService trên {inventoryGameView.name} bị null! Hãy kiểm tra lại InventoryManager.");
+        }
         // Dialogue Service
         INPCDialogueService service = new NPCDialogueService(dialogueModel);
 
@@ -121,7 +131,12 @@ public class NPCInteractor : MonoBehaviour
         // =====================
         if (currentState == NPCState.Gift)
         {
-            giftPresenter?.Update();
+            if (giftPresenter == null)
+            {
+                Debug.LogError("[NPCInteractor] Gift state active but giftPresenter is NULL!");
+                return;
+            }
+            giftPresenter.Update();
             return;
         }
 
@@ -174,7 +189,7 @@ public class NPCInteractor : MonoBehaviour
                 else if (i == 1) // GIFT
                 {
                     dialogueView.Hide();
-                    currentState = NPCState.Gift;
+                    // Don't set currentState yet - wait for coroutine to complete
                     StartGiftMode();
                 }
                 else if (i == 2) // QUEST
@@ -270,13 +285,36 @@ public class NPCInteractor : MonoBehaviour
         }
     }
 
-
-
     private void StartGiftMode()
     {
-        if (inventoryGameView == null || giftDatabase == null || inventoryView == null)
+        if (inventoryGameView == null || giftDatabase == null)
         {
-            Debug.LogError("Missing reference in Gift setup!");
+            Debug.LogError("[NPCInteractor] Missing InventoryGameView or GiftDatabase!");
+            currentState = NPCState.Idle;
+            return;
+        }
+
+        // Lock player
+        if (playerMovement != null)
+            playerMovement.enabled = false;
+
+        // Get InventoryView from InventoryGameView using reflection (like ShopPresenter does)
+        InventoryView inventoryView = null;
+        try
+        {
+            System.Reflection.FieldInfo field = typeof(InventoryGameView).GetField("inventoryView", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (field != null)
+                inventoryView = (InventoryView)field.GetValue(inventoryGameView);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[NPCInteractor] Failed to get InventoryView via reflection: {ex.Message}");
+        }
+
+        if (inventoryView == null)
+        {
+            Debug.LogError("[NPCInteractor] InventoryView is null!");
             currentState = NPCState.Idle;
             return;
         }
@@ -287,32 +325,129 @@ public class NPCInteractor : MonoBehaviour
         if (inventoryMenuRoot != null)
             inventoryMenuRoot.SetActive(true);
 
+        // Close inventory first to reset state from any previous use (e.g., Shop's crafting mode)
+        inventoryGameView.CloseInventory();
+
+        // Use coroutine to ensure proper state transitions
+        StartCoroutine(OpenGiftModeInventory());
+    }
+
+    private System.Collections.IEnumerator OpenGiftModeInventory()
+    {
+        // Wait one frame to ensure state is reset
+        yield return null;
+
+        Debug.Log("[NPCInteractor] OpenGiftModeInventory started");
+
+        // Notify inventory presenter about external action to reset sync cooldown
+        inventoryGameView.NotifyExternalAction();
+        Debug.Log("[NPCInteractor] NotifyExternalAction called");
+
+        // Refresh inventory items before opening
+        // This must be done BEFORE opening to ensure items display correctly
+        // Use reflection since RefreshView is private but we need to force a refresh
+        RefreshInventoryItems(inventoryGameView);
+        Debug.Log("[NPCInteractor] RefreshInventoryItems called");
+
+        // Open inventory in normal mode (not crafting)
         inventoryGameView.OpenInventory();
+        Debug.Log("[NPCInteractor] OpenInventory called");
+        
+        // Wait for inventory UI to fully initialize
+        yield return null;
+        yield return null; // Extra frame for safety
+        Debug.Log("[NPCInteractor] Waited for UI to initialize");
+
+        // Get InventoryView from InventoryGameView using reflection
+        InventoryView inventoryViewForGift = null;
+        try
+        {
+            System.Reflection.FieldInfo field = typeof(InventoryGameView).GetField("inventoryView", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (field != null)
+                inventoryViewForGift = (InventoryView)field.GetValue(inventoryGameView);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[NPCInteractor] Failed to get InventoryView in coroutine: {ex.Message}");
+        }
+
+        if (inventoryViewForGift == null)
+        {
+            Debug.LogError("[NPCInteractor] inventoryViewForGift is NULL in coroutine!");
+            yield break;
+        }
 
         IGiftService giftService = new GiftService(giftDatabase);
         var inventoryService = inventoryGameView.GetInventoryService();
 
+        Debug.Log($"[NPCInteractor] About to create GiftPresenter with inventoryViewForGift");
+        
         giftPresenter = new GiftPresenter(
             giftService,
             inventoryService,
-            inventoryView,
+            inventoryViewForGift as IInventoryView,
+            inventoryGameView,
             dialogueView,
             relationshipModel,
             dialogueModel   
         );
 
+        Debug.Log("[NPCInteractor] GiftPresenter created");
+
         giftPresenter.OnGiftFinished += ExitGiftMode;
 
         giftPresenter.OnRequestCloseInventory += () =>
         {
+            Debug.Log("[NPCInteractor] OnRequestCloseInventory invoked");
             inventoryGameView.CloseInventory();
 
             if (inventoryMenuRoot != null)
                 inventoryMenuRoot.SetActive(false);
         };
 
+        Debug.Log("[NPCInteractor] About to call StartGiftMode()");
         giftPresenter.StartGiftMode();
+        Debug.Log("[NPCInteractor] StartGiftMode() called");
+        
+        // NOW set the state after everything is ready
+        currentState = NPCState.Gift;
+        Debug.Log("[NPCInteractor] Gift mode fully initialized and ready for input");
     }
+
+    /// <summary>
+    /// Refresh inventory items display using reflection.
+    /// Ensures items are visible even after inventory was hidden by other systems (e.g., Shop).
+    /// </summary>
+    private void RefreshInventoryItems(InventoryGameView invGameView)
+    {
+        try
+        {
+            // Get the presenter field
+            var presenterField = typeof(InventoryGameView).GetField("presenter", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            if (presenterField == null) return;
+            
+            var presenter = presenterField.GetValue(invGameView);
+            if (presenter == null) return;
+
+            // Call the private RefreshView method
+            var refreshMethod = presenter.GetType().GetMethod("RefreshView", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            if (refreshMethod != null)
+            {
+                refreshMethod.Invoke(presenter, null);
+                Debug.Log("[NPCInteractor] Inventory items refreshed");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[NPCInteractor] Could not refresh inventory: {ex.Message}");
+        }
+    }
+
     private void ExitGiftMode()
     {
         giftPresenter.StopGiftMode();

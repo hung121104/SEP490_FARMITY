@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+using UnityEngine;
+using Photon.Pun;
 
 public class InventoryGameView : MonoBehaviour
 {
@@ -10,6 +11,11 @@ public class InventoryGameView : MonoBehaviour
     [SerializeField] private ItemDetailView itemDetailView;
     [SerializeField] private ItemDeleteView itemDeleteView;
 
+    [Header("Delete Zone Position Adjustments")]
+    [SerializeField] private Vector2 deleteZoneDefaultPos = new Vector2(658.2f, 180);
+    [SerializeField] private Vector2 deleteZoneCraftingAndCookingPos = new Vector2(658.2f, 413);
+    [SerializeField] private Vector2 deleteZoneCraftingInInventoryPos = new Vector2(387, 411);
+
     private InventoryModel model;
     private IInventoryService service;
     private InventoryPresenter presenter;
@@ -18,6 +24,21 @@ public class InventoryGameView : MonoBehaviour
     private void Awake()
     {
         InitializeInventorySystem();
+    }
+
+    private void Start()
+    {
+        StartCoroutine(RegisterWithNetworkWhenReady());
+    }
+
+    private void OnEnable()
+    {
+        InventorySyncManager.OnInventoryChanged += HandleRemoteInventoryChanged;
+    }
+
+    private void OnDisable()
+    {
+        InventorySyncManager.OnInventoryChanged -= HandleRemoteInventoryChanged;
     }
 
     private void OnDestroy()
@@ -33,7 +54,8 @@ public class InventoryGameView : MonoBehaviour
         model = new InventoryModel(inventorySlots);
 
         // Create Service
-        service = new InventoryService(model);
+        var inventoryService = new InventoryService(model);
+        service = inventoryService;
 
         // Create Presenter
         presenter = new InventoryPresenter(model, service);
@@ -55,18 +77,145 @@ public class InventoryGameView : MonoBehaviour
         presenter.OnItemUsed += HandleItemUsed;
         presenter.OnItemDropped += HandleItemDropped;
     }
+
+    /// <summary>
+    /// Wait for InventorySyncManager to be ready, then register.
+    /// Retry logic is handled inside RegisterLocalPlayerInventory itself.
+    /// </summary>
+    private System.Collections.IEnumerator RegisterWithNetworkWhenReady()
+    {
+        yield return new WaitUntil(() => InventorySyncManager.Instance != null);
+        RegisterWithNetwork();
+    }
+
+    /// <summary>
+    /// Register local player's inventory with InventorySyncManager and enable network sync.
+    /// Follows the same late-init pattern as CropPlantingService.
+    /// </summary>
+    private void RegisterWithNetwork()
+    {
+        if (InventorySyncManager.Instance == null)
+        {
+            Debug.LogWarning("[InventoryGameView] InventorySyncManager not available — network sync disabled.");
+            return;
+        }
+
+        // Register character on Master
+        InventorySyncManager.Instance.RegisterLocalPlayerInventory((byte)inventorySlots);
+
+        // Enable auto-sync in the service layer
+        if (service is InventoryService concreteService)
+        {
+            concreteService.NetworkSyncEnabled = true;
+        }
+
+        Debug.Log("[InventoryGameView] Network inventory sync enabled.");
+    }
     #endregion
 
+    /// <summary>
+    /// Called when InventorySyncManager receives a remote slot change.
+    /// Reads the authoritative data from InventoryDataModule and refreshes local InventoryModel.
+    /// </summary>
+    private void HandleRemoteInventoryChanged()
+    {
+        if (InventorySyncManager.Instance == null) return;
+        string charId = InventorySyncManager.Instance.LocalCharacterId;
+        if (string.IsNullOrEmpty(charId)) return;
+
+        var module = WorldDataManager.Instance?.InventoryData;
+        if (module == null) return;
+
+        var inv = module.GetInventory(charId);
+        if (inv == null) return;
+
+        // ═══ ACTION COOLDOWN CHECK ═══
+        // Skip sync if user is currently performing actions (drag, drop, sort)
+        // This prevents race conditions where remote changes conflict with local UI updates
+        if (presenter != null && !presenter.IsReadyToSync())
+        {
+            Debug.Log("[InventoryGameView] User performing action, deferring remote sync...");
+            // Schedule a retry so the initial load is not permanently lost.
+            StartCoroutine(RetryRemoteInventorySync());
+            return;
+        }
+
+        // Delegate all Model mutations to Service — GameView never touches Model directly
+        if (service is InventoryService concreteService)
+        {
+            concreteService.ApplyRemoteInventoryState(inv, inventorySlots);
+        }
+    }
+
+    /// <summary>
+    /// Waits until the action cooldown expires, then retries the remote sync.
+    /// Triggered when HandleRemoteInventoryChanged is called during a UI action.
+    /// </summary>
+    private System.Collections.IEnumerator RetryRemoteInventorySync()
+    {
+        yield return new WaitUntil(() => presenter == null || presenter.IsReadyToSync());
+        HandleRemoteInventoryChanged();
+    }
+
+    /// <summary>
+    /// Opens the main inventory at its default position.
+    /// Used by hotkeys or tab generic switches.
+    /// </summary>
     public void OpenInventory()
     {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneDefaultPos);
+        }
+            
         if (inventoryView != null)
         {
-            //Re-enable drops when opening inventory
-            if (itemDeleteView != null)
-            {
-                itemDeleteView.EnableDrops();
-            }
-            Debug.Log("[InventoryGameView] Inventory opened");
+            inventoryView.Show(); // Make sure it's active and returns to original parent
+            Debug.Log("[InventoryGameView] Main Inventory opened");
+        }
+    }
+
+    public void OpenCraftingInventory(Transform container = null)
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneCraftingAndCookingPos);
+        }
+        
+        if (container != null)
+            inventoryView?.ShowWithParent(container);
+        else
+            inventoryView?.Show();
+    }
+
+    public void OpenCookingInventory(Transform container = null)
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneCraftingAndCookingPos);
+        }
+        
+        if (container != null)
+            inventoryView?.ShowWithParent(container);
+        else
+            inventoryView?.Show();
+    }
+
+    public void OpenCraftingInInventory()
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneCraftingInInventoryPos);
+        }
+            
+        if (inventoryView != null)
+        {
+            inventoryView.Show();
+            Debug.Log("[InventoryGameView] Crafting in Inventory opened");
         }
     }
 
@@ -75,6 +224,7 @@ public class InventoryGameView : MonoBehaviour
         if (inventoryView != null)
         {
             presenter?.CancelAllActions();
+            inventoryView.Hide();
             Debug.Log("[InventoryGameView] Inventory closed");
         }
     }
@@ -108,8 +258,37 @@ public class InventoryGameView : MonoBehaviour
 
     public IInventoryService GetInventoryService() => service;
     public InventoryModel GetInventoryModel() => model;
-    #endregion
+    public int GetInventorySlotCount() => model.maxSlots;
 
+    /// <summary>
+    /// Register a secondary InventoryView (e.g. crafting panel) that receives
+    /// data-only updates from the single InventoryPresenter.
+    /// The secondary view still handles its own input (drag/drop) locally.
+    /// </summary>
+    public void RegisterSecondaryView(IInventoryView secondaryView)
+    {
+        presenter?.AddSecondaryView(secondaryView);
+    }
+
+    /// <summary>
+    /// Unregister a secondary InventoryView.
+    /// </summary>
+    public void UnregisterSecondaryView(IInventoryView secondaryView)
+    {
+        presenter?.RemoveSecondaryView(secondaryView);
+    }
+
+    /// <summary>
+    /// Called by external systems when the user performs an action on a secondary view.
+    /// Resets the main presenter's action cooldown so HandleRemoteInventoryChanged
+    /// correctly defers the echo broadcast and doesn't revert local changes.
+    /// </summary>
+    public void NotifyExternalAction()
+    {
+        presenter?.NotifyExternalAction();
+    }
+    #endregion
+    
     #region Event Handlers
 
     private void HandleItemUsed(ItemModel item)

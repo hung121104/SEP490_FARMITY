@@ -122,7 +122,7 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     {
         if (!allowHoldToPlant || _currentSeed == null || cropPlantingService == null) return;
 
-        if (Input.GetMouseButton(0))
+        if (InputManager.Instance?.UseItem.IsPressed() ?? false)
         {
             _holdTimer -= Time.deltaTime;
             if (_holdTimer <= 0f)
@@ -135,8 +135,9 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
         }
         else
         {
-            // Reset so the first frame of hold plants immediately
-            _holdTimer = 0f;
+            // Reset to full interval so hold doesn't fire immediately after the
+            // initial press — the initial plant is already handled by ItemUsageController.
+            _holdTimer = plantRepeatInterval;
         }
     }
 

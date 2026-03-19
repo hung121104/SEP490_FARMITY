@@ -17,6 +17,12 @@ public class ItemUsagePresenter
         return true;
     }
 
+    public bool UseFertilizer(ItemData item, Vector3 pos)
+    {
+        Debug.Log("[ItemUsage] UseFertilizer");
+        return service.UseFertilizer(item, pos);
+    }
+
     public (bool, int) UseSeed(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsage] use Seed");
@@ -39,6 +45,12 @@ public class ItemUsagePresenter
     {
         Debug.Log("[ItemUsage] UsePollen");
         return service.UsePollen(item, pos);
+    }
+
+    public bool UseStructure(ItemData item, Vector3 pos)
+    {
+        Debug.Log("[ItemUsage] UseStructure");
+        return service.UseStructure(item, pos);
     }
 }
 

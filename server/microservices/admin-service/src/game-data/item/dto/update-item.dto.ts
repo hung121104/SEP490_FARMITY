@@ -106,8 +106,8 @@ export class UpdateItemDto {
   toolPower?: number;
 
   @IsOptional()
-  @IsInt()
-  toolMaterial?: number;
+  @IsString()
+  toolMaterialId?: string;
 
   // ── Pollen (itemType: 3) ───────────────────────────────────────────────────
 
@@ -158,8 +158,8 @@ export class UpdateItemDto {
   attackSpeed?: number;
 
   @IsOptional()
-  @IsInt()
-  weaponMaterial?: number;
+  @IsString()
+  weaponMaterialId?: string;
 
   // ── Fish (itemType: 7) ─────────────────────────────────────────────────────
 
@@ -216,4 +216,17 @@ export class UpdateItemDto {
   @IsOptional()
   @IsBoolean()
   autoConsume?: boolean;
+
+  // ── Structure (itemType: 13) ─────────────────────────────────────────────────
+
+  @IsOptional()
+  @IsInt()
+  structureInteractionType?: number;
+
+  @IsOptional()
+  @IsInt()
+  structureLevel?: number;
+
+  // ── Fertilizer (itemType: 14) ─────────────────
+  // No additional fields beyond the shared base item properties.
 }

@@ -132,6 +132,11 @@ public class CropHarvestingView : MonoBehaviourPun
 
     private void HandleHarvestInput()
     {
+        // If the player has pollen selected, the left-click is for cross-breeding (via the
+        // hotbar item-use pipeline), not for harvesting or collecting pollen. Skip entirely
+        // to avoid accidentally collecting pollen from the intended breeding target.
+        if (hotbarView?.GetCurrentItem()?.ItemData is PollenData) return;
+
         Vector3 target = GetDirectionalTileForHarvesting();
         if (target == Vector3.zero) return;
 
@@ -150,6 +155,14 @@ public class CropHarvestingView : MonoBehaviourPun
 
         if (harvestKey == KeyCode.Mouse0 && Camera.main != null && playerTransform != null)
         {
+            // If the player has pollen selected, never suppress the hotbar click —
+            // they intend to APPLY pollen, not collect it or harvest.
+            if (hotbarView.GetCurrentItem()?.ItemData is PollenData)
+            {
+                hotbarLeftClickField.SetValue(hotbarView, true);
+                return;
+            }
+
             Vector3 playerPos     = playerTransform.position;
             Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             Vector2Int dummyTile  = new Vector2Int(int.MinValue, int.MinValue);

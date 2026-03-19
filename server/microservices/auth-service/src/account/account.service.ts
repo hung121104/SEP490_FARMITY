@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { Account, AccountDocument } from './account.schema';
+import { UnverifiedAccount, UnverifiedAccountDocument } from './unverified-account.schema';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
@@ -12,34 +13,116 @@ import { SessionService } from './session.service';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
+import { firstValueFrom } from 'rxjs';
 import { ResetOtpTemplate } from './templates/reset-otp.template';
+import { RegisterOtpTemplate } from './templates/register-otp.template';
+
+type RequirementDefinition = {
+  type: string;
+  target: number;
+  entityId?: string;
+  label: string;
+};
+
+type AchievementDefinition = {
+  achievementId: string;
+  name: string;
+  description: string;
+  requirements: RequirementDefinition[];
+};
+
+type PlayerAchievementState = {
+  progress: number[];
+  achievedAt: Date | null;
+};
 
 @Injectable()
-export class AccountService {
+export class AccountService implements OnModuleInit {
   constructor(
     @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
+    @InjectModel(UnverifiedAccount.name) private unverifiedModel: Model<UnverifiedAccountDocument>,
+    @InjectConnection() private readonly connection: Connection,
     private jwtService: JwtService,
     private sessionService: SessionService,
     private configService: ConfigService,
+    @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
   ) {}
 
-  async create(createAccountDto: CreateAccountDto): Promise<Account> {
-    const { password, ...rest } = createAccountDto;
-    const hashedPassword = await bcrypt.hash(password, 10);
+  async onModuleInit() {
+    await this.migrateAllLegacyAchievementRows();
+  }
 
+  // ── Step 1: Initiate registration (saves to UnverifiedAccount + sends OTP) ──
+  async initiateRegistration(createAccountDto: CreateAccountDto) {
+    const { username, email, password } = createAccountDto;
+
+    // Check if email or username already taken in the real Account collection
+    const existingByEmail = await this.accountModel.findOne({ email }).exec();
+    if (existingByEmail) {
+      throw new RpcException({ status: 400, message: 'Email already registered' });
+    }
+    const existingByUsername = await this.accountModel.findOne({ username }).exec();
+    if (existingByUsername) {
+      throw new RpcException({ status: 400, message: 'Username already taken' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const otp = this.generateOtp();
+    const verifyOtpHash = await bcrypt.hash(otp, 10);
+
+    // Upsert: if user re-registers before previous OTP expires, overwrite it
+    await this.unverifiedModel.findOneAndUpdate(
+      { email },
+      { username, passwordHash, verifyOtpHash, createdAt: new Date() },
+      { upsert: true, new: true },
+    );
+
+    await this.sendOtpEmail(
+      email,
+      username,
+      otp,
+      RegisterOtpTemplate,
+    );
+
+    return { status: 'pending_verification', message: 'OTP sent to your email' };
+  }
+
+  // ── Step 2: Verify OTP and create real Account ──
+  async verifyRegistration(email: string, otp: string) {
+    const pending = await this.unverifiedModel.findOne({ email }).exec();
+    if (!pending) {
+      throw new RpcException({ status: 400, message: 'No pending registration found. OTP may have expired.' });
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      throw new RpcException({ status: 400, message: 'Invalid OTP format' });
+    }
+
+    const isOtpValid = await bcrypt.compare(otp, pending.verifyOtpHash);
+    if (!isOtpValid) {
+      throw new RpcException({ status: 400, message: 'Invalid OTP' });
+    }
+
+    // Create the real account using the already-hashed password
     const account = new this.accountModel({
-      ...rest,
-      password: hashedPassword,
+      username: pending.username,
+      email: pending.email,
+      password: pending.passwordHash,
     });
 
     try {
-      return await account.save();
+      await account.save();
     } catch (error) {
       if (error.code === 11000) {
         throw new RpcException({ status: 400, message: 'Username or email already exists' });
       }
       throw new RpcException({ status: 500, message: 'Internal server error' });
     }
+
+    // Clean up the pending document
+    await this.unverifiedModel.deleteOne({ email });
+
+    return { ok: true, message: 'Email verified successfully. You can now log in.' };
   }
 
   async findById(id: string): Promise<Account | null> {
@@ -56,10 +139,9 @@ export class AccountService {
     if (!isPasswordValid) {
       throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
-    const payload = { username: account.username, sub: account._id };
+    const session = await this.sessionService.createSession(account._id.toString(), 60);
+    const payload = { username: account.username, sub: account._id, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
-    // create a session so token verification works via verify-token
-    await this.sessionService.createSession(token, account._id.toString(), 60);
     return {
       userId: account._id.toString(),
       username: account.username,
@@ -79,9 +161,9 @@ export class AccountService {
     if (!isPasswordValid) {
       throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
-    const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin };
+    const session = await this.sessionService.createSession(account._id.toString(), 60);
+    const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
-    await this.sessionService.createSession(token, account._id.toString(), 60);
     console.log(`[auth-service] Admin logged in: ${account.username}`);
     return {
       userId: account._id.toString(),
@@ -117,13 +199,19 @@ export class AccountService {
   // Active verification: validates token and refreshes inactivity timer
   async verifyToken(token: string) {
     try {
-      const isActive = await this.sessionService.isSessionActive(token);
+      const payload = this.jwtService.verify(token) as { sid?: string; username?: string };
+      const sid = payload?.sid;
+      if (!sid) {
+        throw new RpcException({ status: 401, message: 'Invalid token payload' });
+      }
+
+      const isActive = await this.sessionService.isSessionActive(sid);
       if (!isActive) {
         console.log('[auth-service] Token rejected: session inactive or revoked');
         throw new RpcException({ status: 401, message: 'Session inactive or revoked' });
       }
-      await this.sessionService.updateActivity(token);
-      const payload = this.jwtService.verify(token);
+
+      await this.sessionService.updateActivity(sid);
       console.log(`[auth-service] Token verified: ${payload?.username ?? 'unknown'}`);
       return payload;
     } catch (err) {
@@ -135,11 +223,18 @@ export class AccountService {
   // Passive verification: validates token WITHOUT refreshing inactivity timer
   async verifyTokenPassive(token: string) {
     try {
-      const isActive = await this.sessionService.isSessionActive(token);
+      const payload = this.jwtService.verify(token) as { sid?: string };
+      const sid = payload?.sid;
+      if (!sid) {
+        throw new RpcException({ status: 401, message: 'Invalid token payload' });
+      }
+
+      const isActive = await this.sessionService.isSessionActive(sid);
       if (!isActive) {
         throw new RpcException({ status: 401, message: 'Session inactive or revoked' });
       }
-      return this.jwtService.verify(token);
+
+      return payload;
     } catch (err) {
       if (err instanceof RpcException) throw err;
       throw new RpcException({ status: 401, message: 'Invalid token' });
@@ -148,7 +243,18 @@ export class AccountService {
 
   // Admin logout: revokes session to prevent token reuse
   async logout(token: string) {
-    const revoked = await this.sessionService.revokeSession(token);
+    let sid: string | undefined;
+    try {
+      sid = (this.jwtService.verify(token) as { sid?: string })?.sid;
+    } catch {
+      throw new RpcException({ status: 401, message: 'Invalid token' });
+    }
+
+    if (!sid) {
+      throw new RpcException({ status: 401, message: 'Invalid token payload' });
+    }
+
+    const revoked = await this.sessionService.revokeSession(sid);
     if (!revoked) {
       throw new RpcException({ status: 400, message: 'Session not found' });
     }
@@ -156,10 +262,10 @@ export class AccountService {
     return { ok: true };
   }
 
-  async requestAdminPasswordReset(email: string) {
-    const account = await this.accountModel.findOne({ email, isAdmin: true }).exec();
+  async requestPasswordReset(email: string) {
+    const account = await this.accountModel.findOne({ email }).exec();
     if (!account) {
-      throw new RpcException({ status: 400, message: 'Admin account not found' });
+      throw new RpcException({ status: 400, message: 'Account not found' });
     }
 
     const otp = this.generateOtp();
@@ -176,8 +282,8 @@ export class AccountService {
     return { ok: true };
   }
 
-  async confirmAdminPasswordReset(email: string, otp: string, newPassword: string) {
-    const account = await this.accountModel.findOne({ email, isAdmin: true }).exec();
+  async confirmPasswordReset(email: string, otp: string, newPassword: string) {
+    const account = await this.accountModel.findOne({ email }).exec();
     if (!account || !account.resetOtpHash || !account.resetOtpExpiresAt) {
       throw new RpcException({ status: 400, message: 'Invalid reset request' });
     }
@@ -207,12 +313,525 @@ export class AccountService {
     return { ok: true };
   }
 
+  async getPlayerAchievements(accountId: string): Promise<any[]> {
+    const account = await this.accountModel.findById(accountId).exec();
+    if (!account) {
+      throw new RpcException({ status: 404, message: 'Account not found' });
+    }
+
+    let definitions: AchievementDefinition[];
+    try {
+      definitions = await firstValueFrom(this.adminClient.send('get-all-achievements', {}));
+    } catch {
+      throw new RpcException({ status: 502, message: 'Failed to fetch achievement definitions' });
+    }
+
+    if (!definitions || definitions.length === 0) return [];
+
+    const map = this.toProgressMap(account.achievementProgress);
+    await this.migrateLegacyPlayerAchievements(account, map);
+    let changed = false;
+
+    const result = definitions.map((def) => {
+      const expectedLen = def.requirements.length;
+      const current = map.get(def.achievementId);
+
+      if (!current) {
+        const created: PlayerAchievementState = {
+          progress: new Array(expectedLen).fill(0),
+          achievedAt: null,
+        };
+        map.set(def.achievementId, created);
+        changed = true;
+        return this.toAchievementResponse(def, created);
+      }
+
+      const normalizedProgress = this.normalizeProgress(current.progress, expectedLen);
+      if (!this.sameProgress(normalizedProgress, current.progress)) {
+        current.progress = normalizedProgress;
+        map.set(def.achievementId, current);
+        changed = true;
+      }
+
+      return this.toAchievementResponse(def, current);
+    });
+
+    if (changed) {
+      account.achievementProgress = map;
+      await account.save();
+    }
+
+    return result;
+  }
+
+  async updateAchievementProgress(dto: {
+    accountId: string;
+    achievementId: string;
+    requirementIndex: number;
+    progress: number;
+  }): Promise<any> {
+    const { accountId, achievementId, requirementIndex, progress } = dto;
+
+    let definition: AchievementDefinition;
+    try {
+      definition = await firstValueFrom(this.adminClient.send('get-achievement-by-id', achievementId));
+    } catch {
+      throw new RpcException({ status: 404, message: `Achievement "${achievementId}" not found` });
+    }
+
+    if (requirementIndex >= definition.requirements.length) {
+      throw new RpcException({
+        status: 400,
+        message: `requirementIndex ${requirementIndex} is out of bounds (achievement has ${definition.requirements.length} requirement(s))`,
+      });
+    }
+
+    const account = await this.accountModel.findById(accountId).exec();
+    if (!account) {
+      throw new RpcException({ status: 404, message: 'Account not found' });
+    }
+
+    const map = this.toProgressMap(account.achievementProgress);
+    await this.migrateLegacyPlayerAchievements(account, map);
+    const existing = map.get(achievementId) ?? {
+      progress: new Array(definition.requirements.length).fill(0),
+      achievedAt: null,
+    };
+
+    existing.progress = this.normalizeProgress(existing.progress, definition.requirements.length);
+
+    if (existing.achievedAt) {
+      return this.toAchievementResponse(definition, existing);
+    }
+
+    if (progress <= (existing.progress[requirementIndex] ?? 0)) {
+      return this.toAchievementResponse(definition, existing);
+    }
+
+    existing.progress[requirementIndex] = progress;
+    const allMet = definition.requirements.every(
+      (req, i) => (existing.progress[i] ?? 0) >= req.target,
+    );
+
+    if (allMet) {
+      existing.achievedAt = new Date();
+    }
+
+    map.set(achievementId, existing);
+    account.achievementProgress = map;
+    await account.save();
+
+    return this.toAchievementResponse(definition, existing);
+  }
+
+  async updateAchievementProgressBatch(dto: {
+    accountId: string;
+    updates: Array<{
+      achievementId: string;
+      requirementIndex: number;
+      progress: number;
+    }>;
+  }): Promise<{
+    summary: { total: number; updated: number; noop: number; failed: number };
+    results: Array<{
+      index: number;
+      achievementId: string;
+      requirementIndex: number;
+      submittedProgress: number;
+      status: 'updated' | 'noop' | 'failed';
+      message?: string;
+      achievement?: any;
+    }>;
+    updatedAchievements: any[];
+  }> {
+    const updates = Array.isArray(dto.updates) ? dto.updates : [];
+    const total = updates.length;
+
+    if (total === 0) {
+      return {
+        summary: { total: 0, updated: 0, noop: 0, failed: 0 },
+        results: [],
+        updatedAchievements: [],
+      };
+    }
+
+    const account = await this.accountModel.findById(dto.accountId).exec();
+    if (!account) {
+      throw new RpcException({ status: 404, message: 'Account not found' });
+    }
+
+    const map = this.toProgressMap(account.achievementProgress);
+    await this.migrateLegacyPlayerAchievements(account, map);
+
+    const definitionCache = new Map<string, AchievementDefinition | null>();
+    const changedAchievementIds = new Set<string>();
+    const results: Array<{
+      index: number;
+      achievementId: string;
+      requirementIndex: number;
+      submittedProgress: number;
+      status: 'updated' | 'noop' | 'failed';
+      message?: string;
+      achievement?: any;
+    }> = [];
+
+    let hasChanges = false;
+
+    const getDefinition = async (achievementId: string): Promise<AchievementDefinition | null> => {
+      if (definitionCache.has(achievementId)) {
+        return definitionCache.get(achievementId) ?? null;
+      }
+      try {
+        const definition = await firstValueFrom(
+          this.adminClient.send('get-achievement-by-id', achievementId),
+        );
+        definitionCache.set(achievementId, definition);
+        return definition;
+      } catch {
+        definitionCache.set(achievementId, null);
+        return null;
+      }
+    };
+
+    for (let i = 0; i < updates.length; i++) {
+      const item = updates[i];
+      const achievementId = String(item?.achievementId ?? '');
+      const requirementIndex = item?.requirementIndex;
+      const progress = item?.progress;
+
+      if (!achievementId) {
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex: Number.isFinite(requirementIndex) ? requirementIndex : -1,
+          submittedProgress: Number.isFinite(progress) ? progress : -1,
+          status: 'failed',
+          message: 'achievementId is required',
+        });
+        continue;
+      }
+
+      if (!Number.isInteger(requirementIndex) || requirementIndex < 0) {
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex: Number.isFinite(requirementIndex) ? requirementIndex : -1,
+          submittedProgress: Number.isFinite(progress) ? progress : -1,
+          status: 'failed',
+          message: 'requirementIndex must be an integer >= 0',
+        });
+        continue;
+      }
+
+      if (typeof progress !== 'number' || Number.isNaN(progress) || progress < 0) {
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex,
+          submittedProgress: Number.isFinite(progress) ? progress : -1,
+          status: 'failed',
+          message: 'progress must be a number >= 0',
+        });
+        continue;
+      }
+
+      const definition = await getDefinition(achievementId);
+      if (!definition) {
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex,
+          submittedProgress: progress,
+          status: 'failed',
+          message: `Achievement "${achievementId}" not found`,
+        });
+        continue;
+      }
+
+      if (requirementIndex >= definition.requirements.length) {
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex,
+          submittedProgress: progress,
+          status: 'failed',
+          message: `requirementIndex ${requirementIndex} is out of bounds (achievement has ${definition.requirements.length} requirement(s))`,
+        });
+        continue;
+      }
+
+      const existing = map.get(achievementId) ?? {
+        progress: new Array(definition.requirements.length).fill(0),
+        achievedAt: null,
+      };
+      existing.progress = this.normalizeProgress(existing.progress, definition.requirements.length);
+
+      if (existing.achievedAt) {
+        const achievement = this.toAchievementResponse(definition, existing);
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex,
+          submittedProgress: progress,
+          status: 'noop',
+          message: 'Achievement already completed',
+          achievement,
+        });
+        continue;
+      }
+
+      const current = existing.progress[requirementIndex] ?? 0;
+      if (progress <= current) {
+        const achievement = this.toAchievementResponse(definition, existing);
+        results.push({
+          index: i,
+          achievementId,
+          requirementIndex,
+          submittedProgress: progress,
+          status: 'noop',
+          message: `Stale progress ignored (current=${current})`,
+          achievement,
+        });
+        continue;
+      }
+
+      existing.progress[requirementIndex] = progress;
+      const allMet = definition.requirements.every(
+        (req, idx) => (existing.progress[idx] ?? 0) >= req.target,
+      );
+      if (allMet) {
+        existing.achievedAt = new Date();
+      }
+
+      map.set(achievementId, existing);
+      changedAchievementIds.add(achievementId);
+      hasChanges = true;
+
+      const achievement = this.toAchievementResponse(definition, existing);
+      results.push({
+        index: i,
+        achievementId,
+        requirementIndex,
+        submittedProgress: progress,
+        status: 'updated',
+        achievement,
+      });
+    }
+
+    if (hasChanges) {
+      account.achievementProgress = map;
+      await account.save();
+    }
+
+    const updatedAchievements = Array.from(changedAchievementIds)
+      .map((achievementId) => {
+        const definition = definitionCache.get(achievementId);
+        const state = map.get(achievementId);
+        if (!definition || !state) return null;
+        return this.toAchievementResponse(definition, state);
+      })
+      .filter((item): item is NonNullable<typeof item> => !!item);
+
+    const summary = results.reduce(
+      (acc, item) => {
+        if (item.status === 'updated') acc.updated += 1;
+        else if (item.status === 'noop') acc.noop += 1;
+        else acc.failed += 1;
+        return acc;
+      },
+      { total, updated: 0, noop: 0, failed: 0 },
+    );
+
+    return { summary, results, updatedAchievements };
+  }
+
+  private toProgressMap(
+    value: Map<string, PlayerAchievementState> | Record<string, PlayerAchievementState> | undefined,
+  ): Map<string, PlayerAchievementState> {
+    if (value instanceof Map) return value;
+    if (!value || typeof value !== 'object') return new Map();
+    return new Map(Object.entries(value));
+  }
+
+  private async migrateLegacyPlayerAchievements(
+    account: AccountDocument,
+    map: Map<string, PlayerAchievementState>,
+  ): Promise<void> {
+    const legacyCollection = this.connection.collection('playerachievements');
+
+    let legacyRows: Array<{
+      _id: Types.ObjectId;
+      achievementId: string;
+      progress?: number[];
+      achievedAt?: Date | null;
+    }>;
+
+    try {
+      legacyRows = await legacyCollection
+        .find({ accountId: new Types.ObjectId(account._id as any) })
+        .toArray() as Array<{
+          _id: Types.ObjectId;
+          achievementId: string;
+          progress?: number[];
+          achievedAt?: Date | null;
+        }>;
+    } catch {
+      // Legacy collection may not exist yet; this is safe to ignore.
+      return;
+    }
+
+    if (!legacyRows.length) return;
+
+    let changed = false;
+    for (const row of legacyRows) {
+      if (!row.achievementId) continue;
+      const incomingProgress = Array.isArray(row.progress) ? row.progress : [];
+      const incomingAchievedAt = row.achievedAt ?? null;
+
+      const existing = map.get(row.achievementId);
+      if (!existing) {
+        map.set(row.achievementId, {
+          progress: incomingProgress,
+          achievedAt: incomingAchievedAt,
+        });
+        changed = true;
+        continue;
+      }
+
+      const maxLen = Math.max(existing.progress?.length ?? 0, incomingProgress.length);
+      const merged = new Array(maxLen).fill(0).map((_, i) =>
+        Math.max(existing.progress?.[i] ?? 0, incomingProgress[i] ?? 0),
+      );
+
+      const achievedAt = existing.achievedAt ?? incomingAchievedAt;
+
+      if (!this.sameProgress(merged, existing.progress) || achievedAt !== existing.achievedAt) {
+        map.set(row.achievementId, { progress: merged, achievedAt });
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      account.achievementProgress = map;
+      await account.save();
+    }
+
+    // Cleanup migrated legacy rows so collection can be safely dropped later.
+    await legacyCollection.deleteMany({ accountId: new Types.ObjectId(account._id as any) });
+  }
+
+  private async migrateAllLegacyAchievementRows(): Promise<void> {
+    const legacyCollection = this.connection.collection('playerachievements');
+
+    type LegacyRow = {
+      _id: Types.ObjectId;
+      accountId: Types.ObjectId;
+      achievementId: string;
+      progress?: number[];
+      achievedAt?: Date | null;
+    };
+
+    let rows: LegacyRow[];
+    try {
+      rows = (await legacyCollection.find({}).toArray()) as LegacyRow[];
+    } catch {
+      return;
+    }
+
+    if (!rows.length) return;
+
+    const rowsByAccount = new Map<string, LegacyRow[]>();
+    for (const row of rows) {
+      if (!row.accountId || !row.achievementId) continue;
+      const key = String(row.accountId);
+      const bucket = rowsByAccount.get(key);
+      if (bucket) {
+        bucket.push(row);
+      } else {
+        rowsByAccount.set(key, [row]);
+      }
+    }
+
+    for (const [accountId, legacyRows] of rowsByAccount.entries()) {
+      const account = await this.accountModel.findById(accountId).exec();
+      if (!account) continue;
+
+      const map = this.toProgressMap(account.achievementProgress);
+      let changed = false;
+
+      for (const row of legacyRows) {
+        const incomingProgress = Array.isArray(row.progress) ? row.progress : [];
+        const incomingAchievedAt = row.achievedAt ?? null;
+        const existing = map.get(row.achievementId);
+
+        if (!existing) {
+          map.set(row.achievementId, {
+            progress: incomingProgress,
+            achievedAt: incomingAchievedAt,
+          });
+          changed = true;
+          continue;
+        }
+
+        const maxLen = Math.max(existing.progress?.length ?? 0, incomingProgress.length);
+        const merged = new Array(maxLen).fill(0).map((_, i) =>
+          Math.max(existing.progress?.[i] ?? 0, incomingProgress[i] ?? 0),
+        );
+        const achievedAt = existing.achievedAt ?? incomingAchievedAt;
+
+        if (!this.sameProgress(merged, existing.progress) || achievedAt !== existing.achievedAt) {
+          map.set(row.achievementId, { progress: merged, achievedAt });
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        account.achievementProgress = map;
+        await account.save();
+      }
+    }
+
+    await legacyCollection.deleteMany({});
+    console.log(`[auth-service] Migrated and cleared ${rows.length} legacy playerachievements row(s)`);
+  }
+
+  private normalizeProgress(progress: number[] | undefined, expectedLen: number): number[] {
+    const current = Array.isArray(progress) ? [...progress] : [];
+    if (current.length >= expectedLen) return current.slice(0, expectedLen);
+    return [...current, ...new Array(expectedLen - current.length).fill(0)];
+  }
+
+  private sameProgress(a: number[], b: number[] | undefined): boolean {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }
+
+  private toAchievementResponse(definition: AchievementDefinition, state: PlayerAchievementState) {
+    return {
+      achievementId: definition.achievementId,
+      name: definition.name,
+      description: definition.description,
+      requirements: definition.requirements,
+      progress: state.progress,
+      achievedAt: state.achievedAt ?? null,
+      isAchieved: !!state.achievedAt,
+    };
+  }
+
   private generateOtp(): string {
     const num = crypto.randomInt(0, 1000000);
     return String(num).padStart(6, '0');
   }
 
-  private async sendOtpEmail(email: string, username: string, otp: string) {
+  private async sendOtpEmail(
+    email: string,
+    username: string,
+    otp: string,
+    template: typeof ResetOtpTemplate | typeof RegisterOtpTemplate = ResetOtpTemplate,
+  ) {
     const host = this.configService.get<string>('MAIL_HOST');
     const port = Number(this.configService.get<string>('MAIL_PORT') || 587);
     const user = this.configService.get<string>('MAIL_USER');
@@ -231,9 +850,9 @@ export class AccountService {
       auth: { user, pass },
     });
 
-    const subject = ResetOtpTemplate.getSubject();
-    const text = ResetOtpTemplate.getText(username, otp);
-    const html = ResetOtpTemplate.getHtml(username, otp);
+    const subject = template.getSubject();
+    const text = template.getText(username, otp);
+    const html = template.getHtml(username, otp);
 
     await transporter.sendMail({ from, to: email, subject, text, html });
   }

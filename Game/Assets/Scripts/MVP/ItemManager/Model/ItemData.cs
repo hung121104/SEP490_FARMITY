@@ -35,6 +35,14 @@ public class ItemData
     public bool isArtifact  = false;
     public bool isRareItem  = false;
 
+    /// <summary>
+    /// SkinCatalogManager configId for this item's spritesheet (e.g. "gold_hoe",
+    /// "copper_watering_can"). Used by DynamicSpriteSwapper to show the correct
+    /// tool/weapon layer while the item is equipped.
+    /// Null or empty means no paper-doll layer sprite for this item.
+    /// </summary>
+    public string skinConfigId;
+
     // ── NPC Preferences (serialized as simple arrays) ─────────
     public string[] npcPreferenceNames     = System.Array.Empty<string>();
     public int[]    npcPreferenceReactions = System.Array.Empty<int>(); // maps GiftReaction enum values
@@ -52,5 +60,9 @@ public class ItemData
         return Mathf.RoundToInt(basePrice * multiplier);
     }
 
-    public bool IsValidGift() => !isQuestItem && canBeSold && itemType != ItemType.Tool;
+    public bool IsValidGift() =>
+        !isQuestItem &&
+        canBeSold &&
+        itemType != ItemType.Tool &&
+        itemType != ItemType.Fertilizer;
 }

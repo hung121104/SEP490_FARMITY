@@ -30,6 +30,16 @@ export class WorldController {
     return this.worldService.updateWorld(dto);
   }
 
+  /**
+   * save-world — unified auto-save / quit-flush.
+   * Accepts the same DTO as update-world but also processes tile deltas
+   * inside a MongoDB session/transaction.
+   */
+  @MessagePattern('save-world')
+  async saveWorld(@Body() dto: UpdateWorldDto) {
+    return this.worldService.saveWorld(dto);
+  }
+
   @MessagePattern('delete-world')
   async deleteWorld(@Body() getWorldDto: GetWorldDto) {
     return this.worldService.deleteWorld(getWorldDto);

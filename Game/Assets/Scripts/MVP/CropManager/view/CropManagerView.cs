@@ -27,6 +27,10 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     [Range(0.1f, 10f)]
     public float growthSpeedMultiplier = 1f;
 
+    [Header("Water Decay Settings")]
+    [Tooltip("How many in-game minutes water lasts before it evaporates.")]
+    [SerializeField] private float waterDecayDurationMinutes = 24f;
+
     [Header("Visual")]
     public Transform cropVisualsParent;
 
@@ -64,37 +68,87 @@ public class CropManagerView : MonoBehaviourPunCallbacks
             WorldDataManager.Instance,
             syncManager);
 
+        growthService.WaterDecayDurationMinutes = waterDecayDurationMinutes;
+
         // Subscribe to visual-refresh event
         growthService.OnCropStageChanged += OnCropStageChanged;
 
-        // Subscribe to day-change
-        if (timeManager != null)
-            timeManager.OnDayChanged += OnDayChanged;
-        else
-            Debug.LogError("[CropManagerView] TimeManagerView not found!");
+        // Subscribe to rain events for auto-watering
+        WeatherView.OnRainStarted += OnRainStarted;
+        WeatherView.OnRainStopped += OnRainStopped;
+        // If it's already raining when we initialize, apply immediately
+        if (WeatherView.IsRaining)
+            OnRainStarted();
 
         // Visual parent fallback
         if (cropVisualsParent == null)
             cropVisualsParent = new GameObject("CropVisuals").transform;
 
         if (showDebugLogs)
-            Debug.Log("[CropManagerView] Initialized.");
+            Debug.Log("[CropManagerView] Initialized (real-time growth mode).");
     }
 
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
-        if (timeManager != null) timeManager.OnDayChanged -= OnDayChanged;
         if (growthService != null) growthService.OnCropStageChanged -= OnCropStageChanged;
+        WeatherView.OnRainStarted -= OnRainStarted;
+        WeatherView.OnRainStopped -= OnRainStopped;
     }
 
-    // ── Day tick ──────────────────────────────────────────────────────────
-    private void OnDayChanged()
+    // ── Rain event handlers ──────────────────────────────────────────────
+    private void OnRainStarted()
+    {
+        if (growthService == null) return;
+        growthService.IsRaining = true;
+
+        // Allow all clients to perform the bulk water locally — no network broadcast needed!
+
+        growthService.WaterAllTilledTiles();
+
+        // Refresh visuals for all loaded chunks so watered overlays appear
+        if (chunkLoadingManager != null && WorldDataManager.Instance != null)
+        {
+            foreach (var config in WorldDataManager.Instance.sectionConfigs)
+            {
+                if (!config.IsActive) continue;
+                var section = WorldDataManager.Instance.GetSection(config.SectionId);
+                if (section == null) continue;
+                foreach (var chunkPos in section.Keys)
+                    chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+            }
+        }
+
+        if (showDebugLogs)
+            Debug.Log("[CropManagerView] Rain started — all tilled tiles watered, decay paused.");
+    }
+
+    private void OnRainStopped()
+    {
+        if (growthService == null) return;
+        growthService.IsRaining = false;
+
+        if (showDebugLogs)
+            Debug.Log("[CropManagerView] Rain stopped — water decay resumed.");
+    }
+
+    // ── Real-time growth tick ─────────────────────────────────────────
+    private void Update()
     {
         if (!enableGrowth) return;
         if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient) return;
+        if (timeManager == null) return;
 
-        growthService.GrowAllCrops(growthSpeedMultiplier);
+        // deltaTime * timeSpeed = in-game minutes elapsed this frame
+        // (same formula as TimeManagerView.AdvanceTime)
+        float gameMinutesDelta = Time.deltaTime * timeManager.timeSpeed * growthSpeedMultiplier;
+        growthService?.TickGrowth(gameMinutesDelta);
+
+        // Live-push decay duration changes made in the Inspector during Play mode.
+        if (growthService != null)
+            growthService.WaterDecayDurationMinutes = waterDecayDurationMinutes;
+
+        growthService?.TickWaterDecay(gameMinutesDelta);
     }
 
     // ── Visual refresh (driven by service event) ──────────────────────────

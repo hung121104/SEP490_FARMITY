@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class InventoryPresenter
@@ -7,12 +8,22 @@ public class InventoryPresenter
     private readonly IInventoryService service;
     private IInventoryView view;
 
+    // Secondary views: receive data updates only (no input events)
+    private readonly List<IInventoryView> secondaryViews = new List<IInventoryView>();
+
     // Item detail system integration
     private ItemDetailView itemDetailView;
     private ItemPresenter currentItemPresenter;
     
     // Track which slot is currently showing tooltip
     private int currentTooltipSlot = -1;
+
+    // Track cursor position from View events (avoids Input.mousePosition dependency)
+    private Vector2 lastKnownCursorPosition;
+
+    // Action cooldown for network sync
+    private float lastActionTime = 0f;
+    private float actionCooldownDuration = 1.0f; // Đợi 1 giây sau action cuối cùng trước khi cho phép sync
 
     // Events for GameView or other systems
     public event Action<ItemModel> OnItemUsed;
@@ -24,6 +35,9 @@ public class InventoryPresenter
     {
         model = inventoryModel;
         service = inventoryService;
+        // Subtract cooldown so IsReadyToSync() returns true immediately at startup.
+        // (setting to Time.time would mean 0 seconds have elapsed — not ready yet.)
+        lastActionTime = Time.time - actionCooldownDuration;
 
         SubscribeToServiceEvents();
     }
@@ -44,12 +58,74 @@ public class InventoryPresenter
         itemDetailView = detailView;
     }
 
+    /// <summary>
+    /// Reset action cooldown timer. Called whenever user performs an action.
+    /// After this is called, sync is blocked for actionCooldownDuration seconds.
+    /// </summary>
+    private void ResetActionTimer()
+    {
+        lastActionTime = Time.time;
+    }
+
+    /// <summary>
+    /// Called by external systems to notify that the user is performing
+    /// an action on a secondary view. Resets the cooldown so
+    /// HandleRemoteInventoryChanged defers the echo.
+    /// </summary>
+    public void NotifyExternalAction()
+    {
+        lastActionTime = Time.time;
+    }
+
+    /// <summary>
+    /// Check if enough time has passed since last user action to allow network sync.
+    /// </summary>
+    public bool IsReadyToSync()
+    {
+        return (Time.time - lastActionTime) >= actionCooldownDuration;
+    }
+
     public void RemoveView()
     {
         if (view != null)
         {
             UnsubscribeFromViewEvents();
             view = null;
+        }
+    }
+
+    /// <summary>
+    /// Register a secondary view that receives data updates (UpdateSlot/ClearSlot)
+    /// but does NOT send input events (drag, click, etc.) to this presenter.
+    /// The secondary view manages its own input via its own InventoryPresenter-like handler.
+    /// </summary>
+    public void AddSecondaryView(IInventoryView secondaryView)
+    {
+        if (secondaryView == null || secondaryViews.Contains(secondaryView)) return;
+        secondaryViews.Add(secondaryView);
+        RefreshSecondaryView(secondaryView);
+        Debug.Log($"[InventoryPresenter] Secondary view added. Total: {secondaryViews.Count}");
+    }
+
+    /// <summary>
+    /// Unregister a secondary view.
+    /// </summary>
+    public void RemoveSecondaryView(IInventoryView secondaryView)
+    {
+        if (secondaryView == null) return;
+        secondaryViews.Remove(secondaryView);
+        Debug.Log($"[InventoryPresenter] Secondary view removed. Total: {secondaryViews.Count}");
+    }
+
+    private void RefreshSecondaryView(IInventoryView secondaryView)
+    {
+        for (int i = 0; i < model.maxSlots; i++)
+        {
+            var item = service.GetItemAtSlot(i);
+            if (item != null)
+                secondaryView.UpdateSlot(i, item);
+            else
+                secondaryView.ClearSlot(i);
         }
     }
     #endregion
@@ -111,11 +187,13 @@ public class InventoryPresenter
     private void HandleItemAdded(ItemModel item, int slotIndex)
     {
         view?.UpdateSlot(slotIndex, item);
+        UpdateSecondarySlot(slotIndex, item);
     }
 
     private void HandleItemRemoved(ItemModel item, int slotIndex)
     {
         view?.ClearSlot(slotIndex);
+        ClearSecondarySlot(slotIndex);
 
         // If tooltip was showing for this slot, hide it
         if (currentTooltipSlot == slotIndex)
@@ -131,12 +209,15 @@ public class InventoryPresenter
 
         view?.UpdateSlot(fromSlot, fromItem);
         view?.UpdateSlot(toSlot, toItem);
+        UpdateSecondarySlot(fromSlot, fromItem);
+        UpdateSecondarySlot(toSlot, toItem);
     }
 
     private void HandleQuantityChanged(int slotIndex, int newQuantity)
     {
         var item = service.GetItemAtSlot(slotIndex);
         view?.UpdateSlot(slotIndex, item);
+        UpdateSecondarySlot(slotIndex, item);
 
         // Refresh tooltip if it's showing for this slot
         if (currentTooltipSlot == slotIndex)
@@ -160,6 +241,7 @@ public class InventoryPresenter
     //Need for checking
     private void HandleSlotClicked(int slotIndex)
     {
+        ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
 
         if (item != null)
@@ -175,6 +257,7 @@ public class InventoryPresenter
 
     private void HandleSlotBeginDrag(int slotIndex)
     {
+        ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
         if (item != null)
         {
@@ -188,17 +271,19 @@ public class InventoryPresenter
 
     private void HandleSlotDrag(Vector2 position)
     {
+        ResetActionTimer();
+        lastKnownCursorPosition = position;
         view?.UpdateDragPreview(position);
     }
 
     private void HandleSlotEndDrag()
     {
+        ResetActionTimer();
         // If drag wasn't consumed by a slot drop or delete zone,
         // check if it ended outside the inventory panel → drop item to world
         if (draggedSlot != -1)
         {
-            Vector2 mousePos = Input.mousePosition;
-            if (view != null && !view.IsScreenPositionInsideInventory(mousePos))
+            if (view != null && !view.IsScreenPositionInsideInventory(lastKnownCursorPosition))
             {
                 HandleDropItem(draggedSlot);
                 Debug.Log($"[InventoryPresenter] Item dragged outside inventory — dropped to world from slot {draggedSlot}");
@@ -211,6 +296,7 @@ public class InventoryPresenter
 
     private void HandleSlotDrop(int targetSlotIndex)
     {
+        ResetActionTimer();
         if (draggedSlot != -1 && draggedSlot != targetSlotIndex)
         {
             service.MoveItem(draggedSlot, targetSlotIndex);
@@ -225,6 +311,7 @@ public class InventoryPresenter
 
     private void HandleUseItem(int slotIndex)
     {
+        ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
         if (item != null)
         {
@@ -239,6 +326,7 @@ public class InventoryPresenter
 
     private void HandleDropItem(int slotIndex)
     {
+        ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
         if (item != null && !item.IsQuestItem)
         {
@@ -250,6 +338,7 @@ public class InventoryPresenter
 
     private void HandleSort()
     {
+        ResetActionTimer();
         service.SortInventory();
         HideCurrentItemDetail();
     }
@@ -260,6 +349,7 @@ public class InventoryPresenter
 
     private void HandleItemDelete(int slotIndex)
     {
+        ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
 
         if (item == null)
@@ -316,6 +406,8 @@ public class InventoryPresenter
 
     private void HandleSlotHoverEnter(int slotIndex, Vector2 screenPosition)
     {
+        lastKnownCursorPosition = screenPosition;
+
         // Don't show tooltip if currently dragging
         if (draggedSlot != -1)
         {
@@ -402,11 +494,7 @@ public class InventoryPresenter
             return;
         }
 
-        // Get current mouse position
-        Vector2 mousePosition = Input.mousePosition;
-
-        // Show tooltip at current mouse position
-        ShowTooltipForSlot(slotIndex, mousePosition);
+        ShowTooltipForSlot(slotIndex, lastKnownCursorPosition);
     }
 
     /// <summary>
@@ -426,11 +514,7 @@ public class InventoryPresenter
             return;
         }
 
-        // Get current mouse position
-        Vector2 mousePosition = Input.mousePosition;
-
-        // Show updated tooltip
-        ShowTooltipForSlot(slotIndex, mousePosition);
+        ShowTooltipForSlot(slotIndex, lastKnownCursorPosition);
     }
 
     #endregion
@@ -485,19 +569,46 @@ public class InventoryPresenter
 
     private void RefreshView()
     {
-        if (view == null) return;
+        if (view == null && secondaryViews.Count == 0) return;
 
         for (int i = 0; i < model.maxSlots; i++)
         {
             var item = service.GetItemAtSlot(i);
-            view.UpdateSlot(i, item);
+            view?.UpdateSlot(i, item);
+            UpdateSecondarySlot(i, item);
         }
     }
+
+    #endregion
+
+    #region Secondary View Helpers
+
+    private void UpdateSecondarySlot(int slotIndex, ItemModel item)
+    {
+        for (int i = 0; i < secondaryViews.Count; i++)
+        {
+            if (item != null)
+                secondaryViews[i].UpdateSlot(slotIndex, item);
+            else
+                secondaryViews[i].ClearSlot(slotIndex);
+        }
+    }
+
+    private void ClearSecondarySlot(int slotIndex)
+    {
+        for (int i = 0; i < secondaryViews.Count; i++)
+            secondaryViews[i].ClearSlot(slotIndex);
+    }
+
+    #endregion
+
+    #region Cleanup
 
     public void Cleanup()
     {
         CancelAllActions();
         RemoveView();
+        secondaryViews.Clear();
         UnsubscribeFromServiceEvents();
         HideCurrentItemDetail();
     }

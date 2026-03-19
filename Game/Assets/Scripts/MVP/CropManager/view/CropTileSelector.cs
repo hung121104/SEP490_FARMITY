@@ -9,8 +9,10 @@ public static class CropTileSelector
 {
     /// <summary>
     /// Calculates the target tile world position based on player position and mouse world position.
-    /// Uses 8-directional snapping: the tile adjacent to the player that is closest to where
-    /// the mouse is pointing. Returns <see cref="Vector3.zero"/> if the target tile is outside
+    /// Snaps the mouse world position directly to the nearest tile centre, then validates it is
+    /// within <paramref name="maxRange"/> of the player. This makes tile selection feel accurate
+    /// at any distance — including close to the player where angle-based snapping was jittery.
+    /// Returns <see cref="Vector3.zero"/> if the target tile is outside
     /// <paramref name="maxRange"/>, or if the same tile was already returned last time (deduplication).
     /// </summary>
     /// <param name="playerPos">World-space position of the player (or the player's CenterPoint).</param>
@@ -23,8 +25,8 @@ public static class CropTileSelector
     ///     when the action key is released.
     /// </param>
     /// <param name="maxRadius">
-    ///     Maximum Manhattan offset (in tiles) from the player tile that can be targeted.
-    ///     Use 1 for adjacent tiles only (default). Use 2 to allow targeting 2 tiles away.
+    ///     Kept for API compatibility but no longer used — the <paramref name="maxRange"/> distance
+    ///     check is the sole spatial constraint on the targeted tile.
     /// </param>
     /// <returns>
     ///     The snapped tile position as a <see cref="Vector3"/> with z = 0,
@@ -39,44 +41,12 @@ public static class CropTileSelector
     {
         mouseWorldPos.z = 0f;
 
-        int playerTileX = Mathf.RoundToInt(playerPos.x);
-        int playerTileY = Mathf.RoundToInt(playerPos.y);
-
-        Vector2 direction = new Vector2(mouseWorldPos.x - playerPos.x, mouseWorldPos.y - playerPos.y);
-        float distance = direction.magnitude;
-
-        // Mouse is very close to the player — target the player's own tile
-        if (distance < 0.5f)
-        {
-            Vector2Int playerTile = new Vector2Int(playerTileX, playerTileY);
-            if (playerTile == lastSelectedTile)
-                return Vector3.zero;
-
-            lastSelectedTile = playerTile;
-            return new Vector3(playerTileX, playerTileY, 0f);
-        }
-
-        // Snap direction to 8-directional offset
-        direction.Normalize();
-
-        int offsetX = 0;
-        int offsetY = 0;
-
-        if      (direction.x >  0.4f) offsetX =  1;
-        else if (direction.x < -0.4f) offsetX = -1;
-
-        if      (direction.y >  0.4f) offsetY =  1;
-        else if (direction.y < -0.4f) offsetY = -1;
-
-        // Clamp to the requested radius
-        offsetX = Mathf.Clamp(offsetX, -maxRadius, maxRadius);
-        offsetY = Mathf.Clamp(offsetY, -maxRadius, maxRadius);
-
-        int targetX = playerTileX + offsetX;
-        int targetY = playerTileY + offsetY;
+        // Snap the mouse world position directly to the nearest tile grid cell
+        int targetX = Mathf.FloorToInt(mouseWorldPos.x);
+        int targetY = Mathf.FloorToInt(mouseWorldPos.y);
         Vector2Int targetTile = new Vector2Int(targetX, targetY);
 
-        // Range check
+        // Range check — target must be within maxRange of the player
         Vector3 targetTileCenter = new Vector3(targetX, targetY, 0f);
         float distanceToTarget = Vector3.Distance(playerPos, targetTileCenter);
         if (distanceToTarget > maxRange)

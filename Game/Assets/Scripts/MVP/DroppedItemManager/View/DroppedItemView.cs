@@ -33,9 +33,6 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     [Tooltip("Root GameObject shown when quantity is 1–33 (single stack). Contains 1 SpriteRenderer child.")]
     [SerializeField] private GameObject stackSingle;
 
-    [Tooltip("TextMeshPro child for the pickup prompt.")]
-    [SerializeField] private TextMeshProUGUI pickupPromptText;
-
     [Header("Sorting")]
     [SerializeField] private string sortingLayerName = "WalkInfront";
     [SerializeField] private int sortingOrder = 10;
@@ -51,14 +48,17 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     [Tooltip("Tag used to identify the local player.")]
     [SerializeField] private string playerTag = "PlayerEntity";
 
-    [Tooltip("Key to pick up the item.")]
-    [SerializeField] private KeyCode pickupKey = KeyCode.F;
-
-    [Tooltip("Radius (world units) to detect local player for pickup prompt.\nReplaces CircleCollider2D trigger — safe for Object Pooling.")]
+    [Tooltip("Radius (world units) to detect local player for auto-pickup.\nReplaces key-press trigger — player walks in and item is picked up automatically.")]
     [SerializeField] private float pickupRadius = 0.8f;
 
     [Tooltip("Layer mask for player detection. Default: Everything.")]
     [SerializeField] private LayerMask playerLayerMask = ~0;
+
+    [Tooltip("How many seconds after the item is spawned/dropped before it can be picked up (debounce to prevent instant re-pickup).")]
+    [SerializeField] private float pickupDelay = 1.0f;
+
+    [Tooltip("Offset from the item's pivot where the pickup detection circle is centered.\nUse this to align the trigger to the item's visual center (e.g., Y+0.3 if sprite sits above pivot).")]
+    [SerializeField] private Vector2 pickupOffset = Vector2.zero;
 
     [Header("Debug")]
     [Tooltip("Show pickup radius gizmo in Scene view.")]
@@ -78,6 +78,8 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     private bool _playerInRange;
     private bool _blinkStarted;
     private bool _despawnBroadcast;
+    private float _spawnTime;
+    private bool _pickupRequested;
 
     /// <summary>Pre-allocated buffer for OverlapCircleNonAlloc — avoids per-frame heap allocation.</summary>
     private readonly Collider2D[] _overlapBuffer = new Collider2D[16];
@@ -97,6 +99,8 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         _data = data;
         _blinkStarted = false;
         _despawnBroadcast = false;
+        _spawnTime = Time.time;
+        _pickupRequested = false;
 
         // Show the visual immediately
         ShowItem(data);
@@ -126,14 +130,6 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         // Position in world
         transform.position = new Vector3(data.worldX, data.worldY, 0f);
 
-        // Prompt hidden by default
-        SetPickupPromptVisible(false);
-
-        // Debug: warn if pickupPromptText is missing
-        if (pickupPromptText == null)
-            Debug.LogWarning($"[DroppedItemView] pickupPromptText is NULL on '{gameObject.name}'. " +
-                             "Assign a TextMeshProUGUI child in the Inspector or check prefab hierarchy.");
-
         gameObject.SetActive(true);
     }
 
@@ -141,7 +137,6 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     public void HideItem()
     {
         StopBlinking();
-        SetPickupPromptVisible(false);
         gameObject.SetActive(false);
     }
 
@@ -171,22 +166,6 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
             Color c = sr.color;
             c.a = 1f;
             sr.color = c;
-        }
-    }
-
-    /// <summary>Show or hide the "[F] Pick up" text prompt.</summary>
-    public void SetPickupPromptVisible(bool visible)
-    {
-        if (pickupPromptText != null)
-        {
-            pickupPromptText.gameObject.SetActive(visible);
-
-            if (debugLogs)
-                Debug.Log($"[DroppedItemView] pickupPromptText.SetActive({visible}) on '{gameObject.name}'");
-        }
-        else if (debugLogs)
-        {
-            Debug.LogWarning($"[DroppedItemView] SetPickupPromptVisible({visible}) skipped — pickupPromptText is NULL.");
         }
     }
 
@@ -223,7 +202,8 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     /// </summary>
     private bool IsLocalPlayerInRange()
     {
-        int count = Physics2D.OverlapCircleNonAlloc(transform.position, pickupRadius, _overlapBuffer, playerLayerMask);
+        Vector2 detectionCenter = (Vector2)transform.position + pickupOffset;
+        int count = Physics2D.OverlapCircleNonAlloc(detectionCenter, pickupRadius, _overlapBuffer, playerLayerMask);
 
         if (debugLogs && count > 0)
             Debug.Log($"[DroppedItemView] OverlapCircleNonAlloc hit {count} collider(s) within radius {pickupRadius} on '{gameObject.name}'");
@@ -273,43 +253,44 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
 
         // OverlapCircle-based player detection (pool-safe, replaces OnTriggerEnter/Exit)
         bool playerNearby = IsLocalPlayerInRange();
-        if (playerNearby != _playerInRange)
-        {
-            _playerInRange = playerNearby;
-            SetPickupPromptVisible(_playerInRange);
-        }
+        _playerInRange = playerNearby;
 
-        // Listen for pickup key press when player is in range
-        if (_playerInRange && Input.GetKeyDown(pickupKey))
+        // Auto-pickup: player is in range, delay has elapsed, and we haven’t already requested
+        if (_playerInRange && !_pickupRequested && Time.time - _spawnTime >= pickupDelay)
         {
-            OnPickupRequested(_data.dropId);
+            _pickupRequested = OnPickupRequested(_data.dropId);
+
+            // If request wasn't accepted (e.g. inventory still full), retry after pickupDelay.
+            if (!_pickupRequested)
+                _spawnTime = Time.time;
         }
     }
 
     // ── Pickup ────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Called when the local player presses the pickup key.
+    /// Called automatically when the local player enters the pickup radius and the debounce delay has passed.
     /// Delegates to DroppedItemManagerView which handles the Photon request flow.
     /// </summary>
     /// <param name="dropId">The unique drop ID to pick up.</param>
-    private void OnPickupRequested(string dropId)
+    private bool OnPickupRequested(string dropId)
     {
-        if (_data == null) return;
+        if (_data == null) return false;
         if (_data.IsExpired)
         {
             Debug.Log($"[DroppedItemView] Item '{dropId}' already expired, ignoring pickup.");
-            return;
+            return false;
         }
 
         var manager = DroppedItemManagerView.Instance;
         if (manager != null)
         {
-            manager.RequestPickupItem(dropId);
+            return manager.RequestPickupItem(dropId);
         }
         else
         {
             Debug.LogError("[DroppedItemView] DroppedItemManagerView.Instance is null!");
+            return false;
         }
     }
 
@@ -333,26 +314,26 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
 
     private void DrawPickupGizmo()
     {
+        Vector2 detectionCenter = (Vector2)transform.position + pickupOffset;
+        
         // Filled disc — shows the detection area
-        UnityEditor.Handles.color = gizmoColor;
 #if UNITY_EDITOR
-        UnityEditor.Handles.DrawSolidDisc(transform.position, Vector3.forward, pickupRadius);
+        UnityEditor.Handles.color = gizmoColor;
+        UnityEditor.Handles.DrawSolidDisc(detectionCenter, Vector3.forward, pickupRadius);
 #endif
 
         // Outline wire circle
         Gizmos.color = new Color(gizmoColor.r, gizmoColor.g, gizmoColor.b, 1f);
-        Gizmos.DrawWireSphere(transform.position, pickupRadius);
+        Gizmos.DrawWireSphere(detectionCenter, pickupRadius);
 
-        // Label: item name + prompt state
+        // Label: item name
         if (_data != null)
         {
 #if UNITY_EDITOR
-            string promptState = pickupPromptText == null ? "[prompt: NULL!]" :
-                                 pickupPromptText.gameObject.activeSelf ? "[prompt: visible]" : "[prompt: hidden]";
             UnityEditor.Handles.color = Color.white;
             UnityEditor.Handles.Label(
-                transform.position + Vector3.up * (pickupRadius + 0.15f),
-                $"{_data.itemName} | r={pickupRadius} | {promptState} | inRange={_playerInRange}"
+                (Vector3)detectionCenter + Vector3.up * (pickupRadius + 0.15f),
+                $"{_data.itemName} | r={pickupRadius} | offset={pickupOffset} | inRange={_playerInRange}"
             );
 #endif
         }
@@ -429,6 +410,7 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
     {
         HideItem();
         _data = null;
+        _pickupRequested = false;
     }
 
     private void OnDisable()

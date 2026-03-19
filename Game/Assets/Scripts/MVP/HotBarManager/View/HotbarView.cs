@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class HotbarView : MonoBehaviour
 {
@@ -26,6 +27,9 @@ public class HotbarView : MonoBehaviour
     private HotbarPresenter presenter;
     private bool isInitialized = false;
 
+    // Stored delegates so we can properly unsubscribe (lambdas can't be unsubscribed)
+    private System.Action<InputAction.CallbackContext>[] _slotCallbacks;
+
     // Events
     public System.Action<int> OnSlotKeyPressed;
     public System.Action<float> OnScrollInput;
@@ -33,6 +37,14 @@ public class HotbarView : MonoBehaviour
 
     private void Awake()
     {
+        // Pre-build the 9 slot callbacks so OnEnable/OnDisable use the same delegate references
+        _slotCallbacks = new System.Action<InputAction.CallbackContext>[9];
+        for (int i = 0; i < 9; i++)
+        {
+            int slotIndex = i; // capture for closure
+            _slotCallbacks[i] = ctx => OnHotbarSlotPressed(slotIndex);
+        }
+
         CreateSlotUIs(hotbarSize);
     }
 
@@ -71,8 +83,98 @@ public class HotbarView : MonoBehaviour
         presenter.Initialize();
 
         isInitialized = true;
+        // OnEnable fired before Start and skipped subscription because InputManager wasn't
+        // ready. Now that everything is ready, subscribe to input for the first time.
+        SubscribeInputEvents();
         Debug.Log("HotbarView: Initialized successfully");
     }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // New Input System – subscribe / unsubscribe
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private void OnEnable()
+    {
+        // On the very first enable, InputManager may not be ready yet and isInitialized is
+        // still false.  Subscription is handled at the end of InitializeHotbarSystem() instead.
+        // For all subsequent re-enables (e.g. after inventory open/close) we subscribe here.
+        if (!isInitialized) return;
+        SubscribeInputEvents();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeInputEvents();
+    }
+
+    private void SubscribeInputEvents()
+    {
+        if (InputManager.Instance == null) return;
+
+        // Hotbar slot keys 1-9 (stored delegates for proper unsubscription)
+        for (int i = 0; i < 9; i++)
+        {
+            InputAction slotAction = InputManager.Instance.GetHotbarSlotAction(i);
+            if (slotAction != null)
+                slotAction.performed += _slotCallbacks[i];
+        }
+
+        // Scroll wheel
+        if (enableScrollWheel)
+            InputManager.Instance.ScrollItem.performed += OnScrollPerformed;
+
+        // Use item (left click) — always subscribe; enableLeftClick is checked at fire time.
+        InputManager.Instance.UseItem.performed += OnUseItemPerformed;
+    }
+
+    private void UnsubscribeInputEvents()
+    {
+        if (InputManager.Instance == null) return;
+
+        for (int i = 0; i < 9; i++)
+        {
+            InputAction slotAction = InputManager.Instance.GetHotbarSlotAction(i);
+            if (slotAction != null)
+                slotAction.performed -= _slotCallbacks[i];
+        }
+
+        if (enableScrollWheel)
+            InputManager.Instance.ScrollItem.performed -= OnScrollPerformed;
+
+        // Always unsubscribe unconditionally to match the unconditional subscribe above.
+        InputManager.Instance.UseItem.performed -= OnUseItemPerformed;
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Input callbacks
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private void OnHotbarSlotPressed(int slotIndex)
+    {
+        if (!isInitialized) return;
+        OnSlotKeyPressed?.Invoke(slotIndex);
+    }
+
+    private void OnScrollPerformed(InputAction.CallbackContext ctx)
+    {
+        if (!isInitialized) return;
+        float scrollValue = ctx.ReadValue<float>();
+        if (scrollValue != 0f)
+        {
+            OnScrollInput?.Invoke(scrollValue);
+        }
+    }
+
+    private void OnUseItemPerformed(InputAction.CallbackContext ctx)
+    {
+        if (!isInitialized) return;
+        if (!enableLeftClick) return;   // suppressed by CropHarvestingView when targeting a crop
+        OnUseItemInput?.Invoke();
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Unchanged methods
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     private void CreateSlotUIs(int size)
     {
@@ -96,46 +198,9 @@ public class HotbarView : MonoBehaviour
         }
     }
 
-    private void Update()
-    {
-        if (!isInitialized) return;
-
-        HandleSlotSelection();
-        HandleItemUsage();
-    }
-
-    private void HandleSlotSelection()
-    {
-        for (int i = 0; i < 9; i++)
-        {
-            if (Input.GetKeyDown(KeyCode.Alpha1 + i))
-            {
-                OnSlotKeyPressed?.Invoke(i);
-                return;
-            }
-        }
-
-        if (enableScrollWheel)
-        {
-            float scroll = Input.GetAxis("Mouse ScrollWheel");
-            if (scroll != 0f)
-            {
-                OnScrollInput?.Invoke(scroll);
-            }
-        }
-    }
-
-    private void HandleItemUsage()
-    {
-        if (enableLeftClick && Input.GetMouseButtonDown(0))
-        {
-            OnUseItemInput?.Invoke();
-        }
-    }
-
     public Vector3 GetMouseWorldPosition()
     {
-        Vector3 mousePos = Input.mousePosition;
+        Vector3 mousePos = Mouse.current.position.ReadValue();
         mousePos.z = 10f;
         Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
         worldPos.z = 0;
