@@ -276,6 +276,11 @@ public class ChestStructure : MonoBehaviour, IInteractable
             chestGameView.CloseChest();
     }
 
+    public void Initialize(ChestData data)
+    {
+        chestData = data;
+    }
+
     public void SetBeingPooled()
     {
         _isBeingPooled = true;

@@ -20,6 +20,11 @@ public class ChestGameView : MonoBehaviour
     [SerializeField] private GameObject chestMainPanel;
     [SerializeField] private Transform inventoryContainer;
 
+    [Header("Testing")]
+    [SerializeField] private int testTileX = 0;
+    [SerializeField] private int testTileY = 0;
+    [SerializeField] private int testStructureLevel = 1;
+
     // Runtime state
     private ChestData activeChestData;
     private InventoryModel chestModel;
@@ -83,6 +88,11 @@ public class ChestGameView : MonoBehaviour
         chestInventoryView.InitializeSlots(chestData.SlotCount);
         presenter.SetChestView(chestInventoryView);
 
+        // Wire player inventory view so ChestPresenter can handle inventory → chest drag
+        var playerInventoryView = playerInventoryGameView?.GetInventoryView();
+        if (playerInventoryView != null)
+            presenter.SetPlayerView(playerInventoryView);
+
         // Wire item detail view
         if (itemDetailView != null)
             presenter.SetItemDetailView(itemDetailView);
@@ -97,6 +107,10 @@ public class ChestGameView : MonoBehaviour
         // Show the chest panel
         if (chestMainPanel != null)
             chestMainPanel.SetActive(true);
+
+        // Register chest panel as safe zone so inventory doesn't drop-to-world on release
+        if (playerInventoryGameView != null && chestMainPanel != null)
+            playerInventoryGameView.SetAdditionalSafeZone(chestMainPanel.GetComponent<RectTransform>());
 
         // Notify network
         if (ChestSyncManager.Instance != null)
@@ -128,6 +142,9 @@ public class ChestGameView : MonoBehaviour
         if (playerInventoryGameView != null)
             playerInventoryGameView.CloseInventory();
 
+        // Unregister safe zone
+        playerInventoryGameView?.SetAdditionalSafeZone(null);
+
         Debug.Log($"[ChestGameView] Closed chest '{activeChestData.ChestId}'");
 
         activeChestData = null;
@@ -138,6 +155,25 @@ public class ChestGameView : MonoBehaviour
     public bool IsChestOpen() => activeChestData != null && chestMainPanel != null && chestMainPanel.activeSelf;
 
     public string ActiveChestId => activeChestData?.ChestId;
+
+    #endregion
+
+    #region Testing Helpers
+
+    [ContextMenu("Test Open Chest UI")]
+    private void TestOpenChestUI()
+    {
+        if (IsChestOpen())
+            CloseChest();
+        else
+            OpenChest(new ChestData(testTileX, testTileY, testStructureLevel));
+    }
+
+    [ContextMenu("Test Close Chest UI")]
+    private void TestCloseChestUI()
+    {
+        CloseChest();
+    }
 
     #endregion
 
@@ -152,13 +188,7 @@ public class ChestGameView : MonoBehaviour
 
     private void LoadChestStateFromModule()
     {
-        if (activeChestData == null || chestService == null) return;
-
-        var inv = WorldDataManager.Instance?.ChestData?.GetChest(activeChestData.ChestId);
-        if (inv == null) return;
-
-        // Apply saved slots into chestModel via service
-        chestService.ApplyRemoteInventoryState(inv, activeChestData.SlotCount);
+        presenter?.LoadStateFromModule();
     }
 
     #endregion

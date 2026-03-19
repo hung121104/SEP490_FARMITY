@@ -96,7 +96,11 @@ public class ChestInventoryView : MonoBehaviour, IChestView
         if (dragPreviewObject == null) return;
         dragPreviewObject.SetActive(true);
         if (dragPreviewIcon != null) dragPreviewIcon.sprite = item.Icon;
-        if (dragPreviewCanvasGroup != null) dragPreviewCanvasGroup.alpha = 1f;
+        if (dragPreviewCanvasGroup != null)
+        {
+            dragPreviewCanvasGroup.alpha = 1f;
+            dragPreviewCanvasGroup.blocksRaycasts = false;
+        }
     }
 
     public void UpdateDragPreview(Vector2 position)

@@ -209,7 +209,6 @@ public class ChestPresenter
 
         draggedSlot = slot;
         dragFromChest = false;
-        chestView?.ShowDragPreview(item);
     }
 
     private void HandlePlayerSlotHoverEnter(int slot, Vector2 screenPosition)
@@ -435,6 +434,13 @@ public class ChestPresenter
         HideCurrentItemDetail();
         chestView?.HideDragPreview();
         chestView?.CancelAllActions();
+    }
+
+    public void LoadStateFromModule()
+    {
+        var inv = WorldDataManager.Instance?.ChestData?.GetChest(chestData.ChestId);
+        if (inv == null) return;
+        chestInventoryService.ApplyRemoteInventoryState(inv, chestData.SlotCount);
     }
 
     public void Cleanup()

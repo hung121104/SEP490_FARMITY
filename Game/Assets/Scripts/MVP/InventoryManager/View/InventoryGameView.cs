@@ -273,6 +273,15 @@ public class InventoryGameView : MonoBehaviour
     public IInventoryService GetInventoryService() => service;
     public InventoryModel GetInventoryModel() => model;
     public int GetInventorySlotCount() => model.maxSlots;
+    public IInventoryView GetInventoryView() => inventoryView;
+
+    /// <summary>
+    /// Register a UI panel as an additional safe drop zone.
+    /// </summary>
+    public void SetAdditionalSafeZone(RectTransform zone)
+    {
+        inventoryView?.SetAdditionalSafeZone(zone);
+    }
 
     /// <summary>
     /// Register a secondary InventoryView (e.g. crafting panel) that receives
