@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using TMPro;
 
 public class AuthenticateLoginView : MonoBehaviour
 {
@@ -12,7 +13,7 @@ public class AuthenticateLoginView : MonoBehaviour
     [SerializeField] private Button loginButton;
 
     [Header("Feedback")]
-    [SerializeField] private Text errorText;
+    [SerializeField] private TextMeshProUGUI errorText;
 
     [Header("Navigation")]
     [SerializeField] private string successScene = "";
