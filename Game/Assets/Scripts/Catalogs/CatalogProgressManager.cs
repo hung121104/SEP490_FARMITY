@@ -23,11 +23,15 @@ public static class CatalogProgressManager
     /// <summary>Fired when all catalogs are ready.</summary>
     public static event Action OnCatalogCompleted;
 
+    /// <summary>Fired when a catalog fails after all retries. Argument is the catalog name.</summary>
+    public static event Action<string> OnCatalogFailed;
+
     // ── State ────────────────────────────────────────────────────────────────
 
     private static float _aggregateProgress = 0f;
     private static int _activeCatalogs = 0;
     private static bool _isLoading = false;
+    private static int _failedCatalogs = 0;
 
     // Weights for each catalog (adjust based on their importance/size)
     private static readonly System.Collections.Generic.Dictionary<string, float> CATALOG_WEIGHTS =
@@ -74,6 +78,7 @@ public static class CatalogProgressManager
         {
             _isLoading = true;
             _activeCatalogs = 0;
+            _failedCatalogs = 0;
             CATALOG_PROGRESS.Clear();
             OnCatalogStarted?.Invoke();
         }
@@ -94,6 +99,23 @@ public static class CatalogProgressManager
             OnCatalogCompleted?.Invoke();
         }
     }
+
+    /// <summary>Signal that a catalog has permanently failed (after all retries).</summary>
+    public static void NotifyFailed(string catalogName)
+    {
+        _failedCatalogs++;
+        _activeCatalogs--;
+        Debug.LogError($"[CatalogProgressManager] Catalog '{catalogName}' failed permanently.");
+        OnCatalogFailed?.Invoke(catalogName);
+
+        if (_activeCatalogs <= 0 && _failedCatalogs > 0)
+        {
+            _isLoading = false;
+        }
+    }
+
+    /// <summary>True when at least one catalog failed after exhausting retries.</summary>
+    public static bool HasFailures => _failedCatalogs > 0;
 
     // ── Private Helpers ──────────────────────────────────────────────────────
 

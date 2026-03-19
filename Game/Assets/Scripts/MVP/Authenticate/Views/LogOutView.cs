@@ -17,6 +17,8 @@ public class LogOutView : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsConnected)
         {
             Debug.Log("[LogOutView] Disconnecting from Photon...");
+            // Re-enable message queue so the disconnect completes and OnDisconnected fires.
+            PhotonNetwork.IsMessageQueueRunning = true;
             PhotonNetwork.Disconnect();
             return;
         }
