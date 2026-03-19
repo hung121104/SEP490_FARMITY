@@ -13,7 +13,12 @@ public class LoadWorld : MonoBehaviourPunCallbacks
 
         PhotonNetwork.PhotonServerSettings.AppSettings.FixedRegion = "hk";
 
-        if (PhotonNetwork.IsConnectedAndReady ||
+        if (PhotonNetwork.InLobby)
+        {
+            // Already in a lobby — go directly to room joining.
+            OnJoinedLobby();
+        }
+        else if (PhotonNetwork.IsConnectedAndReady ||
             PhotonNetwork.NetworkClientState == Photon.Realtime.ClientState.ConnectedToMasterServer)
         {
             // Already connected after leaving a room — jump straight to lobby.
@@ -23,13 +28,24 @@ public class LoadWorld : MonoBehaviourPunCallbacks
         else if (!PhotonNetwork.IsConnected)
         {
             // Fresh connection — safe to set AuthValues now.
-            if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
-            {
-                PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
-            }
-            PhotonNetwork.ConnectUsingSettings();
+            ConnectWithAuth();
         }
-        // else: still connecting — OnConnectedToMaster will fire automatically
+        // else: still transitioning (e.g. Disconnecting) — OnDisconnected will fire and reconnect.
+    }
+
+    public override void OnDisconnected(Photon.Realtime.DisconnectCause cause)
+    {
+        Debug.Log($"[LoadWorld] OnDisconnected: {cause}. Reconnecting...");
+        ConnectWithAuth();
+    }
+
+    private void ConnectWithAuth()
+    {
+        if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
+        {
+            PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
+        }
+        PhotonNetwork.ConnectUsingSettings();
     }
 
     public override void OnConnectedToMaster()

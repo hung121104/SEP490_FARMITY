@@ -85,6 +85,18 @@ public class PlantCatalogService : MonoBehaviour
 
     // ── Loading ───────────────────────────────────────────────────────────────
 
+    private const int MAX_RETRIES = 3;
+    private const float RETRY_DELAY = 2f;
+
+    public void Retry()
+    {
+        if (!IsReady)
+        {
+            CatalogProgressManager.NotifyStarted();
+            StartCoroutine(FetchCatalog());
+        }
+    }
+
     private IEnumerator FetchCatalog()
     {
         IsReady = false;
@@ -93,26 +105,41 @@ public class PlantCatalogService : MonoBehaviour
 
         string url = $"{AppConfig.ApiBaseUrl}/game-data/plants/catalog";
 
-        using var request = UnityWebRequest.Get(url);
-        request.timeout = 15;
-        yield return request.SendWebRequest();
+        PlantCatalogResponse response = null;
 
-        if (request.result != UnityWebRequest.Result.Success)
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++)
         {
-            Debug.LogError(
-                $"[PlantCatalogService] Failed to fetch catalog from {url}: {request.error}");
-            yield break;
+            using var request = UnityWebRequest.Get(url);
+            request.timeout = 15;
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning(
+                    $"[PlantCatalogService] Attempt {attempt}/{MAX_RETRIES} failed: {request.error}");
+                if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
+                continue;
+            }
+
+            bool parseOk = false;
+            try
+            {
+                response = JsonConvert.DeserializeObject<PlantCatalogResponse>(
+                    request.downloadHandler.text);
+                parseOk = true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[PlantCatalogService] JSON parse error (attempt {attempt}): {ex.Message}");
+            }
+            if (parseOk) break;
+            if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
         }
 
-        PlantCatalogResponse response;
-        try
+        if (response == null)
         {
-            response = JsonConvert.DeserializeObject<PlantCatalogResponse>(
-                request.downloadHandler.text);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[PlantCatalogService] JSON parse error: {ex.Message}");
+            Debug.LogError($"[PlantCatalogService] All {MAX_RETRIES} attempts failed for {url}");
+            CatalogProgressManager.NotifyFailed("Plant Catalog");
             yield break;
         }
 

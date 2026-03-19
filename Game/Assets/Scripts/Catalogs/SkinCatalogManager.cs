@@ -121,24 +121,52 @@ public class SkinCatalogManager : MonoBehaviour
 
     // ── Private: Network ──────────────────────────────────────────────────────
 
+    private const int MAX_RETRIES = 3;
+    private const float RETRY_DELAY = 2f;
+
+    public void Retry()
+    {
+        if (!_isReady)
+        {
+            CatalogProgressManager.NotifyStarted();
+            StartCoroutine(FetchCatalog());
+        }
+    }
+
     private IEnumerator FetchCatalog()
     {
         string url = $"{AppConfig.ApiBaseUrl}/game-data/skin-configs";
 
-        using var request = UnityWebRequest.Get(url);
-        request.timeout = 15;
-        yield return request.SendWebRequest();
+        SkinConfigEntry[] entries = null;
 
-        if (request.result != UnityWebRequest.Result.Success)
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++)
         {
-            Debug.LogError(
-                $"[SkinCatalogManager] Failed to fetch catalog from {url}: " +
-                $"{request.error}");
+            using var request = UnityWebRequest.Get(url);
+            request.timeout = 15;
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning(
+                    $"[SkinCatalogManager] Attempt {attempt}/{MAX_RETRIES} failed: {request.error}");
+                if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
+                continue;
+            }
+
+            entries = ParseCatalogJson(request.downloadHandler.text);
+            if (entries != null) break;
+            Debug.LogWarning($"[SkinCatalogManager] Parse failed (attempt {attempt}).");
+            if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
+        }
+
+        if (entries == null)
+        {
+            Debug.LogError($"[SkinCatalogManager] All {MAX_RETRIES} attempts failed for {url}");
+            CatalogProgressManager.NotifyFailed("Skin Catalog");
             yield break;
         }
 
-        SkinConfigEntry[] entries = ParseCatalogJson(request.downloadHandler.text);
-        if (entries == null || entries.Length == 0)
+        if (entries.Length == 0)
         {
             Debug.LogWarning("[SkinCatalogManager] Catalog returned 0 entries.");
             MarkReady();

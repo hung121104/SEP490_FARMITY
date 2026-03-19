@@ -5,10 +5,17 @@ using UnityEngine.UI;
 public class BookMenuController : MonoBehaviour
 {
     [Header("Book GameObject")]
-    [SerializeField] private GameObject book;
+    [SerializeField] private CanvasGroup book;
     [SerializeField] private Animator animator;
     [SerializeField] private Transform targetPosition;
     [SerializeField] private Image bookImage;
+    [SerializeField] private bool hideBookOnStart = true;
+    [SerializeField] private bool onStartAnimation = true;
+
+    [Header("Animation Selection")]
+    [SerializeField] private BookAnimation onStartAnimationTrigger = BookAnimation.TurnLToR;
+    [SerializeField] private BookAnimation onShowBookAnimationTrigger = BookAnimation.TurnLToR;
+    [SerializeField] private BookAnimation onTransitionInAnimationTrigger = BookAnimation.TurnRToL;
 
     [Header("Movement")]
     [SerializeField] private float moveDuration = 0.7f;
@@ -18,9 +25,6 @@ public class BookMenuController : MonoBehaviour
     [Header("Scale")]
     [SerializeField] private float scaleDuration = 0.5f;
     [SerializeField] private float scaleTarget =15;
-
-    [Header("On start animation")]
-    [SerializeField] private string onStartAnimationName = "turnRToL";
 
     [Header("Buttons")]
     [SerializeField] private Button openBookBtn;
@@ -34,20 +38,27 @@ public class BookMenuController : MonoBehaviour
 
     private void Awake()
     {
-        PlayOnstartAnimation(onStartAnimationName);
         BindButtons();
+
+        if (book == null)
+        {
+            Debug.LogWarning("[BookMenu] 'book' CanvasGroup is not assigned on BookMenuController. Please assign it in the Inspector.");
+        }
+
+        if (hideBookOnStart)
+        {
+            if (book != null) book.Hide();
+            bookImage.enabled = false;
+        }
+
+        if (onStartAnimation)
+            PlayAnimation(onStartAnimationTrigger);
 
         if (panelController != null)
         {
-            panelController.OnPanelOpened += () => 
+            panelController.OnPanelOpened += (panelAnimation) => 
             {
-                animator.ResetTrigger(BookAnimations.TurnRToL);
-                animator.SetTrigger(BookAnimations.TurnRToL);
-            };
-            panelController.OnShowTitle   += () =>
-            {
-                animator.ResetTrigger(BookAnimations.TurnRToL);
-                animator.SetTrigger(BookAnimations.TurnLToR);
+                PlayAnimation(panelAnimation, resetAllTriggers: true);
             };
         }
     }
@@ -61,8 +72,14 @@ public class BookMenuController : MonoBehaviour
     [ContextMenu("show book")]
     public void ShowBook()
     {
-        book.SetActive(!book.activeInHierarchy);
-        PlayOnstartAnimation(onStartAnimationName);
+        if (book == null)
+        {
+            Debug.LogWarning("[BookMenu] ShowBook called but 'book' reference is missing. Reassign the CanvasGroup in the Inspector.");
+            return;
+        }
+
+        book.Show();
+        PlayAnimation(onShowBookAnimationTrigger);
         if (_movingCoroutine != null) StopCoroutine(_movingCoroutine);
         _movingCoroutine = StartCoroutine(MoveBook());
     }
@@ -75,6 +92,12 @@ public class BookMenuController : MonoBehaviour
 
     private IEnumerator TranstionInRoutine()
     {
+        if (book == null)
+        {
+            Debug.LogWarning("[BookMenu] TranstionIn aborted: 'book' reference missing.");
+            yield break;
+        }
+
         ScalingBook(scaleTarget);
         yield return _scalingCoroutine;
        
@@ -82,7 +105,11 @@ public class BookMenuController : MonoBehaviour
         _movingCoroutine = StartCoroutine(MoveBook());
         yield return _movingCoroutine;
         bookImage.enabled = false;
-        animator.SetTrigger(BookAnimations.TurnRToL);
+        panelController.HideAllPanels();
+        PlayAnimation(onTransitionInAnimationTrigger, resetAllTriggers: true);
+        yield return new WaitForSeconds(0.75f);
+        UnityEngine.SceneManagement.SceneManager.LoadScene("AuthScene");
+
     }
     IEnumerator MoveBook()
     {
@@ -91,6 +118,12 @@ public class BookMenuController : MonoBehaviour
         bookImage.enabled = true;
         yield return new WaitForSeconds(delay * 0.3f);
         //scale down book
+        if (book == null)
+        {
+            Debug.LogWarning("[BookMenu] MoveBook aborted: 'book' reference missing.");
+            yield break;
+        }
+
         ScalingBook(scaleTarget);
         Debug.Log("[BookMenu] finished delay");
         Debug.Log("[BookMenu] preparing to move book");
@@ -102,16 +135,37 @@ public class BookMenuController : MonoBehaviour
         }
 
         Vector3 moveTarget = targetPosition.position;
-        Vector3 startPos = book.transform.position;
+        Vector3 startPos;
+        try
+        {
+            startPos = book.transform.position;
+        }
+        catch (MissingReferenceException ex)
+        {
+            Debug.LogWarning($"[BookMenu] MoveBook aborted: 'book' reference became invalid when reading transform. book==null? {book == null}. Exception: {ex.Message}");
+            if (!System.Object.ReferenceEquals(book, null))
+            {
+                try { Debug.Log($"[BookMenu] book.gameObject: {book.gameObject.name}, activeInHierarchy: {book.gameObject.activeInHierarchy}"); } catch { Debug.LogWarning("[BookMenu] Could not access book.gameObject"); }
+            }
+            yield break;
+        }
         float elapsed = 0f;
 
-        // Move over a fixed duration using Lerp, stepped at 32fps
-        const float frameInterval = 1f / 32f;
+        // Move over a fixed duration using Lerp, stepped at 24fps
+        const float frameInterval = 1f / 24f;
         while (elapsed < moveDuration)
         {
             elapsed += frameInterval;
             float t = Mathf.Clamp01(elapsed / moveDuration);
-            book.transform.position = Vector3.Lerp(startPos, moveTarget, t);
+            try
+            {
+                book.transform.position = Vector3.Lerp(startPos, moveTarget, t);
+            }
+            catch (MissingReferenceException ex)
+            {
+                Debug.LogWarning($"[BookMenu] Aborting MoveBook: 'book' became invalid during move. Exception: {ex.Message}");
+                yield break;
+            }
             yield return new WaitForSeconds(frameInterval);
         }
 
@@ -136,11 +190,30 @@ public class BookMenuController : MonoBehaviour
     private IEnumerator Scaling(float targetScale)
     {
         yield return new WaitForSeconds(delay * .3f);
-        Vector3 startScale = book.transform.localScale;
+        if (book == null)
+        {
+            Debug.LogWarning("[BookMenu] Scaling aborted: 'book' reference missing.");
+            yield break;
+        }
+
+        Vector3 startScale;
+        try
+        {
+            startScale = book.transform.localScale;
+        }
+        catch (MissingReferenceException ex)
+        {
+            Debug.LogWarning($"[BookMenu] Scaling aborted: 'book' reference became invalid when reading transform. book==null? {book == null}. Exception: {ex.Message}");
+            if (!System.Object.ReferenceEquals(book, null))
+            {
+                try { Debug.Log($"[BookMenu] book.gameObject: {book.gameObject.name}, activeInHierarchy: {book.gameObject.activeInHierarchy}"); } catch { Debug.LogWarning("[BookMenu] Could not access book.gameObject"); }
+            }
+            yield break;
+        }
         Vector3 endScale = new Vector3(targetScale, targetScale, targetScale);
         float elapsed = 0f;
 
-        const float frameInterval = 1f / 32f;
+        const float frameInterval = 1f / 24f;
         while (elapsed < scaleDuration)
         {
             elapsed += frameInterval;
@@ -153,8 +226,20 @@ public class BookMenuController : MonoBehaviour
         Debug.Log($"[BookMenu] scaling complete → {targetScale}");
         _scalingCoroutine = null;
     }
-    private void PlayOnstartAnimation(string animation)
+    private void PlayAnimation(BookAnimation animation, bool resetAllTriggers = false)
     {
-        animator.SetTrigger(animation);
+        if (animator == null) return;
+
+        if (resetAllTriggers)
+            ResetAllAnimationTriggers();
+
+        animator.SetTrigger(animation.ToTriggerName());
+    }
+
+    private void ResetAllAnimationTriggers()
+    {
+        animator.ResetTrigger(BookAnimations.TurnRToL);
+        animator.ResetTrigger(BookAnimations.TurnLToR);
+        animator.ResetTrigger(BookAnimations.ResetState);
     }
 }
