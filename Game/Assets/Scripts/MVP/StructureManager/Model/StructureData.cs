@@ -31,7 +31,7 @@ public class StructureData
 
     // ── Slot count mapping (single source of truth) ──────────────────────
     /// <summary>
-    /// Level 1 = 18, Level 2 = 27, Level 3 = 36 (mỗi level +9 slots, bắt đầu từ 18)
+    /// Level 1 = 18, Level 2 = 27, Level 3 = 36 
     /// </summary>
     public static int SlotsForLevel(int level) => level switch
     {

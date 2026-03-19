@@ -573,9 +573,9 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                         foreach (var col in structObj.GetComponentsInChildren<Collider2D>())
                             col.enabled = true;
 
-                        var chestStructure = structObj.GetComponent<ChestStructure>();
-                        if (chestStructure != null)
-                            chestStructure.Initialize(new ChestData(tile.WorldX, tile.WorldY, structData.StructureLevel));
+                        var worldStructure = structObj.GetComponentInChildren<IWorldStructure>(true);
+                        if (worldStructure != null)
+                            worldStructure.InitializeFromWorld(tile.WorldX, tile.WorldY, structData);
 
                         if (!chunkStructureVisuals.ContainsKey(chunkPos))
                             chunkStructureVisuals[chunkPos] = new List<(string, GameObject)>();

@@ -9,7 +9,7 @@ using UnityEngine.InputSystem;
 /// Auto-closes when the player genuinely leaves the trigger zone.
 /// Subscribes to ChestSyncManager open/close notifications for badge display.
 /// </summary>
-public class ChestStructure : MonoBehaviour, IInteractable
+public class ChestStructure : MonoBehaviour, IInteractable, IWorldStructure
 {
     [Header("Debug")]
     [SerializeField] private bool showDebugLogs = false;
@@ -282,6 +282,17 @@ public class ChestStructure : MonoBehaviour, IInteractable
             chestGameView.CloseChest();
     }
 
+    // ── IWorldStructure ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by ChunkLoadingManager after spawn. Builds ChestData from world info.
+    /// </summary>
+    public void InitializeFromWorld(int worldX, int worldY, StructureData structureData)
+    {
+        chestData = new ChestData(worldX, worldY, structureData.StructureLevel);
+    }
+
+    /// <summary>Direct init — used by tests or code that already has a ChestData.</summary>
     public void Initialize(ChestData data)
     {
         chestData = data;

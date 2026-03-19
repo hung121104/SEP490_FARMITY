@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 /// Listens for the Interact action (E key) to toggle the Crafting UI.
 /// Auto-closes when the player genuinely leaves the trigger zone.
 /// </summary>
-public class CraftingTableStructure : MonoBehaviour, IInteractable
+public class CraftingTableStructure : MonoBehaviour, IInteractable, IWorldStructure
 {
 
     [Header("Debug")]
@@ -264,5 +264,17 @@ public class CraftingTableStructure : MonoBehaviour, IInteractable
     public void SetBeingPooled()
     {
         _isBeingPooled = true;
+    }
+
+    // ── IWorldStructure ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by ChunkLoadingManager after spawn.
+    /// Stores world position and level for future use (e.g., tiered crafting recipes).
+    /// </summary>
+    public void InitializeFromWorld(int worldX, int worldY, StructureData structureData)
+    {
+        // Reserved for future use — e.g., filter recipes by table level
+        // craftingLevel = structureData.StructureLevel;
     }
 }
