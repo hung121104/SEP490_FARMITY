@@ -2998,7 +2998,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3069411f74f1cd498511ef4557dbd38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  npcShopType: 0
+  npcShopTypes: 01000000020000000e00000003000000
 --- !u!70 &138164245
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -90438,6 +90438,7 @@ MonoBehaviour:
   - pumpkin_seed
   - strawberry_seed
   - item_wooden_crafting_table
+  - iron_fishing
   quantityPerItem: 1
   qualityOverride: 0
   addItemKey: 116
