@@ -19,6 +19,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
     [SerializeField] private string mainMenuSceneName = "MainMenuScene";
 
     [Header("Password Prompt (optional)")]
+    [SerializeField] private CanvasGroup passwordPanelCanvasGroup;
     [SerializeField] private GameObject passwordPanel;
     [SerializeField] private TMP_InputField passwordInput;
     [SerializeField] private Button passwordConfirmButton;
@@ -26,6 +27,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
     [SerializeField] private TextMeshProUGUI passwordPromptText;
 
     [Header("Join Denied Panel (optional)")]
+    [SerializeField] private CanvasGroup joinDeniedPanelCanvasGroup;
     [SerializeField] private GameObject joinDeniedPanel;
     [SerializeField] private TextMeshProUGUI joinDeniedText;
     [SerializeField] private Button joinDeniedOkButton;
@@ -67,20 +69,14 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
             passwordCancelButton.onClick.AddListener(ClosePasswordPanel);
         }
 
-        if (passwordPanel != null)
-        {
-            passwordPanel.SetActive(false);
-        }
+        HidePasswordPanelVisual();
 
         if (joinDeniedOkButton != null)
         {
             joinDeniedOkButton.onClick.AddListener(HideJoinDeniedPanel);
         }
 
-        if (joinDeniedPanel != null)
-        {
-            joinDeniedPanel.SetActive(false);
-        }
+        HideJoinDeniedPanelVisual();
     }
 
     private void OnDestroy()
@@ -447,7 +443,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
             passwordPromptText.text = "Enter password for: " + displayName;
         }
 
-        passwordPanel.SetActive(true);
+        ShowPasswordPanelVisual();
     }
 
     public void ClosePasswordPanel()
@@ -457,8 +453,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         if (passwordInput != null)
             passwordInput.text = string.Empty;
 
-        if (passwordPanel != null)
-            passwordPanel.SetActive(false);
+        HidePasswordPanelVisual();
     }
 
     private void ShowJoinDeniedMessage(string message)
@@ -466,14 +461,12 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         if (joinDeniedText != null)
             joinDeniedText.text = message;
 
-        if (joinDeniedPanel != null)
-            joinDeniedPanel.SetActive(true);
+        ShowJoinDeniedPanelVisual();
     }
 
     private void HideJoinDeniedPanel()
     {
-        if (joinDeniedPanel != null)
-            joinDeniedPanel.SetActive(false);
+        HideJoinDeniedPanelVisual();
     }
 
     private void JoinRoomByName(string roomName)
@@ -497,6 +490,42 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
     private void UpdateStatus(string message)
     {
         if (statusText != null) statusText.text = message;
+    }
+
+    private void ShowPasswordPanelVisual()
+    {
+        if (passwordPanelCanvasGroup != null)
+            passwordPanelCanvasGroup.Show();
+
+        if (passwordPanel != null)
+            passwordPanel.SetActive(true);
+    }
+
+    private void HidePasswordPanelVisual()
+    {
+        if (passwordPanelCanvasGroup != null)
+            passwordPanelCanvasGroup.Hide();
+
+        if (passwordPanelCanvasGroup == null && passwordPanel != null)
+            passwordPanel.SetActive(false);
+    }
+
+    private void ShowJoinDeniedPanelVisual()
+    {
+        if (joinDeniedPanelCanvasGroup != null)
+            joinDeniedPanelCanvasGroup.Show();
+
+        if (joinDeniedPanel != null)
+            joinDeniedPanel.SetActive(true);
+    }
+
+    private void HideJoinDeniedPanelVisual()
+    {
+        if (joinDeniedPanelCanvasGroup != null)
+            joinDeniedPanelCanvasGroup.Hide();
+
+        if (joinDeniedPanelCanvasGroup == null && joinDeniedPanel != null)
+            joinDeniedPanel.SetActive(false);
     }
 
     #endregion

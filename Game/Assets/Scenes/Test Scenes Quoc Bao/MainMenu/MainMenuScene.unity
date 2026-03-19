@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 31478508}
   - component: {fileID: 31478510}
   - component: {fileID: 31478509}
+  - component: {fileID: 31478511}
   m_Layer: 5
   m_Name: 'PasswordJoinPanel '
   m_TagString: Untagged
@@ -198,6 +199,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 31478507}
   m_CullTransparentMesh: 1
+--- !u!225 &31478511
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 31478507}
+  m_Enabled: 1
+  m_Alpha: 0
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &54109564 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2034561549067281556, guid: 6fef231ca2725a74da5c1d76a083f090, type: 3}
@@ -2780,11 +2793,13 @@ MonoBehaviour:
   backButton: {fileID: 0}
   autoConnectOnStart: 1
   mainMenuSceneName: MainMenuScene
+  passwordPanelCanvasGroup: {fileID: 31478511}
   passwordPanel: {fileID: 31478507}
   passwordInput: {fileID: 349850817}
   passwordConfirmButton: {fileID: 1054144161}
   passwordCancelButton: {fileID: 1610842563}
   passwordPromptText: {fileID: 999151699}
+  joinDeniedPanelCanvasGroup: {fileID: 1910768976}
   joinDeniedPanel: {fileID: 1910768972}
   joinDeniedText: {fileID: 239427522}
   joinDeniedOkButton: {fileID: 1564539141}
@@ -4762,6 +4777,7 @@ GameObject:
   - component: {fileID: 1910768973}
   - component: {fileID: 1910768975}
   - component: {fileID: 1910768974}
+  - component: {fileID: 1910768976}
   m_Layer: 5
   m_Name: 'JoinDeniedPanel '
   m_TagString: Untagged
@@ -4828,6 +4844,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1910768972}
   m_CullTransparentMesh: 1
+--- !u!225 &1910768976
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1910768972}
+  m_Enabled: 1
+  m_Alpha: 0
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!224 &1982571827 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 3120943773472400013, guid: 7fae4a89bce348e419d15301306fb794, type: 3}

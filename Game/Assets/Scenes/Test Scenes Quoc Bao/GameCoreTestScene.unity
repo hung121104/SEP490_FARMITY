@@ -7517,7 +7517,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 16b6ef10d3c611f4da96d3d49ba9bdac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  uiCanvasGroup: {fileID: 0}
+  uiCanvasGroup: {fileID: 1174345271}
 --- !u!114 &395329300
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9848,6 +9848,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   optionPanel: {fileID: 1174345267}
+  optionPanelCanvasGroup: {fileID: 1174345271}
   inRoomContainer: {fileID: 582828810}
   playersItemPrefab: {fileID: 5406242243863580315, guid: d684226fea4c05d4181b09e9f1595ae0, type: 3}
   blacklistedContainer: {fileID: 575306582}
@@ -41060,6 +41061,7 @@ GameObject:
   - component: {fileID: 1174345268}
   - component: {fileID: 1174345270}
   - component: {fileID: 1174345269}
+  - component: {fileID: 1174345271}
   m_Layer: 5
   m_Name: WorldOptionPanel
   m_TagString: Untagged
@@ -41128,6 +41130,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1174345267}
   m_CullTransparentMesh: 1
+--- !u!225 &1174345271
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1174345267}
+  m_Enabled: 1
+  m_Alpha: 0
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &1182571663
 GameObject:
   m_ObjectHideFlags: 0
@@ -41411,6 +41425,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   optionPanel: {fileID: 1174345267}
+  optionPanelCanvasGroup: {fileID: 1174345271}
   openPanelButton: {fileID: 395329300}
   closePanelButton: {fileID: 857666633}
   publicStateButton: {fileID: 986207014}

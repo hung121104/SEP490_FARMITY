@@ -2,11 +2,13 @@ using ExitGames.Client.Photon;
 using Photon.Pun;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class WorldPublishController : MonoBehaviourPunCallbacks
 {
     [Header("Option Panel")]
+    [SerializeField] private CanvasGroup optionPanelCanvasGroup;
     [SerializeField] private GameObject optionPanel;
     [SerializeField] private Button openPanelButton;
     [SerializeField] private Button closePanelButton;
@@ -28,6 +30,14 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
     private bool hasBaseline;
     private bool publicButtonState;
     private bool passwordButtonState;
+    private InputAction escapeCloseAction;
+    private Coroutine reenableToggleRoutine;
+
+    private void Awake()
+    {
+        escapeCloseAction = new InputAction("CloseWorldOptionPanel", InputActionType.Button, "<Keyboard>/escape");
+        escapeCloseAction.performed += OnEscapeClosePanel;
+    }
 
     private void Start()
     {
@@ -49,10 +59,25 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
         if (passwordInput != null)
             passwordInput.onValueChanged.AddListener(OnPasswordInputChanged);
 
-        if (optionPanel != null)
-            optionPanel.SetActive(false);
+        HideOptionPanelVisual();
 
         RefreshFromRoom();
+    }
+
+    private void OnEnable()
+    {
+        escapeCloseAction?.Enable();
+    }
+
+    private void OnDisable()
+    {
+        escapeCloseAction?.Disable();
+
+        if (reenableToggleRoutine != null)
+        {
+            StopCoroutine(reenableToggleRoutine);
+            reenableToggleRoutine = null;
+        }
     }
 
     private void OnDestroy()
@@ -74,6 +99,13 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
         if (passwordInput != null)
             passwordInput.onValueChanged.RemoveListener(OnPasswordInputChanged);
+
+        if (escapeCloseAction != null)
+        {
+            escapeCloseAction.performed -= OnEscapeClosePanel;
+            escapeCloseAction.Dispose();
+            escapeCloseAction = null;
+        }
     }
 
     public override void OnJoinedRoom()
@@ -87,7 +119,7 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
             return;
 
         // Keep the user's in-progress edits while the panel is open
-        if (optionPanel != null && optionPanel.activeSelf && hasLocalUnsavedChanges)
+        if (IsOptionPanelVisible() && hasLocalUnsavedChanges)
             return;
 
         RefreshFromRoom();
@@ -95,8 +127,8 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
     public void OpenPanel()
     {
-        if (optionPanel != null)
-            optionPanel.SetActive(true);
+        ShowOptionPanelVisual();
+        ToggleInGameSettingMenu.SetGlobalAllowToggleState(false);
 
         hasLocalUnsavedChanges = false;
         RefreshFromRoom();
@@ -104,8 +136,12 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
     public void ClosePanel()
     {
-        if (optionPanel != null)
-            optionPanel.SetActive(false);
+        HideOptionPanelVisual();
+
+        if (reenableToggleRoutine != null)
+            StopCoroutine(reenableToggleRoutine);
+
+        reenableToggleRoutine = StartCoroutine(ReenableToggleNextFrame());
 
         hasLocalUnsavedChanges = false;
         UpdateApplyButtonState();
@@ -338,8 +374,49 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
             return;
 
         bool canEdit = CanEditPublishState();
-        bool panelOpen = optionPanel == null || optionPanel.activeSelf;
+        bool panelOpen = (optionPanelCanvasGroup == null && optionPanel == null) || IsOptionPanelVisible();
         applyButton.interactable = panelOpen && canEdit && hasLocalUnsavedChanges;
+    }
+
+    private void OnEscapeClosePanel(InputAction.CallbackContext _)
+    {
+        if (!IsOptionPanelVisible())
+            return;
+
+        ClosePanel();
+    }
+
+    private bool IsOptionPanelVisible()
+    {
+        if (optionPanelCanvasGroup != null)
+            return optionPanelCanvasGroup.alpha > 0f;
+
+        return optionPanel != null && optionPanel.activeSelf;
+    }
+
+    private void ShowOptionPanelVisual()
+    {
+        if (optionPanelCanvasGroup != null)
+            optionPanelCanvasGroup.Show();
+
+        if (optionPanel != null)
+            optionPanel.SetActive(true);
+    }
+
+    private void HideOptionPanelVisual()
+    {
+        if (optionPanelCanvasGroup != null)
+            optionPanelCanvasGroup.Hide();
+
+        if (optionPanelCanvasGroup == null && optionPanel != null)
+            optionPanel.SetActive(false);
+    }
+
+    private System.Collections.IEnumerator ReenableToggleNextFrame()
+    {
+        yield return null;
+        ToggleInGameSettingMenu.SetGlobalAllowToggleState(true);
+        reenableToggleRoutine = null;
     }
 
     private void GetCurrentUiState(out bool isPublic, out bool hasPassword, out string passwordHash)

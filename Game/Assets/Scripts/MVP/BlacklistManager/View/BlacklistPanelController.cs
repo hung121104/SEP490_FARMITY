@@ -12,6 +12,7 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
     private const byte ForceLeaveEventCode = 207;
 
     [Header("Panel")]
+    [SerializeField] private CanvasGroup optionPanelCanvasGroup;
     [SerializeField] private GameObject optionPanel;
 
     [Header("In Room List")]
@@ -51,7 +52,7 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
 
     private void Update()
     {
-        bool panelOpen = optionPanel != null && optionPanel.activeSelf;
+        bool panelOpen = IsOptionPanelVisible();
         if (panelOpen && !wasPanelOpen)
         {
             _ = RefreshAllAsync();
@@ -504,5 +505,13 @@ public class BlacklistPanelController : MonoBehaviourPunCallbacks, IOnEventCallb
             statusText.text = message;
 
         Debug.Log("[BlacklistPanelController] " + message);
+    }
+
+    private bool IsOptionPanelVisible()
+    {
+        if (optionPanelCanvasGroup != null)
+            return optionPanelCanvasGroup.alpha > 0f;
+
+        return optionPanel != null && optionPanel.activeSelf;
     }
 }
