@@ -8759,7 +8759,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 542.5, y: -0.00024414062}
-  m_SizeDelta: {x: 1085, y: 240}
+  m_SizeDelta: {x: 1085, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &461695871
 MonoBehaviour:
@@ -9847,8 +9847,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fc85c40427dd9b346b3289ff75e061d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  optionPanel: {fileID: 1174345267}
   optionPanelCanvasGroup: {fileID: 1174345271}
+  optionPanel: {fileID: 1174345267}
   inRoomContainer: {fileID: 582828810}
   playersItemPrefab: {fileID: 5406242243863580315, guid: d684226fea4c05d4181b09e9f1595ae0, type: 3}
   blacklistedContainer: {fileID: 575306582}
@@ -38013,6 +38013,7 @@ MonoBehaviour:
   panelView: {fileID: 1705294893}
   unlockPopupView: {fileID: 956419519}
   fetchDelay: 1
+  catalogWaitTimeout: 10
 --- !u!4 &1066074634
 Transform:
   m_ObjectHideFlags: 0
@@ -41424,8 +41425,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 22abd0f5678c0604db08d4b45463f9b3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  optionPanel: {fileID: 1174345267}
   optionPanelCanvasGroup: {fileID: 1174345271}
+  optionPanel: {fileID: 1174345267}
   openPanelButton: {fileID: 395329300}
   closePanelButton: {fileID: 857666633}
   publicStateButton: {fileID: 986207014}
@@ -91227,10 +91228,10 @@ RectTransform:
   - {fileID: 1949063312}
   m_Father: {fileID: 461695870}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 542.5, y: -120}
-  m_SizeDelta: {x: 1085, y: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1623507622
 MonoBehaviour:
@@ -95718,7 +95719,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1877143860
 RectTransform:
   m_ObjectHideFlags: 0

@@ -41,8 +41,9 @@ public static class CatalogProgressManager
             { "Plant Catalog", 0.25f },
             { "Recipe Catalog", 0.15f },
             { "Material Catalog", 0.2f },
-            { "Resource Catalog", 0.1f },
-            { "Skin Catalog", 0.05f }
+            { "Resource Catalog", 0.08f },
+            { "Skin Catalog", 0.02f },
+            { "Achievement Catalog", 0.05f }
         };
 
     private static readonly System.Collections.Generic.Dictionary<string, float> CATALOG_PROGRESS =
