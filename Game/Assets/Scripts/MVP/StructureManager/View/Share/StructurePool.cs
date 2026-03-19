@@ -297,7 +297,7 @@ public class FifoObjectPool<T> where T : class
 /// Maintains one pool per StructureId so different structure types share nothing.
 /// Uses a FIFO pool to prevent objects swapping places.
 /// </summary>
-public class StructurePool : MonoBehaviour
+public class StructurePool : MonoBehaviour, IStructureDataProvider
 {
     [Header("Dependencies")]
     [Tooltip("Reference to StructureView - auto-found if not assigned")]
@@ -381,11 +381,40 @@ public class StructurePool : MonoBehaviour
     }
 
     /// <summary>
-    /// Look up the StructureData for a given structureId from StructureView.
+    /// IStructureDataProvider implementation.
+    /// Resolves StructureData for a given structureId using ItemCatalogService
+    /// and StructureView's prefab mapping (pure View concern).
     /// </summary>
     public StructureData GetStructureData(string structureId)
     {
-        return _structureView?.GetStructureData(structureId);
+        if (string.IsNullOrEmpty(structureId)) return null;
+
+        // Look up raw item data from catalog (no View dependency)
+        var itemData = ItemCatalogService.Instance?.GetItemData(structureId) as StructureItemData;
+        if (itemData == null) return null;
+
+        // Resolve interaction type
+        StructureInteractionType interactionType =
+            (StructureInteractionType)itemData.structureInteractionType;
+
+        // Get prefab from StructureView (View-level prefab mapping)
+        GameObject prefab = _structureView != null
+            ? _structureView.GetDefaultPrefab(interactionType)
+            : null;
+
+        if (prefab == null)
+        {
+            Debug.LogWarning($"[StructurePool] No prefab for '{structureId}'");
+            return null;
+        }
+
+        return new StructureData
+        {
+            StructureId     = itemData.itemID,
+            DisplayName     = itemData.itemName,
+            InteractionType = interactionType,
+            Prefab          = prefab
+        };
     }
 
     // ── Internal ──────────────────────────────────────────────────────────
@@ -394,17 +423,17 @@ public class StructurePool : MonoBehaviour
     {
         if (pools.ContainsKey(structureId)) return;
 
-        // Get StructureData from StructureView
-        StructureData data = _structureView?.GetStructureData(structureId);
+        // Get StructureData using our own IStructureDataProvider implementation
+        StructureData data = GetStructureData(structureId);
         
         if (data == null)
         {
-            Debug.LogError($"[StructurePool] No StructureData found for '{structureId}' from StructureView. Creating fallback pool.");
+            Debug.LogError($"[StructurePool] No StructureData found for '{structureId}'. Creating fallback pool.");
             CreateFallbackPool(structureId);
             return;
         }
 
-        // Use prefab from StructureData (resolved by StructureView)
+        // Use prefab from StructureData
         GameObject prefab = data.Prefab;
 
         if (prefab == null)

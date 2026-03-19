@@ -1,6 +1,5 @@
 using UnityEngine;
 using Photon.Pun;
-using System.Collections.Generic;
 
 /// <summary>
 /// View component for structure placement following MVP pattern.
@@ -56,13 +55,12 @@ public class StructureView : MonoBehaviourPunCallbacks
 
     // MVP
     private StructurePresenter presenter;
-    private IStructureService  structureService;
 
     // Ghost preview
     private GameObject     ghostInstance;
     private SpriteRenderer ghostRenderer;
 
-    // Active structure being placed 
+    // Active structure being placed
     private StructureData activeStructureData;
 
     // Active item from inventory
@@ -71,14 +69,20 @@ public class StructureView : MonoBehaviourPunCallbacks
     // Pool reference
     private StructurePool structurePool;
 
-    // HotbarView reference for item consumption
+    // HotbarView reference — used only in Start() to wire up the consume callback
     private HotbarView hotbarView;
 
     // Snapped grid position for the current frame
     private Vector3 currentSnappedPos;
     private bool    currentCanPlace;
 
+    /// <summary>Fired after a structure is successfully placed.</summary>
     public System.Action OnStructurePlaced;
+
+    /// <summary>
+    /// Callback to consume the active hotbar item after a successful placement.
+    /// </summary>
+    public System.Action OnConsumeActiveItem;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -95,6 +99,10 @@ public class StructureView : MonoBehaviourPunCallbacks
     {
         structurePool = FindAnyObjectByType<StructurePool>();
         hotbarView    = FindAnyObjectByType<HotbarView>();
+
+        // Wire item-consumption through a callback.
+        if (hotbarView != null)
+            OnConsumeActiveItem = () => hotbarView.GetPresenter()?.ConsumeCurrentItem(1);
     }
 
     private void OnDestroy()
@@ -118,57 +126,19 @@ public class StructureView : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Get default prefab based on structure interaction type.
+    /// Pure View concern: maps interaction types to Inspector-assigned prefab assets.
     /// </summary>
     public GameObject GetDefaultPrefab(StructureInteractionType interactionType)
     {
         return interactionType switch
         {
-            StructureInteractionType.Storage => StoragePrefab,
-            StructureInteractionType.Crafting => CraftingPrefab,
-            StructureInteractionType.Smelting => SmeltingPrefab,
-            StructureInteractionType.Fence => FencePrefab,
-            StructureInteractionType.Decoration => DecorationPrefab,          
-            _ => DecorationPrefab
+            StructureInteractionType.Storage    => StoragePrefab,
+            StructureInteractionType.Crafting   => CraftingPrefab,
+            StructureInteractionType.Smelting   => SmeltingPrefab,
+            StructureInteractionType.Fence      => FencePrefab,
+            StructureInteractionType.Decoration => DecorationPrefab,
+            _                                   => DecorationPrefab
         };
-    }
-
-    /// <summary>
-    /// Build StructureData from ItemData.
-    /// </summary>
-    public StructureData BuildStructureData(StructureItemData itemData)
-    {
-        if (itemData == null) return null;
-
-        StructureInteractionType interactionType = (StructureInteractionType)itemData.structureInteractionType;
-
-        int maxHealth = itemData.maxHealth;
-
-        // Resolve prefab
-        GameObject prefab = GetDefaultPrefab(interactionType);
-
-        if (prefab == null)
-        {
-            Debug.LogWarning($"[StructureView] No prefab for '{itemData.itemID}'");
-            return null;
-        }
- 
-        return new StructureData
-        {
-            StructureId = itemData.itemID,
-            DisplayName = itemData.itemName,
-            InteractionType = interactionType,
-            MaxHealth = maxHealth,
-            Prefab = prefab
-        };
-    }
-
-    /// <summary>
-    /// Get StructureData for an itemID.
-    /// </summary>
-    public StructureData GetStructureData(string itemID)
-    {
-        var itemData = ItemCatalogService.Instance?.GetItemData(itemID) as StructureItemData;
-        return BuildStructureData(itemData);
     }
 
     // ── Auto-activate ghost when a Structure item is selected ──────────────
@@ -180,7 +150,8 @@ public class StructureView : MonoBehaviourPunCallbacks
 
         if (currentItem != null && currentItem.itemType == ItemType.Structure)
         {
-            var data = GetStructureData(currentItem.itemID);
+            // Delegate data-building to Presenter (business logic, not View's job)
+            var data = presenter.GetStructureData(currentItem.itemID, GetDefaultPrefab);
             if (data != null)
             {
                 if (activeStructureData != null && activeStructureData.StructureId == data.StructureId)
@@ -203,7 +174,8 @@ public class StructureView : MonoBehaviourPunCallbacks
         var syncManager    = FindAnyObjectByType<ChunkDataSyncManager>();
         var loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
 
-        structureService = new StructureService(syncManager, loadingManager, showDebugLogs);
+        IStructureService structureService = new StructureService(syncManager, loadingManager, showDebugLogs);
+        presenter = new StructurePresenter(structureService, showDebugLogs);
     }
 
     // ── Public API ───────────────────────────────────────────────────────
@@ -283,7 +255,7 @@ public class StructureView : MonoBehaviourPunCallbacks
         ghostInstance.transform.position = currentSnappedPos;
         ghostInstance.SetActive(true);
 
-        currentCanPlace = structureService.CanPlaceStructure(currentSnappedPos, activeStructureData);
+        currentCanPlace = presenter.CanPlace(currentSnappedPos, activeStructureData);
         if (ghostRenderer != null)
             ghostRenderer.color = currentCanPlace ? validColor : invalidColor;
     }
@@ -296,13 +268,13 @@ public class StructureView : MonoBehaviourPunCallbacks
         if (!currentCanPlace) return;
         if (activeStructureData == null) return;
 
-        bool placed = structureService.PlaceStructure(currentSnappedPos, activeStructureData);
+        bool placed = presenter.HandlePlaceStructure(currentSnappedPos, activeStructureData);
         if (placed)
         {
             if (showDebugLogs)
                 Debug.Log($"[StructureView] Structure placed at {currentSnappedPos}");
 
-            hotbarView?.GetPresenter()?.ConsumeCurrentItem(1);
+            OnConsumeActiveItem?.Invoke();
             OnStructurePlaced?.Invoke();
         }
     }

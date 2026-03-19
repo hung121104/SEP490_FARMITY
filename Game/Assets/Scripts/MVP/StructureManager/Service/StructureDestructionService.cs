@@ -5,15 +5,21 @@ using System.Collections.Generic;
 public class StructureDestructionService : IStructureDestructionService
 {
     private readonly bool showDebugLogs;
-    private readonly StructurePool structurePool;
+    private readonly IStructureDataProvider structureDataProvider;
     private readonly ChunkDataSyncManager syncManager;
 
     // Track pending hit requests being processed (Master only)
     private readonly HashSet<Vector3Int> processingHits = new HashSet<Vector3Int>();
 
-    public StructureDestructionService(StructurePool pool, ChunkDataSyncManager syncManager, bool showDebugLogs = true)
+    /// <summary>
+    /// Static delegate for inventory operations.
+    /// Wired by View layer (Composition Root) so Service never depends on View directly.
+    /// </summary>
+    public static System.Func<string, int, Quality, bool> OnAddItemToInventory;
+
+    public StructureDestructionService(IStructureDataProvider dataProvider, ChunkDataSyncManager syncManager, bool showDebugLogs = true)
     {
-        this.structurePool = pool;
+        this.structureDataProvider = dataProvider;
         this.syncManager = syncManager;
         this.showDebugLogs = showDebugLogs;
     }
@@ -31,16 +37,15 @@ public class StructureDestructionService : IStructureDestructionService
         if (localPlayerId != lastHitPlayerId)
             return; // Not the last hitter, don't add item
 
-        // This player got the last hit, add item to inventory
-        var inventoryGameView = UnityEngine.Object.FindAnyObjectByType<InventoryGameView>();
-        if (inventoryGameView == null)
+        // Use delegate wired by View layer — Service never depends on View directly
+        if (OnAddItemToInventory == null)
         {
-            Debug.LogError($"[StructureDestructionService] InventoryGameView not found - cannot add item {structureId}");
+            Debug.LogError($"[StructureDestructionService] OnAddItemToInventory not wired - cannot add item {structureId}");
             return;
         }
 
-        bool added = inventoryGameView.AddItem(structureId, 1, Quality.Normal);
-        
+        bool added = OnAddItemToInventory.Invoke(structureId, 1, Quality.Normal);
+
         Debug.Log($"[StructureDestructionService] Added item {structureId} to inventory for last hitter {localPlayerId} - success={added}");
     }
 
@@ -124,7 +129,7 @@ public class StructureDestructionService : IStructureDestructionService
             }
 
             string structureId = structureData.StructureId;
-            StructureData so = structurePool.GetStructureData(structureId);
+            StructureData so = structureDataProvider.GetStructureData(structureId);
             if (so == null) return false;
 
             // Get current HP from chunk
@@ -225,7 +230,7 @@ public class StructureDestructionService : IStructureDestructionService
         int currentHp = chunk.GetStructureHp(pos.x, pos.y);
         if (currentHp > 0) return; // Already has HP, no need to regenerate
 
-        StructureData so = structurePool.GetStructureData(structureData.StructureId);
+        StructureData so = structureDataProvider.GetStructureData(structureData.StructureId);
         int maxHp = so?.MaxHealth ?? 3;
 
         if (showDebugLogs)
@@ -236,5 +241,17 @@ public class StructureDestructionService : IStructureDestructionService
 
         // Sync to all clients
         syncManager?.BroadcastStructureHpUpdated(pos.x, pos.y, maxHp);
+    }
+
+    // ── Query ──────────────────────────────────────────────────────────────
+
+    public bool IsStructureAlreadyDestroyed(Vector3Int pos)
+    {
+        UnifiedChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(pos);
+        if (chunk == null) return false;
+        if (!chunk.HasStructure(pos.x, pos.y)) return false;
+
+        int currentHp = chunk.GetStructureHp(pos.x, pos.y);
+        return currentHp <= 0;
     }
 }

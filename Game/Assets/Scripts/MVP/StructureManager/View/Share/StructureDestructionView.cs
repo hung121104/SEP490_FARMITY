@@ -32,12 +32,15 @@ public class StructureDestructionView : MonoBehaviour
         ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
         IStructureDestructionService destService = new StructureDestructionService(pool, syncManager, showDebugLogs);
         
-        IStructureService structService = new StructureService(syncManager, chunkLoadingManager, showDebugLogs);
-        
-        InventoryGameView invGameView = FindAnyObjectByType<InventoryGameView>();
-        IInventoryService invService = invGameView != null ? invGameView.GetInventoryService() : null;
-        
-        presenter = new StructureDestructionPresenter(this, destService, structService, invService, syncManager, showDebugLogs);
+        presenter = new StructureDestructionPresenter(this, destService, showDebugLogs);
+
+        // Wire static delegate so Service can add items to inventory
+        // without depending on InventoryGameView (View class) directly
+        StructureDestructionService.OnAddItemToInventory = (id, qty, quality) =>
+        {
+            var invView = FindAnyObjectByType<InventoryGameView>();
+            return invView != null && invView.AddItem(id, qty, quality);
+        };
 
         // Subscribe to tool events
         UseToolService.OnAxeImpactRequested += HandleToolUse;
@@ -49,6 +52,9 @@ public class StructureDestructionView : MonoBehaviour
 
     private void OnDestroy()
     {
+        // Unwire static delegate
+        StructureDestructionService.OnAddItemToInventory = null;
+
         UseToolService.OnAxeImpactRequested -= HandleToolUse;
         UseToolService.OnPickaxeImpactRequested -= HandleToolUse;
         UseToolService.OnHoeRequested -= HandleToolUse;
