@@ -94,40 +94,6 @@ public class InventoryPresenter
         }
     }
 
-    /// <summary>
-    /// Register a secondary view that receives data updates (UpdateSlot/ClearSlot)
-    /// but does NOT send input events (drag, click, etc.) to this presenter.
-    /// The secondary view manages its own input via its own InventoryPresenter-like handler.
-    /// </summary>
-    public void AddSecondaryView(IInventoryView secondaryView)
-    {
-        if (secondaryView == null || secondaryViews.Contains(secondaryView)) return;
-        secondaryViews.Add(secondaryView);
-        RefreshSecondaryView(secondaryView);
-        Debug.Log($"[InventoryPresenter] Secondary view added. Total: {secondaryViews.Count}");
-    }
-
-    /// <summary>
-    /// Unregister a secondary view.
-    /// </summary>
-    public void RemoveSecondaryView(IInventoryView secondaryView)
-    {
-        if (secondaryView == null) return;
-        secondaryViews.Remove(secondaryView);
-        Debug.Log($"[InventoryPresenter] Secondary view removed. Total: {secondaryViews.Count}");
-    }
-
-    private void RefreshSecondaryView(IInventoryView secondaryView)
-    {
-        for (int i = 0; i < model.maxSlots; i++)
-        {
-            var item = service.GetItemAtSlot(i);
-            if (item != null)
-                secondaryView.UpdateSlot(i, item);
-            else
-                secondaryView.ClearSlot(i);
-        }
-    }
     #endregion
 
     #region View Event Subscriptions
@@ -187,13 +153,11 @@ public class InventoryPresenter
     private void HandleItemAdded(ItemModel item, int slotIndex)
     {
         view?.UpdateSlot(slotIndex, item);
-        UpdateSecondarySlot(slotIndex, item);
     }
 
     private void HandleItemRemoved(ItemModel item, int slotIndex)
     {
         view?.ClearSlot(slotIndex);
-        ClearSecondarySlot(slotIndex);
 
         // If tooltip was showing for this slot, hide it
         if (currentTooltipSlot == slotIndex)
@@ -209,15 +173,12 @@ public class InventoryPresenter
 
         view?.UpdateSlot(fromSlot, fromItem);
         view?.UpdateSlot(toSlot, toItem);
-        UpdateSecondarySlot(fromSlot, fromItem);
-        UpdateSecondarySlot(toSlot, toItem);
     }
 
     private void HandleQuantityChanged(int slotIndex, int newQuantity)
     {
         var item = service.GetItemAtSlot(slotIndex);
         view?.UpdateSlot(slotIndex, item);
-        UpdateSecondarySlot(slotIndex, item);
 
         // Refresh tooltip if it's showing for this slot
         if (currentTooltipSlot == slotIndex)
@@ -575,29 +536,7 @@ public class InventoryPresenter
         {
             var item = service.GetItemAtSlot(i);
             view?.UpdateSlot(i, item);
-            UpdateSecondarySlot(i, item);
         }
-    }
-
-    #endregion
-
-    #region Secondary View Helpers
-
-    private void UpdateSecondarySlot(int slotIndex, ItemModel item)
-    {
-        for (int i = 0; i < secondaryViews.Count; i++)
-        {
-            if (item != null)
-                secondaryViews[i].UpdateSlot(slotIndex, item);
-            else
-                secondaryViews[i].ClearSlot(slotIndex);
-        }
-    }
-
-    private void ClearSecondarySlot(int slotIndex)
-    {
-        for (int i = 0; i < secondaryViews.Count; i++)
-            secondaryViews[i].ClearSlot(slotIndex);
     }
 
     #endregion
