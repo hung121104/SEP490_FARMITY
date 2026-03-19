@@ -33,8 +33,12 @@ public class ChestPresenter
     private float lastActionTime = 0f;
     private const float CooldownDuration = 1.0f;
 
+    // Safe zone for drop-to-world detection
+    private RectTransform safeZone;
+
     // Events
     public event Action OnChestClosed;
+    public event Action<ItemModel> OnItemDropped;
 
     public ChestPresenter(ChestData chestData,
                           InventoryModel chestModel,
@@ -80,6 +84,11 @@ public class ChestPresenter
     public void SetItemDetailView(ItemDetailView detailView)
     {
         itemDetailView = detailView;
+    }
+
+    public void SetSafeZone(RectTransform zone)
+    {
+        safeZone = zone;
     }
 
     #endregion
@@ -239,8 +248,44 @@ public class ChestPresenter
     private void HandleEndDrag()
     {
         ResetActionTimer();
+
+        // Check if drag ended outside both panels → drop item to world
+        if (draggedSlot != -1
+            && !IsScreenPositionInsideSafeZone(lastKnownCursorPosition)
+            && (playerView == null || !playerView.IsScreenPositionInsideInventory(lastKnownCursorPosition)))
+        {
+            if (dragFromChest)
+            {
+                HandleDropChestItemToWorld(draggedSlot);
+            }
+            // Player inventory drop-to-world is handled by InventoryPresenter
+        }
+
         chestView?.HideDragPreview();
         draggedSlot = -1;
+    }
+
+    private void HandleDropChestItemToWorld(int slotIndex)
+    {
+        var item = chestInventoryService.GetItemAtSlot(slotIndex);
+        if (item != null && !item.IsQuestItem)
+        {
+            OnItemDropped?.Invoke(item);
+            chestInventoryService.RemoveItemFromSlot(slotIndex, item.Quantity);
+            SyncChestSlot(slotIndex);
+            Debug.Log($"[ChestPresenter] Dropped chest item to world from slot {slotIndex}: {item.ItemName}");
+        }
+    }
+
+    private bool IsScreenPositionInsideSafeZone(Vector2 screenPosition)
+    {
+        if (safeZone == null || !safeZone.gameObject.activeInHierarchy)
+            return false;
+
+        Canvas canvas = safeZone.GetComponentInParent<Canvas>();
+        Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            ? canvas.worldCamera : null;
+        return RectTransformUtility.RectangleContainsScreenPoint(safeZone, screenPosition, cam);
     }
 
     #endregion

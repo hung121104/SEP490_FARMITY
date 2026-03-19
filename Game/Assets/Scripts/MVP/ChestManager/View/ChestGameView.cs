@@ -18,6 +18,8 @@ public class ChestGameView : MonoBehaviour
     [SerializeField] private ChestInventoryView chestInventoryView;
     [SerializeField] private ItemDetailView itemDetailView;
     [SerializeField] private GameObject chestMainPanel;
+    [Tooltip("UI area where dragged items won't drop to world(ChestPanel)")]
+    [SerializeField] private RectTransform chestSafeZone;
     [SerializeField] private Transform inventoryContainer;
 
     [Header("Testing")]
@@ -97,6 +99,13 @@ public class ChestGameView : MonoBehaviour
         if (itemDetailView != null)
             presenter.SetItemDetailView(itemDetailView);
 
+        // Wire safe zone for drop-to-world detection
+        if (chestSafeZone != null)
+            presenter.SetSafeZone(chestSafeZone);
+
+        // Subscribe to chest item drop-to-world event
+        presenter.OnItemDropped += HandleChestItemDropped;
+
         // Load current state from ChestDataModule (Master's authoritative data)
         LoadChestStateFromModule();
 
@@ -108,9 +117,9 @@ public class ChestGameView : MonoBehaviour
         if (chestMainPanel != null)
             chestMainPanel.SetActive(true);
 
-        // Register chest panel as safe zone so inventory doesn't drop-to-world on release
-        if (playerInventoryGameView != null && chestMainPanel != null)
-            playerInventoryGameView.SetAdditionalSafeZone(chestMainPanel.GetComponent<RectTransform>());
+        // Register safe zone so inventory doesn't drop-to-world on release
+        if (playerInventoryGameView != null && chestSafeZone != null)
+            playerInventoryGameView.SetAdditionalSafeZone(chestSafeZone);
 
         // Notify network
         if (ChestSyncManager.Instance != null)
@@ -130,8 +139,12 @@ public class ChestGameView : MonoBehaviour
         if (ChestSyncManager.Instance != null)
             ChestSyncManager.Instance.NotifyChestClosed(activeChestData.ChestId);
 
-        // Cleanup presenter
-        presenter?.Cleanup();
+        // Unsubscribe and cleanup presenter
+        if (presenter != null)
+        {
+            presenter.OnItemDropped -= HandleChestItemDropped;
+            presenter.Cleanup();
+        }
         presenter = null;
 
         // Hide chest panel
@@ -173,6 +186,24 @@ public class ChestGameView : MonoBehaviour
     private void TestCloseChestUI()
     {
         CloseChest();
+    }
+
+    #endregion
+
+    #region Drop To World
+
+    private void HandleChestItemDropped(ItemModel item)
+    {
+        Debug.Log($"[ChestGameView] Dropping chest item to world: {item.ItemName}");
+
+        if (DroppedItemManagerView.Instance != null)
+        {
+            DroppedItemManagerView.Instance.RequestDropItem(item);
+        }
+        else
+        {
+            Debug.LogError("[ChestGameView] DroppedItemManagerView.Instance is null — cannot drop item!");
+        }
     }
 
     #endregion
