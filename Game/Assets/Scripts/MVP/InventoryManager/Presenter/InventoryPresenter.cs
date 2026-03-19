@@ -311,6 +311,15 @@ public class InventoryPresenter
     private void HandleItemDelete(int slotIndex)
     {
         ResetActionTimer();
+
+        // Only handle delete if this presenter initiated the drag.
+        // If draggedSlot is -1, the drag came from another panel (e.g. chest).
+        if (draggedSlot == -1)
+        {
+            Debug.Log($"[InventoryPresenter] Ignoring delete for slot {slotIndex} — drag not from player inventory");
+            return;
+        }
+
         var item = service.GetItemAtSlot(slotIndex);
 
         if (item == null)

@@ -235,6 +235,9 @@ public class InventoryGameView : MonoBehaviour
 
     public void CloseInventory()
     {
+        if (itemDeleteView != null)
+            itemDeleteView.Hide();
+
         if (inventoryView != null)
         {
             presenter?.CancelAllActions();

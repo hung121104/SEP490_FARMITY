@@ -196,6 +196,7 @@ public class ChestPresenter
         playerView.OnSlotDrop += HandlePlayerSlotDrop;
         playerView.OnSlotHoverEnter += HandlePlayerSlotHoverEnter;
         playerView.OnSlotHoverExit += HandlePlayerSlotHoverExit;
+        playerView.OnItemDeleteRequested += HandleChestItemDelete;
     }
 
     private void UnsubscribePlayerViewEvents()
@@ -207,6 +208,7 @@ public class ChestPresenter
         playerView.OnSlotDrop -= HandlePlayerSlotDrop;
         playerView.OnSlotHoverEnter -= HandlePlayerSlotHoverEnter;
         playerView.OnSlotHoverExit -= HandlePlayerSlotHoverExit;
+        playerView.OnItemDeleteRequested -= HandleChestItemDelete;
     }
 
     private void HandlePlayerSlotBeginDrag(int slot)
@@ -342,6 +344,49 @@ public class ChestPresenter
             RefreshChestSlot(draggedSlot);
             RefreshPlayerSlot(targetSlot);
         }
+
+        chestView?.HideDragPreview();
+        draggedSlot = -1;
+    }
+
+    #endregion
+
+    #region Delete Handler
+
+    /// <summary>
+    /// Handles delete zone drop when dragging a chest item onto the inventory's delete zone.
+    /// Only acts when the drag originated from the chest panel.
+    /// </summary>
+    private void HandleChestItemDelete(int slotIndex)
+    {
+        // Only handle if drag came from chest
+        if (!dragFromChest || draggedSlot == -1) return;
+
+        ResetActionTimer();
+
+        var item = chestInventoryService.GetItemAtSlot(slotIndex);
+        if (item == null)
+        {
+            Debug.Log($"[ChestPresenter] Chest slot {slotIndex} already empty, ignoring delete");
+            chestView?.HideDragPreview();
+            draggedSlot = -1;
+            return;
+        }
+
+        // Prevent deletion of quest items
+        if (item.IsQuestItem)
+        {
+            Debug.LogWarning($"[ChestPresenter] Cannot delete quest item: {item.ItemName}");
+            return;
+        }
+
+        int quantity = item.Quantity;
+        string itemName = item.ItemName;
+
+        chestInventoryService.RemoveItemFromSlot(slotIndex, quantity);
+        SyncChestSlot(slotIndex);
+
+        Debug.Log($"[ChestPresenter] Deleted chest item {itemName} x{quantity} from slot {slotIndex}");
 
         chestView?.HideDragPreview();
         draggedSlot = -1;
