@@ -5,10 +5,6 @@
 public static class WorldDataManagerChestExtensions
 {
     public static void RegisterChest(
-        this WorldDataManager manager, string chestId, byte slotCount)
-        => manager.ChestData?.RegisterChest(chestId, slotCount);
-
-    public static void RegisterChest(
         this WorldDataManager manager, short tileX, short tileY, byte maxSlots, byte structureLevel)
         => manager.ChestData?.RegisterChest(tileX, tileY, maxSlots, structureLevel);
 

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Photon.Pun;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
+using System;
 
 /// <summary>
 /// Bridges ChestDataModule ↔ Photon network.
@@ -323,7 +324,11 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
 
     private void MasterRegisterChest(string chestId, byte slotCount)
     {
-        WorldDataManager.Instance.ChestData.RegisterChest(chestId, slotCount);
+        if (TryParseChestId(chestId, out short tx, out short ty))
+        {
+            byte level = slotCount switch { 27 => 2, 36 => 3, _ => 1 };
+            WorldDataManager.Instance.ChestData.RegisterChest(tx, ty, slotCount, level);
+        }
 
         byte[] payload = EncodeRegisterRequest(chestId, slotCount);
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
@@ -331,6 +336,16 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
 
         if (showDebugLogs)
             Debug.Log($"[ChestSync] Master registered chest '{chestId}' ({slotCount} slots)");
+    }
+
+    private static bool TryParseChestId(string chestId, out short tileX, out short tileY)
+    {
+        tileX = 0; tileY = 0;
+        if (string.IsNullOrEmpty(chestId)) return false;
+        int sep = chestId.IndexOf('_');
+        if (sep < 0) return false;
+        return short.TryParse(chestId.AsSpan(0, sep), out tileX)
+            && short.TryParse(chestId.AsSpan(sep + 1), out tileY);
     }
 
     // ══════════════════════════════════════════════════════════
@@ -350,7 +365,9 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
     private void HandleRegisterBroadcast(byte[] data)
     {
         if (!DecodeRegisterRequest(data, out string chestId, out byte slotCount)) return;
-        WorldDataManager.Instance.ChestData.RegisterChest(chestId, slotCount);
+        if (!TryParseChestId(chestId, out short tx, out short ty)) return;
+        byte level = slotCount switch { 27 => 2, 36 => 3, _ => 1 };
+        WorldDataManager.Instance.ChestData.RegisterChest(tx, ty, slotCount, level);
     }
 
     private void HandleOpenNotify(byte[] data)

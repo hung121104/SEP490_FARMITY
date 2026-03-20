@@ -577,6 +577,20 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                         if (worldStructure != null)
                             worldStructure.InitializeFromWorld(tile.WorldX, tile.WorldY, structData);
 
+                        // Register Storage structures (e.g. chests) in ChestDataModule.
+                        // Master holds authoritative data; also register when offline (single player / editor).
+                        // RegisterChest is idempotent — safe to call even if already registered.
+                        if (structData.InteractionType == StructureInteractionType.Storage
+                            && (PhotonNetwork.IsMasterClient || !PhotonNetwork.IsConnected)
+                            && WorldDataManager.Instance?.ChestData != null)
+                        {
+                            WorldDataManager.Instance.RegisterChest(
+                                (short)tile.WorldX,
+                                (short)tile.WorldY,
+                                (byte)structData.StorageSlots,
+                                (byte)structData.StructureLevel);
+                        }
+
                         if (!chunkStructureVisuals.ContainsKey(chunkPos))
                             chunkStructureVisuals[chunkPos] = new List<(string, GameObject)>();
                         chunkStructureVisuals[chunkPos].Add((structId, structObj));

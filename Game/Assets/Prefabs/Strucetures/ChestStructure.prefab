@@ -273,7 +273,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d171048cc1c8c1d4080eee562d551f2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  showDebugLogs: 1
+  showDebugLogs: 0
   highlightOffset: {x: 0, y: 0, z: 0}
   mouseHoverTrigger: {fileID: 6590477341567516396}
   inUseBadge: {fileID: 7221979307726883903}

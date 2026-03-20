@@ -413,7 +413,11 @@ public class ChestPresenter
 
     private void SyncChestSlot(int slotIndex)
     {
-        if (ChestSyncManager.Instance == null) return;
+        if (ChestSyncManager.Instance == null)
+        {
+            UnityEngine.Debug.LogWarning($"[ChestPresenter] SyncChestSlot SKIP — ChestSyncManager.Instance is null");
+            return;
+        }
 
         var item = chestModel.GetItemAtSlot(slotIndex);
         if (item == null || item.Quantity <= 0)
@@ -537,7 +541,11 @@ public class ChestPresenter
     public void LoadStateFromModule()
     {
         var module = WorldDataManager.Instance?.ChestData;
-        if (module == null) return;
+        if (module == null)
+        {
+            UnityEngine.Debug.LogWarning("[ChestPresenter] LoadState FAIL — ChestDataModule is null");
+            return;
+        }
 
         short tx = (short)chestData.TileX;
         short ty = (short)chestData.TileY;
@@ -547,6 +555,8 @@ public class ChestPresenter
 
         if (chestInventoryService is InventoryService concreteService)
             concreteService.ApplyRemoteChestState(tempSlotBuffer, chestData.SlotCount);
+        else
+            UnityEngine.Debug.LogWarning("[ChestPresenter] LoadState FAIL — chestInventoryService is not InventoryService");
     }
 
     public void Cleanup()

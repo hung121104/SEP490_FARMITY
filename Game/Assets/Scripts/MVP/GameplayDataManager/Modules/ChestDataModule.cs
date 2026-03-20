@@ -153,12 +153,6 @@ public class ChestDataModule : IWorldDataModule
             Debug.Log($"[ChestDataModule] Registered chest ({tileX},{tileY}) lv{structureLevel} with {maxSlots} slots");
     }
 
-    /// <summary>String-based overload for ChestSyncManager network compat.</summary>
-    public void RegisterChest(string chestId, byte slotCount)
-    {
-        if (!TryParseChestId(chestId, out short tx, out short ty)) return;
-        RegisterChest(tx, ty, slotCount, 1);
-    }
 
     public bool UnregisterChest(short tileX, short tileY)
     {
