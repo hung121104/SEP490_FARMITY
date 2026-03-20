@@ -2726,7 +2726,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
-  sceneViewId: 9
+  sceneViewId: 4
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!114 &138164243
@@ -9554,7 +9554,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
-  sceneViewId: 1
+  sceneViewId: 6
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!1 &526804890
@@ -30509,7 +30509,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
-  sceneViewId: 5
+  sceneViewId: 7
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!114 &708242145
@@ -31854,6 +31854,10 @@ MonoBehaviour:
   playerPrefab: {fileID: 1681704056157336401, guid: 79f6bc42335333f4c9cc04b30ea2016d, type: 3}
   spawnPoints:
   - {fileID: 1934862757}
+  enforceMessageQueueWhileInRoom: 1
+  messageQueueCheckInterval: 0.5
+  spawnRetryInterval: 1
+  logSpawnDiagnostics: 1
 --- !u!4 &761236216
 Transform:
   m_ObjectHideFlags: 0
@@ -35789,7 +35793,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
-  sceneViewId: 3
+  sceneViewId: 8
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!1 &923615133
@@ -39973,7 +39977,7 @@ MonoBehaviour:
   observableSearch: 2
   ObservedComponents:
   - {fileID: 1146011597}
-  sceneViewId: 10
+  sceneViewId: 11
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!61 &1146011596
@@ -86325,7 +86329,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
-  sceneViewId: 2
+  sceneViewId: 12
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!114 &1341802800
@@ -98260,7 +98264,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
-  sceneViewId: 13
+  sceneViewId: 14
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!114 &1979409989

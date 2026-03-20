@@ -1414,6 +1414,7 @@ GameObject:
   - component: {fileID: 980716622}
   - component: {fileID: 980716624}
   - component: {fileID: 980716623}
+  - component: {fileID: 980716625}
   m_Layer: 5
   m_Name: RawImage
   m_TagString: Untagged
@@ -1475,6 +1476,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 980716621}
   m_CullTransparentMesh: 1
+--- !u!114 &980716625
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 980716621}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0fae4c90d80b0fd4fb8266943198a554, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  backgroundImage: {fileID: 980716623}
 --- !u!1 &1007454597
 GameObject:
   m_ObjectHideFlags: 0
@@ -1582,76 +1596,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1007454597}
   m_CullTransparentMesh: 1
---- !u!1 &1030814701
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1030814704}
-  - component: {fileID: 1030814703}
-  - component: {fileID: 1030814702}
-  m_Layer: 0
-  m_Name: UI_Mananger
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1030814702
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1030814701}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0fae4c90d80b0fd4fb8266943198a554, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  backgroundImage: {fileID: 980716623}
---- !u!114 &1030814703
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1030814701}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 47953117fb698644f895b7eff7914bdb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  book: {fileID: 1952134337}
-  animator: {fileID: 774358241}
-  targetPosition: {fileID: 0}
-  bookImage: {fileID: 1952134339}
-  moveDuration: 0.5
-  delay: 1.3
-  scaleDuration: 0.5
-  scaleTarget: 15
-  onStartAnimationName: turnLToR
-  openBookBtn: {fileID: 0}
-  closeBookBtn: {fileID: 0}
-  panelController: {fileID: 0}
---- !u!4 &1030814704
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1030814701}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 392.75574, y: 243.16309, z: 2.3285336}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1155765162
 GameObject:
   m_ObjectHideFlags: 0
@@ -2450,6 +2394,7 @@ GameObject:
   - component: {fileID: 1952134338}
   - component: {fileID: 1952134340}
   - component: {fileID: 1952134339}
+  - component: {fileID: 1952134341}
   m_Layer: 5
   m_Name: Book
   m_TagString: Untagged
@@ -2518,6 +2463,34 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1952134337}
   m_CullTransparentMesh: 1
+--- !u!114 &1952134341
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1952134337}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47953117fb698644f895b7eff7914bdb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  book: {fileID: 1952134337}
+  animator: {fileID: 774358241}
+  targetPosition: {fileID: 0}
+  bookImage: {fileID: 1952134339}
+  hideBookOnStart: 0
+  onStartAnimation: 1
+  onStartAnimationTrigger: 1
+  onShowBookAnimationTrigger: 1
+  onTransitionInAnimationTrigger: 0
+  moveDuration: 0.5
+  delay: 1.3
+  scaleDuration: 0.5
+  scaleTarget: 15
+  openBookBtn: {fileID: 0}
+  closeBookBtn: {fileID: 0}
+  panelController: {fileID: 0}
 --- !u!1 &2083649371
 GameObject:
   m_ObjectHideFlags: 0
@@ -2605,4 +2578,3 @@ SceneRoots:
   - {fileID: 161137183}
   - {fileID: 257500985}
   - {fileID: 338150653}
-  - {fileID: 1030814704}

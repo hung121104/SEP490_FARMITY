@@ -213,7 +213,10 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        PhotonNetwork.LoadLevel("GameCoreTestScene");
+        // With AutomaticallySyncScene = true (set in Awake), only the master calls LoadLevel.
+        // Non-master clients are synced automatically by PUN.
+        if (PhotonNetwork.IsMasterClient || !PhotonNetwork.AutomaticallySyncScene)
+            PhotonNetwork.LoadLevel("GameCoreTestScene");
     }
 
     #endregion

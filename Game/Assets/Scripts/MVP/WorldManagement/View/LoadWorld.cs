@@ -93,7 +93,7 @@ public class LoadWorld : MonoBehaviourPunCallbacks
         { 
             MaxPlayers = 4, 
             IsVisible = false,
-            IsOpen = false,
+            IsOpen = true,   // must be true so other players can join
             CustomRoomProperties = customProps,
             CustomRoomPropertiesForLobby = new string[]
             {
@@ -110,6 +110,10 @@ public class LoadWorld : MonoBehaviourPunCallbacks
     }
     public override void OnJoinedRoom()
     {
-        PhotonNetwork.LoadLevel("GameCoreTestScene");
+        // With AutomaticallySyncScene = true, only the master calls LoadLevel.
+        // Non-master clients are synced automatically by PUN when the master's scene is recorded.
+        // With AutomaticallySyncScene = false, all clients call it themselves.
+        if (PhotonNetwork.IsMasterClient || !PhotonNetwork.AutomaticallySyncScene)
+            PhotonNetwork.LoadLevel("GameCoreTestScene");
     }
 }
