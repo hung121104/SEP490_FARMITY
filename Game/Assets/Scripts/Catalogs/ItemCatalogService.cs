@@ -72,6 +72,18 @@ public class ItemCatalogService : MonoBehaviour
 
     // ── Loading ───────────────────────────────────────────────────────────────
 
+    private const int MAX_RETRIES = 3;
+    private const float RETRY_DELAY = 2f;
+
+    public void Retry()
+    {
+        if (!IsReady)
+        {
+            CatalogProgressManager.NotifyStarted();
+            StartCoroutine(FetchCatalog());
+        }
+    }
+
     private IEnumerator FetchCatalog()
     {
         IsReady = false;
@@ -80,26 +92,41 @@ public class ItemCatalogService : MonoBehaviour
 
         string url = $"{AppConfig.ApiBaseUrl}/game-data/items/catalog";
 
-        using var request = UnityWebRequest.Get(url);
-        request.timeout = 15;
-        yield return request.SendWebRequest();
+        ItemCatalogResponse response = null;
 
-        if (request.result != UnityWebRequest.Result.Success)
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++)
         {
-            Debug.LogError(
-                $"[ItemCatalogService] Failed to fetch catalog from {url}: {request.error}");
-            yield break;
+            using var request = UnityWebRequest.Get(url);
+            request.timeout = 15;
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning(
+                    $"[ItemCatalogService] Attempt {attempt}/{MAX_RETRIES} failed: {request.error}");
+                if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
+                continue;
+            }
+
+            bool parseOk = false;
+            try
+            {
+                response = JsonConvert.DeserializeObject<ItemCatalogResponse>(
+                    request.downloadHandler.text, _jsonSettings);
+                parseOk = true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[ItemCatalogService] JSON parse error (attempt {attempt}): {ex.Message}");
+            }
+            if (parseOk) break;
+            if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
         }
 
-        ItemCatalogResponse response;
-        try
+        if (response == null)
         {
-            response = JsonConvert.DeserializeObject<ItemCatalogResponse>(
-                request.downloadHandler.text, _jsonSettings);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[ItemCatalogService] JSON parse error: {ex.Message}");
+            Debug.LogError($"[ItemCatalogService] All {MAX_RETRIES} attempts failed for {url}");
+            CatalogProgressManager.NotifyFailed("Item Catalog");
             yield break;
         }
 

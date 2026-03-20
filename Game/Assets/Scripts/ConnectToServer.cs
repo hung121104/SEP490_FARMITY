@@ -8,8 +8,18 @@ public class ConnectToServer : MonoBehaviourPunCallbacks
     {
         if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
         {
-            PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
+            var auth = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
+            if (!string.IsNullOrEmpty(SessionManager.Instance.JwtToken))
+            {
+                // The Token property's setter is protected internal; send the JWT as custom auth parameters instead.
+                auth.AuthType = Photon.Realtime.CustomAuthenticationType.Custom;
+                auth.AddAuthParameter("token", SessionManager.Instance.JwtToken);
+            }
+            PhotonNetwork.AuthValues = auth;
         }
+
+        // Ensure Photon message processing is enabled so callbacks are delivered.
+        PhotonNetwork.IsMessageQueueRunning = true;
         PhotonNetwork.ConnectUsingSettings();
     }
 

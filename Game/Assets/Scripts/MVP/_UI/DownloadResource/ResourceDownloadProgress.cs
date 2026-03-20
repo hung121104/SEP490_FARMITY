@@ -2,10 +2,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 /// <summary>
 /// Displays catalog loading progress with a progress bar and percentage text.
 /// Subscribes to catalog service progress events and updates UI in real-time.
+/// Shows a retry button when any catalog download fails.
 /// </summary>
 public class ResourceDownloadProgress : MonoBehaviour
 {
@@ -14,11 +16,15 @@ public class ResourceDownloadProgress : MonoBehaviour
     [SerializeField] private CanvasGroup canvasGroup; // For fade in/out
     [SerializeField] private bool loadSceneOnFinished;
     [SerializeField] private string finishedSceneName;
+    [SerializeField] private CanvasGroup retryCanvasGroup; // Group containing retry button and text
+    [SerializeField] private Button retryButton;
+    [SerializeField] private TextMeshProUGUI retryText;
 
     private float _currentProgress = 0f;
     private float _targetProgress = 0f;
     private const float PROGRESS_LERP_SPEED = 5f;
     private bool _isFinishing;
+    private readonly List<string> _failedCatalogs = new();
 
     private void OnEnable()
     {
@@ -26,6 +32,7 @@ public class ResourceDownloadProgress : MonoBehaviour
         CatalogProgressManager.OnProgressChanged += UpdateProgress;
         CatalogProgressManager.OnCatalogStarted += ShowProgress;
         CatalogProgressManager.OnCatalogCompleted += HideProgress;
+        CatalogProgressManager.OnCatalogFailed += OnCatalogFailed;
     }
 
     private void OnDisable()
@@ -34,6 +41,7 @@ public class ResourceDownloadProgress : MonoBehaviour
         CatalogProgressManager.OnProgressChanged -= UpdateProgress;
         CatalogProgressManager.OnCatalogStarted -= ShowProgress;
         CatalogProgressManager.OnCatalogCompleted -= HideProgress;
+        CatalogProgressManager.OnCatalogFailed -= OnCatalogFailed;
     }
 
     private void Start()
@@ -45,6 +53,15 @@ public class ResourceDownloadProgress : MonoBehaviour
             progressText.text = "0%";
         if (canvasGroup != null)
             canvasGroup.alpha = 0f;
+        
+        if (retryCanvasGroup != null)
+            retryCanvasGroup.alpha = 0f;
+
+        if (retryButton != null)
+        {
+            retryButton.gameObject.SetActive(false);
+            retryButton.onClick.AddListener(OnRetryClicked);
+        }
     }
 
     private void Update()
@@ -128,5 +145,50 @@ public class ResourceDownloadProgress : MonoBehaviour
         }
 
         SceneManager.LoadScene(finishedSceneName);
+    }
+
+    private void OnCatalogFailed(string catalogName)
+    {
+        if (!_failedCatalogs.Contains(catalogName))
+            _failedCatalogs.Add(catalogName);
+        
+        if (retryCanvasGroup != null)
+            retryCanvasGroup.alpha = 1f;
+
+        if (retryButton != null)
+            retryButton.gameObject.SetActive(true);
+
+        if (progressText != null)
+            progressText.text = "Download failed";
+
+        if (retryText != null)
+            retryText.text = $"Retry ({_failedCatalogs.Count} failed)";
+    }
+
+    private void OnRetryClicked()
+    {
+        if (retryCanvasGroup != null)
+            retryCanvasGroup.alpha = 0f;
+ 
+        if (retryButton != null)
+            retryButton.gameObject.SetActive(false);
+
+        _failedCatalogs.Clear();
+        _isFinishing = false;
+        _currentProgress = 0f;
+        _targetProgress = 0f;
+
+        if (ItemCatalogService.Instance != null) ItemCatalogService.Instance.Retry();
+        if (PlantCatalogService.Instance != null) PlantCatalogService.Instance.Retry();
+        if (RecipeCatalogService.Instance != null) RecipeCatalogService.Instance.Retry();
+        if (MaterialCatalogService.Instance != null) MaterialCatalogService.Instance.Retry();
+        if (ResourceCatalogManager.Instance != null) ResourceCatalogManager.Instance.Retry();
+        if (SkinCatalogManager.Instance != null) SkinCatalogManager.Instance.Retry();
+    }
+
+    private void OnDestroy()
+    {
+        if (retryButton != null)
+            retryButton.onClick.RemoveListener(OnRetryClicked);
     }
 }

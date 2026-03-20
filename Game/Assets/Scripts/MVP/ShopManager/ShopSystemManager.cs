@@ -14,15 +14,16 @@ public class ShopSystemManager : MonoBehaviour
 
     [Header("UI Shop Views")]
     [SerializeField] private ShopView shopMainView;
-    [Tooltip("Kéo object InventoryDockPanel vào đây để nhét túi đồ vào")]
     [SerializeField] private Transform shopMainPanel;
 
     private IInventoryService inventoryService;
     private ShopPresenter shopPresenter;
-    private ItemType currentOpenShopType;
+
+    private List<ItemType> currentOpenShopTypes;
+    private string currentShopKey;
     private bool isShopOpen = false;
 
-    private Dictionary<ItemType, IShopService> dailyShopsMemory = new Dictionary<ItemType, IShopService>();
+    private Dictionary<string, IShopService> dailyShopsMemory = new Dictionary<string, IShopService>();
 
     private void Awake()
     {
@@ -53,19 +54,25 @@ public class ShopSystemManager : MonoBehaviour
         }
     }
 
-    public void OpenShopUI(ItemType shopType)
+    private string GetShopKey(List<ItemType> types)
     {
-        currentOpenShopType = shopType;
+        return string.Join("_", types);
+    }
+
+    public void OpenShopUI(List<ItemType> shopTypes)
+    {
+        currentOpenShopTypes = shopTypes;
+        currentShopKey = GetShopKey(shopTypes);
         isShopOpen = true;
 
-        if (!dailyShopsMemory.ContainsKey(shopType))
+        if (!dailyShopsMemory.ContainsKey(currentShopKey))
         {
-            IShopService newShopService = new ShopService(shopType);
+            IShopService newShopService = new ShopService(shopTypes);
             newShopService.GenerateDailyItems();
-            dailyShopsMemory.Add(shopType, newShopService);
+            dailyShopsMemory.Add(currentShopKey, newShopService);
         }
 
-        IShopService currentShopService = dailyShopsMemory[shopType];
+        IShopService currentShopService = dailyShopsMemory[currentShopKey];
         shopPresenter = new ShopPresenter(shopMainView, currentShopService, inventoryGameView, inventoryService);
 
         shopMainView.SetVisible(true);
@@ -89,9 +96,6 @@ public class ShopSystemManager : MonoBehaviour
 
         if (inventoryGameView != null)
         {
-            // Open first → forces inventory back to original parent while ACTIVE
-            // so Unity layout system can rebuild VerticalLayoutGroup/HorizontalLayoutGroup.
-            // Then close to hide it. Without this, slots don't render next time it's opened.
             inventoryGameView.OpenInventory();
             inventoryGameView.CloseInventory();
         }
@@ -103,11 +107,11 @@ public class ShopSystemManager : MonoBehaviour
     private void ResetAllShopsForNewDay()
     {
         dailyShopsMemory.Clear();
-        if (isShopOpen && shopPresenter != null)
+        if (isShopOpen && shopPresenter != null && currentOpenShopTypes != null)
         {
-            IShopService refreshedShopService = new ShopService(currentOpenShopType);
+            IShopService refreshedShopService = new ShopService(currentOpenShopTypes);
             refreshedShopService.GenerateDailyItems();
-            dailyShopsMemory.Add(currentOpenShopType, refreshedShopService);
+            dailyShopsMemory.Add(currentShopKey, refreshedShopService);
             shopPresenter.RefreshShopData(refreshedShopService);
         }
     }

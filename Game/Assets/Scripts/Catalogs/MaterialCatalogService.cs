@@ -72,6 +72,25 @@ public class MaterialCatalogService : MonoBehaviour
 
     // ── Loading ───────────────────────────────────────────────────────────────
 
+    private const int MAX_RETRIES = 3;
+    private const float RETRY_DELAY = 2f;
+
+    public void Retry()
+    {
+        if (!IsReady)
+        {
+            StartCoroutine(RetryCoroutine());
+        }
+    }
+
+    private IEnumerator RetryCoroutine()
+    {
+        while (SkinCatalogManager.Instance == null)
+            yield return null;
+        CatalogProgressManager.NotifyStarted();
+        yield return FetchCatalog();
+    }
+
     private IEnumerator FetchCatalog()
     {
         IsReady = false;
@@ -79,24 +98,39 @@ public class MaterialCatalogService : MonoBehaviour
 
         string url = $"{AppConfig.ApiBaseUrl}/game-data/materials/catalog";
 
-        using var req = UnityWebRequest.Get(url);
-        req.timeout = 15;
-        yield return req.SendWebRequest();
+        MaterialCatalogResponse response = null;
 
-        if (req.result != UnityWebRequest.Result.Success)
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++)
         {
-            Debug.LogError($"[MaterialCatalogService] Failed to fetch catalog from {url}: {req.error}");
-            yield break;
+            using var req = UnityWebRequest.Get(url);
+            req.timeout = 15;
+            yield return req.SendWebRequest();
+
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning($"[MaterialCatalogService] Attempt {attempt}/{MAX_RETRIES} failed: {req.error}");
+                if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
+                continue;
+            }
+
+            bool parseOk = false;
+            try
+            {
+                response = JsonConvert.DeserializeObject<MaterialCatalogResponse>(req.downloadHandler.text);
+                parseOk = true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[MaterialCatalogService] JSON parse error (attempt {attempt}): {e.Message}");
+            }
+            if (parseOk) break;
+            if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
         }
 
-        MaterialCatalogResponse response;
-        try
+        if (response == null)
         {
-            response = JsonConvert.DeserializeObject<MaterialCatalogResponse>(req.downloadHandler.text);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[MaterialCatalogService] JSON parse error: {e.Message}");
+            Debug.LogError($"[MaterialCatalogService] All {MAX_RETRIES} attempts failed for {url}");
+            CatalogProgressManager.NotifyFailed("Material Catalog");
             yield break;
         }
 
