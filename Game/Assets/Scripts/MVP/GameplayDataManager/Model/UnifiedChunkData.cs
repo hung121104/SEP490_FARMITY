@@ -646,7 +646,7 @@ public class UnifiedChunkData : BaseChunkData
     //   Per slot: WorldX(4) WorldY(4) flags(1)
     //             [if HasCrop]       PlantIdLen(1) PlantId(N) CropStage(1) GrowthTimer(4)
     //                                PollenCount(1) IsWatered(1) IsFertilized(1) IsPollinated(1)
-    //             [if HasStructure]  StructIdLen(1) StructId(N) StructureLevel(1)
+    //             [if HasStructure]  StructIdLen(1) StructId(N) CurrentHp(4) StructureLevel(1)
     //             [if HasResource]   ResourceIdLen(1) ResourceId(N) CurrentHp(4)
     // flags byte: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure, bit3=HasResource
     // ══════════════════════════════════════════════════════════════════════
@@ -694,6 +694,7 @@ public class UnifiedChunkData : BaseChunkData
                     : System.Text.Encoding.UTF8.GetBytes(slot.Structure.StructureId);
                 bytes.Add((byte)structIdBytes.Length);
                 bytes.AddRange(structIdBytes);
+                bytes.AddRange(BitConverter.GetBytes(slot.Structure.CurrentHp));
                 bytes.Add(slot.Structure.StructureLevel);
             }
 
@@ -763,6 +764,9 @@ public class UnifiedChunkData : BaseChunkData
                     ? System.Text.Encoding.UTF8.GetString(data, offset, structIdLen)
                     : string.Empty;
                 offset += structIdLen;
+                slot.Structure.CurrentHp = offset + 4 <= data.Length
+                    ? BitConverter.ToInt32(data, offset) : 0;
+                offset += 4;
                 slot.Structure.StructureLevel = offset < data.Length
                     ? data[offset++]
                     : (byte)1;
@@ -806,8 +810,8 @@ public class UnifiedChunkData : BaseChunkData
             {
                 int structIdLen = string.IsNullOrEmpty(slot.Structure.StructureId)
                     ? 0 : System.Text.Encoding.UTF8.GetByteCount(slot.Structure.StructureId);
-                // StructIdLen(1) + StructId(N) + StructureLevel(1)
-                size += 1 + structIdLen + 1;
+                // StructIdLen(1) + StructId(N) + CurrentHp(4) + StructureLevel(1)
+                size += 1 + structIdLen + 4 + 1;
             }
             if (slot.HasResource)
             {

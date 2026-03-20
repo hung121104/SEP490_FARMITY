@@ -53,22 +53,40 @@ public class StructureDestructionPresenter
     {
         Vector3Int tilePos = new Vector3Int(worldX, worldY, 0);
 
-        // newHp = -1 means hit effect only (visual feedback for other player's hit)
-        // newHp >= 0 means actual HP update
-        
+        // newHp = -1: hit effect only (visual feedback for other player's hit)
+        // newHp > 0 but less than max: took damage → hit effect + regen timer
+        // newHp = maxHp: regen completed → no effect needed
+        // newHp <= 0: destroyed → no effect (removal handles visuals)
+
         if (newHp == -1)
         {
-            // Hit effect only - another player hit the structure
             view.PlayHitEffect(tilePos);
             view.StartRegenTimer(tilePos);
             return;
         }
 
-        // Play hit effect on all clients when HP updates
-        view.PlayHitEffect(tilePos);
+        // Regen or full HP — no hit effect, no regen timer
+        if (IsFullHp(worldX, worldY, newHp))
+            return;
 
-        // Reset regen timer
+        // Destroyed — removal handles visuals
+        if (newHp <= 0)
+            return;
+
+        // Took damage — play hit effect and reset regen timer
+        view.PlayHitEffect(tilePos);
         view.StartRegenTimer(tilePos);
+    }
+
+    private bool IsFullHp(int worldX, int worldY, int currentHp)
+    {
+        UnifiedChunkData chunk = WorldDataManager.Instance?.GetChunkAtWorldPosition(new Vector3(worldX, worldY, 0));
+        if (chunk == null || !chunk.TryGetStructure(worldX, worldY, out var structureData))
+            return false;
+
+        StructureData so = Object.FindAnyObjectByType<StructurePool>()?.GetStructureData(structureData.StructureId);
+        int maxHp = so?.MaxHealth ?? 3;
+        return currentHp >= maxHp;
     }
 
     public void HandleToolUse(Vector3 targetWorldPos, ToolData tool)
