@@ -268,7 +268,7 @@ public class ChestPresenter
 
     private void HandleEndDrag()
     {
-        ResetActionTimer();
+        ResetActionTimer();  
 
         int previousDragSlot = draggedSlot;
         bool wasDragFromChest = dragFromChest;
@@ -342,7 +342,7 @@ public class ChestPresenter
 
         if (dragFromChest)
         {
-            // Within chest: move/swap — also check if target is locked
+            // Within chest: move/swap
             if (draggedSlot != targetSlot)
             {
                 transferService.MoveWithinChest(chestModel, draggedSlot, targetSlot);
@@ -372,6 +372,9 @@ public class ChestPresenter
 
         if (wasDragFromChest && previousDragSlot != -1)
             sync?.NotifySlotDragEnd(chestData.ChestId, (byte)previousDragSlot);
+
+        // Show tooltip for the slot the cursor is hovering after drop
+        ShowTooltipForSlot(targetSlot, lastKnownCursorPosition, isChestSlot: true);
     }
 
     private void HandlePlayerSlotDrop(int targetSlot)
@@ -404,6 +407,9 @@ public class ChestPresenter
 
         if (wasDragFromChest && previousDragSlot != -1)
             ChestSyncManager.Instance?.NotifySlotDragEnd(chestData.ChestId, (byte)previousDragSlot);
+
+        // Show tooltip using chest's ItemDetailView (inventory's view may be hidden/covered)
+        ShowTooltipForSlot(targetSlot, lastKnownCursorPosition, isChestSlot: false);
     }
 
     #endregion

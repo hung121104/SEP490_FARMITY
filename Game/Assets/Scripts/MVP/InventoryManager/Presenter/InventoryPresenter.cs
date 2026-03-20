@@ -261,13 +261,13 @@ public class InventoryPresenter
         if (draggedSlot != -1 && draggedSlot != targetSlotIndex)
         {
             service.MoveItem(draggedSlot, targetSlotIndex);
-
-            //Show tooltip for the target slot after swap
-            ShowTooltipAfterDrop(targetSlotIndex);
         }
 
         draggedSlot = -1;
         view?.HideDragPreview();
+
+        // Show tooltip for the target slot after drop (works for both internal move and external).
+        ShowTooltipAfterDrop(targetSlotIndex);
     }
 
     private void HandleUseItem(int slotIndex)
