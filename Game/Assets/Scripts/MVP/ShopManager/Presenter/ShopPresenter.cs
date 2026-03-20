@@ -44,7 +44,10 @@ public class ShopPresenter
     {
         var shopList = _shopService.GetShopModel().DailyItems;
         if (slotIndex < 0 || slotIndex >= shopList.Count) return;
-        if (_shopService.TryBuyItem(slotIndex, _playerInventory))
+
+        bool isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+
+        if (_shopService.TryBuyItem(slotIndex, _playerInventory, isShiftHeld))
         {
             _view.UpdateShopSlots(shopList);
         }
@@ -61,10 +64,12 @@ public class ShopPresenter
 
     private void HandleInventorySlotClicked(int invSlotIndex)
     {
-        MoveItemToCart(invSlotIndex, moveWholeStack: false);
+       
+        bool isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        MoveItemToCart(invSlotIndex, moveWholeStack: isShiftHeld);
     }
 
-    
+
     private void MoveItemToCart(int invSlotIndex, bool moveWholeStack)
     {
         var item = _playerInventory.GetItemAtSlot(invSlotIndex);
@@ -72,13 +77,9 @@ public class ShopPresenter
 
         var itemData = ItemCatalogService.Instance.GetItemData(item.ItemId);
         if (itemData == null || !itemData.canBeSold) return;
-
-      
         int amountToMove = moveWholeStack ? item.Quantity : 1;
         int originalAmountToMove = amountToMove;
         int maxStack = itemData.maxStack > 0 ? itemData.maxStack : 1;
-
-      
         for (int i = 0; i < _sellCart.Count; i++)
         {
             var cartItem = _sellCart[i];
@@ -94,7 +95,6 @@ public class ShopPresenter
             }
         }
 
-       
         while (amountToMove > 0 && _sellCart.Count < 6)
         {
             int amountToAdd = Mathf.Min(maxStack, amountToMove);
@@ -103,15 +103,16 @@ public class ShopPresenter
             amountToMove -= amountToAdd;
         }
 
-      
+       
         int amountSuccessfullyMoved = originalAmountToMove - amountToMove;
         if (amountSuccessfullyMoved > 0)
         {
-            _playerInventory.RemoveItem(item.ItemId, amountSuccessfullyMoved);
-            RecalculateTotalPrice(); 
+            
+            _playerInventory.RemoveItemFromSlot(invSlotIndex, amountSuccessfullyMoved);
+
+            RecalculateTotalPrice();
             RefreshSellAreaUI();
         }
-       
     }
 
     private void ReturnItemToInventory(int sellSlotIndex)
@@ -123,10 +124,9 @@ public class ShopPresenter
 
         if (itemData != null)
         {
-            int amountToReturn = 1; 
-
+            bool isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            int amountToReturn = isShiftHeld ? cartItem.Quantity : 1;
             _playerInventory.AddItem(itemData, amountToReturn);
-
 
             if (cartItem.Quantity > amountToReturn)
             {

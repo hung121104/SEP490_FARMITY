@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using UnityEngine;
 
 [System.Serializable]
 public class ShopItemModel
 {
     public string ItemId;
-    public int Price; // Giá bán (có thể random chênh lệch một chút so với basePrice)
-    public bool IsSoldOut; // Đánh dấu nếu người chơi đã mua hết slot này (nếu bạn muốn giới hạn số lượng)
+    public int Price; 
+    public bool IsSoldOut; 
 
     public ShopItemModel(string id, int price)
     {
@@ -17,12 +18,12 @@ public class ShopItemModel
 
 public class ShopModel
 {
-    public ItemType ShopType; // Định danh loại Shop (ví dụ: Blacksmith bán Tool)
+    public List<ItemType> ShopTypes;
     public List<ShopItemModel> DailyItems { get; private set; }
 
-    public ShopModel(ItemType type)
+    public ShopModel(List<ItemType> types)
     {
-        ShopType = type;
+        ShopTypes = types;
         DailyItems = new List<ShopItemModel>();
     }
 
