@@ -29,7 +29,11 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 
 5. [Player Data](#player-data)
    - [World Management](#world-management)
+  - [World Blacklist](#world-blacklist)
+  - [Player Achievements](#player-achievements)
    - [Character Management](#character-management)
+
+6. [Achievement Definitions (Admin)](#achievement-definitions-admin)
 
 ---
 
@@ -376,6 +380,163 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Response: Deleted world document or `null`
   - Note: Only world owner can delete
 
+### World Blacklist
+
+- **GET** `/player-data/world/blacklist?_id=string`: Get blacklist for a world.
+  - Headers: `Authorization: Bearer <token>`
+  - Query params: `_id` - MongoDB ObjectId string (world ID)
+  - Access: Any authenticated user
+  - Response:
+    ```json
+    {
+      "worldId": "string",
+      "blacklistedPlayerIds": ["string"],
+      "blacklistedPlayers": [
+        {
+          "accountId": "string",
+          "username": "string | null"
+        }
+      ]
+    }
+    ```
+  - Note: `blacklistedPlayerIds` is source-of-truth storage. `blacklistedPlayers` is runtime-enriched for UI display and not persisted.
+
+- **POST** `/player-data/world/blacklist`: Add one player account to a world blacklist.
+  - Headers: `Authorization: Bearer <token>`
+  - Access: World owner or admin
+  - Body:
+    ```json
+    {
+      "_id": "string",
+      "playerId": "string"
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "worldId": "string",
+      "playerId": "string",
+      "added": "boolean",
+      "blacklistedPlayerIds": ["string"],
+      "blacklistedPlayers": [
+        {
+          "accountId": "string",
+          "username": "string | null"
+        }
+      ]
+    }
+    ```
+  - Notes:
+    - Deduplicated: adding an existing ID returns `added: false`
+    - Owner cannot blacklist self
+
+- **DELETE** `/player-data/world/blacklist`: Remove one player account from a world blacklist.
+  - Headers: `Authorization: Bearer <token>`
+  - Access: World owner or admin
+  - Body:
+    ```json
+    {
+      "_id": "string",
+      "playerId": "string"
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "worldId": "string",
+      "playerId": "string",
+      "removed": "boolean",
+      "blacklistedPlayerIds": ["string"],
+      "blacklistedPlayers": [
+        {
+          "accountId": "string",
+          "username": "string | null"
+        }
+      ]
+    }
+    ```
+  - Note: Idempotent: removing a non-existing ID returns `removed: false`
+
+### Player Achievements
+
+- **GET** `/player-data/achievement`: Get all achievement definitions merged with the authenticated player's progress.
+  - Headers: `Authorization: Bearer <token>`
+  - Response: Array of achievement objects:
+    ```json
+    [
+      {
+        "achievementId": "string",
+        "name": "string",
+        "description": "string",
+        "requirements": [
+          {
+            "type": "string",
+            "target": "number",
+            "entityId": "string (optional)",
+            "label": "string"
+          }
+        ],
+        "progress": ["number"],
+        "achievedAt": "string | null",
+        "isAchieved": "boolean"
+      }
+    ]
+    ```
+
+- **PUT** `/player-data/achievement/progress`: Update one requirement progress using absolute value.
+  - Headers: `Authorization: Bearer <token>`
+  - Body:
+    ```json
+    {
+      "achievementId": "string",
+      "requirementIndex": 0,
+      "progress": 10
+    }
+    ```
+  - Notes:
+    - `requirementIndex` is zero-based
+    - Progress is monotonic (stale/lower value is ignored)
+
+- **PUT** `/player-data/achievement/progress/batch`: Update multiple requirement progress values in one call.
+  - Headers: `Authorization: Bearer <token>`
+  - Body:
+    ```json
+    [
+      {
+        "achievementId": "string",
+        "requirementIndex": 0,
+        "progress": 10
+      }
+    ]
+    ```
+  - Response:
+    ```json
+    {
+      "summary": {
+        "total": "number",
+        "updated": "number",
+        "noop": "number",
+        "failed": "number"
+      },
+      "results": [
+        {
+          "index": "number",
+          "achievementId": "string",
+          "requirementIndex": "number",
+          "submittedProgress": "number",
+          "status": "updated | noop | failed",
+          "message": "string (optional)",
+          "achievement": "object (optional)"
+        }
+      ],
+      "updatedAchievements": ["object"]
+    }
+    ```
+  - Notes:
+    - Idempotent/retry-safe
+    - Per-item partial failure reporting
+    - Stale/lower values return `noop`
+
 ---
 
 ### Character Management
@@ -622,6 +783,40 @@ Depending on `itemType`, specific extra fields must be included:
   - Path param: `plantId` - game-side string identifier (e.g., `plant_corn`)
   - Response: Deleted plant document
   - Note: Returns `404` if plant not found
+
+### Achievement Definitions (Admin)
+
+- **POST** `/game-data/achievements/create`: Create a new achievement definition (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Body:
+    ```json
+    {
+      "achievementId": "string",
+      "name": "string",
+      "description": "string",
+      "requirements": [
+        {
+          "type": "KILL | HARVEST | PLANT | CRAFT | FISH | COLLECT | DISCOVER | QUEST_COMPLETE | REACH_LEVEL | COOK | TRADE",
+          "target": 1,
+          "entityId": "string (optional)",
+          "label": "string"
+        }
+      ]
+    }
+    ```
+
+- **GET** `/game-data/achievements/all`: Get all achievement definitions.
+  - Response: Array of achievement definitions
+
+- **GET** `/game-data/achievements/:achievementId`: Get one achievement definition by `achievementId`.
+  - Response: Achievement definition object
+
+- **PUT** `/game-data/achievements/:achievementId`: Update one achievement definition (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Body: Any subset of `name`, `description`, `requirements`
+
+- **DELETE** `/game-data/achievements/:achievementId`: Delete one achievement definition (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
 
 #### Plant Fields
 

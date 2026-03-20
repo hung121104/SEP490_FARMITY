@@ -35,6 +35,9 @@ export class World {
 
   @Prop({ type: Number, default: 0 })
   weatherTomorrow: number;
+
+  @Prop({ type: [String], default: [] })
+  blacklistedPlayerIds: string[];
 }
 
 export const WorldSchema = SchemaFactory.createForClass(World);

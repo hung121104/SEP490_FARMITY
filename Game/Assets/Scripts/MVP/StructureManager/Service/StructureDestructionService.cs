@@ -132,14 +132,10 @@ public class StructureDestructionService : IStructureDestructionService
             StructureData so = structureDataProvider.GetStructureData(structureId);
             if (so == null) return false;
 
-            // Get current HP from chunk
+            // Get current HP from chunk (always serialized, init = MaxHealth when placed)
             int currentHp = chunk.GetStructureHp(pos.x, pos.y);
-            if (currentHp == 0)
-            {
-                currentHp = so.MaxHealth;
-            }
 
-            // Check if already destroyed (race condition protection)
+            // Check if already destroyed
             if (currentHp <= 0)
             {
                 if (showDebugLogs)
@@ -224,17 +220,17 @@ public class StructureDestructionService : IStructureDestructionService
         UnifiedChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(pos);
         if (chunk == null) return;
 
-        // Check if structure still exists and HP is 0 (destroyed state)
+        // Check if structure still exists (may have been destroyed and removed)
         if (!chunk.TryGetStructure(pos.x, pos.y, out var structureData)) return;
-
-        int currentHp = chunk.GetStructureHp(pos.x, pos.y);
-        if (currentHp > 0) return; // Already has HP, no need to regenerate
 
         StructureData so = structureDataProvider.GetStructureData(structureData.StructureId);
         int maxHp = so?.MaxHealth ?? 3;
 
+        int currentHp = chunk.GetStructureHp(pos.x, pos.y);
+        if (currentHp >= maxHp) return; // Already full HP, no need to regenerate
+
         if (showDebugLogs)
-            Debug.Log($"[StructureDestructionService] Master: Regenerating HP for structure at {pos} to {maxHp}");
+            Debug.Log($"[StructureDestructionService] Master: Regenerating HP for structure at {pos} from {currentHp} to {maxHp}");
 
         // Update chunk data
         chunk.UpdateStructureHp(pos.x, pos.y, maxHp);

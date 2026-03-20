@@ -6,8 +6,10 @@ using System.Text;
 public static class WorldRoomProperties
 {
     public const string DisplayName = "displayName";
+    public const string WorldId = "worldId";
     public const string IsPublic = "isPublic";
     public const string OwnerId = "ownerId";
+    public const string AccountId = "accountId";
     public const string HasPassword = "hasPassword";
     public const string PasswordHash = "passwordHash";
 
