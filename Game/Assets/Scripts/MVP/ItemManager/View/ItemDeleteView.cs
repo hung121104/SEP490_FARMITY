@@ -300,7 +300,6 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
     {
         gameObject.SetActive(true);
         acceptingDrops = true;
-        Debug.Log($"[DEBUG DeleteView] Hide() called\n{System.Environment.StackTrace}");
     }
 
     public void Hide()

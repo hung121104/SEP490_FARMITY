@@ -393,11 +393,10 @@ public class StructurePool : MonoBehaviour, IStructureDataProvider
         var itemData = ItemCatalogService.Instance?.GetItemData(structureId) as StructureItemData;
         if (itemData == null) return null;
 
-        // Resolve interaction type
+        // Resolve interaction type → prefab from StructureView (View-level prefab mapping)
         StructureInteractionType interactionType =
             (StructureInteractionType)itemData.structureInteractionType;
 
-        // Get prefab from StructureView (View-level prefab mapping)
         GameObject prefab = _structureView != null
             ? _structureView.GetDefaultPrefab(interactionType)
             : null;
@@ -408,13 +407,7 @@ public class StructurePool : MonoBehaviour, IStructureDataProvider
             return null;
         }
 
-        return new StructureData
-        {
-            StructureId     = itemData.itemID,
-            DisplayName     = itemData.itemName,
-            InteractionType = interactionType,
-            Prefab          = prefab
-        };
+        return new StructureData(itemData, prefab);
     }
 
     // ── Internal ──────────────────────────────────────────────────────────

@@ -89,7 +89,7 @@ public class StructureService : IStructureService
         // Write the single tile to WorldDataManager with full HP
         Vector3 tileWorld = new Vector3(anchorX, anchorY, 0f);
         int initialHp = data.MaxHealth; // Initialize with full HP
-        bool ok = WorldDataManager.Instance.PlaceStructureAtWorldPosition(tileWorld, data.StructureId, initialHp);
+        bool ok = WorldDataManager.Instance.PlaceStructureAtWorldPosition(tileWorld, data.StructureId, initialHp, (byte)data.StructureLevel);
         if (!ok)
         {
             Debug.LogError($"[StructureService] Failed to write tile ({anchorX},{anchorY}).");
@@ -104,7 +104,7 @@ public class StructureService : IStructureService
 
         // Network sync
         if (PhotonNetwork.IsConnected && syncManager != null)
-            BroadcastStructurePlaced(anchorX, anchorY, data.StructureId);
+            BroadcastStructurePlaced(anchorX, anchorY, data.StructureId, (byte)data.StructureLevel);
 
         return true;
     }
@@ -134,9 +134,9 @@ public class StructureService : IStructureService
 
     // ── Network Broadcasting ──────────────────────────────────────────────
 
-    public void BroadcastStructurePlaced(int worldX, int worldY, string structureId)
+    public void BroadcastStructurePlaced(int worldX, int worldY, string structureId, byte structureLevel = 1)
     {
-        syncManager.BroadcastStructurePlaced(worldX, worldY, structureId);
+        syncManager.BroadcastStructurePlaced(worldX, worldY, structureId, structureLevel);
     }
 
     public void BroadcastStructureRemoved(int worldX, int worldY)

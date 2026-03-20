@@ -288,6 +288,19 @@ public class InventoryView : MonoBehaviour, IInventoryView
         inventoryDropZone = newDropZone;
     }
 
+    // Extra RectTransform zones that should NOT trigger "drop to world" (e.g. chest panel)
+    private RectTransform additionalSafeZone;
+
+    /// <summary>
+    /// Register an additional UI panel as a safe drop zone.
+    /// While set, dragging onto this panel will not count as "dropped outside".
+    /// Pass null to unregister.
+    /// </summary>
+    public void SetAdditionalSafeZone(RectTransform zone)
+    {
+        additionalSafeZone = zone;
+    }
+
     #endregion 
 
     #region IInventoryView Implementation
@@ -318,7 +331,10 @@ public class InventoryView : MonoBehaviour, IInventoryView
             dragPreviewIcon.sprite = item.Icon;
 
         if (dragPreviewCanvasGroup != null)
+        {
             dragPreviewCanvasGroup.alpha = 1f;
+            dragPreviewCanvasGroup.blocksRaycasts = false;
+        }
     }
 
     public void UpdateDragPreview(Vector2 position)
@@ -458,21 +474,36 @@ public class InventoryView : MonoBehaviour, IInventoryView
         // Prefer the explicit drop zone if assigned
         if (inventoryDropZone != null)
         {
-            return inventoryDropZone.IsScreenPositionInsideZone(screenPosition);
+            if (inventoryDropZone.IsScreenPositionInsideZone(screenPosition))
+                return true;
+        }
+        else
+        {
+            // Fallback: use the inventory panel bounds
+            if (inventoryPanel != null)
+            {
+                RectTransform rect = inventoryPanel.GetComponent<RectTransform>();
+                if (rect != null)
+                {
+                    Canvas canvas = inventoryPanel.GetComponentInParent<Canvas>();
+                    Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                        ? canvas.worldCamera : null;
+                    if (RectTransformUtility.RectangleContainsScreenPoint(rect, screenPosition, cam))
+                        return true;
+                }
+            }
         }
 
-        // Fallback: use the inventory panel bounds
-        if (inventoryPanel == null) return false;
+        // Also check any registered additional safe zone (e.g. chest panel)
+        if (additionalSafeZone != null && additionalSafeZone.gameObject.activeInHierarchy)
+        {
+            Canvas canvas = additionalSafeZone.GetComponentInParent<Canvas>();
+            Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                ? canvas.worldCamera : null;
+            if (RectTransformUtility.RectangleContainsScreenPoint(additionalSafeZone, screenPosition, cam))
+                return true;
+        }
 
-        RectTransform rect = inventoryPanel.GetComponent<RectTransform>();
-        if (rect == null) return false;
-
-        // Check against the inventory panel's rect, using the parent canvas camera if needed
-        Canvas canvas = inventoryPanel.GetComponentInParent<Canvas>();
-        Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
-            ? canvas.worldCamera
-            : null;
-
-        return RectTransformUtility.RectangleContainsScreenPoint(rect, screenPosition, cam);
+        return false;
     }
 }

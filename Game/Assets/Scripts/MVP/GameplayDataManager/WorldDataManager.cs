@@ -60,6 +60,7 @@ public class WorldDataManager : MonoBehaviour
     private CropDataModule cropModule;
     private StructureDataModule structureModule;
     private InventoryDataModule inventoryModule;
+    private ChestDataModule chestModule;
     
     // Quick lookup: chunkPosition -> sectionId
     private Dictionary<Vector2Int, int> chunkToSectionMap = new Dictionary<Vector2Int, int>();
@@ -246,6 +247,7 @@ public class WorldDataManager : MonoBehaviour
     public CropDataModule      CropData      => cropModule;
     public StructureDataModule StructureData => structureModule;
     public InventoryDataModule InventoryData => inventoryModule;
+    public ChestDataModule     ChestData     => chestModule;
     
     private void Awake()
     {
@@ -330,6 +332,11 @@ public class WorldDataManager : MonoBehaviour
         inventoryModule = new InventoryDataModule();
         inventoryModule.Initialize(this);
         modules[inventoryModule.ModuleName] = inventoryModule;
+
+        // Chest Module
+        chestModule = new ChestDataModule();
+        chestModule.Initialize(this);
+        modules[chestModule.ModuleName] = chestModule;
     }
     
     #region Core Coordinate Utilities

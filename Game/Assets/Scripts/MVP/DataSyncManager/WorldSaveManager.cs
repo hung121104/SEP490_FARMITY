@@ -289,10 +289,13 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             if (appearance != null)
             {
                 var (hair, outfit, hat, tool) = appearance.GetCurrentAppearance();
-                charUpdate.hairConfigId   = string.IsNullOrEmpty(hair)   ? null : hair;
-                charUpdate.outfitConfigId = string.IsNullOrEmpty(outfit) ? null : outfit;
-                charUpdate.hatConfigId    = string.IsNullOrEmpty(hat)    ? null : hat;
-                charUpdate.toolConfigId   = string.IsNullOrEmpty(tool)   ? null : tool;
+                // Send empty string (not null) so the server clears the field when the
+                // player removes an outfit. NullValueHandling.Include on the DTO ensures
+                // empty strings are serialised and the server always receives the update.
+                charUpdate.hairConfigId   = hair   ?? string.Empty;
+                charUpdate.outfitConfigId = outfit ?? string.Empty;
+                charUpdate.hatConfigId    = hat    ?? string.Empty;
+                charUpdate.toolConfigId   = tool   ?? string.Empty;
             }
 
             characters.Add(charUpdate);
