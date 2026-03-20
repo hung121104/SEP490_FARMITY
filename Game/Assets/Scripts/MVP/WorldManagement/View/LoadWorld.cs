@@ -83,6 +83,7 @@ public class LoadWorld : MonoBehaviourPunCallbacks
             ? manager.WorldName 
             : selectedId;
         customProps[WorldRoomProperties.DisplayName] = displayName;
+        customProps[WorldRoomProperties.WorldId] = selectedId;
         customProps[WorldRoomProperties.IsPublic] = false;
         customProps[WorldRoomProperties.OwnerId] = SessionManager.Instance?.UserId ?? string.Empty;
         customProps[WorldRoomProperties.HasPassword] = false;
@@ -97,6 +98,7 @@ public class LoadWorld : MonoBehaviourPunCallbacks
             CustomRoomPropertiesForLobby = new string[]
             {
                 WorldRoomProperties.DisplayName,
+                WorldRoomProperties.WorldId,
                 WorldRoomProperties.IsPublic,
                 WorldRoomProperties.HasPassword,
                 WorldRoomProperties.PasswordHash

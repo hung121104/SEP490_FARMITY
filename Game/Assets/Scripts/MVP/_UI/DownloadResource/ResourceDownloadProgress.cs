@@ -184,6 +184,7 @@ public class ResourceDownloadProgress : MonoBehaviour
         if (MaterialCatalogService.Instance != null) MaterialCatalogService.Instance.Retry();
         if (ResourceCatalogManager.Instance != null) ResourceCatalogManager.Instance.Retry();
         if (SkinCatalogManager.Instance != null) SkinCatalogManager.Instance.Retry();
+        if (AchievementCatalogService.Instance != null) AchievementCatalogService.Instance.Retry();
     }
 
     private void OnDestroy()
