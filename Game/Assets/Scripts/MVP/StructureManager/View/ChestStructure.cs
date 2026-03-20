@@ -56,18 +56,21 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
     {
         ChestSyncManager.OnChestOpened += HandleChestOpened;
         ChestSyncManager.OnChestClosed += HandleChestClosed;
+        ChunkDataSyncManager.OnStructureRemoved += HandleStructureRemoved;
     }
 
     protected override void OnStructureDisabled()
     {
         ChestSyncManager.OnChestOpened -= HandleChestOpened;
         ChestSyncManager.OnChestClosed -= HandleChestClosed;
+        ChunkDataSyncManager.OnStructureRemoved -= HandleStructureRemoved;
     }
 
     protected override void OnStructureDestroyed()
     {
         ChestSyncManager.OnChestOpened -= HandleChestOpened;
         ChestSyncManager.OnChestClosed -= HandleChestClosed;
+        ChunkDataSyncManager.OnStructureRemoved -= HandleStructureRemoved;
     }
 
     // ── IWorldStructure ──────────────────────────────────────────────────
@@ -112,5 +115,25 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
 
         if (showDebugLogs)
             Debug.Log($"[ChestStructure] Badge OFF — player #{actorNumber} closed '{chestId}'");
+    }
+
+    // ── Structure Removal ────────────────────────────────────────────────
+
+    private void HandleStructureRemoved(int worldX, int worldY, string lastHitPlayerId)
+    {
+        if (chestData == null) return;
+        if (chestData.TileX != worldX || chestData.TileY != worldY) return;
+
+        // Close UI if this chest is currently open
+        if (IsUIOpen())
+            CloseUI();
+
+        // Client-side: unregister chest from ChestDataModule
+        // (Master already did this in StructureDestructionService)
+        if (!Photon.Pun.PhotonNetwork.IsMasterClient)
+            WorldDataManager.Instance?.UnregisterChest((short)worldX, (short)worldY);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChestStructure] Chest '{chestData.ChestId}' destroyed by player {lastHitPlayerId}");
     }
 }

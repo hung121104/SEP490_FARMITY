@@ -8,6 +8,9 @@ public static class WorldDataManagerChestExtensions
         this WorldDataManager manager, short tileX, short tileY, byte maxSlots, byte structureLevel)
         => manager.ChestData?.RegisterChest(tileX, tileY, maxSlots, structureLevel);
 
+    public static bool UnregisterChest(this WorldDataManager manager, short tileX, short tileY)
+        => manager.ChestData?.UnregisterChest(tileX, tileY) ?? false;
+
     public static bool SetChestSlot(
         this WorldDataManager manager, string chestId,
         byte slotIndex, string itemId, ushort quantity)
