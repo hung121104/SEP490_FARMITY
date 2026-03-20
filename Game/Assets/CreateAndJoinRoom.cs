@@ -96,7 +96,10 @@ public class CreateAndJoinRoom : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        PhotonNetwork.LoadLevel("GameCoreTestScene");
+        // With AutomaticallySyncScene = true, only the master calls LoadLevel.
+        // Non-master clients are synced automatically by PUN.
+        if (PhotonNetwork.IsMasterClient || !PhotonNetwork.AutomaticallySyncScene)
+            PhotonNetwork.LoadLevel("GameCoreTestScene");
     }
 
     private void UpdateStatus(string message)

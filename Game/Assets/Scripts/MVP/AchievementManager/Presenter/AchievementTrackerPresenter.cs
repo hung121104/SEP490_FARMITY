@@ -259,6 +259,7 @@ namespace AchievementManager.Presenter
 
             bool hasNewPending = false;
             bool hasUnlockCandidate = false;
+            HashSet<string> locallyUpdated = new HashSet<string>();
 
             foreach (AchievementData achievement in model.GetAllAchievements())
             {
@@ -277,12 +278,25 @@ namespace AchievementManager.Presenter
 
                     if (localProgress > serverProgress)
                     {
+                        if (achievement.progress != null && i < achievement.progress.Count)
+                        {
+                            achievement.progress[i] = Mathf.Max(achievement.progress[i], localProgress);
+                            locallyUpdated.Add(achievement.achievementId);
+                        }
+
                         hasNewPending |= UpsertPendingUpdate(achievement.achievementId, i, localProgress);
 
                         if (flushImmediatelyOnUnlockCandidate && req.target > 0 && localProgress >= req.target)
                             hasUnlockCandidate = true;
                     }
                 }
+            }
+
+            foreach (string achievementId in locallyUpdated)
+            {
+                AchievementData localData = model.GetAchievement(achievementId);
+                if (localData != null)
+                    presenter?.OnProgressUpdated(localData);
             }
 
             if (!hasNewPending && pendingUpdates.Count == 0) return;

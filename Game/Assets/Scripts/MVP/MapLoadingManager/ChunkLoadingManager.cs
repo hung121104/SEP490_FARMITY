@@ -536,7 +536,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             // If tile has a structure, spawn the structure visual via pool
             if (tile.HasStructure)
             {
-                // Skip spawning if structure HP is negative (explicitly marked as destroyed)
+                // Skip spawning if structure is destroyed (HP <= 0)
                 if (tile.Structure.CurrentHp <= 0)
                 {
                     if (showDebugLogs)
@@ -572,6 +572,10 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                         structObj.SetActive(true);
                         foreach (var col in structObj.GetComponentsInChildren<Collider2D>())
                             col.enabled = true;
+
+                        var worldStructure = structObj.GetComponentInChildren<IWorldStructure>(true);
+                        if (worldStructure != null)
+                            worldStructure.InitializeFromWorld(tile.WorldX, tile.WorldY, structData);
 
                         if (!chunkStructureVisuals.ContainsKey(chunkPos))
                             chunkStructureVisuals[chunkPos] = new List<(string, GameObject)>();

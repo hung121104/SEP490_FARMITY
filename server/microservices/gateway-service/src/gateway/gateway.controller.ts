@@ -45,6 +45,10 @@ import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
+import {
+  UpdateWorldBlacklistDto,
+  WorldBlacklistQueryDto,
+} from './dto/world-blacklist.dto';
 
 const FERTILIZER_ITEM_TYPE = 14;
 
@@ -75,6 +79,41 @@ export class GatewayController {
       message = payload.message || payload.error || JSON.stringify(payload);
     }
     return new HttpException(message, status);
+  }
+
+  private async enrichBlacklistResponse(payload: any) {
+    const blacklistedPlayerIds: string[] = Array.isArray(payload?.blacklistedPlayerIds)
+      ? payload.blacklistedPlayerIds.map((id: unknown) => String(id))
+      : [];
+
+    if (blacklistedPlayerIds.length === 0) {
+      return {
+        ...payload,
+        blacklistedPlayers: [],
+      };
+    }
+
+    const uniqueIds = Array.from(new Set(blacklistedPlayerIds));
+    const lookup = await Promise.all(
+      uniqueIds.map(async (accountId) => {
+        try {
+          const account: any = await firstValueFrom(this.authClient.send('find-account', accountId));
+          return { accountId, username: account?.username ?? null };
+        } catch {
+          return { accountId, username: null };
+        }
+      }),
+    );
+
+    const usernameMap = new Map(lookup.map((item) => [item.accountId, item.username]));
+
+    return {
+      ...payload,
+      blacklistedPlayers: blacklistedPlayerIds.map((accountId) => ({
+        accountId,
+        username: usernameMap.get(accountId) ?? null,
+      })),
+    };
   }
 
   private parseCrossResults(crossResults: any): any {
@@ -261,6 +300,74 @@ export class GatewayController {
         message = payload.message || payload.error || JSON.stringify(payload);
       }
       throw new HttpException(message, status);
+    }
+  }
+
+  @Get('player-data/world/blacklist')
+  async getWorldBlacklist(@Query() query: WorldBlacklistQueryDto, @Req() req: Request) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      const response = await firstValueFrom(
+        this.playerDataClient.send('get-world-blacklist', {
+          worldId: query._id,
+          requesterId,
+          requesterIsAdmin,
+        }),
+      );
+      return await this.enrichBlacklistResponse(response);
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('player-data/world/blacklist')
+  async addWorldBlacklistPlayer(
+    @Body() dto: UpdateWorldBlacklistDto,
+    @Req() req: Request,
+  ) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      const response = await firstValueFrom(
+        this.playerDataClient.send('add-world-blacklist-player', {
+          worldId: dto._id,
+          requesterId,
+          requesterIsAdmin,
+          playerId: dto.playerId,
+        }),
+      );
+      return await this.enrichBlacklistResponse(response);
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('player-data/world/blacklist')
+  async removeWorldBlacklistPlayer(
+    @Body() dto: UpdateWorldBlacklistDto,
+    @Req() req: Request,
+  ) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      const response = await firstValueFrom(
+        this.playerDataClient.send('remove-world-blacklist-player', {
+          worldId: dto._id,
+          requesterId,
+          requesterIsAdmin,
+          playerId: dto.playerId,
+        }),
+      );
+      return await this.enrichBlacklistResponse(response);
+    } catch (err) {
+      throw this.rpcError(err);
     }
   }
 

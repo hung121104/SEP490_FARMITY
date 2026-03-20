@@ -83,6 +83,7 @@ public class LoadWorld : MonoBehaviourPunCallbacks
             ? manager.WorldName 
             : selectedId;
         customProps[WorldRoomProperties.DisplayName] = displayName;
+        customProps[WorldRoomProperties.WorldId] = selectedId;
         customProps[WorldRoomProperties.IsPublic] = false;
         customProps[WorldRoomProperties.OwnerId] = SessionManager.Instance?.UserId ?? string.Empty;
         customProps[WorldRoomProperties.HasPassword] = false;
@@ -92,11 +93,12 @@ public class LoadWorld : MonoBehaviourPunCallbacks
         { 
             MaxPlayers = 4, 
             IsVisible = false,
-            IsOpen = false,
+            IsOpen = true,   // must be true so other players can join
             CustomRoomProperties = customProps,
             CustomRoomPropertiesForLobby = new string[]
             {
                 WorldRoomProperties.DisplayName,
+                WorldRoomProperties.WorldId,
                 WorldRoomProperties.IsPublic,
                 WorldRoomProperties.HasPassword,
                 WorldRoomProperties.PasswordHash
@@ -108,6 +110,10 @@ public class LoadWorld : MonoBehaviourPunCallbacks
     }
     public override void OnJoinedRoom()
     {
-        PhotonNetwork.LoadLevel("GameCoreTestScene");
+        // With AutomaticallySyncScene = true, only the master calls LoadLevel.
+        // Non-master clients are synced automatically by PUN when the master's scene is recorded.
+        // With AutomaticallySyncScene = false, all clients call it themselves.
+        if (PhotonNetwork.IsMasterClient || !PhotonNetwork.AutomaticallySyncScene)
+            PhotonNetwork.LoadLevel("GameCoreTestScene");
     }
 }

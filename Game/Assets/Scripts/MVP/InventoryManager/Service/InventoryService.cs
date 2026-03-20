@@ -484,5 +484,49 @@ public class InventoryService : IInventoryService
         OnInventoryChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Apply authoritative chest state from flat ChestSlotEntry list.
+    /// Same pattern as ApplyRemoteInventoryState but reads from flat struct data
+    /// instead of CharacterInventory. Used by ChestPresenter.LoadStateFromModule().
+    /// </summary>
+    public void ApplyRemoteChestState(List<ChestSlotEntry> remoteSlots, int maxSlots)
+    {
+        bool wasSyncEnabled = NetworkSyncEnabled;
+        NetworkSyncEnabled = false;
+
+        // Track which slots have remote data
+        HashSet<byte> occupiedSlots = new HashSet<byte>();
+
+        // Apply occupied slots from remote data
+        for (int i = 0; i < remoteSlots.Count; i++)
+        {
+            var entry = remoteSlots[i];
+            occupiedSlots.Add(entry.SlotIndex);
+
+            var existingItem = model.GetItemAtSlot(entry.SlotIndex);
+            if (existingItem == null
+                || existingItem.ItemId != entry.ItemId
+                || existingItem.Quantity != entry.Quantity)
+            {
+                var itemData = ItemCatalogService.Instance?.GetItemData(entry.ItemId);
+                if (itemData != null)
+                {
+                    var itemModel = new ItemModel(itemData, Quality.Normal, entry.Quantity, entry.SlotIndex);
+                    model.SetItemAtSlot(entry.SlotIndex, itemModel);
+                }
+            }
+        }
+
+        // Clear slots that have no remote data
+        for (byte s = 0; s < (byte)maxSlots; s++)
+        {
+            if (!occupiedSlots.Contains(s) && !model.IsSlotEmpty(s))
+                model.ClearSlot(s);
+        }
+
+        NetworkSyncEnabled = wasSyncEnabled;
+        OnInventoryChanged?.Invoke();
+    }
+
     #endregion
 }

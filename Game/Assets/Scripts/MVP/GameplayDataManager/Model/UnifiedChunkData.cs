@@ -35,9 +35,9 @@ public class UnifiedChunkData : BaseChunkData
     [Serializable]
     public struct StructureTileData
     {
-        public string StructureId;  // structure identifier (e.g. "fence_wood")
-        public int    PlacedDay;    // in-game day the structure was placed
-        public int    CurrentHp;    // remaining hp for destruction logic
+        public string StructureId;     // structure identifier (e.g. "fence_wood")
+        public int    CurrentHp;       // remaining hp for destruction logic (ephemeral, not serialized)
+        public byte   StructureLevel;  // upgrade level (1-3), used by chest/furnace for slot count
     }
 
     [Serializable]
@@ -425,7 +425,7 @@ public class UnifiedChunkData : BaseChunkData
     /// Fails if a crop is already present (mutual exclusion).
     /// Structures CANNOT be placed on tilled soil.
     /// </summary>
-    public bool PlaceStructure(string structureId, int worldX, int worldY, int initialHp = 0)
+    public bool PlaceStructure(string structureId, int worldX, int worldY, int initialHp = 0, byte structureLevel = 1)
     {
         long key = GetKey(worldX, worldY);
 
@@ -452,7 +452,7 @@ public class UnifiedChunkData : BaseChunkData
                 return false;
             }
             slot.HasStructure = true;
-            slot.Structure    = new StructureTileData { StructureId = structureId, CurrentHp = initialHp };
+            slot.Structure    = new StructureTileData { StructureId = structureId, CurrentHp = initialHp, StructureLevel = structureLevel };
             tiles[key]        = slot;
         }
         else
@@ -462,7 +462,7 @@ public class UnifiedChunkData : BaseChunkData
                 WorldX       = worldX,
                 WorldY       = worldY,
                 HasStructure = true,
-                Structure    = new StructureTileData { StructureId = structureId, CurrentHp = initialHp }
+                Structure    = new StructureTileData { StructureId = structureId, CurrentHp = initialHp, StructureLevel = structureLevel }
             };
         }
 
@@ -646,7 +646,7 @@ public class UnifiedChunkData : BaseChunkData
     //   Per slot: WorldX(4) WorldY(4) flags(1)
     //             [if HasCrop]       PlantIdLen(1) PlantId(N) CropStage(1) GrowthTimer(4)
     //                                PollenCount(1) IsWatered(1) IsFertilized(1) IsPollinated(1)
-    //             [if HasStructure]  StructIdLen(1) StructId(N) PlacedDay(4)
+    //             [if HasStructure]  StructIdLen(1) StructId(N) CurrentHp(4) StructureLevel(1)
     //             [if HasResource]   ResourceIdLen(1) ResourceId(N) CurrentHp(4)
     // flags byte: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure, bit3=HasResource
     // ══════════════════════════════════════════════════════════════════════
@@ -694,7 +694,8 @@ public class UnifiedChunkData : BaseChunkData
                     : System.Text.Encoding.UTF8.GetBytes(slot.Structure.StructureId);
                 bytes.Add((byte)structIdBytes.Length);
                 bytes.AddRange(structIdBytes);
-                bytes.AddRange(BitConverter.GetBytes(slot.Structure.PlacedDay));
+                bytes.AddRange(BitConverter.GetBytes(slot.Structure.CurrentHp));
+                bytes.Add(slot.Structure.StructureLevel);
             }
 
             if (slot.HasResource)
@@ -763,10 +764,12 @@ public class UnifiedChunkData : BaseChunkData
                     ? System.Text.Encoding.UTF8.GetString(data, offset, structIdLen)
                     : string.Empty;
                 offset += structIdLen;
-                slot.Structure.PlacedDay = offset + 4 <= data.Length
-                    ? BitConverter.ToInt32(data, offset)
-                    : 0;
+                slot.Structure.CurrentHp = offset + 4 <= data.Length
+                    ? BitConverter.ToInt32(data, offset) : 0;
                 offset += 4;
+                slot.Structure.StructureLevel = offset < data.Length
+                    ? data[offset++]
+                    : (byte)1;
             }
 
             if (slot.HasResource)
@@ -807,7 +810,8 @@ public class UnifiedChunkData : BaseChunkData
             {
                 int structIdLen = string.IsNullOrEmpty(slot.Structure.StructureId)
                     ? 0 : System.Text.Encoding.UTF8.GetByteCount(slot.Structure.StructureId);
-                size += 1 + structIdLen + 4;
+                // StructIdLen(1) + StructId(N) + CurrentHp(4) + StructureLevel(1)
+                size += 1 + structIdLen + 4 + 1;
             }
             if (slot.HasResource)
             {

@@ -2,18 +2,22 @@ using ExitGames.Client.Photon;
 using Photon.Pun;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class WorldPublishController : MonoBehaviourPunCallbacks
 {
     [Header("Option Panel")]
+    [SerializeField] private CanvasGroup optionPanelCanvasGroup;
     [SerializeField] private GameObject optionPanel;
     [SerializeField] private Button openPanelButton;
     [SerializeField] private Button closePanelButton;
 
     [Header("Publish Controls")]
-    [SerializeField] private Toggle publicToggle;
-    [SerializeField] private Toggle passwordToggle;
+    [SerializeField] private Button publicStateButton;
+    [SerializeField] private TextMeshProUGUI publicStateButtonText;
+    [SerializeField] private Button passwordStateButton;
+    [SerializeField] private TextMeshProUGUI passwordStateButtonText;
     [SerializeField] private TMP_InputField passwordInput;
     [SerializeField] private Button applyButton;
     [SerializeField] private TextMeshProUGUI statusText;
@@ -24,6 +28,16 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
     private bool baselineHasPassword;
     private string baselinePasswordHash = string.Empty;
     private bool hasBaseline;
+    private bool publicButtonState;
+    private bool passwordButtonState;
+    private InputAction escapeCloseAction;
+    private Coroutine reenableToggleRoutine;
+
+    private void Awake()
+    {
+        escapeCloseAction = new InputAction("CloseWorldOptionPanel", InputActionType.Button, "<Keyboard>/escape");
+        escapeCloseAction.performed += OnEscapeClosePanel;
+    }
 
     private void Start()
     {
@@ -36,19 +50,34 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
         if (applyButton != null)
             applyButton.onClick.AddListener(ApplyPublishSettings);
 
-        if (publicToggle != null)
-            publicToggle.onValueChanged.AddListener(OnPublicToggleChanged);
+        if (publicStateButton != null)
+            publicStateButton.onClick.AddListener(OnPublicStateButtonClicked);
 
-        if (passwordToggle != null)
-            passwordToggle.onValueChanged.AddListener(OnPasswordToggleChanged);
+        if (passwordStateButton != null)
+            passwordStateButton.onClick.AddListener(OnPasswordStateButtonClicked);
 
         if (passwordInput != null)
             passwordInput.onValueChanged.AddListener(OnPasswordInputChanged);
 
-        if (optionPanel != null)
-            optionPanel.SetActive(false);
+        HideOptionPanelVisual();
 
         RefreshFromRoom();
+    }
+
+    private void OnEnable()
+    {
+        escapeCloseAction?.Enable();
+    }
+
+    private void OnDisable()
+    {
+        escapeCloseAction?.Disable();
+
+        if (reenableToggleRoutine != null)
+        {
+            StopCoroutine(reenableToggleRoutine);
+            reenableToggleRoutine = null;
+        }
     }
 
     private void OnDestroy()
@@ -62,14 +91,21 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
         if (applyButton != null)
             applyButton.onClick.RemoveListener(ApplyPublishSettings);
 
-        if (publicToggle != null)
-            publicToggle.onValueChanged.RemoveListener(OnPublicToggleChanged);
+        if (publicStateButton != null)
+            publicStateButton.onClick.RemoveListener(OnPublicStateButtonClicked);
 
-        if (passwordToggle != null)
-            passwordToggle.onValueChanged.RemoveListener(OnPasswordToggleChanged);
+        if (passwordStateButton != null)
+            passwordStateButton.onClick.RemoveListener(OnPasswordStateButtonClicked);
 
         if (passwordInput != null)
             passwordInput.onValueChanged.RemoveListener(OnPasswordInputChanged);
+
+        if (escapeCloseAction != null)
+        {
+            escapeCloseAction.performed -= OnEscapeClosePanel;
+            escapeCloseAction.Dispose();
+            escapeCloseAction = null;
+        }
     }
 
     public override void OnJoinedRoom()
@@ -83,7 +119,7 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
             return;
 
         // Keep the user's in-progress edits while the panel is open
-        if (optionPanel != null && optionPanel.activeSelf && hasLocalUnsavedChanges)
+        if (IsOptionPanelVisible() && hasLocalUnsavedChanges)
             return;
 
         RefreshFromRoom();
@@ -91,8 +127,8 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
     public void OpenPanel()
     {
-        if (optionPanel != null)
-            optionPanel.SetActive(true);
+        ShowOptionPanelVisual();
+        ToggleInGameSettingMenu.SetGlobalAllowToggleState(false);
 
         hasLocalUnsavedChanges = false;
         RefreshFromRoom();
@@ -100,8 +136,12 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
     public void ClosePanel()
     {
-        if (optionPanel != null)
-            optionPanel.SetActive(false);
+        HideOptionPanelVisual();
+
+        if (reenableToggleRoutine != null)
+            StopCoroutine(reenableToggleRoutine);
+
+        reenableToggleRoutine = StartCoroutine(ReenableToggleNextFrame());
 
         hasLocalUnsavedChanges = false;
         UpdateApplyButtonState();
@@ -121,8 +161,8 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
             return;
         }
 
-        bool makePublic = publicToggle != null && publicToggle.isOn;
-        bool usePassword = passwordToggle != null && passwordToggle.isOn;
+        bool makePublic = GetPublicStateFromUI();
+        bool usePassword = GetPasswordStateFromUI();
         string plainPassword = passwordInput != null ? (passwordInput.text ?? string.Empty) : string.Empty;
 
         if (!makePublic)
@@ -160,35 +200,60 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
             : "World is now private.");
     }
 
-    private void OnPublicToggleChanged(bool isPublic)
+    private void OnPublicStateButtonClicked()
     {
         if (suppressToggleEvents)
             return;
 
+        bool nextState = !GetPublicStateFromUI();
+        suppressToggleEvents = true;
+        SetPublicStateInUI(nextState);
+        suppressToggleEvents = false;
+
+        HandlePublicStateChanged(nextState);
+    }
+
+    private void HandlePublicStateChanged(bool isPublic)
+    {
         hasLocalUnsavedChanges = true;
 
         bool allowPassword = isPublic;
-        if (passwordToggle != null)
-            passwordToggle.interactable = allowPassword;
+        if (passwordStateButton != null)
+            passwordStateButton.interactable = allowPassword;
 
-        if (!allowPassword && passwordToggle != null)
-            passwordToggle.isOn = false;
+        if (!allowPassword)
+            SetPasswordStateInUI(false);
 
         if (passwordInput != null)
-            passwordInput.interactable = allowPassword && passwordToggle != null && passwordToggle.isOn;
+            passwordInput.interactable = allowPassword && GetPasswordStateFromUI();
 
         RecalculateDirtyState();
     }
 
-    private void OnPasswordToggleChanged(bool enabled)
+    private void OnPasswordStateButtonClicked()
     {
         if (suppressToggleEvents)
             return;
 
+        if (!GetPublicStateFromUI())
+            return;
+
+        bool nextState = !GetPasswordStateFromUI();
+        suppressToggleEvents = true;
+        SetPasswordStateInUI(nextState);
+        suppressToggleEvents = false;
+
+        HandlePasswordStateChanged(nextState);
+    }
+
+    private void HandlePasswordStateChanged(bool enabled)
+    {
         hasLocalUnsavedChanges = true;
 
+        bool canUsePassword = enabled && GetPublicStateFromUI();
+
         if (passwordInput != null)
-            passwordInput.interactable = enabled && publicToggle != null && publicToggle.isOn;
+            passwordInput.interactable = canUsePassword;
 
         RecalculateDirtyState();
     }
@@ -243,14 +308,12 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
 
         suppressToggleEvents = true;
 
-        if (publicToggle != null)
-            publicToggle.isOn = isPublic;
+        SetPublicStateInUI(isPublic);
 
-        if (passwordToggle != null)
-        {
-            passwordToggle.isOn = hasPassword;
-            passwordToggle.interactable = isPublic;
-        }
+        SetPasswordStateInUI(hasPassword);
+
+        if (passwordStateButton != null)
+            passwordStateButton.interactable = isPublic;
 
         if (passwordInput != null)
             passwordInput.interactable = isPublic && hasPassword;
@@ -311,14 +374,55 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
             return;
 
         bool canEdit = CanEditPublishState();
-        bool panelOpen = optionPanel == null || optionPanel.activeSelf;
+        bool panelOpen = (optionPanelCanvasGroup == null && optionPanel == null) || IsOptionPanelVisible();
         applyButton.interactable = panelOpen && canEdit && hasLocalUnsavedChanges;
+    }
+
+    private void OnEscapeClosePanel(InputAction.CallbackContext _)
+    {
+        if (!IsOptionPanelVisible())
+            return;
+
+        ClosePanel();
+    }
+
+    private bool IsOptionPanelVisible()
+    {
+        if (optionPanelCanvasGroup != null)
+            return optionPanelCanvasGroup.alpha > 0f;
+
+        return optionPanel != null && optionPanel.activeSelf;
+    }
+
+    private void ShowOptionPanelVisual()
+    {
+        if (optionPanelCanvasGroup != null)
+            optionPanelCanvasGroup.Show();
+
+        if (optionPanel != null)
+            optionPanel.SetActive(true);
+    }
+
+    private void HideOptionPanelVisual()
+    {
+        if (optionPanelCanvasGroup != null)
+            optionPanelCanvasGroup.Hide();
+
+        if (optionPanelCanvasGroup == null && optionPanel != null)
+            optionPanel.SetActive(false);
+    }
+
+    private System.Collections.IEnumerator ReenableToggleNextFrame()
+    {
+        yield return null;
+        ToggleInGameSettingMenu.SetGlobalAllowToggleState(true);
+        reenableToggleRoutine = null;
     }
 
     private void GetCurrentUiState(out bool isPublic, out bool hasPassword, out string passwordHash)
     {
-        isPublic = publicToggle != null && publicToggle.isOn;
-        hasPassword = isPublic && passwordToggle != null && passwordToggle.isOn;
+        isPublic = GetPublicStateFromUI();
+        hasPassword = isPublic && GetPasswordStateFromUI();
 
         if (hasPassword)
         {
@@ -329,5 +433,67 @@ public class WorldPublishController : MonoBehaviourPunCallbacks
         {
             passwordHash = string.Empty;
         }
+    }
+
+    private bool GetPublicStateFromUI()
+    {
+        if (publicStateButton != null)
+            return publicButtonState;
+
+        return false;
+    }
+
+    private void SetPublicStateInUI(bool isPublic)
+    {
+        publicButtonState = isPublic;
+        UpdatePublicStateButtonText(isPublic);
+    }
+
+    private void UpdatePublicStateButtonText(bool isPublic)
+    {
+        if (publicStateButtonText != null)
+        {
+            publicStateButtonText.text = isPublic ? "Public" : "Private";
+            return;
+        }
+
+        if (publicStateButton == null)
+            return;
+
+        TextMeshProUGUI embeddedLabel = publicStateButton.GetComponentInChildren<TextMeshProUGUI>();
+        if (embeddedLabel != null)
+            embeddedLabel.text = isPublic ? "Public" : "Private";
+    }
+
+    private bool GetPasswordStateFromUI()
+    {
+        if (passwordStateButton != null)
+            return passwordButtonState;
+
+        return false;
+    }
+
+    private void SetPasswordStateInUI(bool hasPassword)
+    {
+        passwordButtonState = hasPassword;
+        UpdatePasswordStateButtonText(hasPassword);
+    }
+
+    private void UpdatePasswordStateButtonText(bool hasPassword)
+    {
+        string label = hasPassword ? "Password: On" : "Password: Off";
+
+        if (passwordStateButtonText != null)
+        {
+            passwordStateButtonText.text = label;
+            return;
+        }
+
+        if (passwordStateButton == null)
+            return;
+
+        TextMeshProUGUI embeddedLabel = passwordStateButton.GetComponentInChildren<TextMeshProUGUI>();
+        if (embeddedLabel != null)
+            embeddedLabel.text = label;
     }
 }

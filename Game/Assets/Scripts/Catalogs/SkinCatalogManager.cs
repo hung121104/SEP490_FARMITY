@@ -6,6 +6,9 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Networking;
 
+/// <summary>Classifies a skin config entry into a paper-doll equipment slot.</summary>
+public enum SkinCategory { Hair, Outfit, Hat, Unknown }
+
 /// <summary>
 /// Singleton that fetches the skin catalog from the backend, caches PNG
 /// spritesheets to disk, slices them into Sprite arrays, and makes them
@@ -38,6 +41,22 @@ public class SkinCatalogManager : MonoBehaviour
     private bool _isReady;
     public bool IsReady => _isReady;
 
+    // ── Public Entry Type (for skin picker UI) ────────────────────────────────
+
+    /// <summary>
+    /// Lightweight descriptor of a loaded skin entry exposed to the skin-picker UI.
+    /// </summary>
+    public readonly struct SkinEntry
+    {
+        public readonly string       configId;
+        public readonly SkinCategory category;
+        public SkinEntry(string id, SkinCategory cat) { configId = id; category = cat; }
+    }
+
+    // configId-ordered list of entries registered from the main catalog fetch.
+    // Does NOT include material sheets added via LoadExternalSheet.
+    private readonly List<SkinEntry> _entries = new List<SkinEntry>();
+
     // ── Internal DTOs ─────────────────────────────────────────────────────────
 
     [Serializable]
@@ -46,6 +65,7 @@ public class SkinCatalogManager : MonoBehaviour
         public string configId;
         public string spritesheetUrl;
         public int cellSize = 64;
+        public string skinCategory; // optional server field: "hair", "outfit", "hat"
     }
 
     [Serializable]
@@ -85,6 +105,13 @@ public class SkinCatalogManager : MonoBehaviour
         _catalog.TryGetValue(configId, out var sprites);
         return sprites;
     }
+
+    /// <summary>
+    /// Returns all skin entries registered from the main catalog (FetchCatalog).
+    /// Does NOT include material sheets registered via LoadExternalSheet.
+    /// Use this to populate the skin-picker UI.
+    /// </summary>
+    public IReadOnlyList<SkinEntry> GetAllEntries() => _entries;
 
     /// <summary>
     /// Forces a full re-download of the catalog (ignores disk cache).
@@ -173,6 +200,11 @@ public class SkinCatalogManager : MonoBehaviour
             CatalogProgressManager.NotifyCompleted();
             yield break;
         }
+
+        // Register entries for the skin-picker UI (category-classified).
+        _entries.Clear();
+        foreach (var e in entries)
+            _entries.Add(new SkinEntry(e.configId, InferCategory(e.configId, e.skinCategory)));
 
         // Load all sheets concurrently via nested coroutines
         int pending = entries.Length;
@@ -377,5 +409,32 @@ public class SkinCatalogManager : MonoBehaviour
         OnCatalogReady?.Invoke();
         Debug.Log(
             $"[SkinCatalogManager] Catalog ready — {_catalog.Count} sheet(s) loaded.");
+    }
+
+    // ── Private: Category Inference ───────────────────────────────────────────
+
+    /// <summary>
+    /// Determines the <see cref="SkinCategory"/> for a skin entry.
+    /// Uses the optional <paramref name="serverCategory"/> string first (if the server
+    /// sends it); falls back to keyword matching on the <paramref name="configId"/>.
+    /// </summary>
+    private static SkinCategory InferCategory(string configId, string serverCategory)
+    {
+        if (!string.IsNullOrEmpty(serverCategory))
+        {
+            return serverCategory.ToLowerInvariant() switch
+            {
+                "hair"   => SkinCategory.Hair,
+                "outfit" => SkinCategory.Outfit,
+                "hat"    => SkinCategory.Hat,
+                _        => SkinCategory.Unknown,
+            };
+        }
+
+        string lower = configId.ToLowerInvariant();
+        if (lower.Contains("hair"))                                                    return SkinCategory.Hair;
+        if (lower.Contains("hat") || lower.Contains("cap") || lower.Contains("helmet")) return SkinCategory.Hat;
+        if (lower.Contains("outfit") || lower.Contains("coat") || lower.Contains("suit") || lower.Contains("dress")) return SkinCategory.Outfit;
+        return SkinCategory.Unknown;
     }
 }
