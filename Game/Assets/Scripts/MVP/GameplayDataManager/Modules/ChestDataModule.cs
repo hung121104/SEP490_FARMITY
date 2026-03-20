@@ -118,8 +118,8 @@ public class ChestDataModule : IWorldDataModule
         if (string.IsNullOrEmpty(chestId)) return false;
         int sep = chestId.IndexOf('_');
         if (sep < 0) return false;
-        if (!short.TryParse(chestId.AsSpan(0, sep), out tileX)) return false;
-        if (!short.TryParse(chestId.AsSpan(sep + 1), out tileY)) return false;
+        if (!short.TryParse(chestId.Substring(0, sep), out tileX)) return false;
+        if (!short.TryParse(chestId.Substring(sep + 1), out tileY)) return false;
         return true;
     }
 
