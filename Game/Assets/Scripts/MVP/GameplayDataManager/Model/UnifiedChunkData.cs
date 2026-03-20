@@ -815,7 +815,8 @@ public class UnifiedChunkData : BaseChunkData
             {
                 int structIdLen = string.IsNullOrEmpty(slot.Structure.StructureId)
                     ? 0 : System.Text.Encoding.UTF8.GetByteCount(slot.Structure.StructureId);
-                size += 1 + structIdLen + 4;
+                // StructIdLen(1) + StructId(N) + PlacedDay(4) + StructureLevel(1)
+                size += 1 + structIdLen + 4 + 1;
             }
             if (slot.HasResource)
             {

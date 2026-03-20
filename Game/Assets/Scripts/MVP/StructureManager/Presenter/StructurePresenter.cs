@@ -39,21 +39,7 @@ public class StructurePresenter
             return null;
         }
 
-        var data = new StructureData
-        {
-            StructureId     = itemData.itemID,
-            DisplayName     = itemData.itemName,
-            InteractionType = interactionType,
-            Prefab          = prefab
-        };
-
-        if (interactionType == StructureInteractionType.Storage)
-        {
-            data.StructureLevel = itemData.structureLevel;
-            data.StorageSlots   = StructureData.SlotsForLevel(itemData.structureLevel);
-        }
-
-        return data;
+        return new StructureData(itemData, prefab);
     }
 
     /// <summary>
