@@ -17,9 +17,11 @@ public class ChestGameView : MonoBehaviour
     [Header("References")]
     [SerializeField] private ChestInventoryView chestInventoryView;
     [SerializeField] private ItemDetailView itemDetailView;
+    [Tooltip("Drag ChestPanel here")]
     [SerializeField] private GameObject chestMainPanel;
     [Tooltip("UI area where dragged items won't drop to world(ChestPanel)")]
     [SerializeField] private RectTransform chestSafeZone;
+    [Tooltip("Drag ChestPanel here")]
     [SerializeField] private Transform inventoryContainer;
 
     [Header("Testing")]
@@ -138,6 +140,10 @@ public class ChestGameView : MonoBehaviour
         // Notify network
         if (ChestSyncManager.Instance != null)
             ChestSyncManager.Instance.NotifyChestClosed(activeChestData.ChestId);
+
+        // Force hide item detail tooltip immediately (before panel deactivates)
+        if (itemDetailView != null)
+            itemDetailView.HideImmediate();
 
         // Unsubscribe and cleanup presenter
         if (presenter != null)
