@@ -10,8 +10,10 @@ using UnityEngine.SceneManagement;
 public class OnlineWorldListView : MonoBehaviourPunCallbacks
 {
     [SerializeField] private GameObject roomItemPrefab;
+    [SerializeField] private CanvasGroup roomItemTemplateCanvasGroup;
     [SerializeField] private Transform roomListContainer;
     [SerializeField] private TextMeshProUGUI statusText;
+    [SerializeField] private CanvasGroup loadingPanelCanvasGroup;
     [SerializeField] private GameObject loadingPanel;
     [SerializeField] private Button refreshButton;
     [SerializeField] private Button backButton;
@@ -44,10 +46,8 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
 
         PhotonNetwork.AutomaticallySyncScene = true;
         
-        if (roomItemPrefab != null && roomItemPrefab.activeInHierarchy)
-        {
-            roomItemPrefab.SetActive(false);
-        }
+        if (roomItemTemplateCanvasGroup != null)
+            roomItemTemplateCanvasGroup.Hide();
 
         if (refreshButton != null)
         {
@@ -255,7 +255,6 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         if (roomItemPrefab == null || roomListContainer == null) return;
 
         GameObject entry = Instantiate(roomItemPrefab, roomListContainer);
-        entry.SetActive(true);
 
         OnlineWorldItemView itemView = entry.GetComponent<OnlineWorldItemView>();
         if (itemView != null)
@@ -422,7 +421,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
 
     private void OpenPasswordPanel(RoomInfo roomInfo)
     {
-        if (passwordPanel == null)
+        if (passwordPanelCanvasGroup == null)
         {
             UpdateStatus("This room requires a password.");
             return;
@@ -484,7 +483,13 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
 
     private void ShowLoading(bool show)
     {
-        if (loadingPanel != null) loadingPanel.SetActive(show);
+        if (loadingPanelCanvasGroup == null)
+            return;
+
+        if (show)
+            loadingPanelCanvasGroup.Show();
+        else
+            loadingPanelCanvasGroup.Hide();
     }
 
     private void UpdateStatus(string message)
@@ -496,36 +501,24 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
     {
         if (passwordPanelCanvasGroup != null)
             passwordPanelCanvasGroup.Show();
-
-        if (passwordPanel != null)
-            passwordPanel.SetActive(true);
     }
 
     private void HidePasswordPanelVisual()
     {
         if (passwordPanelCanvasGroup != null)
             passwordPanelCanvasGroup.Hide();
-
-        if (passwordPanelCanvasGroup == null && passwordPanel != null)
-            passwordPanel.SetActive(false);
     }
 
     private void ShowJoinDeniedPanelVisual()
     {
         if (joinDeniedPanelCanvasGroup != null)
             joinDeniedPanelCanvasGroup.Show();
-
-        if (joinDeniedPanel != null)
-            joinDeniedPanel.SetActive(true);
     }
 
     private void HideJoinDeniedPanelVisual()
     {
         if (joinDeniedPanelCanvasGroup != null)
             joinDeniedPanelCanvasGroup.Hide();
-
-        if (joinDeniedPanelCanvasGroup == null && joinDeniedPanel != null)
-            joinDeniedPanel.SetActive(false);
     }
 
     #endregion
