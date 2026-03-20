@@ -176,6 +176,20 @@ public class InventoryGameView : MonoBehaviour
         }
     }
 
+    public void OpenChestInventory(Transform container = null)
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.EnableDrops();
+            itemDeleteView.SetAnchoredPosition(deleteZoneDefaultPos);
+        }
+
+        if (container != null)
+            inventoryView?.ShowWithParent(container);
+        else
+            inventoryView?.Show();
+    }
+
     public void OpenCraftingInventory(Transform container = null)
     {
         if (itemDeleteView != null)
@@ -221,6 +235,9 @@ public class InventoryGameView : MonoBehaviour
 
     public void CloseInventory()
     {
+        if (itemDeleteView != null)
+            itemDeleteView.Hide();
+
         if (inventoryView != null)
         {
             presenter?.CancelAllActions();
@@ -259,23 +276,14 @@ public class InventoryGameView : MonoBehaviour
     public IInventoryService GetInventoryService() => service;
     public InventoryModel GetInventoryModel() => model;
     public int GetInventorySlotCount() => model.maxSlots;
+    public IInventoryView GetInventoryView() => inventoryView;
 
     /// <summary>
-    /// Register a secondary InventoryView (e.g. crafting panel) that receives
-    /// data-only updates from the single InventoryPresenter.
-    /// The secondary view still handles its own input (drag/drop) locally.
+    /// Register a UI panel as an additional safe drop zone.
     /// </summary>
-    public void RegisterSecondaryView(IInventoryView secondaryView)
+    public void SetAdditionalSafeZone(RectTransform zone)
     {
-        presenter?.AddSecondaryView(secondaryView);
-    }
-
-    /// <summary>
-    /// Unregister a secondary InventoryView.
-    /// </summary>
-    public void UnregisterSecondaryView(IInventoryView secondaryView)
-    {
-        presenter?.RemoveSecondaryView(secondaryView);
+        inventoryView?.SetAdditionalSafeZone(zone);
     }
 
     /// <summary>

@@ -36,12 +36,12 @@ public class StructureDataModule : IWorldDataModule
         return manager.CropData?.GetSection(sectionId);
     }
 
-    public bool PlaceStructureAtWorldPosition(Vector3 worldPos, string structureId, int initialHp)
+    public bool PlaceStructureAtWorldPosition(Vector3 worldPos, string structureId, int initialHp, byte structureLevel = 1)
     {
         if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
             return false;
 
-        bool success = chunk.PlaceStructure(structureId, wx, wy, initialHp);
+        bool success = chunk.PlaceStructure(structureId, wx, wy, initialHp, structureLevel);
         if (success && showDebugLogs)
         {
             var config = manager.GetSectionConfig(sectionId);
