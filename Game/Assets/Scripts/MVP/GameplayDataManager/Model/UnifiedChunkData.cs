@@ -36,8 +36,7 @@ public class UnifiedChunkData : BaseChunkData
     public struct StructureTileData
     {
         public string StructureId;     // structure identifier (e.g. "fence_wood")
-        public int    PlacedDay;       // in-game day the structure was placed
-        public int    CurrentHp;       // remaining hp for destruction logic
+        public int    CurrentHp;       // remaining hp for destruction logic (ephemeral, not serialized)
         public byte   StructureLevel;  // upgrade level (1-3), used by chest/furnace for slot count
     }
 
@@ -647,8 +646,7 @@ public class UnifiedChunkData : BaseChunkData
     //   Per slot: WorldX(4) WorldY(4) flags(1)
     //             [if HasCrop]       PlantIdLen(1) PlantId(N) CropStage(1) GrowthTimer(4)
     //                                PollenCount(1) IsWatered(1) IsFertilized(1) IsPollinated(1)
-    //             [if HasStructure]  StructIdLen(1) StructId(N) PlacedDay(4) StructureLevel(1)
-    //                                (CurrentHp is NOT serialized — resets after 10s, always loads as 0)
+    //             [if HasStructure]  StructIdLen(1) StructId(N) StructureLevel(1)
     //             [if HasResource]   ResourceIdLen(1) ResourceId(N) CurrentHp(4)
     // flags byte: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure, bit3=HasResource
     // ══════════════════════════════════════════════════════════════════════
@@ -696,8 +694,6 @@ public class UnifiedChunkData : BaseChunkData
                     : System.Text.Encoding.UTF8.GetBytes(slot.Structure.StructureId);
                 bytes.Add((byte)structIdBytes.Length);
                 bytes.AddRange(structIdBytes);
-                bytes.AddRange(BitConverter.GetBytes(slot.Structure.PlacedDay));
-                // CurrentHp NOT serialized — ephemeral (resets after 10s)
                 bytes.Add(slot.Structure.StructureLevel);
             }
 
@@ -767,11 +763,6 @@ public class UnifiedChunkData : BaseChunkData
                     ? System.Text.Encoding.UTF8.GetString(data, offset, structIdLen)
                     : string.Empty;
                 offset += structIdLen;
-                slot.Structure.PlacedDay = offset + 4 <= data.Length
-                    ? BitConverter.ToInt32(data, offset)
-                    : 0;
-                offset += 4;
-                // CurrentHp NOT deserialized — ephemeral, defaults to 0 (struct default)
                 slot.Structure.StructureLevel = offset < data.Length
                     ? data[offset++]
                     : (byte)1;
@@ -815,8 +806,8 @@ public class UnifiedChunkData : BaseChunkData
             {
                 int structIdLen = string.IsNullOrEmpty(slot.Structure.StructureId)
                     ? 0 : System.Text.Encoding.UTF8.GetByteCount(slot.Structure.StructureId);
-                // StructIdLen(1) + StructId(N) + PlacedDay(4) + StructureLevel(1)
-                size += 1 + structIdLen + 4 + 1;
+                // StructIdLen(1) + StructId(N) + StructureLevel(1)
+                size += 1 + structIdLen + 1;
             }
             if (slot.HasResource)
             {
