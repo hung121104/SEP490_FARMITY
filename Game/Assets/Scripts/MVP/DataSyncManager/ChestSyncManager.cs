@@ -14,8 +14,8 @@ using System;
 ///   Master holds the authoritative chest data in WorldDataManager.ChestData.
 ///   Clients send change requests → Master validates, applies, broadcasts.
 ///
-/// Event Codes: 150–157 (reserved for chest)
-///   150 = REQUEST_CHEST_SYNC     Client → Master (late join)
+/// Event Codes: 151–158 (reserved for chest)
+///   158 = REQUEST_CHEST_SYNC     Client → Master (late join)
 ///   151 = CHEST_SYNC_BATCH       Master → Client (full chest data batch)
 ///   152 = CHEST_SYNC_COMPLETE    Master → Client (all batches sent)
 ///   153 = CHEST_SLOT_REQUEST     Client → Master (single slot change)
@@ -30,7 +30,7 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
     public static ChestSyncManager Instance { get; private set; }
 
     // ── Event Codes ──────────────────────────────────────────
-    private const byte REQUEST_CHEST_SYNC   = 150;
+    private const byte REQUEST_CHEST_SYNC   = 158;
     private const byte CHEST_SYNC_BATCH     = 151;
     private const byte CHEST_SYNC_COMPLETE  = 152;
     private const byte CHEST_SLOT_REQUEST   = 153;

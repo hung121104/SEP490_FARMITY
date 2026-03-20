@@ -2998,7 +2998,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3069411f74f1cd498511ef4557dbd38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  npcShopType: 0
+  npcShopTypes: 
 --- !u!70 &138164245
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -31279,7 +31279,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   chestsPerBatch: 5
   batchDelay: 0.3
-  showDebugLogs: 0
+  showDebugLogs: 1
 --- !u!1 &708637309
 GameObject:
   m_ObjectHideFlags: 0

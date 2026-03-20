@@ -79,16 +79,11 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
     {
         chestData = new ChestData(worldX, worldY, structureData.StructureLevel);
 
-        // Self-register in ChestDataModule (Master or offline only).
-        // Idempotent — safe to call even if already registered.
-        if (Photon.Pun.PhotonNetwork.IsMasterClient || !Photon.Pun.PhotonNetwork.IsConnected)
-        {
-            WorldDataManager.Instance?.RegisterChest(
-                (short)worldX,
-                (short)worldY,
-                (byte)structureData.StorageSlots,
-                (byte)structureData.StructureLevel);
-        }
+        WorldDataManager.Instance?.RegisterChest(
+            (short)worldX,
+            (short)worldY,
+            (byte)structureData.StorageSlots,
+            (byte)structureData.StructureLevel);
     }
 
     /// <summary>Direct init — used by tests or code that already has a ChestData.</summary>
