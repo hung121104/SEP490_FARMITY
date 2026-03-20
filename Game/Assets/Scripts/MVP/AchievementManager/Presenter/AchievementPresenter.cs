@@ -299,6 +299,15 @@ namespace AchievementManager.Presenter
         public void OpenPanel()
         {
             panelView?.Show();
+
+            if (model != null && model.isLoaded)
+            {
+                // RAM-first display for instant panel response.
+                panelView?.Populate(model.GetAllAchievements());
+                StartCoroutine(FetchAllAchievements());
+                return;
+            }
+
             StartCoroutine(RefreshAndPopulatePanel());
         }
 

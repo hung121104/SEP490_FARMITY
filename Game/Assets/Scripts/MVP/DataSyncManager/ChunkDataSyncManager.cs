@@ -933,7 +933,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             Debug.Log($"[ChunkSync] Received structure removed at ({worldX},{worldY})" +
                       (lastHitPlayerId != null ? $" by player {lastHitPlayerId}" : ""));
 
-        // Handle item drop for last hitter (using StructureDestructionService)
+        // Drop chest contents to last hitter before unregistering chest
+        StructureDestructionService.ProcessChestContentsDrop(worldX, worldY, lastHitPlayerId);
+
+        // Handle structure item drop for last hitter
         StructureDestructionService.ProcessStructureItemDrop(worldX, worldY, structureId, lastHitPlayerId);
 
         // Refresh chunk visuals - this will properly release structures back to pool

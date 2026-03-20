@@ -11,6 +11,9 @@ public class InventoryGameView : MonoBehaviour
     [SerializeField] private ItemDetailView itemDetailView;
     [SerializeField] private ItemDeleteView itemDeleteView;
 
+    [Header("Debug")]
+    [SerializeField] private bool showDebugLogs = false;
+
     [Header("Delete Zone Position Adjustments")]
     [SerializeField] private Vector2 deleteZoneDefaultPos = new Vector2(658.2f, 180);
     [SerializeField] private Vector2 deleteZoneCraftingAndCookingPos = new Vector2(658.2f, 413);
@@ -109,7 +112,7 @@ public class InventoryGameView : MonoBehaviour
             concreteService.NetworkSyncEnabled = true;
         }
 
-        Debug.Log("[InventoryGameView] Network inventory sync enabled.");
+        if (showDebugLogs) Debug.Log("[InventoryGameView] Network inventory sync enabled.");
     }
     #endregion
 
@@ -134,7 +137,7 @@ public class InventoryGameView : MonoBehaviour
         // This prevents race conditions where remote changes conflict with local UI updates
         if (presenter != null && !presenter.IsReadyToSync())
         {
-            Debug.Log("[InventoryGameView] User performing action, deferring remote sync...");
+            if (showDebugLogs) Debug.Log("[InventoryGameView] User performing action, deferring remote sync...");
             // Schedule a retry so the initial load is not permanently lost.
             StartCoroutine(RetryRemoteInventorySync());
             return;
@@ -172,7 +175,7 @@ public class InventoryGameView : MonoBehaviour
         if (inventoryView != null)
         {
             inventoryView.Show(); // Make sure it's active and returns to original parent
-            Debug.Log("[InventoryGameView] Main Inventory opened");
+            if (showDebugLogs) Debug.Log("[InventoryGameView] Main Inventory opened");
         }
     }
 
@@ -229,7 +232,7 @@ public class InventoryGameView : MonoBehaviour
         if (inventoryView != null)
         {
             inventoryView.Show();
-            Debug.Log("[InventoryGameView] Crafting in Inventory opened");
+            if (showDebugLogs) Debug.Log("[InventoryGameView] Crafting in Inventory opened");
         }
     }
 
@@ -242,7 +245,7 @@ public class InventoryGameView : MonoBehaviour
         {
             presenter?.CancelAllActions();
             inventoryView.Hide();
-            Debug.Log("[InventoryGameView] Inventory closed");
+            if (showDebugLogs) Debug.Log("[InventoryGameView] Inventory closed");
         }
     }
 
@@ -301,7 +304,7 @@ public class InventoryGameView : MonoBehaviour
 
     private void HandleItemUsed(ItemModel item)
     {
-        Debug.Log($"Using item: {item.ItemName}");
+        if (showDebugLogs) Debug.Log($"[InventoryGameView] Using item: {item.ItemName}");
 
         // TODO: Implement item usage logic
         // Example: Apply consumable effects, equip tool, etc.
@@ -309,7 +312,7 @@ public class InventoryGameView : MonoBehaviour
 
     private void HandleItemDropped(ItemModel item)
     {
-        Debug.Log($"Dropping item: {item.ItemName}");
+        if (showDebugLogs) Debug.Log($"[InventoryGameView] Dropping item: {item.ItemName}");
 
         // Delegate to DroppedItemManagerView which handles Photon sync + DB persistence
         if (DroppedItemManagerView.Instance != null)
@@ -328,7 +331,7 @@ public class InventoryGameView : MonoBehaviour
 
     private void UseConsumableItem(ItemModel item)
     {
-        Debug.Log($"Consuming: {item.ItemName}");
+        if (showDebugLogs) Debug.Log($"[InventoryGameView] Consuming: {item.ItemName}");
         presenter.TryRemoveItem(item.ItemId, 1);
     }
 

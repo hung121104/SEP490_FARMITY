@@ -179,14 +179,63 @@ public class StructureDestructionService : IStructureDestructionService
         if (showDebugLogs)
             Debug.Log($"[StructureDestructionService] Master: Structure {structureId} removed at {pos} by player {lastHitPlayerId}");
 
-        // Handle item drop for last hitter using local static method
+        // Drop chest contents to last hitter's inventory before removing
+        ProcessChestContentsDrop(pos.x, pos.y, lastHitPlayerId);
+
+        // Handle structure item drop for last hitter (the structure itself)
         ProcessStructureItemDrop(pos.x, pos.y, structureId, lastHitPlayerId);
+
+        // Unregister chest from ChestDataModule (Master only)
+        WorldDataManager.Instance.UnregisterChest((short)pos.x, (short)pos.y);
 
         // Broadcast remove using existing STRUCTURE_REMOVED_EVENT (91) with last hitter info
         syncManager?.BroadcastStructureRemoved(pos.x, pos.y, lastHitPlayerId);
 
         // Remove from world data
         WorldDataManager.Instance.RemoveStructureAtWorldPosition(pos);
+    }
+
+    /// <summary>
+    /// If the destroyed structure is a chest, add all its items to the last hitter's inventory.
+    /// Called on ALL clients (via ProcessStructureItemDrop pattern) — only the last hitter receives items.
+    /// Must be called BEFORE UnregisterChest, while chest data still exists.
+    /// </summary>
+    public static void ProcessChestContentsDrop(int worldX, int worldY, string lastHitPlayerId)
+    {
+        if (string.IsNullOrEmpty(lastHitPlayerId)) return;
+
+        string localPlayerId = PhotonNetwork.LocalPlayer.ActorNumber.ToString();
+        if (localPlayerId != lastHitPlayerId) return;
+
+        var chestModule = WorldDataManager.Instance?.ChestData;
+        if (chestModule == null) return;
+
+        short tx = (short)worldX;
+        short ty = (short)worldY;
+
+        if (!chestModule.HasChest(tx, ty)) return;
+
+        var slots = new List<ChestSlotEntry>();
+        chestModule.GetChestSlots(tx, ty, slots);
+
+        if (slots.Count == 0) return;
+
+        Debug.Log($"[StructureDestructionService] Chest at ({tx},{ty}) destroyed — adding {slots.Count} items to inventory");
+
+        if (OnAddItemToInventory == null)
+        {
+            Debug.LogError("[StructureDestructionService] OnAddItemToInventory not wired — chest items lost!");
+            return;
+        }
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var slot = slots[i];
+            if (string.IsNullOrEmpty(slot.ItemId) || slot.Quantity <= 0) continue;
+
+            bool added = OnAddItemToInventory.Invoke(slot.ItemId, slot.Quantity, Quality.Normal);
+            Debug.Log($"  [{i}] {slot.ItemId} x{slot.Quantity} → inventory success={added}");
+        }
     }
 
     public bool DealDamage(Vector3Int pos, int damage, out bool isRemoved, out string structureId)

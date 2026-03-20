@@ -37518,7 +37518,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1569d7af6ec985b4eaedda3333c8ebe1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  popupRoot: {fileID: 1369193}
+  popupCanvasGroup: {fileID: 0}
   popupAnimator: {fileID: 0}
   titleText: {fileID: 1151261952}
   achievementNameText: {fileID: 167250404}
@@ -39497,6 +39497,7 @@ MonoBehaviour:
   panelView: {fileID: 1705294893}
   unlockPopupView: {fileID: 956419519}
   fetchDelay: 1
+  catalogWaitTimeout: 10
 --- !u!4 &1066074634
 Transform:
   m_ObjectHideFlags: 0
@@ -88318,11 +88319,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 22abd0f5678c0604db08d4b45463f9b3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  optionPanelCanvasGroup: {fileID: 0}
   optionPanel: {fileID: 415511338}
   openPanelButton: {fileID: 1091584402}
   closePanelButton: {fileID: 1845929789}
-  publicToggle: {fileID: 70777095}
-  passwordToggle: {fileID: 1141137960}
+  publicStateButton: {fileID: 0}
+  publicStateButtonText: {fileID: 0}
+  passwordStateButton: {fileID: 0}
+  passwordStateButtonText: {fileID: 0}
   passwordInput: {fileID: 828875598}
   applyButton: {fileID: 759641626}
   statusText: {fileID: 2146989598}
@@ -90881,6 +90885,7 @@ MonoBehaviour:
   inventoryView: {fileID: 1890603475}
   itemDetailView: {fileID: 126345319}
   itemDeleteView: {fileID: 1647983342}
+  showDebugLogs: 0
   deleteZoneDefaultPos: {x: 658.2, y: 180}
   deleteZoneCraftingAndCookingPos: {x: 658.2, y: 413}
   deleteZoneCraftingInInventoryPos: {x: 387, y: 411}
@@ -95198,7 +95203,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4306b3233ed2e164e92a930cadaf5a42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  panelRoot: {fileID: 57200155}
+  panelCanvasGroup: {fileID: 0}
   inProgressContainer: {fileID: 1949063312}
   achievementItemPrefab: {fileID: 8921796703043059680, guid: 04564cbf6c68adb4287cfe6e795b70e0, type: 3}
   closeButton: {fileID: 2051498066}
