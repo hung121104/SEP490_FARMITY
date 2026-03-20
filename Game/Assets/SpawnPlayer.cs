@@ -11,6 +11,9 @@ public class SpawnPlayer : MonoBehaviour
 
     private void Start()
     {
+        // Needed so this client can be disconnected by PhotonNetwork.CloseConnection when blacklisted.
+        PhotonNetwork.EnableCloseConnection = true;
+
         if (playerPrefab == null || spawnPoints == null || spawnPoints.Length == 0)
         {
             Debug.LogError("Player prefab or spawn points not set up correctly.");
