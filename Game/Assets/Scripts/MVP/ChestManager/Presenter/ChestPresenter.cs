@@ -70,6 +70,9 @@ public class ChestPresenter
             SubscribeChestViewEvents();
             RefreshChestView();
         }
+
+        // Subscribe to slot lock changes from other players
+        ChestSyncManager.OnSlotLockChanged += HandleSlotLockChanged;
     }
 
     public void SetPlayerView(IInventoryView view)
@@ -163,12 +166,20 @@ public class ChestPresenter
     {
         ResetActionTimer();
         HideCurrentItemDetail();
+
+        // Block drag if slot is locked by another player
+        if (ChestSyncManager.Instance != null && ChestSyncManager.Instance.IsSlotLocked(chestData.ChestId, (byte)slot))
+            return;
+
         var item = chestInventoryService.GetItemAtSlot(slot);
         if (item == null) return;
 
         draggedSlot = slot;
         dragFromChest = true;
         chestView?.ShowDragPreview(item);
+
+        // Notify other players this slot is being dragged
+        ChestSyncManager.Instance?.NotifySlotDragStart(chestData.ChestId, (byte)slot);
     }
 
     private void HandleChestSlotHoverEnter(int slot, Vector2 screenPosition)
@@ -183,6 +194,13 @@ public class ChestPresenter
     private void HandleChestSlotHoverExit(int slot)
     {
         HideCurrentItemDetail();
+    }
+
+    private void HandleSlotLockChanged(string chestId, byte slotIndex, bool isLocked)
+    {
+        // Only handle locks for this chest
+        if (chestId != chestData.ChestId) return;
+        chestView?.SetSlotLocked(slotIndex, isLocked);
     }
 
     #endregion
@@ -252,6 +270,9 @@ public class ChestPresenter
     {
         ResetActionTimer();
 
+        int previousDragSlot = draggedSlot;
+        bool wasDragFromChest = dragFromChest;
+
         // Check if drag ended outside both panels → drop item to world
         if (draggedSlot != -1
             && !IsScreenPositionInsideSafeZone(lastKnownCursorPosition)
@@ -266,6 +287,10 @@ public class ChestPresenter
 
         chestView?.HideDragPreview();
         draggedSlot = -1;
+
+        // Notify other players this slot is no longer being dragged
+        if (previousDragSlot != -1 && wasDragFromChest)
+            ChestSyncManager.Instance?.NotifySlotDragEnd(chestData.ChestId, (byte)previousDragSlot);
     }
 
     private void HandleDropChestItemToWorld(int slotIndex)
@@ -300,13 +325,27 @@ public class ChestPresenter
         ResetActionTimer();
         if (draggedSlot == -1) return;
 
+        var sync = ChestSyncManager.Instance;
+
+        // Block drop into a slot locked by another player (source or target)
+        if (sync != null && sync.IsSlotLocked(chestData.ChestId, (byte)targetSlot))
+        {
+            chestView?.HideDragPreview();
+            if (dragFromChest)
+                sync.NotifySlotDragEnd(chestData.ChestId, (byte)draggedSlot);
+            draggedSlot = -1;
+            return;
+        }
+
+        int previousDragSlot = draggedSlot;
+        bool wasDragFromChest = dragFromChest;
+
         if (dragFromChest)
         {
-            // Within chest: move/swap
+            // Within chest: move/swap — also check if target is locked
             if (draggedSlot != targetSlot)
             {
                 transferService.MoveWithinChest(chestModel, draggedSlot, targetSlot);
-                // ChestService bypasses InventoryService events — refresh view manually
                 RefreshChestSlot(draggedSlot);
                 RefreshChestSlot(targetSlot);
                 SyncChestSlot(draggedSlot);
@@ -315,23 +354,33 @@ public class ChestPresenter
         }
         else
         {
-            // Player → Chest: transfer with swap support
+            // Player → Chest: lock target slot during transfer to prevent race
+            sync?.NotifySlotDragStart(chestData.ChestId, (byte)targetSlot);
+
             transferService.TransferToChest(inventoryModel, draggedSlot, chestModel, targetSlot);
             SyncChestSlot(targetSlot);
             SyncPlayerSlot(draggedSlot);
-            // Refresh both views
             RefreshPlayerSlot(draggedSlot);
             RefreshChestSlot(targetSlot);
+
+            // Release target lock after sync is sent
+            sync?.NotifySlotDragEnd(chestData.ChestId, (byte)targetSlot);
         }
 
         chestView?.HideDragPreview();
         draggedSlot = -1;
+
+        if (wasDragFromChest && previousDragSlot != -1)
+            sync?.NotifySlotDragEnd(chestData.ChestId, (byte)previousDragSlot);
     }
 
     private void HandlePlayerSlotDrop(int targetSlot)
     {
         ResetActionTimer();
         if (draggedSlot == -1) return;
+
+        int previousDragSlot = draggedSlot;
+        bool wasDragFromChest = dragFromChest;
 
         if (!dragFromChest)
         {
@@ -352,6 +401,9 @@ public class ChestPresenter
 
         chestView?.HideDragPreview();
         draggedSlot = -1;
+
+        if (wasDragFromChest && previousDragSlot != -1)
+            ChestSyncManager.Instance?.NotifySlotDragEnd(chestData.ChestId, (byte)previousDragSlot);
     }
 
     #endregion
@@ -561,10 +613,15 @@ public class ChestPresenter
 
     public void Cleanup()
     {
+        // Release any locks this player held on this chest
+        if (draggedSlot != -1 && dragFromChest)
+            ChestSyncManager.Instance?.NotifySlotDragEnd(chestData.ChestId, (byte)draggedSlot);
+
         CancelAllActions();
         UnsubscribeChestViewEvents();
         UnsubscribePlayerViewEvents();
         UnsubscribeFromServiceEvents();
+        ChestSyncManager.OnSlotLockChanged -= HandleSlotLockChanged;
     }
 
     #endregion

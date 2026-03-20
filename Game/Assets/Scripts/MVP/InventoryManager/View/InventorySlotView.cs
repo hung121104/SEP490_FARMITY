@@ -24,6 +24,7 @@ public class InventorySlotView : MonoBehaviour,
     // State tracking
     private bool isHovering = false;
     private bool isDragging = false;
+    private bool isLocked = false;
 
     // Events
     public event Action<int> OnClickedRequested;
@@ -93,6 +94,7 @@ public class InventorySlotView : MonoBehaviour,
     {
         isHovering = false;
         isDragging = false;
+        SetLocked(false);
         UpdateHighlight();
 
         // Restore slot visuals in case drag was interrupted
@@ -124,6 +126,18 @@ public class InventorySlotView : MonoBehaviour,
 
     public int GetSlotIndex() => slotIndex;
     public bool IsDragging => isDragging;
+    public bool IsLocked => isLocked;
+
+    /// <summary>
+    /// Lock/unlock this slot (another player is dragging from it).
+    /// Locked slots are dimmed and cannot be dragged.
+    /// </summary>
+    public void SetLocked(bool locked)
+    {
+        isLocked = locked;
+        if (iconImage != null)
+            iconImage.color = locked ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
+    }
     #endregion
 
     public ItemModel GetCurrentItem() => currentItem;
@@ -137,7 +151,7 @@ public class InventorySlotView : MonoBehaviour,
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (currentItem != null)
+        if (currentItem != null && !isLocked)
         {
             isDragging = true;
             // Hide highlight during drag

@@ -22,6 +22,7 @@ public interface IChestView
     void InitializeSlots(int count);
     void UpdateSlot(int slotIndex, ItemModel item);
     void ClearSlot(int slotIndex);
+    void SetSlotLocked(int slotIndex, bool locked);
 
     // Drag operations
     void ShowDragPreview(ItemModel item);
