@@ -91,6 +91,12 @@ public class ChestInventoryView : MonoBehaviour, IChestView
             slotViews[slotIndex].ClearSlot();
     }
 
+    public void SetSlotLocked(int slotIndex, bool locked)
+    {
+        if (slotIndex >= 0 && slotIndex < slotViews.Count)
+            slotViews[slotIndex].SetLocked(locked);
+    }
+
     public void ShowDragPreview(ItemModel item)
     {
         if (dragPreviewObject == null) return;

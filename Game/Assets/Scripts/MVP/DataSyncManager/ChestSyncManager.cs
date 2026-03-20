@@ -14,7 +14,7 @@ using System;
 ///   Master holds the authoritative chest data in WorldDataManager.ChestData.
 ///   Clients send change requests → Master validates, applies, broadcasts.
 ///
-/// Event Codes: 151–158 (reserved for chest)
+/// Event Codes: 151–160 (reserved for chest)
 ///   158 = REQUEST_CHEST_SYNC     Client → Master (late join)
 ///   151 = CHEST_SYNC_BATCH       Master → Client (full chest data batch)
 ///   152 = CHEST_SYNC_COMPLETE    Master → Client (all batches sent)
@@ -23,6 +23,8 @@ using System;
 ///   155 = CHEST_REGISTER         Master → All    (new chest registered)
 ///   156 = CHEST_OPEN_NOTIFY      Client → All    (player opened chest)
 ///   157 = CHEST_CLOSE_NOTIFY     Client → All    (player closed chest)
+///   159 = SLOT_DRAG_START        Client → All    (player started dragging a slot)
+///   160 = SLOT_DRAG_END          Client → All    (player stopped dragging a slot)
 /// </summary>
 public class ChestSyncManager : MonoBehaviourPunCallbacks
 {
@@ -38,6 +40,8 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
     private const byte CHEST_REGISTER       = 155;
     private const byte CHEST_OPEN_NOTIFY    = 156;
     private const byte CHEST_CLOSE_NOTIFY   = 157;
+    private const byte SLOT_DRAG_START      = 159;
+    private const byte SLOT_DRAG_END        = 160;
 
     // ── Delta Operation Types ────────────────────────────────
     private const byte OP_SET_SLOT   = 0;
@@ -50,14 +54,21 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
     [SerializeField] private float batchDelay = 0.3f;
     [SerializeField] private bool showDebugLogs = true;
 
+    [SerializeField] private float slotLockTimeout = 10f;
+
     // ── State ────────────────────────────────────────────────
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
+
+    // ── Slot Lock State ─────────────────────────────────────
+    // key = "chestId:slotIndex", value = (actorNumber, lockTime)
+    private readonly Dictionary<string, (int actor, float time)> lockedSlots = new();
 
     // ── Events (UI subscribes here) ──────────────────────────
     public static event System.Action<string> OnChestChanged;
     public static event System.Action<string, int> OnChestOpened;
     public static event System.Action<string, int> OnChestClosed;
+    public static event System.Action<string, byte, bool> OnSlotLockChanged; // chestId, slotIndex, isLocked
 
     // ══════════════════════════════════════════════════════════
     // LIFECYCLE
@@ -141,6 +152,65 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
         PhotonNetwork.RaiseEvent(CHEST_CLOSE_NOTIFY, payload, opts, SendOptions.SendReliable);
     }
 
+    /// <summary>
+    /// Call when local player starts dragging an item from a chest slot.
+    /// Other players will see this slot dimmed/locked.
+    /// </summary>
+    public void NotifySlotDragStart(string chestId, byte slotIndex)
+    {
+        if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
+        int actor = PhotonNetwork.LocalPlayer.ActorNumber;
+
+        // Lock locally too
+        string key = $"{chestId}:{slotIndex}";
+        lockedSlots[key] = (actor, Time.time);
+        OnSlotLockChanged?.Invoke(chestId, slotIndex, true);
+
+        byte[] payload = EncodeSlotLock(chestId, slotIndex, actor);
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(SLOT_DRAG_START, payload, opts, SendOptions.SendReliable);
+    }
+
+    /// <summary>
+    /// Call when local player drops/cancels dragging a chest slot.
+    /// </summary>
+    public void NotifySlotDragEnd(string chestId, byte slotIndex)
+    {
+        if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
+        int actor = PhotonNetwork.LocalPlayer.ActorNumber;
+
+        string key = $"{chestId}:{slotIndex}";
+        lockedSlots.Remove(key);
+        OnSlotLockChanged?.Invoke(chestId, slotIndex, false);
+
+        byte[] payload = EncodeSlotLock(chestId, slotIndex, actor);
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(SLOT_DRAG_END, payload, opts, SendOptions.SendReliable);
+    }
+
+    /// <summary>
+    /// Check if a slot is locked by another player (UI calls this before allowing drag).
+    /// </summary>
+    public bool IsSlotLocked(string chestId, byte slotIndex)
+    {
+        string key = $"{chestId}:{slotIndex}";
+        if (!lockedSlots.TryGetValue(key, out var info)) return false;
+
+        // Auto-unlock if timed out
+        if (Time.time - info.time > slotLockTimeout)
+        {
+            lockedSlots.Remove(key);
+            OnSlotLockChanged?.Invoke(chestId, slotIndex, false);
+            return false;
+        }
+
+        // Not locked if it's our own lock
+        if (PhotonNetwork.LocalPlayer != null && info.actor == PhotonNetwork.LocalPlayer.ActorNumber)
+            return false;
+
+        return true;
+    }
+
     // ══════════════════════════════════════════════════════════
     // LATE-JOIN SYNC
     // ══════════════════════════════════════════════════════════
@@ -212,6 +282,15 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
 
             case CHEST_CLOSE_NOTIFY:
                 HandleCloseNotify((byte[])photonEvent.CustomData);
+                break;
+
+            // Slot lock notifications (all clients)
+            case SLOT_DRAG_START:
+                HandleSlotDragStart((byte[])photonEvent.CustomData);
+                break;
+
+            case SLOT_DRAG_END:
+                HandleSlotDragEnd((byte[])photonEvent.CustomData);
                 break;
         }
     }
@@ -384,6 +463,49 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
         OnChestClosed?.Invoke(chestId, actorNumber);
         if (showDebugLogs)
             Debug.Log($"[ChestSync] Actor {actorNumber} closed chest '{chestId}'");
+    }
+
+    private void HandleSlotDragStart(byte[] data)
+    {
+        if (!DecodeSlotLock(data, out string chestId, out byte slotIndex, out int actor)) return;
+        string key = $"{chestId}:{slotIndex}";
+        lockedSlots[key] = (actor, Time.time);
+        OnSlotLockChanged?.Invoke(chestId, slotIndex, true);
+        if (showDebugLogs)
+            Debug.Log($"[ChestSync] Actor {actor} locked slot {slotIndex} in chest '{chestId}'");
+    }
+
+    private void HandleSlotDragEnd(byte[] data)
+    {
+        if (!DecodeSlotLock(data, out string chestId, out byte slotIndex, out int actor)) return;
+        string key = $"{chestId}:{slotIndex}";
+        lockedSlots.Remove(key);
+        OnSlotLockChanged?.Invoke(chestId, slotIndex, false);
+        if (showDebugLogs)
+            Debug.Log($"[ChestSync] Actor {actor} unlocked slot {slotIndex} in chest '{chestId}'");
+    }
+
+    // ── Player Leave: clear all locks from that player ──────
+    public override void OnPlayerLeftRoom(Photon.Realtime.Player otherPlayer)
+    {
+        List<string> keysToRemove = new();
+        foreach (var kvp in lockedSlots)
+        {
+            if (kvp.Value.actor == otherPlayer.ActorNumber)
+                keysToRemove.Add(kvp.Key);
+        }
+
+        foreach (string key in keysToRemove)
+        {
+            lockedSlots.Remove(key);
+            // Parse "chestId:slotIndex" to fire event
+            int sep = key.LastIndexOf(':');
+            if (sep > 0 && byte.TryParse(key.AsSpan(sep + 1), out byte slot))
+                OnSlotLockChanged?.Invoke(key[..sep], slot, false);
+        }
+
+        if (keysToRemove.Count > 0 && showDebugLogs)
+            Debug.Log($"[ChestSync] Cleared {keysToRemove.Count} slot locks from actor {otherPlayer.ActorNumber}");
     }
 
     // ══════════════════════════════════════════════════════════
@@ -611,5 +733,43 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
                 module.DeserializeAndLoad(chestBytes);
             }
         }
+    }
+
+    // Slot lock: [chestIdLen(1)][chestId(N)][slotIndex(1)][actorNumber(4)]
+
+    private static byte[] EncodeSlotLock(string chestId, byte slotIndex, int actorNumber)
+    {
+        byte[] chestIdBytes = System.Text.Encoding.UTF8.GetBytes(chestId ?? "");
+        byte[] result = new byte[1 + chestIdBytes.Length + 1 + 4];
+        int o = 0;
+
+        result[o++] = (byte)chestIdBytes.Length;
+        System.Buffer.BlockCopy(chestIdBytes, 0, result, o, chestIdBytes.Length);
+        o += chestIdBytes.Length;
+
+        result[o++] = slotIndex;
+        result[o++] = (byte)(actorNumber & 0xFF);
+        result[o++] = (byte)((actorNumber >> 8) & 0xFF);
+        result[o++] = (byte)((actorNumber >> 16) & 0xFF);
+        result[o]   = (byte)((actorNumber >> 24) & 0xFF);
+
+        return result;
+    }
+
+    private static bool DecodeSlotLock(byte[] data, out string chestId, out byte slotIndex, out int actorNumber)
+    {
+        chestId = null; slotIndex = 0; actorNumber = 0;
+        if (data == null || data.Length < 7) return false;
+
+        int o = 0;
+        byte len = data[o++];
+        if (data.Length < 1 + len + 5) return false;
+
+        chestId = System.Text.Encoding.UTF8.GetString(data, o, len);
+        o += len;
+
+        slotIndex = data[o++];
+        actorNumber = data[o] | (data[o + 1] << 8) | (data[o + 2] << 16) | (data[o + 3] << 24);
+        return true;
     }
 }
