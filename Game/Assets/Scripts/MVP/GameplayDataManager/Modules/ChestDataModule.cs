@@ -9,6 +9,17 @@ using System.IO;
 /// <summary>
 /// One occupied slot inside a chest. Stored inline in a flat List.
 /// Empty slots are NOT stored — only slots that contain an item.
+///
+/// RAM per entry (struct inline in List):
+///   short TileX      = 2 bytes
+///   short TileY      = 2 bytes
+///   byte  SlotIndex  = 1 byte
+///   string ItemId    = 8 bytes (reference) + ~50 bytes (heap, shared if same item)
+///   ushort Quantity  = 2 bytes
+///   + padding        = 1 byte
+///   ─────────────────────────
+///   Total inline     ≈ 16 bytes/entry
+///   Total with heap  ≈ 66 bytes/entry (worst case, unique items)
 /// </summary>
 public struct ChestSlotEntry
 {
@@ -21,6 +32,12 @@ public struct ChestSlotEntry
 
 /// <summary>
 /// Metadata for a registered chest. Stored as struct value in Dictionary.
+///
+/// RAM per chest:
+///   struct fields    ≈ 8 bytes (with padding)
+///   dict entry       ≈ 40 bytes (hash bucket overhead)
+///   ─────────────────────────
+///   Total            ≈ 48 bytes/chest
 /// </summary>
 public struct ChestHeader
 {
@@ -42,6 +59,31 @@ public struct ChestHeader
 ///
 /// Replaces the old Dictionary&lt;string, CharacterInventory&gt; design to reduce
 /// heap allocations and GC pressure (struct-based, no per-chest objects).
+///
+/// ── RAM Estimates ──────────────────────────────────────────────────
+///
+///   Per chest (empty):        ~48 bytes  (ChestHeader in dict)
+///   Per occupied slot:        ~16 bytes  (ChestSlotEntry inline)
+///                           + ~50 bytes  (string ItemId, shared across same items)
+///
+///   Example: 100 chests × 5 items avg (items mostly duplicated):
+///     Headers:  100 × 48 bytes                       =   4.8 KB
+///     Slots:    500 × 16 bytes                       =   8.0 KB
+///     Strings:  ~30 unique items × 50 bytes           =   1.5 KB
+///     ──────────────────────────────────────────────────────────────
+///     Total                                          ≈  14.3 KB
+///
+///   Worst case: 1000 chests × 36 full slots (all unique items):
+///     Headers:  1000 × 48 bytes                      =  48.0 KB
+///     Slots:    36000 × 16 bytes                     = 576.0 KB
+///     Strings:  36000 × 50 bytes                     = 1800.0 KB
+///     ──────────────────────────────────────────────────────────────
+///     Total                                          ≈   2.4 MB
+///
+/// ── Performance ────────────────────────────────────────────────────
+///   FindSlotIndex: O(n) linear scan, n = total occupied slots
+///   1000 chests × 5 items = 5000 entries → ~5 μs per find
+///   Cache-friendly: struct List is contiguous in memory
 /// </summary>
 public class ChestDataModule : IWorldDataModule
 {
@@ -76,8 +118,8 @@ public class ChestDataModule : IWorldDataModule
         if (string.IsNullOrEmpty(chestId)) return false;
         int sep = chestId.IndexOf('_');
         if (sep < 0) return false;
-        if (!short.TryParse(chestId.Substring(0, sep), out tileX)) return false;
-        if (!short.TryParse(chestId.Substring(sep + 1), out tileY)) return false;
+        if (!short.TryParse(chestId.AsSpan(0, sep), out tileX)) return false;
+        if (!short.TryParse(chestId.AsSpan(sep + 1), out tileY)) return false;
         return true;
     }
 
