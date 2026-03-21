@@ -21,18 +21,18 @@ public class QuestPresenter
         view.OnAccept += AcceptQuest;
     }
 
-    public bool TryPickRandomQuest()
+    public bool TryPickRandomQuest(string lastQuestId)
     {
         if (!QuestCatalogService.Instance.IsReady) return false;
 
-      
         var availableQuests = QuestCatalogService.Instance.GetAllQuests()
-            .Where(q => q.NPCName == npcName && !service.HasQuest(q.questId))
+            .Where(q => q.NPCName == npcName
+                   && !service.IsQuestActive(q.questId)
+                   && q.questId != lastQuestId)
             .ToList();
 
         if (availableQuests.Count == 0) return false;
 
-     
         float totalWeight = availableQuests.Sum(q => q.Weight);
         float randomValue = Random.Range(0, totalWeight);
         float cumulativeWeight = 0;
@@ -48,7 +48,7 @@ public class QuestPresenter
             }
         }
 
-      
+
         this.quest = new QuestModel
         {
             questId = selected.questId,

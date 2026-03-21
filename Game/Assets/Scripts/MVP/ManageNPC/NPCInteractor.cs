@@ -33,7 +33,7 @@ public class NPCInteractor : MonoBehaviour
     //[SerializeField] private QuestDatabase questDatabase;
     //[SerializeField] private int questIndex;
     [SerializeField] private QuestLogController questLogController;
-
+    private string lastCompletedQuestId = "";
     private IQuestService questService;
     private QuestPresenter questPresenter;
     private GiftPresenter giftPresenter;
@@ -178,53 +178,46 @@ public class NPCInteractor : MonoBehaviour
                     // Don't set currentState yet - wait for coroutine to complete
                     StartGiftMode();
                 }
-                
 
-                else if (i == 2) 
+                else if (i == 2) // Lựa chọn QUEST
                 {
                     dialogueView.Hide();
                     var inventory = inventoryGameView.GetInventoryService();
 
+                    // 1. Tìm xem NPC này có quest nào đang Active không
                     QuestModel activeQuest = questService.GetActiveQuests()
                         .Find(q => q.npcName == dialogueModel.npcName);
 
                     if (activeQuest != null)
                     {
-                        foreach (var obj in activeQuest.objectives)
-                        {
-                            int count = inventory.GetItemCount(obj.itemId);
-                            questService.UpdateObjective(obj.objectiveId, count);
-                        }
-
                         if (questService.IsQuestCompleted(activeQuest.questId))
                         {
                             if (questService.SubmitQuestItems(activeQuest.questId, inventory))
                             {
+                                lastCompletedQuestId = activeQuest.questId;
+
                                 questService.GiveReward(activeQuest.questId, inventory);
                                 questService.CompleteQuest(activeQuest.questId);
-                                ShowSimpleDialogue("Cảm ơn bạn rất nhiều! Đây là phần thưởng.");
+
+                                ShowSimpleDialogue("Thank you for your help! Here is your reward..");
                             }
                         }
                         else
                         {
-                            ShowSimpleDialogue("Bạn vẫn chưa thu thập đủ vật phẩm tôi cần.");
+                            
+                            ShowSimpleDialogue("You haven't finished the task I assigned you. Please come back when you've collected enough items.!");
                         }
                     }
                     else
                     {
-                        questPresenter = new QuestPresenter(
-                            questView, questService, inventory,
-                            dialogueModel.npcName, dialogueModel.avatar
-                        );
-
-                        if (questPresenter.TryPickRandomQuest())
+                        if (questPresenter.TryPickRandomQuest(lastCompletedQuestId))
                         {
-                            currentState = NPCState.Quest;
                             questPresenter.ShowQuest();
+                            currentState = NPCState.Quest;
                         }
                         else
                         {
-                            ShowSimpleDialogue("Hiện tại tôi không có yêu cầu nào mới cho bạn.");
+                            ShowSimpleDialogue("I don't need your help with anything right now..");
                         }
                     }
                     break;
