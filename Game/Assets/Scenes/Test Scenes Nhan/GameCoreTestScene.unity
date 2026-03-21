@@ -7568,6 +7568,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1975772526}
+  - {fileID: 775852567}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &371793515
@@ -32687,6 +32688,10 @@ MonoBehaviour:
   playerPrefab: {fileID: 1681704056157336401, guid: 79f6bc42335333f4c9cc04b30ea2016d, type: 3}
   spawnPoints:
   - {fileID: 1934862757}
+  enforceMessageQueueWhileInRoom: 1
+  messageQueueCheckInterval: 0.5
+  spawnRetryInterval: 1
+  logSpawnDiagnostics: 1
 --- !u!4 &761236216
 Transform:
   m_ObjectHideFlags: 0
@@ -33130,6 +33135,157 @@ MonoBehaviour:
   canCraftText: Craft
   cannotCraftText: Cannot Craft
   lockedText: Locked
+--- !u!1 &775852566
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 775852567}
+  - component: {fileID: 775852570}
+  - component: {fileID: 775852569}
+  - component: {fileID: 775852568}
+  m_Layer: 0
+  m_Name: cobe
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &775852567
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 775852566}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -31.046478, y: 2.9903107, z: -0.7050111}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 367195155}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &775852568
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 775852566}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0c4ec5d37e1ba345845ab14addc60a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dialogueView: {fileID: 2064028054}
+  dialogueModel: {fileID: 11400000, guid: 16d156477948f3543ab37ca386c6e1dc, type: 2}
+  interactKey: 101
+  optionKeys: 310000003200000033000000
+  hotbarScript: {fileID: 1780333230}
+  relationshipModel:
+    affection: 0
+  giftDatabase: {fileID: 11400000, guid: e90eb06cc4cca0e419727c8945326aaa, type: 2}
+  inventoryGameView: {fileID: 1510754439}
+  inventoryView: {fileID: 1890603475}
+  inventoryMenuRoot: {fileID: 1992598973}
+  spriteRenderer: {fileID: 775852570}
+  questView: {fileID: 429389107}
+  questLogController: {fileID: 2111404908}
+--- !u!58 &775852569
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 775852566}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 1
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_Radius: 1.49
+--- !u!212 &775852570
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 775852566}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 1, y: 1}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_MaskInteraction: 0
+  m_SpriteSortPoint: 0
 --- !u!1 &776307873
 GameObject:
   m_ObjectHideFlags: 0
@@ -37213,7 +37369,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1569d7af6ec985b4eaedda3333c8ebe1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  popupRoot: {fileID: 1369193}
+  popupCanvasGroup: {fileID: 0}
   popupAnimator: {fileID: 0}
   titleText: {fileID: 1151261952}
   achievementNameText: {fileID: 167250404}
@@ -39192,6 +39348,7 @@ MonoBehaviour:
   panelView: {fileID: 1705294893}
   unlockPopupView: {fileID: 956419519}
   fetchDelay: 1
+  catalogWaitTimeout: 10
 --- !u!4 &1066074634
 Transform:
   m_ObjectHideFlags: 0
@@ -41581,8 +41738,6 @@ MonoBehaviour:
   inventoryMenuRoot: {fileID: 1992598973}
   spriteRenderer: {fileID: 1146011600}
   questView: {fileID: 429389107}
-  questDatabase: {fileID: 11400000, guid: 8a944947f2eb2e041bc3f7f4b3e3e180, type: 2}
-  questIndex: 1
   questLogController: {fileID: 2111404908}
 --- !u!95 &1146011599
 Animator:
@@ -87853,11 +88008,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 22abd0f5678c0604db08d4b45463f9b3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  optionPanelCanvasGroup: {fileID: 0}
   optionPanel: {fileID: 415511338}
   openPanelButton: {fileID: 1091584402}
   closePanelButton: {fileID: 1845929789}
-  publicToggle: {fileID: 70777095}
-  passwordToggle: {fileID: 1141137960}
+  publicStateButton: {fileID: 0}
+  publicStateButtonText: {fileID: 0}
+  passwordStateButton: {fileID: 0}
+  passwordStateButtonText: {fileID: 0}
   passwordInput: {fileID: 828875598}
   applyButton: {fileID: 759641626}
   statusText: {fileID: 2146989598}
@@ -90416,6 +90574,7 @@ MonoBehaviour:
   inventoryView: {fileID: 1890603475}
   itemDetailView: {fileID: 126345319}
   itemDeleteView: {fileID: 1647983342}
+  showDebugLogs: 0
   deleteZoneDefaultPos: {x: 658.2, y: 180}
   deleteZoneCraftingAndCookingPos: {x: 658.2, y: 413}
   deleteZoneCraftingInInventoryPos: {x: 387, y: 411}
@@ -94732,7 +94891,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4306b3233ed2e164e92a930cadaf5a42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  panelRoot: {fileID: 57200155}
+  panelCanvasGroup: {fileID: 0}
   inProgressContainer: {fileID: 1949063312}
   achievementItemPrefab: {fileID: 8921796703043059680, guid: 04564cbf6c68adb4287cfe6e795b70e0, type: 3}
   closeButton: {fileID: 2051498066}
