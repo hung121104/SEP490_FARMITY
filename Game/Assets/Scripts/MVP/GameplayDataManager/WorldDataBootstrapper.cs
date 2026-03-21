@@ -138,8 +138,38 @@ public class WorldDataBootstrapper : MonoBehaviour
                 Debug.Log($"[WorldDataBootstrapper] Loaded {data.chunks.Count} chunk(s) from save.");
             }
 
+            // 4. Chest inventory data — load saved chest contents into ChestDataModule
+            if (WorldDataManager.Instance?.ChestData != null && data.chests != null && data.chests.Count > 0)
+            {
+                var chestModule = WorldDataManager.Instance.ChestData;
+                foreach (var chest in data.chests)
+                {
+                    short tx = (short)chest.tileX;
+                    short ty = (short)chest.tileY;
+
+                    // Register chest header (idempotent — may already be registered via structure spawn)
+                    chestModule.RegisterChest(tx, ty, (byte)chest.maxSlots, (byte)chest.structureLevel);
+
+                    // Load slot contents
+                    if (chest.slots != null)
+                    {
+                        foreach (var kvp in chest.slots)
+                        {
+                            if (!byte.TryParse(kvp.Key, out byte slotIndex)) continue;
+                            var slotData = kvp.Value;
+                            if (slotData == null || string.IsNullOrEmpty(slotData.itemId)) continue;
+
+                            chestModule.SetSlot(tx, ty, slotIndex, slotData.itemId, (ushort)slotData.quantity);
+                        }
+                    }
+                }
+                // Clear dirty flags since this data was just loaded from DB (not a user change)
+                chestModule.ClearAllDirtyFlags();
+                Debug.Log($"[WorldDataBootstrapper] Loaded {data.chests.Count} chest(s) from save.");
+            }
+
             IsReady = true;
-            Debug.Log($"[WorldDataBootstrapper] Ready. World: {data.worldName} | Characters: {data.characters?.Count ?? 0} | Chunks: {data.chunks?.Count ?? 0}");
+            Debug.Log($"[WorldDataBootstrapper] Ready. World: {data.worldName} | Characters: {data.characters?.Count ?? 0} | Chunks: {data.chunks?.Count ?? 0} | Chests: {data.chests?.Count ?? 0}");
         }
     }
 
