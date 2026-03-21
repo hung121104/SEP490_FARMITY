@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { World, WorldSchema } from './world.schema';
 import { Chunk, ChunkSchema } from './chunk.schema';
-import { Chest, ChestSchema } from './chest.schema';
+import { ChestInventory, ChestInventorySchema } from './chest-inventory.schema';
 import { WorldService } from './world.service';
 import { WorldController } from './world.controller';
 import { CharacterModule } from '../character/character.module';
@@ -13,7 +13,7 @@ import { CharacterModule } from '../character/character.module';
     MongooseModule.forFeature([
       { name: World.name, schema: WorldSchema },
       { name: Chunk.name, schema: ChunkSchema },
-      { name: Chest.name, schema: ChestSchema },
+      { name: ChestInventory.name, schema: ChestInventorySchema },
     ]),
     CharacterModule,
     ClientsModule.register([
