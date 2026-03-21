@@ -19,5 +19,5 @@ MonoBehaviour:
   weaponPrefab: {fileID: 8171461803801935278, guid: d6d2e6067af5d954ab1c69b244e394bc, type: 3}
   damage: 18
   tier: 2
-  linkedSkill: {fileID: 11400000, guid: 0e7a2332fe3eb994d8c8a7484c5caac3, type: 2}
+  linkedSkillId: skill_weapon_sword_slash
   weaponDescription: 

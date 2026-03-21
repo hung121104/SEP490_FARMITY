@@ -725,6 +725,71 @@ Depending on `itemType`, specific extra fields must be included:
 
 ---
 
+### Combat Skills Catalog
+
+> DB-driven combat-skill definitions consumed by the Unity combat system. Skills are independent catalog entities and not item documents.
+
+#### HTTP Endpoints
+
+- **POST** `/game-data/combat-skills/create`: Create a new combat skill (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `application/json`
+  - Body: Skill definition payload (see fields table below)
+  - Response: Saved combat skill document
+  - Note: Returns `409 Conflict` if `skillId` already exists
+
+- **GET** `/game-data/combat-skills/catalog`: Get combat skill catalog in Unity format.
+  - Response: `{ "skills": [ ...combatSkillObjects ] }`
+  - Note: Consumed by Game-side combat skill catalog service
+
+- **GET** `/game-data/combat-skills/all`: Get flat array of all combat skill documents.
+  - Response: `[ ...combatSkillObjects ]`
+
+- **GET** `/game-data/combat-skills/by-skill-id/:skillId`: Find combat skill by game-side ID.
+  - Path param: `skillId` - string ID (e.g., `skill_weapon_staff_special`)
+  - Response: Combat skill document
+
+- **PUT** `/game-data/combat-skills/:skillId`: Update combat skill by `skillId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `application/json`
+  - Body: Any subset of skill fields
+  - Response: Updated combat skill document
+  - Note: Returns `404` if skill not found
+
+- **DELETE** `/game-data/combat-skills/:skillId`: Delete combat skill by `skillId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `skillId`
+  - Response: Deleted combat skill document
+  - Note: Returns `404` if skill not found
+
+#### Combat Skill Fields
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `skillId` | string | ✅ | Unique game-side skill ID |
+| `skillName` | string | ✅ | Display name |
+| `skillDescription` | string | — | Tooltip/description |
+| `iconUrl` | string | — | CDN icon URL |
+| `ownership` | enum | — | `PlayerSkill` or `WeaponSkill` |
+| `category` | enum | — | `None`, `Projectile`, `Slash`, `AoE`, `Buff`, `Summon` |
+| `requiredWeaponType` | number | — | Numeric weapon type gate for weapon skills |
+| `cooldown` | number | — | Seconds |
+| `diceTier` | enum | — | `D6`, `D8`, `D10`, `D12`, `D20` |
+| `skillMultiplier` | number | — | Damage multiplier |
+| `projectilePrefabKey` | string | — | Client prefab key resolver input |
+| `projectileSpeed` | number | — | Projectile speed |
+| `projectileRange` | number | — | Projectile max range |
+| `projectileKnockback` | number | — | Projectile knockback force |
+| `slashVfxKey` | string | — | Client slash VFX prefab key |
+| `slashVfxDuration` | number | — | Slash VFX lifetime |
+| `slashVfxSpawnOffset` | number | — | Forward spawn offset |
+| `slashVfxPositionOffsetX` | number | — | Additional X offset |
+| `slashVfxPositionOffsetY` | number | — | Additional Y offset |
+| `slashKnockbackForce` | number | — | Slash hit knockback force |
+| `damagePopupPrefabKey` | string | — | Client damage popup prefab key |
+
+---
+
 ### Plants Catalog
 
 > Mirrors Unity `PlantData` / `PlantCatalogResponse` model consumed by `PlantCatalogService.cs`. The `plantId` field on Seed items (`itemType: 1`) links to plant documents here.

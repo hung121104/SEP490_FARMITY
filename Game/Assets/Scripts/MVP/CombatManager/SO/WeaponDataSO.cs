@@ -42,7 +42,8 @@ namespace CombatManager.SO
         public float projectileKnockback = 4f;
 
         [Header("Skill")]
-        public SkillData linkedSkill;
+        [Tooltip("Database skill ID used to resolve weapon special skill from CombatSkillCatalogService.")]
+        public string linkedSkillId = "";
 
         #region Validation
 

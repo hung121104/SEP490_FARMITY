@@ -4,19 +4,17 @@ using CombatManager.Model;
 namespace CombatManager.SO
 {
     /// <summary>
-    /// Skill configuration as ScriptableObject.
-    /// Drives behavior via SkillCategory - no linkedComponentName needed.
-    /// ProjectileSkillPresenter reads Projectile fields.
-    /// SlashSkillPresenter reads Slash fields.
-    /// SkillOwnership controls where skill can be equipped.
+    /// Runtime combat skill model loaded from database catalog.
+    /// Kept in existing namespace to avoid broad refactors.
     /// </summary>
-    [CreateAssetMenu(fileName = "Skill_", menuName = "Combat/Skill Data")]
-    public class SkillData : ScriptableObject
+    [System.Serializable]
+    public class SkillData
     {
         [Header("Identification")]
+        public string skillId = "";
         public string skillName = "Unnamed Skill";
         public string skillDescription = "";
-        public int skillID = 0;
+        public string iconUrl = "";
 
         [Header("UI Display")]
         public Sprite skillIcon;
@@ -37,6 +35,7 @@ namespace CombatManager.SO
 
         [Header("Projectile Settings (Category = Projectile)")]
         [Tooltip("Projectile prefab with ProjectilePresenter attached.")]
+        public string projectilePrefabKey = "";
         public GameObject projectilePrefab;
         public float projectileSpeed = 10f;
         public float projectileRange = 8f;
@@ -44,26 +43,16 @@ namespace CombatManager.SO
 
         [Header("Slash Settings (Category = Slash)")]
         [Tooltip("VFX prefab with SlashHitboxPresenter attached.")]
+        public string slashVfxKey = "";
         public GameObject slashVFXPrefab;
         public float slashVFXDuration = 0.5f;
         public float slashVFXSpawnOffset = 1.2f;
+        public float slashVfxPositionOffsetX = 0f;
+        public float slashVfxPositionOffsetY = 0f;
         public Vector2 slashVFXPositionOffset = Vector2.zero;
         public float slashKnockbackForce = 5f;
+        public string damagePopupPrefabKey = "";
         public GameObject damagePopupPrefab;
-
-        #region Validation
-
-        private void OnValidate()
-        {
-            if (string.IsNullOrEmpty(skillName))
-                skillName = name;
-
-            // Auto-set requiredWeaponType to None for PlayerSkills
-            if (skillOwnership == SkillOwnership.PlayerSkill)
-                requiredWeaponType = WeaponType.None;
-        }
-
-        #endregion
 
         #region Public Helpers
 

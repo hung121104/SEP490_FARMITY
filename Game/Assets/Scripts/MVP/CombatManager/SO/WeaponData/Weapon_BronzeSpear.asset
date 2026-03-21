@@ -24,5 +24,5 @@ MonoBehaviour:
   projectileSpeed: 10
   projectileRange: 8
   projectileKnockback: 4
-  linkedSkill: {fileID: 11400000, guid: 924f36c670929fb479a5710124c17bd6, type: 2}
+  linkedSkillId: skill_weapon_spear_special
   weaponDescription: 

@@ -13,6 +13,7 @@ import { AchievementModule } from './game-data/achievement/achievement.module';
 import { SkinConfigModule } from './game-data/skin-config/skin-config.module';
 import { MaterialModule } from './game-data/material/material.module';
 import { ResourceConfigModule } from './game-data/resource-config/resource-config.module';
+import { CombatSkillModule } from './game-data/combat-skill/combat-skill.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ResourceConfigModule } from './game-data/resource-config/resource-confi
     SkinConfigModule,
     MaterialModule,
     ResourceConfigModule,
+    CombatSkillModule,
   ],
 })
 export class AppModule {}

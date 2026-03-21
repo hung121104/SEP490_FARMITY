@@ -11,9 +11,8 @@ namespace CombatManager.Presenter
 {
     /// <summary>
     /// Presenter for SkillManagement panel.
-    /// No longer depends on SkillDatabasePresenter.
-    /// Owns playerSkills list directly via Inspector.
-    /// WeaponSkills are NOT shown here - they live in WeaponDataSO.linkedSkill.
+    /// Player skills are loaded from CombatSkillCatalogService (DB-driven).
+    /// Weapon skills are excluded from this panel.
     /// </summary>
     public class SkillManagementPresenter : MonoBehaviour
     {
@@ -33,10 +32,6 @@ namespace CombatManager.Presenter
 
         [Header("Buttons")]
         [SerializeField] private Button closeButton;
-
-        [Header("Player Skills")]
-        [Tooltip("Assign all PlayerSkill SO assets here. WeaponSkills stay in WeaponDataSO.")]
-        [SerializeField] private List<SkillData> playerSkills = new List<SkillData>();
 
         #endregion
 
@@ -70,24 +65,39 @@ namespace CombatManager.Presenter
         {
             SetupCloseButton();
 
-            // ✅ Debug: check list before initialize
-            Debug.Log($"[SkillManagementPresenter] playerSkills count: {playerSkills.Count}");
-            foreach (var s in playerSkills)
-                Debug.Log($"[SkillManagementPresenter] → {s?.skillName} | " +
-                          $"ownership={s?.skillOwnership} | IsPlayerSkill={s?.IsPlayerSkill}");
-
-            service.Initialize(playerSkills);
-            
-            // ✅ Debug: check after filter
-            Debug.Log($"[SkillManagementPresenter] After filter: " +
-                      $"{service.GetAllSkills().Count} skills");
-
-            PopulateGrid();
+            StartCoroutine(LoadCatalogSkills());
 
             CombatModePresenter.OnCombatModeChanged += OnCombatModeChanged;
             SetPanelVisible(false);
 
             Debug.Log("[SkillManagementPresenter] Initialized!");
+        }
+
+        private IEnumerator LoadCatalogSkills()
+        {
+            float elapsed = 0f;
+            while ((CombatSkillCatalogService.Instance == null || !CombatSkillCatalogService.Instance.IsReady)
+                   && elapsed < 10f)
+            {
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            if (CombatSkillCatalogService.Instance == null || !CombatSkillCatalogService.Instance.IsReady)
+            {
+                Debug.LogWarning("[SkillManagementPresenter] CombatSkillCatalogService unavailable. Panel will be empty.");
+                service.Initialize(new List<SkillData>());
+                PopulateGrid();
+                yield break;
+            }
+
+            List<SkillData> allSkills = CombatSkillCatalogService.Instance.GetAllSkills();
+            Debug.Log($"[SkillManagementPresenter] Catalog skills loaded: {allSkills.Count}");
+
+            service.Initialize(allSkills);
+            Debug.Log($"[SkillManagementPresenter] Player skills after filter: {service.GetAllSkills().Count}");
+
+            PopulateGrid();
         }
 
         private void Update()

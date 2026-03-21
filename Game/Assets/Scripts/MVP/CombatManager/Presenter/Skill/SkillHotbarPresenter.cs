@@ -27,8 +27,8 @@ namespace CombatManager.Presenter
         [SerializeField] private GameObject weaponSkillSlotPrefab;
         [SerializeField] private KeyCode weaponSkillKey = KeyCode.R;
 
-        [Header("Pre-assigned Skills (Optional)")]
-        [SerializeField] private SkillData[] initialSkills = new SkillData[4];
+        [Header("Default Skill IDs (Optional)")]
+        [SerializeField] private string[] defaultSkillIds = new string[4];
 
         #endregion
 
@@ -77,7 +77,7 @@ namespace CombatManager.Presenter
             SpawnWeaponSkillSlot();
             service.Initialize();
 
-            StartCoroutine(DelayedSkillSetup());
+            StartCoroutine(InitializeSkillsFromCatalog());
 
             CombatModePresenter.OnCombatModeChanged += OnCombatModeChanged;
             SetHotbarVisible(false);
@@ -104,24 +104,46 @@ namespace CombatManager.Presenter
 
         #region Skill Setup
 
-        private IEnumerator DelayedSkillSetup()
+        private IEnumerator InitializeSkillsFromCatalog()
         {
-            yield return new WaitForSeconds(0.6f);
-            LinkInitialSkills();
+            float elapsed = 0f;
+            while ((CombatSkillCatalogService.Instance == null || !CombatSkillCatalogService.Instance.IsReady)
+                   && elapsed < 10f)
+            {
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            if (CombatSkillCatalogService.Instance == null || !CombatSkillCatalogService.Instance.IsReady)
+            {
+                Debug.LogWarning("[SkillHotbarPresenter] CombatSkillCatalogService unavailable. No skills loaded.");
+                yield break;
+            }
+
+            LinkDefaultSkills();
             RefreshAllSlots();
             Debug.Log("[SkillHotbarPresenter] Skill setup complete!");
         }
 
-        private void LinkInitialSkills()
+        private void LinkDefaultSkills()
         {
-            for (int i = 0; i < initialSkills.Length && i < equippedSkillsData.Length; i++)
+            for (int i = 0; i < defaultSkillIds.Length && i < equippedSkillsData.Length; i++)
             {
-                if (initialSkills[i] != null)
+                string skillId = defaultSkillIds[i];
+                if (string.IsNullOrWhiteSpace(skillId))
                 {
-                    EquipSkill(i, initialSkills[i]);
-                    Debug.Log($"[SkillHotbarPresenter] Initial skill slot {i}: " +
-                              $"{initialSkills[i].skillName}");
+                    continue;
                 }
+
+                SkillData skill = CombatSkillCatalogService.Instance.GetSkillById(skillId);
+                if (skill == null)
+                {
+                    Debug.LogWarning($"[SkillHotbarPresenter] Skill ID '{skillId}' not found in catalog.");
+                    continue;
+                }
+
+                EquipSkill(i, skill);
+                Debug.Log($"[SkillHotbarPresenter] Default skill slot {i}: {skill.skillName}");
             }
         }
 
@@ -434,7 +456,15 @@ namespace CombatManager.Presenter
         {
             if (weaponSkillSlotView == null) return;
 
-            if (weaponData.linkedSkill == null)
+            if (CombatSkillCatalogService.Instance == null || !CombatSkillCatalogService.Instance.IsReady)
+            {
+                Debug.LogWarning("[SkillHotbarPresenter] CombatSkillCatalogService not ready for weapon skill resolution.");
+                weaponSkillSlotView.SetEmpty();
+                currentWeaponSkillData = null;
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(weaponData.linkedSkillId))
             {
                 Debug.LogWarning($"[SkillHotbarPresenter] " +
                                  $"{weaponData.weaponName} has no linked skill!");
@@ -443,8 +473,15 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            currentWeaponSkillData = weaponData.linkedSkill;
-            weaponSkillSlotView.SetSkill(weaponData.linkedSkill.skillIcon);
+            currentWeaponSkillData = CombatSkillCatalogService.Instance.GetSkillById(weaponData.linkedSkillId);
+            if (currentWeaponSkillData == null)
+            {
+                Debug.LogWarning($"[SkillHotbarPresenter] Linked skill '{weaponData.linkedSkillId}' not found for {weaponData.weaponName}.");
+                weaponSkillSlotView.SetEmpty();
+                return;
+            }
+
+            weaponSkillSlotView.SetSkill(currentWeaponSkillData.skillIcon);
             weaponSkillSlotView.SetVisible(true);
 
             Debug.Log($"[SkillHotbarPresenter] Weapon skill set: " +

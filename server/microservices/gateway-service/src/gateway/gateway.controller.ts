@@ -861,6 +861,82 @@ export class GatewayController {
     }
   }
 
+  // ── Game Data: Combat Skills ───────────────────────────────────────────────
+
+  /** GET /game-data/combat-skills/catalog — full catalog { skills: [...] } for Unity client */
+  @Get('game-data/combat-skills/catalog')
+  async getCombatSkillCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-skill-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/combat-skills/all — flat array of all combat skill documents */
+  @Get('game-data/combat-skills/all')
+  async getAllCombatSkills() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-combat-skills', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/combat-skills/by-skill-id/:skillId — find by game-side skillId string */
+  @Get('game-data/combat-skills/by-skill-id/:skillId')
+  async getCombatSkillById(@Param('skillId') skillId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-skill-by-id', { skillId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** POST /game-data/combat-skills/create — create a new combat skill (admin only) */
+  @Post('game-data/combat-skills/create')
+  async createCombatSkill(@Body() body: any) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('create-combat-skill', body),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/combat-skills/:skillId — update by game-side skillId (admin only) */
+  @Put('game-data/combat-skills/:skillId')
+  async updateCombatSkill(@Param('skillId') skillId: string, @Body() patch: any) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('update-combat-skill', { skillId, ...patch }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/combat-skills/:skillId — delete by game-side skillId (admin only) */
+  @Delete('game-data/combat-skills/:skillId')
+  async deleteCombatSkill(@Param('skillId') skillId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-combat-skill', { skillId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   @Post('game-data/fertilizers/create')
   @UseInterceptors(
     FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
