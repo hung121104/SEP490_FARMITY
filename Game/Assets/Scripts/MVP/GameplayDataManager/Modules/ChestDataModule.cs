@@ -98,6 +98,9 @@ public class ChestDataModule : IWorldDataModule
     // Chest metadata index: packed (tileX, tileY) → header
     private readonly Dictionary<int, ChestHeader> chestIndex = new Dictionary<int, ChestHeader>();
 
+    // Chests destroyed since last save — tracked for backend deletion
+    private readonly List<(short tileX, short tileY)> _deletedChests = new List<(short, short)>();
+
     // ── Key Helpers ──────────────────────────────────────────────────
 
     /// <summary>Pack two shorts into one int for dictionary key (zero allocation).</summary>
@@ -200,6 +203,9 @@ public class ChestDataModule : IWorldDataModule
     {
         int key = PackKey(tileX, tileY);
         if (!chestIndex.Remove(key)) return false;
+
+        // Track for backend deletion on next save
+        _deletedChests.Add((tileX, tileY));
 
         // Remove all slot entries for this chest (reverse iterate for swap-remove)
         for (int i = slots.Count - 1; i >= 0; i--)
@@ -534,6 +540,13 @@ public class ChestDataModule : IWorldDataModule
             chestIndex[keys[i]] = header;
         }
     }
+
+    /// <summary>Returns chests destroyed since last save (for backend deletion).</summary>
+    public List<(short tileX, short tileY)> GetDeletedChests()
+        => new List<(short, short)>(_deletedChests);
+
+    /// <summary>Clear the deleted chests tracking list after a successful save.</summary>
+    public void ClearDeletedChests() => _deletedChests.Clear();
 
     // ══════════════════════════════════════════════════════════════════════
     // INTERNAL HELPERS

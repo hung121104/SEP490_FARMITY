@@ -69,6 +69,37 @@ public static class WorldApi
         [JsonProperty("slots")]     public Dictionary<string, InventorySlotDelta> slots;
     }
 
+    // ── Chest delta DTOs ──────────────────────────────────────────────────────
+
+    [Serializable]
+    public class ChestSlotDelta
+    {
+        [JsonProperty("itemId")]   public string itemId;
+        [JsonProperty("quantity")] public int    quantity;
+    }
+
+    /// <summary>
+    /// One chest's changed slots.
+    /// Key of the slots dictionary = slot index as string ("0"–"35").
+    /// </summary>
+    [Serializable]
+    public class ChestDelta
+    {
+        [JsonProperty("tileX")]          public int tileX;
+        [JsonProperty("tileY")]          public int tileY;
+        [JsonProperty("maxSlots")]       public int maxSlots;
+        [JsonProperty("structureLevel")] public int structureLevel;
+        [JsonProperty("slots")]          public Dictionary<string, ChestSlotDelta> slots;
+    }
+
+    /// <summary>Identifies a chest that was destroyed and should be removed from DB.</summary>
+    [Serializable]
+    public class DeletedChest
+    {
+        [JsonProperty("tileX")] public int tileX;
+        [JsonProperty("tileY")] public int tileY;
+    }
+
     // -------------------------------------------------------------------------
     //  Request model
     // -------------------------------------------------------------------------
@@ -103,6 +134,18 @@ public static class WorldApi
         /// </summary>
         [JsonProperty("inventoryDeltas", NullValueHandling = NullValueHandling.Ignore)]
         public List<PlayerInventoryDelta> inventoryDeltas;
+
+        /// <summary>
+        /// Only dirty chests are included.  Null / empty → no chest changes to save.
+        /// </summary>
+        [JsonProperty("chestDeltas", NullValueHandling = NullValueHandling.Ignore)]
+        public List<ChestDelta> chestDeltas;
+
+        /// <summary>
+        /// Chests destroyed since last save.  Null / empty → no chests to delete.
+        /// </summary>
+        [JsonProperty("deletedChests", NullValueHandling = NullValueHandling.Ignore)]
+        public List<DeletedChest> deletedChests;
 
         public class CharacterUpdate
         {

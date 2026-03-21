@@ -33,6 +33,29 @@ export class PlayerInventoryDeltaDto {
   slots: Record<string, InventorySlotDeltaDto>;
 }
 
+// ── Chest delta types ─────────────────────────────────────────────────────────
+
+export class ChestSlotDeltaDto {
+  itemId: string;
+  quantity: number;
+}
+
+/** One chest's changed slots.  slots key = slot index "0"–"35". */
+export class ChestDeltaDto {
+  tileX: number;
+  tileY: number;
+  maxSlots: number;
+  structureLevel: number;
+  /** Only the slots that changed; key = string(slotIndex) */
+  slots: Record<string, ChestSlotDeltaDto>;
+}
+
+/** Identifies a chest to be deleted from the database. */
+export class DeletedChestDto {
+  tileX: number;
+  tileY: number;
+}
+
 // ── Main DTO ────────────────────────────────────────────────────────────────
 
 export class UpdateWorldDto {
@@ -65,4 +88,16 @@ export class UpdateWorldDto {
    * Backend merges these into the `characters` collection atomically.
    */
   inventoryDeltas?: PlayerInventoryDeltaDto[];
+
+  /**
+   * Chest deltas — only the chests whose slots changed since last save.
+   * Backend upserts these into the `chests` collection atomically.
+   */
+  chestDeltas?: ChestDeltaDto[];
+
+  /**
+   * Chests that were destroyed since last save.
+   * Backend deletes the matching documents from the `chests` collection.
+   */
+  deletedChests?: DeletedChestDto[];
 }
