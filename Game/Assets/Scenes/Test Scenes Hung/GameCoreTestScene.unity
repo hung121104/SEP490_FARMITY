@@ -101006,6 +101006,7 @@ MonoBehaviour:
   growthSpeedMultiplier: 1
   waterDecayDurationMinutes: 24
   cropVisualsParent: {fileID: 0}
+  cropVisualPrefab: {fileID: 467709482260639692, guid: b4e1c86a118eb054da4bad8b0cda6380, type: 3}
   showDebugLogs: 0
 --- !u!4 &1955384471
 Transform:
@@ -102471,7 +102472,7 @@ MonoBehaviour:
   unloadDelay: 5
   visualizeCrops: 1
   visualizeResources: 1
-  cropVisualPrefab: {fileID: 9165000289063299726, guid: bb78198dacabce642a87ec5356ebdb4b, type: 3}
+  cropVisualPrefab: {fileID: 467709482260639692, guid: b4e1c86a118eb054da4bad8b0cda6380, type: 3}
   tilledTile: {fileID: 11400000, guid: 6d75ab1f708f17f4bb38cf96ff56d6ad, type: 2}
   tilledTilemapName: TilledOverlayTilemap
   wateredTile: {fileID: 11400000, guid: 5db623d4610b77f42ae1661d5445f57d, type: 2}

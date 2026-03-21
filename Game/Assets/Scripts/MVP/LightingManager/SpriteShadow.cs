@@ -13,7 +13,8 @@ public class SpriteShadow : MonoBehaviour
 
     [Header("Shadow Appearance")]
     [SerializeField] private Color shadowColor = new Color(0.02f, 0.02f, 0.08f, 0.45f);
-    [SerializeField] private int sortingOrderOffset = -1;
+    [SerializeField] private string shadowSortingLayer = "Ground";
+    [SerializeField] private int    shadowSortingOrder = 100;
 
     private SpriteRenderer _source;
     private SpriteRenderer _shadow;
@@ -29,9 +30,9 @@ public class SpriteShadow : MonoBehaviour
 
         _shadow = go.AddComponent<SpriteRenderer>();
         _shadow.color          = shadowColor;
-        _shadow.sortingLayerID = _source.sortingLayerID;
-        _shadow.sortingOrder   = _source.sortingOrder + sortingOrderOffset;
-        _shadow.material       = _source.sharedMaterial;
+        _shadow.sortingLayerName = shadowSortingLayer;
+        _shadow.sortingOrder     = shadowSortingOrder;
+        _shadow.material         = _source.sharedMaterial;
     }
 
     void LateUpdate()
@@ -74,9 +75,9 @@ public class SpriteShadow : MonoBehaviour
         c.a = shadowColor.a * intensity;
         _shadow.color = c;
 
-        // Keep sorting in sync if source changes at runtime
-        _shadow.sortingLayerID = _source.sortingLayerID;
-        _shadow.sortingOrder   = _source.sortingOrder + sortingOrderOffset;
+        // Keep sorting in sync
+        _shadow.sortingLayerName = shadowSortingLayer;
+        _shadow.sortingOrder     = shadowSortingOrder;
     }
 
     void OnDestroy()

@@ -33,6 +33,8 @@ public class CropManagerView : MonoBehaviourPunCallbacks
 
     [Header("Visual")]
     public Transform cropVisualsParent;
+    // Crop visual prefab is read from ChunkLoadingManager (the primary spawn path).
+    // There is no separate prefab field here — assign it on ChunkLoadingManager in the Inspector.
 
     [Header("Debug")]
     public bool showDebugLogs = true;
@@ -190,14 +192,34 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         if (cropVisuals.TryGetValue(key, out GameObject old) && old != null)
             Destroy(old);
 
-        GameObject go = new GameObject($"Crop_{plant.plantName}_{worldX}_{worldY}");
-        go.transform.position = new Vector3(worldX + 0.5f, worldY + 0.5f, 0);
-        go.transform.SetParent(cropVisualsParent);
+        // Use the same prefab ChunkLoadingManager uses so both paths produce identical visuals.
+        GameObject prefab = chunkLoadingManager != null ? chunkLoadingManager.cropVisualPrefab : null;
 
-        var sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite           = PlantCatalogService.Instance?.GetStageSprite(plantId, stage);
-        sr.sortingLayerName = "Default";
-        sr.sortingOrder     = 1;
+        GameObject go;
+        if (prefab != null)
+        {
+            go = Instantiate(prefab,
+                             new Vector3(worldX + 0.5f, worldY + 0.5f, 0f),
+                             Quaternion.identity,
+                             cropVisualsParent);
+        }
+        else
+        {
+            go = new GameObject($"Crop_{plant.plantName}_{worldX}_{worldY}");
+            go.transform.position = new Vector3(worldX + 0.5f, worldY + 0.5f, 0f);
+            go.transform.SetParent(cropVisualsParent);
+        }
+        go.name = $"Crop_{plant.plantName}_{worldX}_{worldY}";
+
+        // Get the SpriteRenderer from the prefab (root or child); add one as fallback.
+        var sr = go.GetComponentInChildren<SpriteRenderer>(true);
+        if (sr == null)
+        {
+            sr = go.AddComponent<SpriteRenderer>();
+            sr.sortingLayerName = "WalkInfront";
+            sr.sortingOrder     = 0;
+        }
+        sr.sprite = PlantCatalogService.Instance?.GetStageSprite(plantId, stage);
 
         cropVisuals[key] = go;
     }

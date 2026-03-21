@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 2254480422919081186}
   - component: {fileID: 1911932870261030965}
   - component: {fileID: 4645773019411297606}
+  - component: {fileID: 5900222504216957154}
   m_Layer: 0
   m_Name: Body
   m_TagString: Untagged
@@ -187,6 +188,12 @@ MonoBehaviour:
   - Type: 9
     SynchronizeType: 0
     Name: WaitFishing
+  - Type: 9
+    SynchronizeType: 0
+    Name: watering
+  - Type: 9
+    SynchronizeType: 0
+    Name: chop
   m_SynchronizeLayers:
   - SynchronizeType: 0
     LayerIndex: 0
@@ -213,6 +220,26 @@ MonoBehaviour:
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
+--- !u!114 &5900222504216957154
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 17211481072147260}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d21390a9985520846b30d1c8b5e34844, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  config: {fileID: 11400000, guid: 232020088ed16f34685dac7e342470ba, type: 2}
+  shadowMaterial: {fileID: 2100000, guid: 5065e639b7f36c946ac54ccb8cd9d343, type: 2}
+  sourceRenderer: {fileID: 0}
+  shadowColor: {r: 0.02, g: 0.02, b: 0.08, a: 0.45}
+  shadowSortingLayer: Ground
+  shadowSortingOrder: 100
+  shadowLengthScale: 1
+  shadowFlattenY: 0.5
 --- !u!1 &1083092175523969477
 GameObject:
   m_ObjectHideFlags: 0

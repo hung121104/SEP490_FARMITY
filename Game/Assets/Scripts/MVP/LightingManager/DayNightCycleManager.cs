@@ -26,6 +26,11 @@ public class DayNightCycleManager : MonoBehaviour
     /// <summary>Current computed intensity (after rain multiplier).</summary>
     public float CurrentIntensity { get; private set; }
 
+    /// <summary>The ScriptableObject driving all curves. Exposed so SpriteShadowShader
+    /// can auto-populate its config reference from the singleton rather than needing
+    /// a manual Inspector assignment on every prefab instance.</summary>
+    public DayNightCycleConfig Config => config;
+
     // rain lerp state
     private float _rainBlend;   // 0 = clear, 1 = full rain
     private bool  _isRaining;

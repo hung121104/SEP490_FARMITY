@@ -524,10 +524,15 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 // SpriteRenderer may be on the root or a child object (allowing offset control in prefab)
                 SpriteRenderer sr = visual.GetComponentInChildren<SpriteRenderer>(true);
                 if (sr == null)
+                {
+                    // No renderer in the prefab — add one to the root and apply defaults.
                     sr = visual.AddComponent<SpriteRenderer>();
+                    sr.sortingLayerName = "WalkInfront";
+                }
+                // When a prefab is used its SpriteRenderer (and any SpriteShadowShader on it)
+                // already carry the correct sorting layer and shadow settings — don't override them.
 
                 sr.sprite = stageSprite;
-                sr.sortingLayerName = "WalkInfront";
 
                 visuals.Add(visual);
 
