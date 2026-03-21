@@ -7,7 +7,7 @@ import { Chunk, ChunkDocument } from './chunk.schema';
 import { CreateWorldDto } from './dto/create-world.dto';
 import { GetWorldDto } from './dto/get-world.dto';
 import { UpdateWorldDto, ChunkDeltaDto, ChestDeltaDto, DeletedChestDto } from './dto/update-world.dto';
-import { ChestInventory, ChestInventoryDocument } from './chest.schema';
+import { Chest, ChestDocument } from './chest.schema';
 import { CharacterService } from '../character/character.service';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class WorldService {
   constructor(
     @InjectModel(World.name) private worldModel: Model<WorldDocument>,
     @InjectModel(Chunk.name) private chunkModel: Model<ChunkDocument>,
-    @InjectModel(ChestInventory.name) private chestInventoryModel: Model<ChestInventoryDocument>,
+    @InjectModel(Chest.name) private chestModel: Model<ChestDocument>,
     @InjectConnection() private readonly connection: Connection,
     private readonly characterService: CharacterService,
   ) {}
@@ -161,7 +161,7 @@ export class WorldService {
     // slots Map is converted to a plain JS object { "0": {...}, "5": {...} }
     // so Unity's Newtonsoft.Json can deserialize it as Dictionary<string, ChestSlotData>.
     try {
-      const chests = await this.chestInventoryModel
+      const chests = await this.chestModel
         .find({ worldId: world._id })
         .lean()
         .exec();
@@ -451,7 +451,7 @@ export class WorldService {
       if (Object.keys(setFields).length > 0) updateOps.$set = setFields;
       if (Object.keys(unsetFields).length > 0) updateOps.$unset = unsetFields;
 
-      await this.chestInventoryModel.findOneAndUpdate(
+      await this.chestModel.findOneAndUpdate(
         {
           worldId: worldOid,
           tileX:   delta.tileX,
@@ -474,7 +474,7 @@ export class WorldService {
     opts: object,
   ): Promise<void> {
     for (const chest of deleted) {
-      await this.chestInventoryModel.deleteOne(
+      await this.chestModel.deleteOne(
         { worldId: worldOid, tileX: chest.tileX, tileY: chest.tileY },
         opts,
       ).exec();
@@ -493,7 +493,7 @@ export class WorldService {
     const deletedCharactersCount = await this.characterService.deleteByWorldId(getWorldDto._id);
     console.log(`[WorldService] Deleted ${deletedCharactersCount} character(s) for world ${getWorldDto._id}`);
     // Delete all chests associated with this world
-    const deletedChestsResult = await this.chestInventoryModel.deleteMany({ worldId: world._id }).exec();
+    const deletedChestsResult = await this.chestModel.deleteMany({ worldId: world._id }).exec();
     console.log(`[WorldService] Deleted ${deletedChestsResult.deletedCount} chest(s) for world ${getWorldDto._id}`);
     // Delete the world itself
     const deleted = await this.worldModel.findByIdAndDelete(getWorldDto._id).exec();
