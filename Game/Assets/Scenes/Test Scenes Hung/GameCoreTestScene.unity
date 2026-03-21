@@ -6622,7 +6622,7 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 309988454}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -95492,6 +95492,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1673895037}
   m_CullTransparentMesh: 1
+--- !u!1 &1680662518
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1680662519}
+  m_Layer: 0
+  m_Name: TestSpawnObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1680662519
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1680662518}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -161.37448, y: 90.45443, z: -0.08946924}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1682444308
 GameObject:
   m_ObjectHideFlags: 0
@@ -101006,7 +101037,6 @@ MonoBehaviour:
   growthSpeedMultiplier: 1
   waterDecayDurationMinutes: 24
   cropVisualsParent: {fileID: 0}
-  cropVisualPrefab: {fileID: 467709482260639692, guid: b4e1c86a118eb054da4bad8b0cda6380, type: 3}
   showDebugLogs: 0
 --- !u!4 &1955384471
 Transform:
@@ -106968,3 +106998,4 @@ SceneRoots:
   - {fileID: 1567270514}
   - {fileID: 1199216439}
   - {fileID: 1533277136}
+  - {fileID: 1680662519}

@@ -521,8 +521,19 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
 
                 visual.name = $"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}";
 
-                // SpriteRenderer may be on the root or a child object (allowing offset control in prefab)
-                SpriteRenderer sr = visual.GetComponentInChildren<SpriteRenderer>(true);
+                // SpriteRenderer may be on the root or a child object (allowing offset control in prefab).
+                // Skip any shadow child renderers created by SpriteShadowShader during Awake so
+                // the stage sprite is always assigned to the real source renderer, not the shadow.
+                SpriteRenderer sr = null;
+                foreach (var candidate in visual.GetComponentsInChildren<SpriteRenderer>(true))
+                {
+                    if (candidate.gameObject.name != "_SpriteShadowShader" &&
+                        candidate.gameObject.name != "_SpriteShadow")
+                    {
+                        sr = candidate;
+                        break;
+                    }
+                }
                 if (sr == null)
                 {
                     // No renderer in the prefab — add one to the root and apply defaults.
@@ -964,6 +975,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     /// <summary>
     /// Called when a new day begins in the game
     /// </summary>
+    [ContextMenu("Simulate Day Change")]
     private void OnDayChanged()
     {
         if (!enableDailyReload) return;

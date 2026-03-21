@@ -19,7 +19,7 @@ using UnityEngine;
 /// </summary>
 // Run very late in LateUpdate so DynamicSpriteSwapper (and the Animator) have
 // already written the final sprite for this frame before we copy it.
-[DefaultExecutionOrder(9000)]
+
 public class SpriteShadowShader : MonoBehaviour
 {
     [Header("References")]
@@ -50,6 +50,9 @@ public class SpriteShadowShader : MonoBehaviour
     [Tooltip("How flat the shadow appears on the ground. 0 = fully flat, 1 = same height as sprite.")]
     [SerializeField, Range(0f, 1f)] private float shadowFlattenY = 0.5f;
 
+    [Header("Debug")]
+    [SerializeField] private bool showDebugLogs = false;
+
     // ── Cached shader property IDs (set once, reused every frame) ──────────
     private static readonly int ID_ShadowColor    = Shader.PropertyToID("_ShadowColor");
     private static readonly int ID_ShadowLeanX    = Shader.PropertyToID("_ShadowLeanX");
@@ -70,15 +73,23 @@ public class SpriteShadowShader : MonoBehaviour
 
     void Awake()
     {
+        if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} Awake");
         _mpb = new MaterialPropertyBlock();
         TryFindSource();
         TryFillConfig();
         if (_source != null)
+        {
             CreateShadowRenderer();
+        }
+        else
+        {
+            if (showDebugLogs) Debug.LogWarning($"[SpriteShadow] {name} Awake — source renderer not found yet");
+        }
     }
 
     void OnEnable()
     {
+        if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} OnEnable — source={(  _source != null ? _source.name : "null")}, shadow={(_shadow != null ? _shadow.gameObject.name : "null")}, config={( config != null ? config.name : "null")}");
         // Re-fill config in case the manager wasn't ready during Awake.
         TryFillConfig();
         // Try source resolution again in case it failed at Awake time
@@ -86,7 +97,16 @@ public class SpriteShadowShader : MonoBehaviour
         if (_source == null) TryFindSource();
         // Recreate the shadow child if it was destroyed while disabled.
         if (_source != null && (_shadow == null || _shadow.gameObject == null))
-            CreateShadowRenderer();
+        {
+            if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} OnEnable — recreating destroyed shadow child");
+            CreateShadowRenderer(); // PrimeShadowState is called inside CreateShadowRenderer
+        }
+        else
+        {
+            // Shadow already exists — re-prime it in case the sprite changed while
+            // the component was disabled (e.g. skin swap, chunk re-spawn).
+            PrimeShadowState();
+        }
     }
 
     /// <summary>
@@ -104,28 +124,43 @@ public class SpriteShadowShader : MonoBehaviour
         if (sourceRenderer != null)
         {
             _source = sourceRenderer;
+            if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} TryFindSource — using Inspector override: {_source.name}");
             return;
         }
 
         // 2. Same GameObject (character prefabs, etc.)
         _source = GetComponent<SpriteRenderer>();
-        if (_source != null) return;
+        if (_source != null)
+        {
+            if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} TryFindSource — found on same GO: {_source.name}");
+            return;
+        }
 
-        // 3. Child search — skip any "_SpriteShadow" child we created ourselves
+        // 3. Child search — skip any "_SpriteShadowShader" child we created ourselves
         foreach (var sr in GetComponentsInChildren<SpriteRenderer>(true))
         {
-            if (sr.gameObject.name != "_SpriteShadow")
+            if (sr.gameObject.name != "_SpriteShadowShader")
             {
                 _source = sr;
+                if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} TryFindSource — found in children: {_source.name}");
                 return;
             }
         }
+
+        if (showDebugLogs) Debug.LogWarning($"[SpriteShadow] {name} TryFindSource — no SpriteRenderer found");
     }
 
     private void TryFillConfig()
     {
         if (config == null && DayNightCycleManager.Instance != null)
+        {
             config = DayNightCycleManager.Instance.Config;
+            if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} TryFillConfig — resolved config: {(config != null ? config.name : "null")}");
+        }
+        else if (config == null)
+        {
+            if (showDebugLogs) Debug.LogWarning($"[SpriteShadow] {name} TryFillConfig — DayNightCycleManager not available yet");
+        }
     }
 
     private void CreateShadowRenderer()
@@ -135,11 +170,14 @@ public class SpriteShadowShader : MonoBehaviour
         Transform shadowParent = _source != null ? _source.transform : transform;
 
         // Clean up any leftover child from a previous call.
-        Transform existing = shadowParent.Find("_SpriteShadow");
+        Transform existing = shadowParent.Find("_SpriteShadowShader");
         if (existing != null)
+        {
+            if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} CreateShadowRenderer — destroying leftover shadow child");
             Destroy(existing.gameObject);
+        }
 
-        var go = new GameObject("_SpriteShadow");
+        var go = new GameObject("_SpriteShadowShader");
         go.transform.SetParent(shadowParent, false);
         go.transform.localPosition = Vector3.zero;
         go.transform.localScale    = Vector3.one;
@@ -149,6 +187,68 @@ public class SpriteShadowShader : MonoBehaviour
         _shadow.sharedMaterial   = shadowMaterial;
         _shadow.sortingLayerName = shadowSortingLayer;
         _shadow.sortingOrder     = shadowSortingOrder;
+
+        if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} CreateShadowRenderer — created under '{shadowParent.name}', material={(shadowMaterial != null ? shadowMaterial.name : "null")}, layer={shadowSortingLayer}, order={shadowSortingOrder}");
+
+        // Eagerly prime sprite + MPB so the shadow is visible immediately —
+        // before LateUpdate has ever run (editor context-menu instantiation,
+        // first spawn frame, object re-enabled after a disable).
+        PrimeShadowState();
+    }
+
+    /// <summary>
+    /// Assigns the current source sprite to the shadow renderer and writes an
+    /// initial MaterialPropertyBlock so the shadow renders correctly without
+    /// waiting for the first LateUpdate.  Falls back to noon defaults when
+    /// DayNightCycleManager / config are not yet available (edit-mode, early
+    /// startup). Safe to call from Awake, OnEnable, and CreateShadowRenderer.
+    /// </summary>
+    private void PrimeShadowState()
+    {
+        if (_shadow == null || _source == null) return;
+        if (_source.sprite == null) return;   // sprite not ready yet — LateUpdate will pick it up
+
+        _lastValidSprite         = _source.sprite;
+        _shadow.sprite           = _source.sprite;
+        _shadow.flipX            = _source.flipX;
+        _shadow.sortingLayerName = shadowSortingLayer;
+        _shadow.sortingOrder     = shadowSortingOrder;
+
+        if (shadowMaterial != null && _shadow.sharedMaterial != shadowMaterial)
+            _shadow.sharedMaterial = shadowMaterial;
+
+        // Use real DayProgress when available; fall back to noon (t=0.5) so the
+        // shadow is visible by default when no manager exists (e.g. edit mode).
+        float t = (DayNightCycleManager.Instance != null)
+            ? DayNightCycleManager.Instance.DayProgress
+            : 0.5f;
+
+        float intensity;
+        float leanX;
+        if (config != null)
+        {
+            intensity      = config.sunShadowIntensity.Evaluate(t);
+            float angleDeg = Mathf.Lerp(config.sunriseAngle, config.sunsetAngle, t);
+            float angleRad = angleDeg * Mathf.Deg2Rad;
+            float sinA     = Mathf.Max(Mathf.Abs(Mathf.Sin(angleRad)), 0.1f);
+            float cosA     = Mathf.Cos(angleRad);
+            leanX          = (cosA / sinA) * shadowLengthScale;
+        }
+        else
+        {
+            intensity = 1f;  // visible by default when config not yet loaded
+            leanX     = 0f;  // straight-down noon shadow
+        }
+
+        _mpb.SetColor(ID_ShadowColor,    shadowColor);
+        _mpb.SetFloat(ID_ShadowLeanX,    leanX);
+        _mpb.SetFloat(ID_ShadowScaleX,   1f);
+        _mpb.SetFloat(ID_ShadowAlpha,    shadowColor.a * intensity);
+        _mpb.SetFloat(ID_ShadowFlattenY, shadowFlattenY);
+        _shadow.SetPropertyBlock(_mpb);
+        _shadow.enabled = (intensity >= 0.01f);
+
+        if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} PrimeShadowState — sprite='{_lastValidSprite.name}', t={t:F3}, intensity={intensity:F3}, leanX={leanX:F3}, enabled={_shadow.enabled}");
     }
 
     void LateUpdate()
@@ -159,12 +259,19 @@ public class SpriteShadowShader : MonoBehaviour
         if (_source == null)
         {
             TryFindSource();
-            if (_source == null) return; // still not ready
+            if (_source == null)
+            {
+                if (showDebugLogs) Debug.LogWarning($"[SpriteShadow] {name} LateUpdate — source still null, skipping");
+                return; // still not ready
+            }
         }
 
         // ── 2. Ensure the shadow child exists ───────────────────────────────
         if (_shadow == null || _shadow.gameObject == null)
+        {
+            if (showDebugLogs) Debug.LogWarning($"[SpriteShadow] {name} LateUpdate — shadow child missing, recreating");
             CreateShadowRenderer();
+        }
 
         // ── 3. Lazy config resolution ───────────────────────────────────────
         // DayNightCycleManager may not have been ready during Awake/OnEnable.
@@ -172,6 +279,7 @@ public class SpriteShadowShader : MonoBehaviour
 
         if (DayNightCycleManager.Instance == null || config == null || shadowMaterial == null)
         {
+            if (showDebugLogs) Debug.LogWarning($"[SpriteShadow] {name} LateUpdate — missing dependency: DayNightCycleMgr={(DayNightCycleManager.Instance != null)}, config={(config != null)}, material={(shadowMaterial != null)} — disabling shadow");
             _shadow.enabled = false;
             return;
         }
@@ -186,27 +294,31 @@ public class SpriteShadowShader : MonoBehaviour
         if (_lastValidSprite == null)
         {
             // No sprite has ever been set; nothing meaningful to shadow yet.
+            if (showDebugLogs) Debug.LogWarning($"[SpriteShadow] {name} LateUpdate — no valid sprite yet on source '{_source.name}', disabling shadow");
             _shadow.enabled = false;
             return;
         }
 
-        // ── 4. Intensity check ──────────────────────────────────────────────
+        // ── 4. Sample intensity (do NOT early-return here) ──────────────────
+        // Returning early before applying sprite + MPB would leave a freshly-
+        // spawned shadow renderer completely uninitialized.  When intensity
+        // later rises above the threshold (e.g. dawn after an OnDayChanged
+        // midnight reload), the SRP Batcher initialises the per-renderer
+        // constant buffer from the material's defaults instead of the stored
+        // property block, making the shadow invisible until something external
+        // (like an Inspector edit) forces a rebatch.  Always keep the shadow
+        // renderer primed with current data and toggle visibility at the end.
         float t         = DayNightCycleManager.Instance.DayProgress;
         float intensity = config.sunShadowIntensity.Evaluate(t);
-
-        if (intensity < 0.01f)
-        {
-            _shadow.enabled = false;
-            return;
-        }
-
-        _shadow.enabled = true;
 
         // ── 5. Keep material locked to the assigned shadow material ─────────
         // Something (chunk reload, renderer reset) may have replaced it with the
         // default sprite material.
         if (_shadow.sharedMaterial != shadowMaterial)
+        {
+            if (showDebugLogs) Debug.LogWarning($"[SpriteShadow] {name} LateUpdate — shadow material was replaced, restoring '{shadowMaterial.name}'");
             _shadow.sharedMaterial = shadowMaterial;
+        }
 
         _shadow.sprite           = _lastValidSprite;
         _shadow.flipX            = _source.flipX;
@@ -225,17 +337,40 @@ public class SpriteShadowShader : MonoBehaviour
         float cosA  = Mathf.Cos(angleRad);
         float leanX = (cosA / sinA) * shadowLengthScale;
 
+        if (showDebugLogs && Time.frameCount % 60 == 0)
+            Debug.Log($"[SpriteShadow] {name} LateUpdate — t={t:F3}, intensity={intensity:F3}, sprite='{_lastValidSprite.name}', angle={angleDeg:F1}°, leanX={leanX:F3}, enabled={(intensity >= 0.01f)}");
+
         // ── 7. Push all values to the shader via MaterialPropertyBlock ───────
+        // Always write the MPB before toggling enabled so the SRP Batcher's
+        // per-renderer CBuffer is always up-to-date (_ShadowAlpha becomes 0
+        // naturally when intensity is 0, keeping the shadow invisible without
+        // disabling the renderer's GPU-side state).
         _mpb.SetColor(ID_ShadowColor,    shadowColor);
         _mpb.SetFloat(ID_ShadowLeanX,    leanX);
         _mpb.SetFloat(ID_ShadowScaleX,   1f);
         _mpb.SetFloat(ID_ShadowAlpha,    shadowColor.a * intensity);
         _mpb.SetFloat(ID_ShadowFlattenY, shadowFlattenY);
         _shadow.SetPropertyBlock(_mpb);
+
+        // ── 8. Toggle visibility AFTER the MPB is fully written ─────────────
+        bool shouldBeEnabled = (intensity >= 0.01f);
+        if (showDebugLogs && _shadow.enabled != shouldBeEnabled)
+            Debug.Log($"[SpriteShadow] {name} LateUpdate — visibility changed: {_shadow.enabled} → {shouldBeEnabled} (intensity={intensity:F3})");
+        _shadow.enabled = shouldBeEnabled;
+    }
+
+    void OnDisable()
+    {
+        if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} OnDisable — hiding shadow renderer");
+        // Hide the shadow renderer when this component is disabled so it does not
+        // ghost-render while LateUpdate is no longer running.
+        if (_shadow != null && _shadow.gameObject != null)
+            _shadow.enabled = false;
     }
 
     void OnDestroy()
     {
+        if (showDebugLogs) Debug.Log($"[SpriteShadow] {name} OnDestroy — destroying shadow child");
         if (_shadow != null)
             Destroy(_shadow.gameObject);
     }
