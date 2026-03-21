@@ -71,11 +71,16 @@ public class QuestService : IQuestService
                 }
             }
 
-            bool allFinished = quest.objectives.TrueForAll(o => o.IsCompleted);
+            bool allFinished = quest.objectives.TrueForAll(o => o.currentAmount >= o.requiredAmount);
+
             if (allFinished)
             {
-                quest.status = QuestStatus.Completed;
-                Debug.Log("Quest Completed: " + quest.questName);
+                quest.status = QuestStatus.Completed; 
+                Debug.Log($"Quest {quest.questName} is now COMPLETED!");
+            }
+            else
+            {
+                quest.status = QuestStatus.Active; 
             }
         }
         OnQuestUpdated?.Invoke();

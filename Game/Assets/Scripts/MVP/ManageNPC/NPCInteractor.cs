@@ -179,12 +179,11 @@ public class NPCInteractor : MonoBehaviour
                     StartGiftMode();
                 }
 
-                else if (i == 2) // Lựa chọn QUEST
+                else if (i == 2) 
                 {
                     dialogueView.Hide();
+                    UpdateQuestObjectives();
                     var inventory = inventoryGameView.GetInventoryService();
-
-                    // 1. Tìm xem NPC này có quest nào đang Active không
                     QuestModel activeQuest = questService.GetActiveQuests()
                         .Find(q => q.npcName == dialogueModel.npcName);
 
@@ -555,21 +554,20 @@ public class NPCInteractor : MonoBehaviour
 
         currentState = NPCState.SimpleDialogue;
     }
+  
     private void UpdateQuestObjectives()
     {
         var inventory = inventoryGameView.GetInventoryService();
+        if (inventory == null) return;
 
         foreach (var quest in questService.GetActiveQuests())
         {
-
             foreach (var obj in quest.objectives)
             {
-
                 int count = inventory.GetItemCount(obj.itemId);
-                obj.currentAmount = Mathf.Min(count, obj.requiredAmount);
+                questService.UpdateObjective(obj.objectiveId, count);
             }
         }
-        QuestService.OnQuestUpdated?.Invoke();
     }
     private void UnlockPlayer()
         {
