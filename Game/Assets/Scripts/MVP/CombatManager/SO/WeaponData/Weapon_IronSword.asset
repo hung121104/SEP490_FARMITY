@@ -12,12 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2287234ff1c33b044bd8e42b74ed3ed9, type: 3}
   m_Name: Weapon_IronSword
   m_EditorClassIdentifier: 
-  weaponName: Iron Sword
   weaponId: iron_sword
-  weaponType: 1
+  weaponName: Iron Sword
+  weaponDescription: 
   weaponIcon: {fileID: 3644155178537392959, guid: 36031d340487fb74b91cc8e60b2c344c, type: 3}
+  itemType: Weapon
+  itemCategory: Equipment
+  isStackable: 0
+  maxStack: 1
+  weaponType: 1
   weaponPrefab: {fileID: 8171461803801935278, guid: d6d2e6067af5d954ab1c69b244e394bc, type: 3}
   damage: 18
   tier: 2
-  linkedSkillId: skill_weapon_sword_slash
-  weaponDescription: 
+  critChance: 5
+  attackCooldown: 0.5
+  knockbackForce: 5
+  projectileSpeed: 10
+  projectileRange: 8
+  projectileKnockback: 4
+  linkedSkillId: 

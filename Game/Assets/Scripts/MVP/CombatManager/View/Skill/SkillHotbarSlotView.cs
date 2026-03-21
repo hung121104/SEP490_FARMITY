@@ -105,8 +105,9 @@ namespace CombatManager.View
             if (skillIconImage != null)
             {
                 skillIconImage.sprite = skillData.skillIcon;
-                skillIconImage.color = Color.white;
-                skillIconImage.enabled = true;
+                bool hasIcon = skillData.skillIcon != null;
+                skillIconImage.color = hasIcon ? Color.white : Color.clear;
+                skillIconImage.enabled = hasIcon;
             }
 
             // ✅ Don't touch slotBackground color - keep it as designed in prefab

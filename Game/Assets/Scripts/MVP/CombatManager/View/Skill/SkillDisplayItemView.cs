@@ -65,7 +65,13 @@ namespace CombatManager.View
             if (skillData == null) return;
 
             if (skillIcon != null)
+            {
+                // No fallback icon: keep slot visibly empty when icon is missing.
                 skillIcon.sprite = skillData.skillIcon;
+                bool hasIcon = skillData.skillIcon != null;
+                skillIcon.enabled = hasIcon;
+                skillIcon.color = hasIcon ? Color.white : Color.clear;
+            }
 
             if (skillNameText != null)
                 skillNameText.text = skillData.skillName;

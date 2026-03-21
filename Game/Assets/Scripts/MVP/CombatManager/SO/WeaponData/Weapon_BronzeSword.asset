@@ -12,12 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2287234ff1c33b044bd8e42b74ed3ed9, type: 3}
   m_Name: Weapon_BronzeSword
   m_EditorClassIdentifier: 
-  weaponName: Bronze Sword
   weaponId: bronze_sword
-  weaponType: 1
+  weaponName: Bronze Sword
+  weaponDescription: 
   weaponIcon: {fileID: 6677950224215248696, guid: 360ab48667e20224dbfde8756b57b4f9, type: 3}
+  itemType: Weapon
+  itemCategory: Equipment
+  isStackable: 0
+  maxStack: 1
+  weaponType: 1
   weaponPrefab: {fileID: 8171461803801935278, guid: 0dc3195a5b158b944842525bad010852, type: 3}
   damage: 15
   tier: 1
-  linkedSkillId: skill_weapon_sword_slash
-  weaponDescription: 
+  critChance: 5
+  attackCooldown: 0.5
+  knockbackForce: 5
+  projectileSpeed: 10
+  projectileRange: 8
+  projectileKnockback: 4
+  linkedSkillId: 

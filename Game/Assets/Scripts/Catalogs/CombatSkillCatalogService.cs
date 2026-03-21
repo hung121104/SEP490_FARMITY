@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using CombatManager.Model;
 using CombatManager.SO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -130,6 +131,11 @@ public class CombatSkillCatalogService : MonoBehaviour
             if (skill == null || string.IsNullOrWhiteSpace(skill.skillId))
             {
                 continue;
+            }
+
+            if (skill.skillCategory == SkillCategory.None)
+            {
+                Debug.LogWarning($"[CombatSkillCatalogService] Skill '{skill.skillId}' has category None. It cannot be triggered until category is set (Projectile/Slash/etc).");
             }
 
             ResolveSkillAssets(skill);
