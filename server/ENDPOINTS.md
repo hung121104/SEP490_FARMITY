@@ -26,6 +26,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 
 - [Resource Config Catalog](#resource-config-catalog)
 - [Material Catalog](#material-catalog)
+- [Quest Catalog](#quest-catalog)
 
 5. [Player Data](#player-data)
    - [World Management](#world-management)
@@ -1074,6 +1075,95 @@ Depending on `itemType`, specific extra fields must be included:
 - For each entry, `SkinCatalogManager.Instance.LoadExternalSheet(materialId, spritesheetUrl, cellSize)` is called, registering the sheet under `materialId` as the configId.
 - `ItemUsageController` looks up `tool.toolMaterialId` via `MaterialCatalogService.Instance.GetMaterial(id)` and passes `materialEntry.materialId` directly to `EquipmentManager.EquipTool()` as the configId.
 - To add a new material tier: `POST /game-data/materials` once — no code changes required.
+
+---
+
+### Quest Catalog
+
+> Defines quest templates (quest chain config, objectives, NPC assignments, rewards) served via `player-data-service`. All mutation endpoints require admin authentication.
+
+- **POST** `/game-data/quests`: Create a new quest definition (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `application/json`
+  - Body:
+    ```json
+    {
+      "questId": "string",
+      "questName": "string",
+      "description": "string",
+      "NPCName": "string",
+      "Weight": 1,
+      "nextQuestId": "string (optional)",
+      "reward": { "itemId": "string", "quantity": 1 },
+      "status": "inactive (optional, default 'inactive')",
+      "objectives": [
+        {
+          "objectiveId": "string",
+          "description": "string",
+          "itemId": "string",
+          "requiredAmount": 5,
+          "currentAmount": 0
+        }
+      ]
+    }
+    ```
+  - Response: Created quest document.
+  - Note: Returns `409` if `questId` already exists.
+
+- **GET** `/game-data/quests/catalog`: Get full catalog `{ quests: [...] }` for Unity client (public).
+  - Response:
+    ```json
+    { "quests": [ { "questId": "string", ... } ] }
+    ```
+
+- **GET** `/game-data/quests/all`: Get flat array of all quests (public).
+  - Response: Array of quest documents.
+
+- **GET** `/game-data/quests/by-quest-id/:questId`: Find a quest by game-side `questId` string (public).
+  - Path param: `questId` — game-side identifier (e.g., `quest_001`).
+  - Response: Quest document or `null`.
+
+- **GET** `/game-data/quests/:id`: Find a quest by MongoDB `_id` (public).
+  - Path param: `id` — MongoDB ObjectId string.
+  - Response: Quest document.
+
+- **PUT** `/game-data/quests/:questId`: Update a quest by game-side `questId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `application/json`
+  - Path param: `questId` — game-side questId (e.g., `quest_001`).
+  - Body: Any subset of quest fields (all optional).
+  - Response: Updated quest document.
+  - Note: Returns `404` if not found.
+
+- **DELETE** `/game-data/quests/:questId`: Delete a quest by game-side `questId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `questId`
+  - Response: Deleted quest document.
+  - Note: Returns `404` if not found.
+
+#### Quest Fields
+
+| Field         | Type   | Required | Default      | Notes                                                                |
+| ------------- | ------ | -------- | ------------ | -------------------------------------------------------------------- |
+| `questId`     | string | ✅       | —           | Unique game-side identifier (e.g., `"quest_001"`).                   |
+| `questName`   | string | ✅       | —           | Display name of the quest.                                           |
+| `description` | string | ✅       | —           | Quest description shown to the player.                               |
+| `NPCName`     | string | ✅       | —           | Name of the NPC who assigns the quest.                               |
+| `Weight`      | number | ✅       | `1`          | Sorting/priority weight. Higher = appears first.                     |
+| `nextQuestId` | string | ❌       | —           | `questId` of the next quest in the chain (optional).                 |
+| `reward`      | object | ✅       | —           | `{ itemId: string, quantity: number }` — reward on completion.       |
+| `status`      | string | ❌       | `"inactive"` | Quest lifecycle status: `inactive`, `active`, `completed`, `failed`. |
+| `objectives`  | array  | ❌       | `[]`         | Array of `QuestObjective` sub-documents (see below).                 |
+
+#### QuestObjective Fields
+
+| Field            | Type   | Required | Default | Notes                                           |
+| ---------------- | ------ | -------- | ------- | ----------------------------------------------- |
+| `objectiveId`    | string | ✅       | —       | Unique identifier within the quest.             |
+| `description`    | string | ✅       | —       | Description of the objective.                   |
+| `itemId`         | string | ✅       | —       | Target item `itemId` for this objective.         |
+| `requiredAmount` | int    | ✅       | —       | Number of items needed.                         |
+| `currentAmount`  | int    | ❌       | `0`     | Current progress (player-side tracking).        |
 
 ---
 

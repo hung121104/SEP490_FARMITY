@@ -30,8 +30,8 @@ public class NPCInteractor : MonoBehaviour
 
     [Header("Quest System")]
     [SerializeField] private QuestView questView;
-    [SerializeField] private QuestDatabase questDatabase;
-    [SerializeField] private int questIndex;
+    //[SerializeField] private QuestDatabase questDatabase;
+    //[SerializeField] private int questIndex;
     [SerializeField] private QuestLogController questLogController;
 
     private IQuestService questService;
@@ -53,7 +53,6 @@ public class NPCInteractor : MonoBehaviour
     }
     private void Start()
     {
-        
         var inventoryService = inventoryGameView.GetInventoryService();
 
         if (inventoryService != null)
@@ -62,30 +61,18 @@ public class NPCInteractor : MonoBehaviour
         }
         else
         {
-            Debug.LogError($"[NPCInteractor] InventoryService trên {inventoryGameView.name} bị null! Hãy kiểm tra lại InventoryManager.");
+            Debug.LogError($"[NPCInteractor] InventoryService trên {inventoryGameView.name} bị null!");
         }
-        // Dialogue Service
+
         INPCDialogueService service = new NPCDialogueService(dialogueModel);
-
-        // Quest Service
         questService = QuestManager.QuestService;
-
-        if (questDatabase != null &&
-         questDatabase.quests.Length > 0 &&
-         questIndex < questDatabase.quests.Length)
-        {
-            questPresenter = new QuestPresenter(
-             questView,
+        questPresenter = new QuestPresenter(
+            questView,
             questService,
-             inventoryGameView.GetInventoryService(),
-             questDatabase.quests[questIndex],
+            inventoryService,
             dialogueModel.npcName,
             dialogueModel.avatar
-                );
-        }
-    
-
-        // Dialogue Presenter
+        );
         presenter = new NPCDialoguePresenter(
             service,
             dialogueView,
@@ -93,7 +80,6 @@ public class NPCInteractor : MonoBehaviour
         );
 
         CreateInteractionNode();
-
     }
     private void Update()
     {
@@ -192,93 +178,55 @@ public class NPCInteractor : MonoBehaviour
                     // Don't set currentState yet - wait for coroutine to complete
                     StartGiftMode();
                 }
-                else if (i == 2) // QUEST
+                
+
+                else if (i == 2) 
                 {
                     dialogueView.Hide();
+                    var inventory = inventoryGameView.GetInventoryService();
 
-                    QuestModel quest = questDatabase.quests[questIndex];
+                    QuestModel activeQuest = questService.GetActiveQuests()
+                        .Find(q => q.npcName == dialogueModel.npcName);
 
-                    // QUEST not taken
-                    if (!questService.HasQuest(quest.questId))
+                    if (activeQuest != null)
                     {
-                        // nếu quest cuối đã xong
-                        if (string.IsNullOrEmpty(quest.nextQuestId) && questService.IsQuestTurnedIn(quest.questId))
+                        foreach (var obj in activeQuest.objectives)
                         {
-                            ShowSimpleDialogue("Thanks, but I don’t have anything else for you to do.");
-                            return;
+                            int count = inventory.GetItemCount(obj.itemId);
+                            questService.UpdateObjective(obj.objectiveId, count);
                         }
 
-                        currentState = NPCState.Quest;
-                        questPresenter?.ShowQuest();
-                    }
-
-                    // QUEST doing active
-                    else if (questService.IsQuestActive(quest.questId))
-                    {
-                        var inventory = inventoryGameView.GetInventoryService();
-
-                        foreach (var obj in quest.objectives)
+                        if (questService.IsQuestCompleted(activeQuest.questId))
                         {
-                            if (obj.type == ObjectiveType.CollectItem)
+                            if (questService.SubmitQuestItems(activeQuest.questId, inventory))
                             {
-                                int count = inventory.GetItemCount(obj.itemId);
-
-                                questService.UpdateObjective(obj.objectiveId, count);
-                            }
-                        }
-
-                        // check if all objectives are completed
-                        if (questService.IsQuestCompleted(quest.questId))
-                        {
-                            bool success = questService.SubmitQuestItems(
-                                quest.questId,
-                                inventory
-                            );
-
-                            if (success)
-                            {
-                                questService.GiveReward(quest.questId, inventory);
-                                questService.CompleteQuest(quest.questId);
-
-                                // QUEST CHAIN
-                                if (!string.IsNullOrEmpty(quest.nextQuestId))
-                                {
-                                    int nextIndex = questDatabase.GetQuestIndex(quest.nextQuestId);
-
-                                    if (nextIndex != -1)
-                                    {
-                                        questIndex = nextIndex;
-
-                                        QuestModel nextQuest = questDatabase.quests[questIndex];
-
-                                        questPresenter = new QuestPresenter(
-                                            questView,
-                                            questService,
-                                            inventoryGameView.GetInventoryService(),
-                                            nextQuest,
-                                            dialogueModel.npcName,
-                                            dialogueModel.avatar
-                                        );
-                                    }
-
-                                    ShowSimpleDialogue("Thank you for bringing the items! Here is your reward.");
-                                }
-                                else
-                                {
-                                    ShowSimpleDialogue("Thank you for bringing the items! Here is your reward.");
-                                }
+                                questService.GiveReward(activeQuest.questId, inventory);
+                                questService.CompleteQuest(activeQuest.questId);
+                                ShowSimpleDialogue("Cảm ơn bạn rất nhiều! Đây là phần thưởng.");
                             }
                         }
                         else
                         {
-                            ShowSimpleDialogue(
-                                "Thanks for your help. Please come back when you're finished."
-                            );
+                            ShowSimpleDialogue("Bạn vẫn chưa thu thập đủ vật phẩm tôi cần.");
                         }
                     }
+                    else
+                    {
+                        questPresenter = new QuestPresenter(
+                            questView, questService, inventory,
+                            dialogueModel.npcName, dialogueModel.avatar
+                        );
 
-                   
-
+                        if (questPresenter.TryPickRandomQuest())
+                        {
+                            currentState = NPCState.Quest;
+                            questPresenter.ShowQuest();
+                        }
+                        else
+                        {
+                            ShowSimpleDialogue("Hiện tại tôi không có yêu cầu nào mới cho bạn.");
+                        }
+                    }
                     break;
                 }
             }
@@ -620,17 +568,14 @@ public class NPCInteractor : MonoBehaviour
 
         foreach (var quest in questService.GetActiveQuests())
         {
+
             foreach (var obj in quest.objectives)
             {
-                if (obj.type == ObjectiveType.CollectItem)
-                {
-                    int count = inventory.GetItemCount(obj.itemId);
 
-                    obj.currentAmount = Mathf.Min(count, obj.requiredAmount);
-                }
+                int count = inventory.GetItemCount(obj.itemId);
+                obj.currentAmount = Mathf.Min(count, obj.requiredAmount);
             }
         }
-
         QuestService.OnQuestUpdated?.Invoke();
     }
     private void UnlockPlayer()
