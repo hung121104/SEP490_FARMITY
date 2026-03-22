@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 /// <summary>
 /// Unified chunk data — stores BOTH crop tile data and structure tile data inside
@@ -20,13 +21,21 @@ public class UnifiedChunkData : BaseChunkData
     [Serializable]
     public struct CropTileData
     {
+        [JsonProperty("plantId")]
         public string PlantId;          // plant identifier (from PlantDataSO.PlantId)
+        [JsonProperty("cropStage")]
         public byte   CropStage;        // current growth stage index
+        [JsonProperty("growthTimer")]
         public float  GrowthTimer;      // seconds accumulated toward next stage
+        [JsonProperty("pollenHarvestCount")]
         public byte   PollenHarvestCount; // pollen collections this flowering stage
+        [JsonProperty("isWatered")]
         public bool   IsWatered;        // watered flag (affects growth speed)
-        public float  WaterDecayTimer;  // in-game minutes accumulated toward water expiry
+        [JsonIgnore]
+        public float  WaterDecayTimer;  // in-game minutes accumulated toward water expiry (not saved to server)
+        [JsonProperty("isFertilized")]
         public bool   IsFertilized;     // fertilizer applied (affects growth speed)
+        [JsonProperty("isPollinated")]
         public bool   IsPollinated;     // hybrid already applied, prevents double cross
     }
 

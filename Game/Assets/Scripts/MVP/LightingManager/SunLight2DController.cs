@@ -44,8 +44,10 @@ public class SunLight2DController : MonoBehaviour
         _light.shadowSoftness  = config.sunShadowSoftness;
 
         // ── position along arc ──
-        // Lerp angle from sunrise → sunset; outside that range intensity is 0 anyway
-        float angleDeg = Mathf.Lerp(config.sunriseAngle, config.sunsetAngle, t);
+        // Lerp from sunsetAngle (left/east) → sunriseAngle (right/west) so the
+        // visual sun travels LEFT → RIGHT across the sky, while the shadow shader
+        // (which uses sunriseAngle→sunsetAngle) casts shadows RIGHT → LEFT.
+        float angleDeg = Mathf.Lerp(config.sunsetAngle, config.sunriseAngle, t);
         float angleRad = angleDeg * Mathf.Deg2Rad;
 
         Vector3 pivot = arcPivot != null ? arcPivot.position : Vector3.zero;
