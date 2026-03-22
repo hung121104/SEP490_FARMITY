@@ -791,6 +791,22 @@ Depending on `itemType`, specific extra fields must be included:
 | `slashKnockbackForce` | number | — | Slash hit knockback force |
 | `damagePopupPrefabKey` | string | — | Client damage popup prefab key |
 
+#### Combat Skill Dropdown / Select Guide
+
+| Field | UI Type | Allowed Values |
+| --- | --- | --- |
+| `ownership` | Dropdown | `PlayerSkill`, `WeaponSkill` |
+| `category` | Dropdown | `None`, `Projectile`, `Slash`, `AoE`, `Buff`, `Summon` |
+| `diceTier` | Dropdown | `D6`, `D8`, `D10`, `D12`, `D20` |
+| `requiredWeaponType` | Dropdown | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` |
+
+Notes for web form behavior:
+
+- If `ownership = PlayerSkill`, set `requiredWeaponType = 0`.
+- If `ownership = WeaponSkill`, require `requiredWeaponType` > 0.
+- Show projectile fields primarily for `category = Projectile`.
+- Show slash VFX fields primarily for `category = Slash`.
+
 ---
 
 ### Weapon Items (Extended Fields)
@@ -840,6 +856,35 @@ Extended runtime fields (new):
 | `projectileKnockback` | number | ✅ for staff-type weapons | Projectile knockback force |
 | `weaponPrefabKey` | string | ✅ | Client-side prefab resolver key |
 | `linkedSkillId` | string | Optional | Skill ID for weapon special slot |
+
+#### Web Dropdown / Select Guide
+
+Use dropdowns (not free number inputs) for these fields:
+
+| Field | UI Type | Allowed Values | Source |
+| --- | --- | --- | --- |
+| `itemType` | Fixed/hidden | `6` = Weapon | ItemType enum (Game client) |
+| `weaponType` | Dropdown | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` | `CombatManager.Model.WeaponType` |
+| `itemCategory` | Dropdown | `0=Farming`, `1=Mining`, `2=Fishing`, `3=Cooking`, `4=Crafting`, `5=Combat`, `6=Foraging`, `7=Special` | `ItemCategory` enum (Game client) |
+| `weaponMaterialId` | Searchable dropdown | `materialId` values | GET `/game-data/materials/catalog` |
+| `linkedSkillId` | Searchable dropdown (optional) | `skillId` values where `ownership = WeaponSkill` | GET `/game-data/combat-skills/all` then filter |
+| `canBeSold` | Dropdown/Toggle | `true` / `false` | Boolean |
+| `canBeBought` | Dropdown/Toggle | `true` / `false` | Boolean |
+| `isQuestItem` | Dropdown/Toggle | `true` / `false` | Boolean |
+| `isArtifact` | Dropdown/Toggle | `true` / `false` | Boolean |
+| `isRareItem` | Dropdown/Toggle | `true` / `false` | Boolean |
+
+Weapon page recommended defaults:
+
+- `itemType = 6`
+- `isStackable = false`
+- `maxStack = 1`
+
+Linked-skill dropdown rule:
+
+- Show only skills with `ownership = WeaponSkill`.
+- Save selected option as `linkedSkillId` (string skillId).
+- Allow empty selection (no weapon special skill).
 
 #### Validation Rules
 

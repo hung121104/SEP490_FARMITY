@@ -1,8 +1,6 @@
 using UnityEngine;
 using Photon.Pun;
 using System.Collections;
-using System;
-using System.Collections.Generic;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
@@ -15,13 +13,6 @@ namespace CombatManager.Presenter
     /// </summary>
     public class WeaponAnimationPresenter : MonoBehaviour
     {
-        [Serializable]
-        private class PrefabKeyBinding
-        {
-            public string key;
-            public GameObject prefab;
-        }
-
         public static WeaponAnimationPresenter Instance { get; private set; }
 
         [Header("Model")]
@@ -29,9 +20,6 @@ namespace CombatManager.Presenter
 
         [Header("Fallback Prefab (if weapon has no prefab assigned)")]
         [SerializeField] private GameObject fallbackWeaponPrefab;
-
-        [Header("Weapon Prefab Resolver")]
-        [SerializeField] private List<PrefabKeyBinding> weaponPrefabs = new List<PrefabKeyBinding>();
 
         [Header("Position Settings")]
         [SerializeField] private Vector3 anchorOffset = Vector3.zero;
@@ -190,7 +178,17 @@ namespace CombatManager.Presenter
 
             if (currentWeaponData != null)
             {
-                prefabToUse = ResolveWeaponPrefab(currentWeaponData.weaponPrefabKey);
+                WeaponPrefabCatalogService weaponCatalog = WeaponPrefabCatalogService.Instance;
+                if (weaponCatalog == null)
+                {
+                    Debug.LogWarning("[WeaponAnimationPresenter] WeaponPrefabCatalogService not found. " +
+                                     "Add it to the download/bootstrap scene.");
+                }
+                else
+                {
+                    prefabToUse = weaponCatalog.ResolvePrefab(currentWeaponData.weaponPrefabKey);
+                }
+
                 if (prefabToUse != null)
                 {
                     Debug.Log($"[WeaponAnimationPresenter] Using weapon prefab key '{currentWeaponData.weaponPrefabKey}' -> {prefabToUse.name}");
@@ -221,21 +219,6 @@ namespace CombatManager.Presenter
 
             Debug.Log("[WeaponAnimationPresenter] Initialized successfully");
             return true;
-        }
-
-        private GameObject ResolveWeaponPrefab(string key)
-        {
-            if (string.IsNullOrWhiteSpace(key))
-                return null;
-
-            for (int i = 0; i < weaponPrefabs.Count; i++)
-            {
-                if (string.Equals(weaponPrefabs[i].key, key, StringComparison.OrdinalIgnoreCase))
-                    return weaponPrefabs[i].prefab;
-            }
-
-            Debug.LogWarning($"[WeaponAnimationPresenter] No prefab bound for weapon key '{key}'");
-            return null;
         }
 
         private GameObject FindLocalPlayerEntity()
