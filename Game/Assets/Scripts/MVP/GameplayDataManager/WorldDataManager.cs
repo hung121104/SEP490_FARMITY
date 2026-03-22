@@ -234,6 +234,20 @@ public class WorldDataManager : MonoBehaviour
                     }
                 }
 
+                // ── Restore structure ──
+                if (td.type == "structure" && !string.IsNullOrEmpty(td.structureId))
+                {
+                    int sectionId = GetSectionIdFromWorldPosition(worldPos);
+                    var chunkPos = WorldToChunkCoords(worldPos);
+                    var chunkData = CropData?.GetChunk(sectionId, chunkPos);
+                    if (chunkData != null)
+                    {
+                        byte level = td.structureLevel > 0 ? (byte)td.structureLevel : (byte)1;
+                        int hp = td.currentHp > 0 ? td.currentHp : 3; // Default HP = 3 (StructureData.MaxHealth)
+                        chunkData.PlaceStructure(td.structureId, worldX, worldY, hp, level);
+                    }
+                }
+
                 tilesApplied++;
             }
         }

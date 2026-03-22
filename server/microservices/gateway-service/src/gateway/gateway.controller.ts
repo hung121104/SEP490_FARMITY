@@ -49,6 +49,8 @@ import {
   UpdateWorldBlacklistDto,
   WorldBlacklistQueryDto,
 } from './dto/world-blacklist.dto';
+import { CreateQuestDto } from './dto/create-quest.dto';
+import { UpdateQuestDto } from './dto/update-quest.dto';
 
 const FERTILIZER_ITEM_TYPE = 14;
 
@@ -1894,6 +1896,82 @@ export class GatewayController {
       return await firstValueFrom(
         this.adminClient.send('delete-material', { materialId }),
       );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Quest CRUD ─────────────────────────────────────────────────────────────
+
+  /** POST /game-data/quests — create a new quest definition (admin only) */
+  @Post('game-data/quests')
+  async createQuest(@Body() body: CreateQuestDto) {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('create-quest', body));
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/quests/catalog — full catalog { quests: [...] } for Unity client */
+  @Get('game-data/quests/catalog')
+  async getQuestCatalog() {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('get-quest-catalog', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/quests/all — flat array of all quests */
+  @Get('game-data/quests/all')
+  async getAllQuests() {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('get-all-quests', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/quests/by-quest-id/:questId — find by game-side questId string */
+  @Get('game-data/quests/by-quest-id/:questId')
+  async getQuestByQuestId(@Param('questId') questId: string) {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('get-quest-by-quest-id', questId));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/quests/:id — find by MongoDB _id */
+  @Get('game-data/quests/:id')
+  async getQuestById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('get-quest-by-id', id));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/quests/:questId — update quest by game-side questId (admin only) */
+  @Put('game-data/quests/:questId')
+  async updateQuest(@Param('questId') questId: string, @Body() body: UpdateQuestDto) {
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('update-quest', { questId, dto: body }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/quests/:questId — delete by game-side questId (admin only) */
+  @Delete('game-data/quests/:questId')
+  async deleteQuest(@Param('questId') questId: string) {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('delete-quest', questId));
     } catch (err) {
       throw this.rpcError(err);
     }

@@ -133,6 +133,8 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
         bool hasContent = (payload.characters != null && payload.characters.Count > 0)
                        || (payload.deltas     != null && payload.deltas.Count     > 0)
                        || (payload.inventoryDeltas != null && payload.inventoryDeltas.Count > 0)
+                       || (payload.chestDeltas != null && payload.chestDeltas.Count > 0)
+                       || (payload.deletedChests != null && payload.deletedChests.Count > 0)
                        || payload.day != null;
 
         if (!hasContent)
@@ -157,6 +159,8 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             ClearPendingUntilledForDirtyChunks();
             _dirtyChunks.Clear();
             WorldDataManager.Instance?.InventoryData?.ClearAllDirtyFlags();
+            WorldDataManager.Instance?.ChestData?.ClearAllDirtyFlags();
+            WorldDataManager.Instance?.ChestData?.ClearDeletedChests();
             if (ShowDebugLogs) Debug.Log("[WorldSave] Auto-save sent successfully.");
         }
         else
@@ -206,6 +210,8 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     ClearPendingUntilledForDirtyChunks();
                     _dirtyChunks.Clear();
                     WorldDataManager.Instance?.InventoryData?.ClearAllDirtyFlags();
+                    WorldDataManager.Instance?.ChestData?.ClearAllDirtyFlags();
+                    WorldDataManager.Instance?.ChestData?.ClearDeletedChests();
                     Debug.Log("[WorldSave] Quit-flush complete.");
                 }
                 else         Debug.LogWarning("[WorldSave] Quit-flush HTTP request failed — quitting anyway.");
@@ -317,7 +323,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
                 foreach (var slot in chunkData.GetAllTiles())
                 {
-                    if (!slot.IsTilled && !slot.HasCrop && !slot.HasResource) continue;  // skip empty slots
+                    if (!slot.IsTilled && !slot.HasCrop && !slot.HasResource && !slot.HasStructure) continue;  // skip empty slots
 
                     // localIndex = localX + localY * 30
                     int localX     = slot.WorldX - chunkX * 30;
@@ -342,6 +348,16 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                         {
                             ["resourceId"] = slot.Resource.ResourceId,
                             ["currentHp"] = slot.Resource.CurrentHp,
+                        };
+                    }
+                    else if (slot.HasStructure)
+                    {
+                        td.type = "structure";
+                        td._extra = new Dictionary<string, Newtonsoft.Json.Linq.JToken>
+                        {
+                            ["structureId"]    = slot.Structure.StructureId,
+                            ["structureLevel"] = slot.Structure.StructureLevel,
+                            ["currentHp"]      = slot.Structure.CurrentHp,
                         };
                     }
                     else  // tilled only — still need to persist watered state
@@ -455,6 +471,82 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
         else
         {
             if (ShowDebugLogs) Debug.LogWarning("[WorldSave] InventoryDataModule is null!");
+        }
+
+        // ── Chest deltas — only dirty chests ──
+        var chestModule = wdm?.ChestData;
+        if (chestModule != null)
+        {
+            var dirtyChestIds = chestModule.GetDirtyChestIds();
+            if (ShowDebugLogs)
+                Debug.Log($"[WorldSave] Chest check: {dirtyChestIds.Count} dirty chest(s)");
+
+            if (dirtyChestIds.Count > 0)
+            {
+                var chestDeltas = new List<WorldApi.ChestDelta>();
+                var tempSlots = new List<ChestSlotEntry>();
+
+                foreach (var chestId in dirtyChestIds)
+                {
+                    if (!ChestDataModule.TryParseChestId(chestId, out short tx, out short ty)) continue;
+                    if (!chestModule.TryGetHeader(tx, ty, out var header)) continue;
+
+                    var slots = new Dictionary<string, WorldApi.ChestSlotDelta>();
+
+                    // Gather occupied slots for this chest
+                    chestModule.GetChestSlots(tx, ty, tempSlots);
+
+                    // Send ALL slots (occupied → $set, empty → $unset on server)
+                    for (byte i = 0; i < header.MaxSlots; i++)
+                    {
+                        ChestSlotEntry found = default;
+                        bool hasSlot = false;
+                        for (int s = 0; s < tempSlots.Count; s++)
+                        {
+                            if (tempSlots[s].SlotIndex == i) { found = tempSlots[s]; hasSlot = true; break; }
+                        }
+
+                        if (hasSlot && !string.IsNullOrEmpty(found.ItemId))
+                        {
+                            slots[i.ToString()] = new WorldApi.ChestSlotDelta
+                            {
+                                itemId   = found.ItemId,
+                                quantity = found.Quantity
+                            };
+                        }
+                        else
+                        {
+                            slots[i.ToString()] = new WorldApi.ChestSlotDelta
+                            {
+                                itemId   = null,
+                                quantity = 0
+                            };
+                        }
+                    }
+
+                    chestDeltas.Add(new WorldApi.ChestDelta
+                    {
+                        tileX          = tx,
+                        tileY          = ty,
+                        maxSlots       = header.MaxSlots,
+                        structureLevel = header.StructureLevel,
+                        slots          = slots
+                    });
+                }
+                if (chestDeltas.Count > 0) request.chestDeltas = chestDeltas;
+            }
+
+            // ── Deleted chests — chests destroyed since last save ──
+            var deleted = chestModule.GetDeletedChests();
+            if (deleted.Count > 0)
+            {
+                var deletedList = new List<WorldApi.DeletedChest>();
+                foreach (var (dtx, dty) in deleted)
+                {
+                    deletedList.Add(new WorldApi.DeletedChest { tileX = dtx, tileY = dty });
+                }
+                request.deletedChests = deletedList;
+            }
         }
 
         return request;
