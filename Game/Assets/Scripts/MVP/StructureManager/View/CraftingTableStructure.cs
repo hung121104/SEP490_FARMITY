@@ -8,6 +8,7 @@ using UnityEngine;
 public class CraftingTableStructure : InteractableStructureBase, IWorldStructure
 {
     private CraftingSystemManager craftingSystemManager;
+    private int craftingLevel = 0;
 
     protected override string StructureTag => "CraftingTable";
 
@@ -31,7 +32,7 @@ public class CraftingTableStructure : InteractableStructureBase, IWorldStructure
     public override void OpenUI()
     {
         if (craftingSystemManager != null)
-            craftingSystemManager.OpenCraftingUI();
+            craftingSystemManager.OpenCraftingUI(craftingLevel);
         else if (showDebugLogs)
             Debug.LogWarning("[CraftingTableStructure] CraftingSystemManager not found in scene!");
     }
@@ -50,7 +51,6 @@ public class CraftingTableStructure : InteractableStructureBase, IWorldStructure
     /// </summary>
     public void InitializeFromWorld(int worldX, int worldY, StructureData structureData)
     {
-        // Reserved for future use — e.g., filter recipes by table level
-        // craftingLevel = structureData.StructureLevel;
+        craftingLevel = structureData.StructureLevel;
     }
 }

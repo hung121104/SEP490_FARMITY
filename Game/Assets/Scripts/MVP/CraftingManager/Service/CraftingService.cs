@@ -201,6 +201,16 @@ public class CraftingService : ICraftingService
         return model.GetCookingRecipes();
     }
 
+    public List<RecipeModel> GetCraftingRecipesByLevel(int stationLevel)
+    {
+        return model.GetCraftingRecipesByLevel(stationLevel);
+    }
+
+    public List<RecipeModel> GetCookingRecipesByLevel(int stationLevel)
+    {
+        return model.GetCookingRecipesByLevel(stationLevel);
+    }
+
     public List<RecipeModel> GetCraftableRecipes(IInventoryService inventory)
     {
         return model.GetUnlockedRecipes()

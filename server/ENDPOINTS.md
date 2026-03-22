@@ -33,11 +33,12 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
    - [Structure Interaction](#structure-interaction-photon-pun-events)
    - [Chest Sync](#chest-sync-photon-pun-events)
 
-5. [Player Data](#player-data)
+8. [Player Data](#player-data)
    - [World Management](#world-management)
-  - [World Blacklist](#world-blacklist)
-  - [Player Achievements](#player-achievements)
-   - [Character Management](#character-management)
+
+- [World Blacklist](#world-blacklist)
+- [Player Achievements](#player-achievements)
+- [Character Management](#character-management)
 
 6. [Achievement Definitions (Admin)](#achievement-definitions-admin)
 
@@ -447,9 +448,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
           }
         }
       ],
-      "deletedChests": [
-        { "tileX": "number", "tileY": "number" }
-      ]
+      "deletedChests": [{ "tileX": "number", "tileY": "number" }]
     }
     ```
   - Response: Updated world document with `characters` array
@@ -741,7 +740,7 @@ Depending on `itemType`, specific extra fields must be included:
 | `10`       | Resource   | `isOre`<br>`requiresSmelting`<br>`smeltedResultId`                                 | bool: (default `false`)<br>bool: (default `false`)<br>string: ID of smelt output (default `""`)                                                                                                                                                                                                                                                                                                                                                                       |
 | `11`       | Gift       | `isUniversalLike`<br>`isUniversalLove`                                             | bool: (default `false`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `12`       | Quest      | `relatedQuestID`<br>`autoConsume`                                                  | string: Related quest ID (e.g., `"quest_goblins_01"`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                                      |
-| `13`       | Structure  | `structureInteractionType`<br>`structureLevel`<br>`structureInteractionSprite`      | int: 0=Storage, 1=Crafting, 2=Smelting, 3=Fence, 4=Decoration<br>int: Level/tier of the structure (e.g., 1)<br>file (PNG): Interaction sprite (e.g., chest open icon). Uploaded to Cloudinary; sets `structureInteractionSpriteUrl` automatically.                                                                                                                                                                                                                       |
+| `13`       | Structure  | `structureInteractionType`<br>`structureLevel`<br>`structureInteractionSprite`     | int: 0=Storage, 1=Crafting, 2=Smelting, 3=Fence, 4=Decoration<br>int: Level/tier of the structure (0=Wood, 1=Bronze, 2=Iron, 3=Gold)<br>file (PNG): Interaction sprite (e.g., chest open icon). Uploaded to Cloudinary; sets `structureInteractionSpriteUrl` automatically.                                                                                                                                                                                           |
 | `14`       | Fertilizer | _(none)_                                                                           | Stackable fertilizer item consumed on successful crop fertilization                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 ---
@@ -953,6 +952,7 @@ Depending on `itemType`, specific extra fields must be included:
       "description": "string",
       "recipeType": 0,
       "category": 0, //int 0-general, 1-tool, 2-food, 3-materials, 4-furniture, 5-equipment
+      "recipeLevel": 0, //int - Minimum structure tier required: 0-Wood, 1-Bronze, 2-Iron, 3-Gold
       "resultItemId": "string",
       "resultQuantity": 1,
       "resultQuality": 0,
@@ -987,6 +987,7 @@ Depending on `itemType`, specific extra fields must be included:
       "description": "string",
       "recipeType": 0,
       "category": 0,
+      "recipeLevel": 0, //int - Minimum structure tier required: 0-Wood, 1-Bronze, 2-Iron, 3-Gold
       "resultItemId": "string",
       "resultQuantity": 1,
       "resultQuality": 0,
@@ -1233,25 +1234,25 @@ Depending on `itemType`, specific extra fields must be included:
 
 | Field         | Type   | Required | Default      | Notes                                                                |
 | ------------- | ------ | -------- | ------------ | -------------------------------------------------------------------- |
-| `questId`     | string | ✅       | —           | Unique game-side identifier (e.g., `"quest_001"`).                   |
-| `questName`   | string | ✅       | —           | Display name of the quest.                                           |
-| `description` | string | ✅       | —           | Quest description shown to the player.                               |
-| `NPCName`     | string | ✅       | —           | Name of the NPC who assigns the quest.                               |
+| `questId`     | string | ✅       | —            | Unique game-side identifier (e.g., `"quest_001"`).                   |
+| `questName`   | string | ✅       | —            | Display name of the quest.                                           |
+| `description` | string | ✅       | —            | Quest description shown to the player.                               |
+| `NPCName`     | string | ✅       | —            | Name of the NPC who assigns the quest.                               |
 | `Weight`      | number | ✅       | `1`          | Sorting/priority weight. Higher = appears first.                     |
-| `nextQuestId` | string | ❌       | —           | `questId` of the next quest in the chain (optional).                 |
-| `reward`      | object | ✅       | —           | `{ itemId: string, quantity: number }` — reward on completion.       |
+| `nextQuestId` | string | ❌       | —            | `questId` of the next quest in the chain (optional).                 |
+| `reward`      | object | ✅       | —            | `{ itemId: string, quantity: number }` — reward on completion.       |
 | `status`      | string | ❌       | `"inactive"` | Quest lifecycle status: `inactive`, `active`, `completed`, `failed`. |
 | `objectives`  | array  | ❌       | `[]`         | Array of `QuestObjective` sub-documents (see below).                 |
 
 #### QuestObjective Fields
 
-| Field            | Type   | Required | Default | Notes                                           |
-| ---------------- | ------ | -------- | ------- | ----------------------------------------------- |
-| `objectiveId`    | string | ✅       | —       | Unique identifier within the quest.             |
-| `description`    | string | ✅       | —       | Description of the objective.                   |
-| `itemId`         | string | ✅       | —       | Target item `itemId` for this objective.         |
-| `requiredAmount` | int    | ✅       | —       | Number of items needed.                         |
-| `currentAmount`  | int    | ❌       | `0`     | Current progress (player-side tracking).        |
+| Field            | Type   | Required | Default | Notes                                    |
+| ---------------- | ------ | -------- | ------- | ---------------------------------------- |
+| `objectiveId`    | string | ✅       | —       | Unique identifier within the quest.      |
+| `description`    | string | ✅       | —       | Description of the objective.            |
+| `itemId`         | string | ✅       | —       | Target item `itemId` for this objective. |
+| `requiredAmount` | int    | ✅       | —       | Number of items needed.                  |
+| `currentAmount`  | int    | ❌       | `0`     | Current progress (player-side tracking). |
 
 ---
 
@@ -1341,13 +1342,13 @@ Depending on `itemType`, specific extra fields must be included:
 
 #### Event Code Map — Structures
 
-| Code | Name                     | Direction         | Description                                              |
-| ---- | ------------------------ | ----------------- | -------------------------------------------------------- |
-| `90` | STRUCTURE_PLACED         | Master → All      | A new structure was placed in the world                  |
-| `91` | STRUCTURE_REMOVED        | Master → All      | Structure destroyed — includes `lastHitPlayerId`         |
-| `92` | STRUCTURE_HP_UPDATED     | Master → All      | Structure HP changed (damage or regen)                   |
-| `93` | STRUCTURE_HIT_REQUEST    | Client → Master   | Client requests to hit a structure                       |
-| `94` | STRUCTURE_HIT_EFFECT     | Master → All      | Play hit VFX at position (predictive on client)          |
+| Code | Name                  | Direction       | Description                                      |
+| ---- | --------------------- | --------------- | ------------------------------------------------ |
+| `90` | STRUCTURE_PLACED      | Master → All    | A new structure was placed in the world          |
+| `91` | STRUCTURE_REMOVED     | Master → All    | Structure destroyed — includes `lastHitPlayerId` |
+| `92` | STRUCTURE_HP_UPDATED  | Master → All    | Structure HP changed (damage or regen)           |
+| `93` | STRUCTURE_HIT_REQUEST | Client → Master | Client requests to hit a structure               |
+| `94` | STRUCTURE_HIT_EFFECT  | Master → All    | Play hit VFX at position (predictive on client)  |
 
 #### Structure Destruction Flow
 
@@ -1381,19 +1382,19 @@ Depending on `itemType`, specific extra fields must be included:
 
 #### Event Code Map — Chests
 
-| Code  | Name                | Direction       | Description                                                      |
-| ----- | ------------------- | --------------- | ---------------------------------------------------------------- |
-| `150` | _(reserved)_        | —               | **ChatService** — do NOT use for chests                          |
-| `160` | REQUEST_CHEST_SYNC  | Client → Master | Late-join client requests all chest data                         |
-| `161` | CHEST_SYNC_BATCH    | Master → Client | Batch of chest slot data (response to 160)                       |
-| `162` | CHEST_SYNC_COMPLETE | Master → Client | All batches sent, sync complete                                  |
-| `163` | CHEST_SLOT_REQUEST  | Client → Master | Client requests a slot change (add/remove/move item)             |
-| `164` | CHEST_SLOT_BROADCAST| Master → All    | Authoritative slot update after Master validates                 |
-| `165` | CHEST_REGISTER      | Master → All    | New chest registered (placed in world)                           |
-| `166` | CHEST_OPEN_NOTIFY   | Player → All    | Player opened a chest (for badge/indicator display)              |
-| `167` | CHEST_CLOSE_NOTIFY  | Player → All    | Player closed a chest                                            |
-| `168` | SLOT_DRAG_START     | Player → All    | Player started dragging from a chest slot (lock slot for others) |
-| `169` | SLOT_DRAG_END       | Player → All    | Player finished dragging (unlock slot)                           |
+| Code  | Name                 | Direction       | Description                                                      |
+| ----- | -------------------- | --------------- | ---------------------------------------------------------------- |
+| `150` | _(reserved)_         | —               | **ChatService** — do NOT use for chests                          |
+| `160` | REQUEST_CHEST_SYNC   | Client → Master | Late-join client requests all chest data                         |
+| `161` | CHEST_SYNC_BATCH     | Master → Client | Batch of chest slot data (response to 160)                       |
+| `162` | CHEST_SYNC_COMPLETE  | Master → Client | All batches sent, sync complete                                  |
+| `163` | CHEST_SLOT_REQUEST   | Client → Master | Client requests a slot change (add/remove/move item)             |
+| `164` | CHEST_SLOT_BROADCAST | Master → All    | Authoritative slot update after Master validates                 |
+| `165` | CHEST_REGISTER       | Master → All    | New chest registered (placed in world)                           |
+| `166` | CHEST_OPEN_NOTIFY    | Player → All    | Player opened a chest (for badge/indicator display)              |
+| `167` | CHEST_CLOSE_NOTIFY   | Player → All    | Player closed a chest                                            |
+| `168` | SLOT_DRAG_START      | Player → All    | Player started dragging from a chest slot (lock slot for others) |
+| `169` | SLOT_DRAG_END        | Player → All    | Player finished dragging (unlock slot)                           |
 
 #### Late-Join Chest Sync Flow
 

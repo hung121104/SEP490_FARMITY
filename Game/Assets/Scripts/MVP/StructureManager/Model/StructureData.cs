@@ -27,7 +27,7 @@ public class StructureData
 
     // ── Storage-specific (only populated if InteractionType == Storage) ───
     public int StorageSlots { get; set; } = 0;
-    public int StructureLevel { get; set; } = 1;
+    public int StructureLevel { get; set; } = 0;
 
     // ── Slot count mapping (single source of truth) ──────────────────────
     /// <summary>
@@ -52,9 +52,10 @@ public class StructureData
         MaxHealth = 3; // Always default
         Prefab = prefab;
 
+        StructureLevel = itemData.structureLevel;
+
         if (InteractionType == StructureInteractionType.Storage)
         {
-            StructureLevel = itemData.structureLevel;
             StorageSlots = SlotsForLevel(StructureLevel);
         }
     }
