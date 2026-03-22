@@ -95,7 +95,23 @@ public class WeatherView : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        
+        // Re-apply season rain chance now that we're in a room and season is known.
+        if (seasonManager != null)
+            ApplySeasonRainChance(seasonManager.CurrentSeason);
+
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            // Guard against double-subscription if Start() already ran before joining.
+            if (timeManager != null)
+            {
+                timeManager.OnDayChanged -= presenter.OnNewDay;
+                timeManager.OnDayChanged += presenter.OnNewDay;
+            }
+            // Load weather from room props (handles both: Start ran before join, and
+            // join happened before Start ran but master hadn't pushed props yet).
+            presenter.Initialize(rainChance);
+        }
+
         forecastPresenter.Refresh();
     }
 

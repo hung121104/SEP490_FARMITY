@@ -511,23 +511,39 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                 GameObject visual;
                 if (cropVisualPrefab != null)
                 {
-                    visual = Instantiate(cropVisualPrefab, new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.5f, 0f), Quaternion.identity);
+                    visual = Instantiate(cropVisualPrefab, new Vector3(tile.WorldX, tile.WorldY, 0f), Quaternion.identity);
                 }
                 else
                 {
                     visual = new GameObject();
-                    visual.transform.position = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.5f, 0f);
+                    visual.transform.position = new Vector3(tile.WorldX, tile.WorldY, 0f);
                 }
 
                 visual.name = $"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}";
 
-                // SpriteRenderer may be on the root or a child object (allowing offset control in prefab)
-                SpriteRenderer sr = visual.GetComponentInChildren<SpriteRenderer>(true);
+                // SpriteRenderer may be on the root or a child object (allowing offset control in prefab).
+                // Skip any shadow child renderers created by SpriteShadowShader during Awake so
+                // the stage sprite is always assigned to the real source renderer, not the shadow.
+                SpriteRenderer sr = null;
+                foreach (var candidate in visual.GetComponentsInChildren<SpriteRenderer>(true))
+                {
+                    if (candidate.gameObject.name != "_SpriteShadowShader" &&
+                        candidate.gameObject.name != "_SpriteShadow")
+                    {
+                        sr = candidate;
+                        break;
+                    }
+                }
                 if (sr == null)
+                {
+                    // No renderer in the prefab — add one to the root and apply defaults.
                     sr = visual.AddComponent<SpriteRenderer>();
+                    sr.sortingLayerName = "WalkInfront";
+                }
+                // When a prefab is used its SpriteRenderer (and any SpriteShadowShader on it)
+                // already carry the correct sorting layer and shadow settings — don't override them.
 
                 sr.sprite = stageSprite;
-                sr.sortingLayerName = "WalkInfront";
 
                 visuals.Add(visual);
 
@@ -959,6 +975,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
     /// <summary>
     /// Called when a new day begins in the game
     /// </summary>
+    [ContextMenu("Simulate Day Change")]
     private void OnDayChanged()
     {
         if (!enableDailyReload) return;

@@ -52,6 +52,10 @@ public class StructureDestructionView : MonoBehaviour
 
     private void OnDestroy()
     {
+        // Stop all active regen coroutines to prevent MissingReferenceException
+        StopAllCoroutines();
+        activeRegenTimers.Clear();
+
         // Unwire static delegate
         StructureDestructionService.OnAddItemToInventory = null;
 
@@ -95,6 +99,8 @@ public class StructureDestructionView : MonoBehaviour
     /// </summary>
     public void StartRegenTimer(Vector3Int tilePos)
     {
+        if (this == null || !gameObject) return; // Guard: object already destroyed
+
         if (activeRegenTimers.TryGetValue(tilePos, out Coroutine existing))
         {
             if (existing != null) StopCoroutine(existing);
@@ -108,6 +114,7 @@ public class StructureDestructionView : MonoBehaviour
     private IEnumerator RegenRoutine(Vector3Int tilePos)
     {
         yield return new WaitForSeconds(regenDelaySeconds);
+        if (this == null || presenter == null) yield break; // Guard: destroyed during wait
         activeRegenTimers.Remove(tilePos);
         presenter.HandleRegenTimerComplete(tilePos);
     }

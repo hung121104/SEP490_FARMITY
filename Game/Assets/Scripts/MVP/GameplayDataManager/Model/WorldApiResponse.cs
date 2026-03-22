@@ -28,6 +28,9 @@ public class WorldApiResponse
     /// <summary>Loaded chunk documents — one per saved 30x30 chunk.</summary>
     public List<ChunkResponseData> chunks = new List<ChunkResponseData>();
 
+    /// <summary>Loaded chest documents — one per placed chest in the world.</summary>
+    public List<ChestResponseData> chests = new List<ChestResponseData>();
+
     // ─────────────────────────────────────── Nested types
 
     [Serializable]
@@ -114,4 +117,42 @@ public class TileResponseData
 
     public string resourceId;
     public int currentHp;
+
+    /// <summary>Structure identifier string, e.g. "chest_wood". Null for non-structure tiles.</summary>
+    public string structureId;
+    public int structureLevel;
+}
+
+// ─────────────────────────────────────────────────────────────────── Chest DTOs
+
+/// <summary>
+/// One loaded chest document from MongoDB.
+/// `slots` is a key–value map: key = slot index as string ("0"–"35"),
+/// value = ChestSlotResponse.
+/// </summary>
+[Serializable]
+public class ChestResponseData
+{
+    public int tileX;
+    public int tileY;
+    public int maxSlots;
+    public int structureLevel;
+
+    /// <summary>
+    /// Key = string representation of slot index ("0"–"35").
+    /// Requires Newtonsoft.Json for deserialization — JsonUtility cannot handle this.
+    /// </summary>
+    public Dictionary<string, ChestSlotResponse> slots
+        = new Dictionary<string, ChestSlotResponse>();
+}
+
+/// <summary>
+/// Mirrors the ChestSlotData sub-document in chest.schema.ts.
+/// Used only for deserialization of the GET /player-data/world response.
+/// </summary>
+[Serializable]
+public class ChestSlotResponse
+{
+    public string itemId;
+    public int    quantity;
 }

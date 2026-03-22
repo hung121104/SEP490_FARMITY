@@ -37,6 +37,10 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private bool _inputSubscribed = false;
     private bool _isBeingPooled = false;
 
+    // ── Structure Interaction Badge ───────────────────────────────────────
+    private GameObject _structureInteractionBadge;
+    private SpriteRenderer _structureInteractionRenderer;
+
     // ── IInteractable Properties ────────────────────────────────────────
     public bool IsPlayerInRange => _playerInRange;
     public bool IsTargeted => _isTargeted;
@@ -256,6 +260,35 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     {
         _isMouseHovering = false;
         EvaluateTargetState();
+    }
+
+    // ── Structure Interaction Badge ──────────────────────────────────────
+
+    protected void SetupStructureInteractionBadge(string structureId)
+    {
+        var sprite = ItemCatalogService.Instance?.GetCachedStructureInteractionSprite(structureId);
+        if (sprite == null) return;
+
+        _structureInteractionBadge = new GameObject("StructureInteractionBadge");
+        _structureInteractionBadge.transform.SetParent(transform);
+        _structureInteractionBadge.transform.localPosition = Vector3.zero;
+        _structureInteractionRenderer = _structureInteractionBadge.AddComponent<SpriteRenderer>();
+        _structureInteractionRenderer.sprite = sprite;
+        _structureInteractionRenderer.sortingLayerName = "WalkInfront";
+        _structureInteractionRenderer.sortingOrder = 1;
+        _structureInteractionBadge.SetActive(false);
+    }
+
+    protected void ShowStructureInteractionBadge()
+    {
+        if (_structureInteractionBadge != null)
+            _structureInteractionBadge.SetActive(true);
+    }
+
+    protected void HideStructureInteractionBadge()
+    {
+        if (_structureInteractionBadge != null)
+            _structureInteractionBadge.SetActive(false);
     }
 
     // ── IInteractable ────────────────────────────────────────────────────

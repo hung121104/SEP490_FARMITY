@@ -65,14 +65,7 @@ public struct ChestHeader
 ///   Per chest (empty):        ~48 bytes  (ChestHeader in dict)
 ///   Per occupied slot:        ~16 bytes  (ChestSlotEntry inline)
 ///                           + ~50 bytes  (string ItemId, shared across same items)
-///
-///   Example: 100 chests × 5 items avg (items mostly duplicated):
-///     Headers:  100 × 48 bytes                       =   4.8 KB
-///     Slots:    500 × 16 bytes                       =   8.0 KB
-///     Strings:  ~30 unique items × 50 bytes           =   1.5 KB
-///     ──────────────────────────────────────────────────────────────
-///     Total                                          ≈  14.3 KB
-///
+/// 
 ///   Worst case: 1000 chests × 36 full slots (all unique items):
 ///     Headers:  1000 × 48 bytes                      =  48.0 KB
 ///     Slots:    36000 × 16 bytes                     = 576.0 KB
@@ -97,6 +90,9 @@ public class ChestDataModule : IWorldDataModule
 
     // Chest metadata index: packed (tileX, tileY) → header
     private readonly Dictionary<int, ChestHeader> chestIndex = new Dictionary<int, ChestHeader>();
+
+    // Chests destroyed since last save — tracked for backend deletion
+    private readonly List<(short tileX, short tileY)> _deletedChests = new List<(short, short)>();
 
     // ── Key Helpers ──────────────────────────────────────────────────
 
@@ -200,6 +196,9 @@ public class ChestDataModule : IWorldDataModule
     {
         int key = PackKey(tileX, tileY);
         if (!chestIndex.Remove(key)) return false;
+
+        // Track for backend deletion on next save
+        _deletedChests.Add((tileX, tileY));
 
         // Remove all slot entries for this chest (reverse iterate for swap-remove)
         for (int i = slots.Count - 1; i >= 0; i--)
@@ -534,6 +533,13 @@ public class ChestDataModule : IWorldDataModule
             chestIndex[keys[i]] = header;
         }
     }
+
+    /// <summary>Returns chests destroyed since last save (for backend deletion).</summary>
+    public List<(short tileX, short tileY)> GetDeletedChests()
+        => new List<(short, short)>(_deletedChests);
+
+    /// <summary>Clear the deleted chests tracking list after a successful save.</summary>
+    public void ClearDeletedChests() => _deletedChests.Clear();
 
     // ══════════════════════════════════════════════════════════════════════
     // INTERNAL HELPERS

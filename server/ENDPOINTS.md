@@ -28,11 +28,17 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 - [Material Catalog](#material-catalog)
 - [Quest Catalog](#quest-catalog)
 
-5. [Player Data](#player-data)
+7. [Real-Time Sync (Photon PUN Events)](#real-time-sync-photon-pun-events)
+   - [Resource Interaction](#resource-interaction-photon-pun-rpc)
+   - [Structure Interaction](#structure-interaction-photon-pun-events)
+   - [Chest Sync](#chest-sync-photon-pun-events)
+
+8. [Player Data](#player-data)
    - [World Management](#world-management)
-  - [World Blacklist](#world-blacklist)
-  - [Player Achievements](#player-achievements)
-   - [Character Management](#character-management)
+
+- [World Blacklist](#world-blacklist)
+- [Player Achievements](#player-achievements)
+- [Character Management](#character-management)
 
 6. [Achievement Definitions (Admin)](#achievement-definitions-admin)
 
@@ -336,17 +342,59 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     ```
   - Note: `ownerId` is extracted from JWT token by gateway and forwarded to the microservice.
 
-- **GET** `/player-data/world?_id=string`: Get a world by ID.
+- **GET** `/player-data/world?_id=string`: Get a world by ID with all associated data.
   - Headers: `Authorization: Bearer <token>`
   - Query params: `_id` - MongoDB ObjectId string
-  - Response: World document or `null`
+  - Response: World document enriched with `characters`, `chunks`, and `chests` arrays:
+    ```json
+    {
+      "_id": "string",
+      "worldName": "string",
+      "ownerId": "string",
+      "day": "number",
+      "month": "number",
+      "year": "number",
+      "hour": "number",
+      "minute": "number",
+      "gold": "number",
+      "weatherToday": "number",
+      "weatherTomorrow": "number",
+      "characters": [
+        {
+          "accountId": "string",
+          "positionX": "number",
+          "positionY": "number",
+          "sectionIndex": "number",
+          "inventory": { "0": { "itemId": "string", "quantity": "number" } }
+        }
+      ],
+      "chunks": [
+        {
+          "chunkX": "number",
+          "chunkY": "number",
+          "sectionId": "number",
+          "tiles": { "0": { "type": "string", "...": "any" } }
+        }
+      ],
+      "chests": [
+        {
+          "tileX": "number",
+          "tileY": "number",
+          "maxSlots": "number",
+          "structureLevel": "number",
+          "slots": { "0": { "itemId": "string", "quantity": "number" } }
+        }
+      ]
+    }
+    ```
+  - Note: Only world owner can access. `chunks`, `characters`, and `chests` are fetched from separate collections and attached to the response. Map fields (`inventory`, `tiles`, `slots`) are converted to plain objects for JSON serialization.
 
 - **GET** `/player-data/worlds`: Get all worlds owned by authenticated account.
   - Headers: `Authorization: Bearer <token>`
   - Optional query: `ownerId=string` (only allowed for admin accounts)
   - Response: Array of world documents
 
-- **PUT** `/player-data/world`: Update world fields and/or upsert up to 4 player characters.
+- **PUT** `/player-data/world`: Save world state — updates world time, characters, tile deltas, inventory deltas, chest deltas, and deleted chests atomically (MongoDB transaction when available).
   - Headers: `Authorization: Bearer <token>` (gateway verifies JWT; `ownerId` injected from token)
   - Body:
     ```json
@@ -358,6 +406,8 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
       "hour": "number (optional)",
       "minute": "number (optional)",
       "gold": "number (optional)",
+      "weatherToday": "number (optional)",
+      "weatherTomorrow": "number (optional)",
       "characters": [
         {
           "accountId": "string",
@@ -365,7 +415,40 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
           "positionY": "number",
           "sectionIndex": "number (optional)"
         }
-      ]
+      ],
+      "deltas": [
+        {
+          "chunkX": "number",
+          "chunkY": "number",
+          "sectionId": "number",
+          "tiles": {
+            "0": { "type": "string", "...other tile fields": "any" },
+            "42": { "type": "string" }
+          }
+        }
+      ],
+      "inventoryDeltas": [
+        {
+          "accountId": "string",
+          "slots": {
+            "0": { "itemId": "string", "quantity": "number" },
+            "5": { "itemId": "string", "quantity": "number" }
+          }
+        }
+      ],
+      "chestDeltas": [
+        {
+          "tileX": "number",
+          "tileY": "number",
+          "maxSlots": "number",
+          "structureLevel": "number",
+          "slots": {
+            "0": { "itemId": "string", "quantity": "number" },
+            "3": { "itemId": "string", "quantity": "number" }
+          }
+        }
+      ],
+      "deletedChests": [{ "tileX": "number", "tileY": "number" }]
     }
     ```
   - Response: Updated world document with `characters` array
@@ -373,6 +456,10 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     - All fields except `worldId` are optional
     - `characters` array is optional and capped at 4 entries
     - Each character is matched by `(worldId, accountId)` and created or updated
+    - `deltas` — only chunks/tiles that changed since last save; backend merges into `chunks` collection
+    - `inventoryDeltas` — only players whose inventory changed; backend merges into `characters` collection using targeted `$set` on individual slots
+    - `chestDeltas` — only chests whose slots changed; backend upserts into `chestinventories` collection using targeted `$set` on individual slots
+    - `deletedChests` — chests destroyed since last save; backend deletes matching documents
     - Only world owner can call this endpoint
 
 - **DELETE** `/player-data/world?_id=string`: Delete a world by ID.
@@ -653,7 +740,7 @@ Depending on `itemType`, specific extra fields must be included:
 | `10`       | Resource   | `isOre`<br>`requiresSmelting`<br>`smeltedResultId`                                 | bool: (default `false`)<br>bool: (default `false`)<br>string: ID of smelt output (default `""`)                                                                                                                                                                                                                                                                                                                                                                       |
 | `11`       | Gift       | `isUniversalLike`<br>`isUniversalLove`                                             | bool: (default `false`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `12`       | Quest      | `relatedQuestID`<br>`autoConsume`                                                  | string: Related quest ID (e.g., `"quest_goblins_01"`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                                      |
-| `13`       | Structure  | `structureInteractionType`                                                         | int: 0=Storage, 1=Crafting, 2=Smelting, 3=Fence, 4=Decoration                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `13`       | Structure  | `structureInteractionType`<br>`structureLevel`<br>`structureInteractionSprite`     | int: 0=Storage, 1=Crafting, 2=Smelting, 3=Fence, 4=Decoration<br>int: Level/tier of the structure (0=Wood, 1=Bronze, 2=Iron, 3=Gold)<br>file (PNG): Interaction sprite (e.g., chest open icon). Uploaded to Cloudinary; sets `structureInteractionSpriteUrl` automatically.                                                                                                                                                                                           |
 | `14`       | Fertilizer | _(none)_                                                                           | Stackable fertilizer item consumed on successful crop fertilization                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 ---
@@ -865,6 +952,7 @@ Depending on `itemType`, specific extra fields must be included:
       "description": "string",
       "recipeType": 0,
       "category": 0, //int 0-general, 1-tool, 2-food, 3-materials, 4-furniture, 5-equipment
+      "recipeLevel": 0, //int - Minimum structure tier required: 0-Wood, 1-Bronze, 2-Iron, 3-Gold
       "resultItemId": "string",
       "resultQuantity": 1,
       "resultQuality": 0,
@@ -899,6 +987,7 @@ Depending on `itemType`, specific extra fields must be included:
       "description": "string",
       "recipeType": 0,
       "category": 0,
+      "recipeLevel": 0, //int - Minimum structure tier required: 0-Wood, 1-Bronze, 2-Iron, 3-Gold
       "resultItemId": "string",
       "resultQuantity": 1,
       "resultQuality": 0,
@@ -1145,25 +1234,25 @@ Depending on `itemType`, specific extra fields must be included:
 
 | Field         | Type   | Required | Default      | Notes                                                                |
 | ------------- | ------ | -------- | ------------ | -------------------------------------------------------------------- |
-| `questId`     | string | ✅       | —           | Unique game-side identifier (e.g., `"quest_001"`).                   |
-| `questName`   | string | ✅       | —           | Display name of the quest.                                           |
-| `description` | string | ✅       | —           | Quest description shown to the player.                               |
-| `NPCName`     | string | ✅       | —           | Name of the NPC who assigns the quest.                               |
+| `questId`     | string | ✅       | —            | Unique game-side identifier (e.g., `"quest_001"`).                   |
+| `questName`   | string | ✅       | —            | Display name of the quest.                                           |
+| `description` | string | ✅       | —            | Quest description shown to the player.                               |
+| `NPCName`     | string | ✅       | —            | Name of the NPC who assigns the quest.                               |
 | `Weight`      | number | ✅       | `1`          | Sorting/priority weight. Higher = appears first.                     |
-| `nextQuestId` | string | ❌       | —           | `questId` of the next quest in the chain (optional).                 |
-| `reward`      | object | ✅       | —           | `{ itemId: string, quantity: number }` — reward on completion.       |
+| `nextQuestId` | string | ❌       | —            | `questId` of the next quest in the chain (optional).                 |
+| `reward`      | object | ✅       | —            | `{ itemId: string, quantity: number }` — reward on completion.       |
 | `status`      | string | ❌       | `"inactive"` | Quest lifecycle status: `inactive`, `active`, `completed`, `failed`. |
 | `objectives`  | array  | ❌       | `[]`         | Array of `QuestObjective` sub-documents (see below).                 |
 
 #### QuestObjective Fields
 
-| Field            | Type   | Required | Default | Notes                                           |
-| ---------------- | ------ | -------- | ------- | ----------------------------------------------- |
-| `objectiveId`    | string | ✅       | —       | Unique identifier within the quest.             |
-| `description`    | string | ✅       | —       | Description of the objective.                   |
-| `itemId`         | string | ✅       | —       | Target item `itemId` for this objective.         |
-| `requiredAmount` | int    | ✅       | —       | Number of items needed.                         |
-| `currentAmount`  | int    | ❌       | `0`     | Current progress (player-side tracking).        |
+| Field            | Type   | Required | Default | Notes                                    |
+| ---------------- | ------ | -------- | ------- | ---------------------------------------- |
+| `objectiveId`    | string | ✅       | —       | Unique identifier within the quest.      |
+| `description`    | string | ✅       | —       | Description of the objective.            |
+| `itemId`         | string | ✅       | —       | Target item `itemId` for this objective. |
+| `requiredAmount` | int    | ✅       | —       | Number of items needed.                  |
+| `currentAmount`  | int    | ❌       | `0`     | Current progress (player-side tracking). |
 
 ---
 
@@ -1244,3 +1333,84 @@ Depending on `itemType`, specific extra fields must be included:
 - Client visual sync:
   - `RPC_Client_PlayHitEffect(...)` plays local hit VFX/animation.
   - `RPC_Client_DestroyResource(...)` destroys local spawned resource visual.
+
+---
+
+### Structure Interaction (Photon PUN Events)
+
+> Structure hit/destroy uses Photon PUN2 custom events (NOT RPC). Master-authoritative with HP sync.
+
+#### Event Code Map — Structures
+
+| Code | Name                  | Direction       | Description                                      |
+| ---- | --------------------- | --------------- | ------------------------------------------------ |
+| `90` | STRUCTURE_PLACED      | Master → All    | A new structure was placed in the world          |
+| `91` | STRUCTURE_REMOVED     | Master → All    | Structure destroyed — includes `lastHitPlayerId` |
+| `92` | STRUCTURE_HP_UPDATED  | Master → All    | Structure HP changed (damage or regen)           |
+| `93` | STRUCTURE_HIT_REQUEST | Client → Master | Client requests to hit a structure               |
+| `94` | STRUCTURE_HIT_EFFECT  | Master → All    | Play hit VFX at position (predictive on client)  |
+
+#### Structure Destruction Flow
+
+1. Client calls `RequestHit(pos, damage, playerActorId)`.
+2. Non-Master sends `STRUCTURE_HIT_REQUEST` (93) to Master; plays local hit effect predictively.
+3. Master processes damage:
+   - Updates HP in `UnifiedChunkData`.
+   - Broadcasts `STRUCTURE_HP_UPDATED` (92) with new HP.
+   - If HP ≤ 0:
+     - Calls `ProcessChestContentsDrop()` — adds chest items to last hitter's inventory.
+     - Calls `ProcessStructureItemDrop()` — adds the structure item itself to last hitter's inventory.
+     - Unregisters chest from `ChestDataModule` (if applicable).
+     - Broadcasts `STRUCTURE_REMOVED` (91) with `lastHitPlayerId`.
+     - Removes structure from world data.
+4. All clients receive `STRUCTURE_REMOVED` (91):
+   - Close chest UI if this chest was open.
+   - Non-Master clients unregister chest from local `ChestDataModule`.
+   - `ProcessChestContentsDrop()` and `ProcessStructureItemDrop()` run on all clients — only last hitter's client actually adds items (checks `localPlayerId == lastHitPlayerId`).
+
+#### Structure HP Regeneration
+
+- Master periodically regenerates structure HP to max after a configurable timeout.
+- Broadcasts `STRUCTURE_HP_UPDATED` (92) with restored HP.
+- Clients distinguish regen from damage: if `newHp >= maxHp`, no hit effect is played.
+
+---
+
+### Chest Sync (Photon PUN Events)
+
+> Chest inventory is synced in real-time via Photon PUN2 custom events. Master is authoritative for slot data. Persistent storage uses the HTTP save-world endpoint (see `PUT /player-data/world`).
+
+#### Event Code Map — Chests
+
+| Code  | Name                 | Direction       | Description                                                      |
+| ----- | -------------------- | --------------- | ---------------------------------------------------------------- |
+| `150` | _(reserved)_         | —               | **ChatService** — do NOT use for chests                          |
+| `160` | REQUEST_CHEST_SYNC   | Client → Master | Late-join client requests all chest data                         |
+| `161` | CHEST_SYNC_BATCH     | Master → Client | Batch of chest slot data (response to 160)                       |
+| `162` | CHEST_SYNC_COMPLETE  | Master → Client | All batches sent, sync complete                                  |
+| `163` | CHEST_SLOT_REQUEST   | Client → Master | Client requests a slot change (add/remove/move item)             |
+| `164` | CHEST_SLOT_BROADCAST | Master → All    | Authoritative slot update after Master validates                 |
+| `165` | CHEST_REGISTER       | Master → All    | New chest registered (placed in world)                           |
+| `166` | CHEST_OPEN_NOTIFY    | Player → All    | Player opened a chest (for badge/indicator display)              |
+| `167` | CHEST_CLOSE_NOTIFY   | Player → All    | Player closed a chest                                            |
+| `168` | SLOT_DRAG_START      | Player → All    | Player started dragging from a chest slot (lock slot for others) |
+| `169` | SLOT_DRAG_END        | Player → All    | Player finished dragging (unlock slot)                           |
+
+#### Late-Join Chest Sync Flow
+
+1. Joining client sends `REQUEST_CHEST_SYNC` (160) to Master.
+2. Master iterates all registered chests, sends `CHEST_SYNC_BATCH` (161) messages with slot data.
+3. Master sends `CHEST_SYNC_COMPLETE` (162) to signal end of sync.
+
+#### Slot Lock Flow (Concurrent Access)
+
+1. Player A starts dragging from chest slot → broadcasts `SLOT_DRAG_START` (168) with `chestId` + `slotIndex`.
+2. Other players see the slot dimmed/locked — cannot drag from it.
+3. Player A drops item → broadcasts `SLOT_DRAG_END` (169) → slot unlocked for all.
+4. Auto-unlock after 10s timeout to handle disconnects.
+
+#### Chest Data Persistence
+
+- Real-time changes are held in memory (`ChestDataModule`) and synced via Photon events.
+- On world save (`PUT /player-data/world`), changed chest slots are sent as `chestDeltas`.
+- Destroyed chests are sent as `deletedChests` to remove from the database.

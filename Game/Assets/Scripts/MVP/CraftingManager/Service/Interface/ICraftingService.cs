@@ -26,6 +26,8 @@ public interface ICraftingService
     List<RecipeModel> GetRecipesByType(RecipeType type);
     List<RecipeModel> GetCraftingRecipes();
     List<RecipeModel> GetCookingRecipes();
+    List<RecipeModel> GetCraftingRecipesByLevel(int stationLevel);
+    List<RecipeModel> GetCookingRecipesByLevel(int stationLevel);
     List<RecipeModel> GetCraftableRecipes(IInventoryService inventory);
 
     // Ingredient Check

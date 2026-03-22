@@ -235,7 +235,7 @@ public class PlantCatalogService : MonoBehaviour
 
         // Pixel art settings: crisp filtering and 16 pixels per unit
         tex.filterMode = FilterMode.Point;
-        var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 16f);
+        var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.12f), 16f);
         _spriteCache[key] = sprite;
         Debug.Log($"[PlantCatalogService] Sprite ready for '{key}'.");
     }

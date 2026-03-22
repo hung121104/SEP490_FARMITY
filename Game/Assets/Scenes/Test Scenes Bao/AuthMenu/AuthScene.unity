@@ -5575,7 +5575,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 932959019}
   planeZ: 0
-  mouseWorldPosition: {x: -10.990368, y: 6.4990973}
+  mouseWorldPosition: {x: 15.921131, y: 11.267309}
 --- !u!1 &2101468138
 GameObject:
   m_ObjectHideFlags: 0
@@ -7447,7 +7447,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: regiter
+  m_text: register
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: b594c8a30457e5f41ad966b03d1d26aa, type: 2}
   m_sharedMaterial: {fileID: -7953292292967863894, guid: b594c8a30457e5f41ad966b03d1d26aa, type: 2}

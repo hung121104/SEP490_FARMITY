@@ -214,8 +214,21 @@ public class CropPlowingService : ICropPlowingService
             if (showDebugLogs)
                 Debug.Log($"[CropPlowingService] ✓ Successfully plowed tile at {correctTilePosition} on tilemap {tilledTilemap.gameObject.name}");
 
+            // Mark dirty unconditionally so offline mode also saves tilling.
+            int wx = Mathf.FloorToInt(worldPosition.x);
+            int wy = Mathf.FloorToInt(worldPosition.y);
+            if (!PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient)
+            {
+                int cx        = Mathf.FloorToInt(wx / 30f);
+                int cy        = Mathf.FloorToInt(wy / 30f);
+                int sectionId = WorldDataManager.Instance != null
+                    ? WorldDataManager.Instance.GetSectionIdFromWorldPosition(worldPosition)
+                    : 0;
+                WorldSaveManager.TryMarkChunkDirty(cx, cy, sectionId);
+            }
+
             if (PhotonNetwork.IsConnected && syncManager != null)
-                syncManager.BroadcastTileTilled(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y));
+                syncManager.BroadcastTileTilled(wx, wy);
 
             return true;
         }
