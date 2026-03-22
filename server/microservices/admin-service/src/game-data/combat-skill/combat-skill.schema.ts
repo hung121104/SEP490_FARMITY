@@ -19,7 +19,7 @@ export class CombatSkill {
   @Prop({ default: '' })
   skillDescription: string;
 
-  @Prop({ default: '' })
+  @Prop({ required: true })
   iconUrl: string;
 
   @Prop({

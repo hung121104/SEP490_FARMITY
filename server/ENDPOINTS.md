@@ -823,8 +823,10 @@ Depending on `itemType`, specific extra fields must be included:
 
 - **POST** `/game-data/combat-skills/create`: Create a new combat skill (admin only).
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
-  - Content-Type: `application/json`
-  - Body: Skill definition payload (see fields table below)
+  - Content-Type: `multipart/form-data`
+  - Fields:
+    - `icon` _(file, required)_ — Skill icon image (max 5 MB). Uploaded to Cloudinary internally; `iconUrl` set automatically.
+    - Other combat skill fields as form-data text fields (see fields table below)
   - Response: Saved combat skill document
   - Note: Returns `409 Conflict` if `skillId` already exists
 
@@ -841,8 +843,8 @@ Depending on `itemType`, specific extra fields must be included:
 
 - **PUT** `/game-data/combat-skills/:skillId`: Update combat skill by `skillId` (admin only).
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
-  - Content-Type: `application/json`
-  - Body: Any subset of skill fields
+  - Content-Type: `multipart/form-data`
+  - Body: Any subset of skill fields as form-data text fields. Include `icon` file to replace icon.
   - Response: Updated combat skill document
   - Note: Returns `404` if skill not found
 
@@ -859,7 +861,8 @@ Depending on `itemType`, specific extra fields must be included:
 | `skillId` | string | ✅ | Unique game-side skill ID |
 | `skillName` | string | ✅ | Display name |
 | `skillDescription` | string | — | Tooltip/description |
-| `iconUrl` | string | — | CDN icon URL |
+| `icon` | file | ✅ on create | Uploaded icon image; gateway stores resulting `iconUrl` |
+| `iconUrl` | string | — | Auto-filled from uploaded icon; keep read-only in admin form |
 | `ownership` | enum | — | `PlayerSkill` or `WeaponSkill` |
 | `category` | enum | — | `None`, `Projectile`, `Slash`, `AoE`, `Buff`, `Summon` |
 | `requiredWeaponType` | number | — | Numeric weapon type gate for weapon skills |

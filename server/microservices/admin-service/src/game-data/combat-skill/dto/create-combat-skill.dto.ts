@@ -24,9 +24,9 @@ export class CreateCombatSkillDto {
   @IsString()
   skillDescription?: string;
 
-  @IsOptional()
   @IsString()
-  iconUrl?: string;
+  @IsNotEmpty()
+  iconUrl: string;
 
   @IsOptional()
   @IsEnum(CombatSkillOwnership)

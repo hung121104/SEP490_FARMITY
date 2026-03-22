@@ -203,6 +203,74 @@ export class GatewayController {
     return dto;
   }
 
+  private parseNumericField(value: any): number | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) {
+      throw new BadRequestException(`Invalid numeric value: ${value}`);
+    }
+    return parsed;
+  }
+
+  private buildCreateCombatSkillDto(body: any, iconUrl: string): any {
+    const dto: any = {
+      ...body,
+      iconUrl,
+    };
+
+    const numericFields = [
+      'requiredWeaponType',
+      'cooldown',
+      'skillMultiplier',
+      'projectileSpeed',
+      'projectileRange',
+      'projectileKnockback',
+      'slashVfxDuration',
+      'slashVfxSpawnOffset',
+      'slashVfxPositionOffsetX',
+      'slashVfxPositionOffsetY',
+      'slashKnockbackForce',
+    ];
+
+    for (const field of numericFields) {
+      if (body[field] !== undefined) {
+        dto[field] = this.parseNumericField(body[field]);
+      }
+    }
+
+    return dto;
+  }
+
+  private buildUpdateCombatSkillDto(body: any, iconUrl?: string): any {
+    const dto: any = {
+      ...body,
+    };
+
+    if (iconUrl) dto.iconUrl = iconUrl;
+
+    const numericFields = [
+      'requiredWeaponType',
+      'cooldown',
+      'skillMultiplier',
+      'projectileSpeed',
+      'projectileRange',
+      'projectileKnockback',
+      'slashVfxDuration',
+      'slashVfxSpawnOffset',
+      'slashVfxPositionOffsetX',
+      'slashVfxPositionOffsetY',
+      'slashKnockbackForce',
+    ];
+
+    for (const field of numericFields) {
+      if (body[field] !== undefined) {
+        dto[field] = this.parseNumericField(body[field]);
+      }
+    }
+
+    return dto;
+  }
+
   @Post('player-data/world')
   async createWorld(@Body() body: any, @Req() req: Request) {
     const ownerIdRaw = req['user']?.sub;
@@ -946,12 +1014,29 @@ export class GatewayController {
     }
   }
 
-  /** POST /game-data/combat-skills/create — create a new combat skill (admin only) */
+  /** POST /game-data/combat-skills/create — accepts multipart/form-data with required icon file (admin only) */
   @Post('game-data/combat-skills/create')
-  async createCombatSkill(@Body() body: any) {
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createCombatSkill(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'An icon file is required (field name: "icon")',
+      );
+
     try {
+      const iconUrl = await this.cloudinaryService.uploadFile(
+        file,
+        body.folder || 'skill-icons',
+      );
+      const dto = this.buildCreateCombatSkillDto(body, iconUrl);
+
       return await firstValueFrom(
-        this.adminClient.send('create-combat-skill', body),
+        this.adminClient.send('create-combat-skill', dto),
       );
     } catch (err) {
       if (err instanceof HttpException) throw err;
@@ -959,12 +1044,29 @@ export class GatewayController {
     }
   }
 
-  /** PUT /game-data/combat-skills/:skillId — update by game-side skillId (admin only) */
+  /** PUT /game-data/combat-skills/:skillId — accepts multipart/form-data; include icon file to replace icon (admin only) */
   @Put('game-data/combat-skills/:skillId')
-  async updateCombatSkill(@Param('skillId') skillId: string, @Body() patch: any) {
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateCombatSkill(
+    @Param('skillId') skillId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() patch: any,
+  ) {
     try {
+      let iconUrl: string | undefined;
+      if (file) {
+        iconUrl = await this.cloudinaryService.uploadFile(
+          file,
+          patch.folder || 'skill-icons',
+        );
+      }
+
+      const dto = this.buildUpdateCombatSkillDto(patch, iconUrl);
+
       return await firstValueFrom(
-        this.adminClient.send('update-combat-skill', { skillId, ...patch }),
+        this.adminClient.send('update-combat-skill', { skillId, ...dto }),
       );
     } catch (err) {
       if (err instanceof HttpException) throw err;
