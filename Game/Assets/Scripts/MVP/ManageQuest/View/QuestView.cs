@@ -31,6 +31,8 @@ public class QuestView : MonoBehaviour
         if (quest.reward != null)
         {
             Sprite icon = ItemCatalogService.Instance.GetCachedSprite(quest.reward.itemId);
+            ItemData itemData = ItemCatalogService.Instance.GetItemData(quest.reward.itemId);
+           
 
             if (icon != null)
             {
