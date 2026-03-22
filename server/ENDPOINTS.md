@@ -19,6 +19,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 4. [Game Data Management](#game-data-management)
    - [Items Catalog](#items-catalog)
   - [Weapon Items (Extended Fields)](#weapon-items-extended-fields)
+  - [Combat Catalog](#combat-catalog)
   - [Combat Skills Catalog](#combat-skills-catalog)
   - [Fertilizer Catalog](#fertilizer-catalog)
   - [Plants Catalog](#plants-catalog)
@@ -733,7 +734,7 @@ Depending on `itemType`, specific extra fields must be included:
 | `3`        | Pollen     | `sourcePlantId`<br>`pollinationSuccessChance`<br>`viabilityDays`<br>`crossResults` | string: `plantId` of the plant that produced this pollen (e.g., `"plant_corn"`)<br>float: Chance of pollination success (e.g., `0.5`)<br>int: Days the pollen remains viable (e.g., `3`)<br>array: Cross-breeding table — `[{ "targetPlantId": "string", "resultPlantId": "string" }]`. Each entry maps a receiver `plantId` to the hybrid `plantId` that spawns when this pollen is applied to it. Consumed by `PollenData.FindResultPlantId()` in the Unity client. |
 | `4`        | Consumable | `energyRestore`<br>`healthRestore`<br>`bufferDuration`                             | int: Stamina restored<br>int: Health restored<br>float: Buff duration                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `5`        | Material   | _(none)_                                                                           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `6`        | Weapon     | `damage`<br>`critChance`<br>`weaponMaterialId`<br>`weaponType`<br>`tier`<br>`attackCooldown`<br>`knockbackForce`<br>`projectileSpeed`<br>`projectileRange`<br>`projectileKnockback`<br>`weaponVisualConfigId` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).<br>int: WeaponType enum value<br>int: Tier value<br>float: Attack cooldown seconds<br>float: Melee knockback<br>float: Staff projectile speed<br>float: Staff projectile range<br>float: Staff projectile knockback<br>string: SkinCatalog config key used by DynamicSpriteSwapper. See [Weapon Items (Extended Fields)](#weapon-items-extended-fields). |
+| `6`        | Weapon     | `damage`<br>`critChance`<br>`weaponMaterialId`<br>`weaponType`<br>`tier`<br>`attackCooldown`<br>`knockbackForce`<br>`projectileSpeed`<br>`projectileRange`<br>`projectileKnockback`<br>`weaponVisualConfigId` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).<br>int: WeaponType enum value<br>int: Tier value<br>float: Attack cooldown seconds<br>float: Melee knockback<br>float: Staff projectile speed<br>float: Staff projectile range<br>float: Staff projectile knockback<br>string: CombatCatalog `configId` used by `DynamicSpriteSwapper`. See [Combat Catalog](#combat-catalog). |
 | `7`        | Fish       | `difficulty`<br>`fishingSeasons`<br>`isLegendary`                                  | int: Difficulty level (e.g., 1)<br>int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                 |
 | `8`        | Cooking    | `energyRestore`<br>`healthRestore`<br>`bufferDuration`                             | int: Stamina restored<br>int: Health restored<br>float: Buff duration                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `9`        | Forage     | `foragingSeasons`<br>`energyRestore`                                               | int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>int: (default `5`)                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -789,7 +790,7 @@ Extended runtime fields (new):
 | `projectileSpeed` | number | ✅ for staff-type weapons | Projectile speed |
 | `projectileRange` | number | ✅ for staff-type weapons | Projectile max range |
 | `projectileKnockback` | number | ✅ for staff-type weapons | Projectile knockback force |
-| `weaponVisualConfigId` | string | ✅ | SkinCatalog config key for weapon sprite sheet (runtime swap) |
+| `weaponVisualConfigId` | string | ✅ | CombatCatalog `configId` for weapon sprite sheet (runtime swap) |
 | `linkedSkillId` | string | Optional | Skill ID for weapon special slot |
 
 #### Web Dropdown / Select Guide
@@ -865,6 +866,66 @@ Linked-skill dropdown rule:
 Runtime note:
 
 - Client no longer needs a prefab key per weapon. Weapon prefab is chosen by `weaponType` (Sword/Staff/Spear base prefab), then the equipped sprite is swapped by `weaponVisualConfigId` through `DynamicSpriteSwapper`.
+
+---
+
+### Combat Catalog
+
+> Dedicated combat visual spritesheet catalog for runtime-swapped combat assets. Start with `type = weapon` entries now; extend later for `skill_vfx` and other combat visuals.
+
+#### HTTP Endpoints
+
+- **GET** `/game-data/combat-catalogs`: Get full combat catalog (public).
+  - Optional query param: `type` — filter by entry type (e.g., `?type=weapon`).
+  - Response: Array of combat catalog entries.
+
+- **POST** `/game-data/combat-catalogs`: Create a new combat catalog entry (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Fields:
+
+    | Field         | Type       | Required | Notes                                                                                                     |
+    | ------------- | ---------- | -------- | --------------------------------------------------------------------------------------------------------- |
+    | `spritesheet` | file (PNG) | ✅       | Combat spritesheet, max 10 MB. Uploaded to Cloudinary folder `combat-spritesheets` automatically.       |
+    | `configId`    | text       | ✅       | Stable lookup key used by runtime (e.g., `weapon_sword_iron`).                                          |
+    | `displayName` | text       | ✅       | Display label for admin UI.                                                                              |
+    | `type`        | text       | —        | Entry group for filtering. Default: `weapon`. Planned values include `weapon`, `skill_vfx`.            |
+    | `cellSize`    | text (int) | —        | Uniform sprite cell width/height in pixels. Default: `64`.                                              |
+
+  - Response: Created combat catalog document including `_id` and `spritesheetUrl`.
+  - Note: Returns `409 Conflict` if `configId` already exists.
+
+- **PUT** `/game-data/combat-catalogs/:configId`: Update an existing combat catalog entry (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Path param: `configId`
+  - Fields (all optional):
+    - `spritesheet` file to replace the sheet (re-uploads to Cloudinary).
+    - `displayName`, `type`, `cellSize` text fields.
+  - Response: Updated combat catalog document.
+  - Note: Returns `404` if not found.
+
+- **DELETE** `/game-data/combat-catalogs/:configId`: Delete a combat catalog entry (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `configId`
+  - Response: `204 No Content`
+  - Note: Returns `404` if not found. Does **not** delete Cloudinary asset.
+
+#### Combat Catalog Fields
+
+| Field | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `configId` | string | ✅ | — | Stable runtime lookup key used by `weaponVisualConfigId` and future combat visual keys. |
+| `type` | string | — | `weapon` | Entry category for filtering (e.g., `weapon`, `skill_vfx`). |
+| `spritesheetUrl` | string | ✅ | — | Public CDN URL, auto-filled from uploaded `spritesheet` file. |
+| `cellSize` | int | — | `64` | Width = height for each frame cell in pixels. |
+| `displayName` | string | ✅ | — | Human-readable label in web admin. |
+
+#### Unity Integration Notes
+
+- Unity `CombatCatalogManager` calls `GET /game-data/combat-catalogs?type=weapon` on startup.
+- Each entry is registered into `SkinCatalogManager` under `configId`, so `DynamicSpriteSwapper` can resolve it at runtime.
+- Weapon items should set `weaponVisualConfigId` to a CombatCatalog `configId`.
 
 ---
 
@@ -1292,6 +1353,7 @@ Notes for web form behavior:
 - `DynamicSpriteSwapper` on each Paper Doll layer reads `configId` from `EquipmentManager` and calls `SkinCatalogManager.GetSprites(configId)` every `LateUpdate`.
 - To clear the client-side disk cache after updating a spritesheet, call `SkinCatalogManager.Instance.RefreshCatalog()` in play mode or delete `Application.persistentDataPath/SkinCache/`.
 - **Tool layer spritesheets are NOT stored here.** Tool appearance is driven by the Material Catalog (see below). `MaterialCatalogService.cs` registers each material's spritesheet into `SkinCatalogManager` under its `materialId` on startup.
+- **Combat visual sheets (weapon / skill VFX) are NOT stored here.** Use [Combat Catalog](#combat-catalog).
 
 ---
 

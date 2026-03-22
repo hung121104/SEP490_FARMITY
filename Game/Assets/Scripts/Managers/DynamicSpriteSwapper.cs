@@ -148,9 +148,9 @@ public class DynamicSpriteSwapper : MonoBehaviour
                 // Do NOT commit _cachedConfigId so we retry when configId changes.
                 if (_warnedMissing.Add(configId))
                     Debug.LogWarning(
-                        $"[DynamicSpriteSwapper] '{configId}' not found in skin catalog " +
+                        $"[DynamicSpriteSwapper] '{configId}' not found in runtime sprite catalogs " +
                         $"on '{gameObject.name}'. " +
-                        "Add a skin-config entry with a valid spritesheet URL in the Admin panel.");
+                        "Add a matching entry in Combat Catalog or Skin Configs with a valid spritesheet URL.");
                 return;
             }
 

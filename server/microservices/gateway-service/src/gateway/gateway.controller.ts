@@ -1981,6 +1981,119 @@ export class GatewayController {
     }
   }
 
+  // ── Combat Catalog ─────────────────────────────────────────────────────────
+
+  /**
+   * GET /game-data/combat-catalogs — public (no auth required).
+   * Query param `type` is optional (e.g. ?type=weapon).
+   */
+  @Get('game-data/combat-catalogs')
+  async getCombatCatalog(@Query('type') type?: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-catalog', { type }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * POST /game-data/combat-catalogs — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — required.
+   * Text fields: configId, displayName, type?, cellSize?
+   */
+  @Post('game-data/combat-catalogs')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async createCombatCatalog(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'A spritesheet file is required (field name: "spritesheet")',
+      );
+
+    try {
+      const spritesheetUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'combat-spritesheets',
+        body.configId || undefined,
+      );
+
+      const dto = {
+        configId: body.configId,
+        displayName: body.displayName,
+        type: body.type || 'weapon',
+        spritesheetUrl,
+        cellSize:
+          body.cellSize !== undefined ? Number(body.cellSize) : undefined,
+      };
+
+      return await firstValueFrom(
+        this.adminClient.send('create-combat-catalog', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * PUT /game-data/combat-catalogs/:configId — admin-only.
+   * Accepts multipart/form-data.
+   * File field : spritesheet  (PNG, max 10 MB) — optional.
+   * Text fields: displayName?, type?, cellSize?
+   */
+  @Put('game-data/combat-catalogs/:configId')
+  @UseInterceptors(
+    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async updateCombatCatalog(
+    @Param('configId') configId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const patch: Record<string, any> = {};
+      if (body.displayName !== undefined) patch.displayName = body.displayName;
+      if (body.type !== undefined) patch.type = body.type;
+      if (body.cellSize !== undefined) patch.cellSize = Number(body.cellSize);
+
+      if (file) {
+        patch.spritesheetUrl = await this.cloudinaryService.uploadFile(
+          file,
+          'combat-spritesheets',
+          configId,
+        );
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('update-combat-catalog', { configId, ...patch }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * DELETE /game-data/combat-catalogs/:configId — admin-only.
+   */
+  @Delete('game-data/combat-catalogs/:configId')
+  async deleteCombatCatalog(@Param('configId') configId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-combat-catalog', { configId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   // ── Material Catalog ──────────────────────────────────────────────────────────
 
   /**
