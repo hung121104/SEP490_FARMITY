@@ -18,6 +18,7 @@ public class CookingPresenter
 
     // Current filters
     private CraftingCategory currentCategory = CraftingCategory.General;
+    private int currentStationLevel = 0;
 
     // Currently selected recipe
     private string selectedRecipeID;
@@ -311,8 +312,8 @@ public class CookingPresenter
 
     private List<RecipeModel> GetFilteredRecipes()
     {
-        // Get cooking recipes only
-        List<RecipeModel> recipes = craftingService.GetRecipesByType(RecipeType.Cooking);
+        // Get cooking recipes filtered by station level
+        List<RecipeModel> recipes = craftingService.GetCookingRecipesByLevel(currentStationLevel);
 
         // Filter by category if not "All"
         if (currentCategory != CraftingCategory.General)
@@ -380,7 +381,7 @@ public class CookingPresenter
     /// <summary>
     /// Open cooking UI
     /// </summary>
-    public void OpenCookingUI()
+    public void OpenCookingUI(int stationLevel = 0)
     {
         if (mainView == null)
         {
@@ -388,10 +389,11 @@ public class CookingPresenter
             return;
         }
 
+        currentStationLevel = stationLevel;
         mainView.Show();
         RefreshRecipeList();
 
-        Debug.Log("[CookingPresenter] Cooking UI opened");
+        Debug.Log($"[CookingPresenter] Cooking UI opened (station level: {stationLevel})");
     }
 
     /// <summary>

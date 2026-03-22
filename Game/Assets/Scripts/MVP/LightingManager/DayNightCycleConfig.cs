@@ -49,30 +49,36 @@ public class DayNightCycleConfig : ScriptableObject
     [Tooltip("Seconds to lerp into / out of rain palette")]
     public float rainTransitionDuration = 2f;
 
-    // ── Sun (Spot Light 2D) ──────────────────────────────────────
+    // ── Sun Light 2D (Spot Light) ─────────────────────────────────
 
-    [Header("Sun Arc")]
-    [Tooltip("Intensity curve for the spot \"sun\" light (x = dayProgress)")]
+    [Header("Sun Light 2D")]
+    [Tooltip("Intensity of the directional spot light over daytime")]
     public AnimationCurve sunSpotIntensity = new AnimationCurve(
-        new Keyframe(0.00f, 0.00f),   // midnight — off
-        new Keyframe(0.25f, 0.00f),   // 06:00 sunrise start
-        new Keyframe(0.30f, 0.50f),
-        new Keyframe(0.50f, 0.75f),   // noon peak
-        new Keyframe(0.70f, 0.50f),
-        new Keyframe(0.75f, 0.00f),   // 18:00 sunset end
+        new Keyframe(0.00f, 0.00f),
+        new Keyframe(0.25f, 0.00f),
+        new Keyframe(0.33f, 0.80f),
+        new Keyframe(0.50f, 1.00f),
+        new Keyframe(0.67f, 0.80f),
+        new Keyframe(0.75f, 0.00f),
         new Keyframe(1.00f, 0.00f)
     );
 
-    [Tooltip("Arc radius in world units — smaller = steeper shadows, larger = longer shadows")]
-    public float sunArcRadius = 12f;
-
-    [Tooltip("Point-light outer radius — must be >= sunArcRadius so light reaches the ground")]
+    [Tooltip("Outer radius of the spot light (should be large enough to reach the ground from the arc height)")]
     public float sunLightOuterRadius = 25f;
 
-    [Tooltip("Point-light outer cone angle (degrees). 360 = full circle")]
-    [Range(1f, 360f)]
-    public float sunLightOuterAngle = 360f;
+    [Tooltip("Outer cone angle of the spot light in degrees")]
+    public float sunLightOuterAngle = 90f;
 
+    [Tooltip("Softness of shadow edges cast by the spot light (0 = hard, 1 = soft)")]
+    [Range(0f, 1f)]
+    public float sunShadowSoftness = 0.5f;
+
+    [Tooltip("Radius of the arc the sun travels along (world units)")]
+    public float sunArcRadius = 20f;
+
+    // ── Sprite Shadows — Intensity & Angles ─────────────────────
+
+    [Header("Shadow Intensity")]
     [Tooltip("Shadow darkness over daytime (0 = no shadow, 1 = full shadow).\nKeep low at dawn/dusk to hide stretchy shadows.")]
     public AnimationCurve sunShadowIntensity = new AnimationCurve(
         new Keyframe(0.00f, 0.00f),   // midnight — no shadows
@@ -83,10 +89,6 @@ public class DayNightCycleConfig : ScriptableObject
         new Keyframe(0.75f, 0.00f),   // 18:00 — shadows gone before sunset stretch
         new Keyframe(1.00f, 0.00f)
     );
-
-    [Tooltip("Shadow softness (blur). 0 = hard pixel edges, 1 = blurry.")]
-    [Range(0f, 1f)]
-    public float sunShadowSoftness = 0.3f;
 
     [Tooltip("Shadow X scale at dawn/dusk (sun low on horizon)")]
     public float shadowXScaleDawn = 0.5f;
@@ -132,6 +134,47 @@ public class DayNightCycleConfig : ScriptableObject
     [Tooltip("Disable all shadow casters entirely when night (intensity below this)")]
     [Range(0f, 1f)]
     public float shadowNightThreshold = 0.1f;
+
+    // ── Cloud Shadows ────────────────────────────────────────────
+
+    [Header("Cloud Shadows")]
+    [Tooltip("Cloud shadow opacity over daytime (0 = invisible, 1 = full strength).\n" +
+             "Keep at 0 during night so shadows don't darken the already-dark scene.")]
+    public AnimationCurve cloudShadowOpacity = new AnimationCurve(
+        new Keyframe(0.00f, 0.00f),   // midnight — no cloud shadows
+        new Keyframe(0.25f, 0.00f),   // 06:00
+        new Keyframe(0.33f, 0.50f),   // 08:00 — shadows fade in
+        new Keyframe(0.50f, 0.60f),   // 12:00 noon — strongest
+        new Keyframe(0.67f, 0.50f),   // 16:00
+        new Keyframe(0.75f, 0.00f),   // 18:00 — shadows fade out
+        new Keyframe(1.00f, 0.00f)
+    );
+
+    [Tooltip("World-space size of one noise tile (larger = bigger cloud blobs)")]
+    public float cloudScale = 30f;
+
+    [Tooltip("Speed of cloud drift (world units per second)")]
+    public float cloudSpeed = 0.02f;
+
+    [Tooltip("Contrast of the noise pattern (higher = sharper cloud edges)")]
+    public float cloudContrast = 3.0f;
+
+    [Tooltip("Brightness bias — higher pushes shadows toward white (thinner clouds)")]
+    public float cloudThreshold = 0.1f;
+
+    [Tooltip("Wind direction for cloud movement")]
+    public Vector2 cloudDirection = new Vector2(1f, 0.5f);
+
+    [Tooltip("Angle (degrees) at which the two noise layers diverge — prevents tiling artifacts")]
+    public float cloudDivergeAngle = 15f;
+
+    [Tooltip("Minimum light value under the darkest cloud shadow (0 = pitch black, 1 = no shadow)")]
+    [Range(0f, 1f)]
+    public float cloudShadowMin = 0.5f;
+
+    [Tooltip("Multiplier applied to cloud shadow opacity when raining (denser overcast)")]
+    [Range(0f, 2f)]
+    public float cloudRainOpacityMultiplier = 1.4f;
 
     // ── Default gradients (called on asset creation + inspector Reset) ──
 

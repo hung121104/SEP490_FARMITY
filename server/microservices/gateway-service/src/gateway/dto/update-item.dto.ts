@@ -61,4 +61,9 @@ export class UpdateItemDto {
   // Quest
   relatedQuestID?: string;
   autoConsume?: boolean;
+
+  // Structure
+  structureInteractionType?: number;
+  structureLevel?: number;
+  structureInteractionSpriteUrl?: string;
 }

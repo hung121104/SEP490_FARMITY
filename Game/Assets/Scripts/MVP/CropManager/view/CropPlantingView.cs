@@ -103,11 +103,15 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
 
         if (playerTransform == null)
         {
-            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
-            if (playerEntity != null)
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag(playerTag))
             {
-                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
-                playerTransform = centerPoint != null ? centerPoint : playerEntity.transform;
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                    continue;
+
+                Transform centerPoint = go.transform.Find("CenterPoint");
+                playerTransform = centerPoint != null ? centerPoint : go.transform;
+                break;
             }
         }
 

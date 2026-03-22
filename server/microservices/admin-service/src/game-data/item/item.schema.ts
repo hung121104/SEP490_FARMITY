@@ -211,6 +211,10 @@ export class Item {
   @Prop()
   structureLevel?: number;
 
+  /** Sprite URL/path used when interacting with this structure (e.g. chest open sprite) */
+  @Prop({ default: '' })
+  structureInteractionSpriteUrl?: string;
+
   // ── itemType: 14 – Fertilizer ───────────────────────────
   // No additional persisted fields beyond the shared base item properties.
 }

@@ -20,7 +20,7 @@ import {
   ParseArrayPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { FileInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FileFieldsInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { firstValueFrom } from 'rxjs';
 import { Response, Request } from 'express';
@@ -137,6 +137,7 @@ export class GatewayController {
     body: any,
     iconUrl: string,
     forcedItemType?: number,
+    structureInteractionSpriteUrl?: string,
   ): CreateItemDto {
     const dto: CreateItemDto = {
       ...body,
@@ -154,6 +155,8 @@ export class GatewayController {
       isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
     };
 
+    if (structureInteractionSpriteUrl) dto.structureInteractionSpriteUrl = structureInteractionSpriteUrl;
+
     const crossResults = this.parseCrossResults(body.crossResults);
     if (crossResults !== undefined) dto.crossResults = crossResults;
 
@@ -164,10 +167,12 @@ export class GatewayController {
     body: any,
     iconUrl?: string,
     forcedItemType?: number,
+    structureInteractionSpriteUrl?: string,
   ): UpdateItemDto {
     const dto: UpdateItemDto = { ...body };
 
     if (iconUrl) dto.iconUrl = iconUrl;
+    if (structureInteractionSpriteUrl) dto.structureInteractionSpriteUrl = structureInteractionSpriteUrl;
     if (forcedItemType !== undefined) dto.itemType = forcedItemType;
     else if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
 
@@ -753,24 +758,43 @@ export class GatewayController {
    *  creates the item in admin-service (admin only). */
   @Post('game-data/items/create')
   @UseInterceptors(
-    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+    FileFieldsInterceptor(
+      [
+        { name: 'icon', maxCount: 1 },
+        { name: 'structureInteractionSprite', maxCount: 1 },
+      ],
+      { limits: { fileSize: 5 * 1024 * 1024 } },
+    ),
   )
   async createItem(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles()
+    files: {
+      icon?: Express.Multer.File[];
+      structureInteractionSprite?: Express.Multer.File[];
+    },
     @Body() body: any,
   ) {
-    if (!file)
+    const iconFile = files?.icon?.[0];
+    if (!iconFile)
       throw new BadRequestException(
         'An icon file is required (field name: "icon")',
       );
     try {
-      // Upload icon to Cloudinary internally — no separate endpoint needed
       const iconUrl = await this.cloudinaryService.uploadFile(
-        file,
+        iconFile,
         body.folder || 'item-icons',
       );
 
-      const dto = this.buildCreateItemDto(body, iconUrl);
+      let structureInteractionSpriteUrl: string | undefined;
+      const interactionFile = files?.structureInteractionSprite?.[0];
+      if (interactionFile) {
+        structureInteractionSpriteUrl = await this.cloudinaryService.uploadFile(
+          interactionFile,
+          body.folder || 'item-icons',
+        );
+      }
+
+      const dto = this.buildCreateItemDto(body, iconUrl, undefined, structureInteractionSpriteUrl);
 
       return await firstValueFrom(this.adminClient.send('create-item', dto));
     } catch (err) {
@@ -827,23 +851,43 @@ export class GatewayController {
    *  Accepts multipart/form-data; include an "icon" file to replace the icon. */
   @Put('game-data/items/:itemID')
   @UseInterceptors(
-    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+    FileFieldsInterceptor(
+      [
+        { name: 'icon', maxCount: 1 },
+        { name: 'structureInteractionSprite', maxCount: 1 },
+      ],
+      { limits: { fileSize: 5 * 1024 * 1024 } },
+    ),
   )
   async updateItem(
     @Param('itemID') itemID: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles()
+    files: {
+      icon?: Express.Multer.File[];
+      structureInteractionSprite?: Express.Multer.File[];
+    },
     @Body() body: any,
   ) {
     try {
       let iconUrl: string | undefined;
-      if (file) {
+      const iconFile = files?.icon?.[0];
+      if (iconFile) {
         iconUrl = await this.cloudinaryService.uploadFile(
-          file,
+          iconFile,
           body.folder || 'item-icons',
         );
       }
 
-      const dto = this.buildUpdateItemDto(body, iconUrl);
+      let structureInteractionSpriteUrl: string | undefined;
+      const interactionFile = files?.structureInteractionSprite?.[0];
+      if (interactionFile) {
+        structureInteractionSpriteUrl = await this.cloudinaryService.uploadFile(
+          interactionFile,
+          body.folder || 'item-icons',
+        );
+      }
+
+      const dto = this.buildUpdateItemDto(body, iconUrl, undefined, structureInteractionSpriteUrl);
 
       return await firstValueFrom(
         this.adminClient.send('update-item', { itemID, dto }),

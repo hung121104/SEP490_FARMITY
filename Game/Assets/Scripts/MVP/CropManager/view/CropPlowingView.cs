@@ -1,3 +1,4 @@
+using Photon.Pun;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -74,12 +75,15 @@ public class CropPlowingView : MonoBehaviour
         // Re-check player if it becomes null
         if (playerTransform == null)
         {
-            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
-            if (playerEntity != null)
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag(playerTag))
             {
-                // Try to find CenterPoint child first
-                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
-                playerTransform = centerPoint != null ? centerPoint : playerEntity.transform;
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                    continue;
+
+                Transform centerPoint = go.transform.Find("CenterPoint");
+                playerTransform = centerPoint != null ? centerPoint : go.transform;
+                break;
             }
         }
         

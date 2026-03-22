@@ -7,10 +7,6 @@ using UnityEngine;
 /// </summary>
 public class ChestStructure : InteractableStructureBase, IWorldStructure
 {
-    [Header("Chest Settings")]
-    [Tooltip("Badge shown when another player is using this chest.")]
-    [SerializeField] private GameObject inUseBadge;
-
     private ChestGameView chestGameView;
     private ChestData chestData;
 
@@ -81,6 +77,7 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
     public void InitializeFromWorld(int worldX, int worldY, StructureData structureData)
     {
         chestData = new ChestData(worldX, worldY, structureData.StructureLevel);
+        SetupStructureInteractionBadge(structureData.StructureId);
 
         WorldDataManager.Instance?.RegisterChest(
             (short)worldX,
@@ -100,8 +97,7 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
     private void HandleChestOpened(string chestId, int actorNumber)
     {
         if (chestData == null || chestData.ChestId != chestId) return;
-        if (inUseBadge != null)
-            inUseBadge.SetActive(true);
+        ShowStructureInteractionBadge();
 
         if (showDebugLogs)
             Debug.Log($"[ChestStructure] Badge ON — player #{actorNumber} opened '{chestId}'");
@@ -110,8 +106,7 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
     private void HandleChestClosed(string chestId, int actorNumber)
     {
         if (chestData == null || chestData.ChestId != chestId) return;
-        if (inUseBadge != null)
-            inUseBadge.SetActive(false);
+        HideStructureInteractionBadge();
 
         if (showDebugLogs)
             Debug.Log($"[ChestStructure] Badge OFF — player #{actorNumber} closed '{chestId}'");

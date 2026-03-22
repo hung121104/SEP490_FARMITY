@@ -144,12 +144,24 @@ public class CropGrowthService : ICropGrowthService
                     if (tile.Crop.IsWatered)    speedMult *= WateringSpeedMultiplier;
                     if (tile.Crop.IsFertilized) speedMult *= 1.5f;
 
+                    float prevTimerFloor = Mathf.FloorToInt(tile.Crop.GrowthTimer);
                     float addedTime = deltaTime * speedMult;
                     worldData.AddGrowthTime(worldPos, addedTime);
 
                     // Re-read updated timer
                     if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData updatedTile))
                         continue;
+
+                    // Throttle dirty marking to once per game-minute of accumulated growth.
+                    // This ensures partial-stage progress survives quit/autosave even when
+                    // no stage transition has occurred yet.
+                    if ((!PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient)
+                        && Mathf.FloorToInt(updatedTile.GrowthTimer) != prevTimerFloor)
+                    {
+                        int cx = Mathf.FloorToInt(tile.WorldX / 30f);
+                        int cy = Mathf.FloorToInt(tile.WorldY / 30f);
+                        WorldSaveManager.TryMarkChunkDirty(cx, cy, sectionConfig.SectionId);
+                    }
 
                     int nextStageIndex = updatedTile.CropStage + 1;
                     // Hybrid mature step may not have a growthStages entry — default to 60s.
@@ -163,6 +175,17 @@ public class CropGrowthService : ICropGrowthService
                         worldData.UpdateCropStage(worldPos, newStage);
                         // Carry over excess time for the next stage
                         worldData.UpdateGrowthTimer(worldPos, updatedTile.GrowthTimer - durationRequired);
+
+                        // Always mark the chunk dirty so the stage change is saved on the next
+                        // auto-save / quit — even in offline mode where BroadcastCropStageUpdated
+                        // is intentionally skipped (IsConnected == false).
+                        // In online mode we only save from the master client (same rule as MarkDirty).
+                        if (!PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient)
+                        {
+                            int cx  = Mathf.FloorToInt(tile.WorldX / 30f);
+                            int cy  = Mathf.FloorToInt(tile.WorldY / 30f);
+                            WorldSaveManager.TryMarkChunkDirty(cx, cy, sectionConfig.SectionId);
+                        }
 
                         if (PhotonNetwork.IsConnected && syncManager != null)
                             syncManager.BroadcastCropStageUpdated(tile.WorldX, tile.WorldY, newStage);

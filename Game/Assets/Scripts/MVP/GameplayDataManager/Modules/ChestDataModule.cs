@@ -65,14 +65,7 @@ public struct ChestHeader
 ///   Per chest (empty):        ~48 bytes  (ChestHeader in dict)
 ///   Per occupied slot:        ~16 bytes  (ChestSlotEntry inline)
 ///                           + ~50 bytes  (string ItemId, shared across same items)
-///
-///   Example: 100 chests × 5 items avg (items mostly duplicated):
-///     Headers:  100 × 48 bytes                       =   4.8 KB
-///     Slots:    500 × 16 bytes                       =   8.0 KB
-///     Strings:  ~30 unique items × 50 bytes           =   1.5 KB
-///     ──────────────────────────────────────────────────────────────
-///     Total                                          ≈  14.3 KB
-///
+/// 
 ///   Worst case: 1000 chests × 36 full slots (all unique items):
 ///     Headers:  1000 × 48 bytes                      =  48.0 KB
 ///     Slots:    36000 × 16 bytes                     = 576.0 KB

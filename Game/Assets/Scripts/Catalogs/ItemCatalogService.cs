@@ -28,6 +28,7 @@ public class ItemCatalogService : MonoBehaviour
 
     private readonly Dictionary<string, ItemData> _catalog     = new();
     private readonly Dictionary<string, Sprite>   _spriteCache = new();
+    private readonly Dictionary<string, Sprite>   _structureInteractionSpriteCache = new();
 
     /// <summary>True once catalog JSON is fully parsed and all icon sprites downloaded.</summary>
     public bool IsReady { get; private set; }
@@ -89,6 +90,11 @@ public class ItemCatalogService : MonoBehaviour
         }
 
         return result;
+    /// <summary>Returns the cached structure interaction Sprite, or null if not available.</summary>
+    public Sprite GetCachedStructureInteractionSprite(string itemId)
+    {
+        _structureInteractionSpriteCache.TryGetValue(itemId, out var s);
+        return s;
     }
 
     // ── Loading ───────────────────────────────────────────────────────────────
@@ -110,6 +116,7 @@ public class ItemCatalogService : MonoBehaviour
         IsReady = false;
         _catalog.Clear();
         _spriteCache.Clear();
+        _structureInteractionSpriteCache.Clear();
 
         string url = $"{AppConfig.ApiBaseUrl}/game-data/items/catalog";
 
@@ -194,26 +201,36 @@ public class ItemCatalogService : MonoBehaviour
                 downloadedSprites++;
                 CatalogProgressManager.ReportProgress(downloadedSprites, totalSprites, "Item Catalog");
             }
+
+            if (item is StructureItemData structItem
+                && !string.IsNullOrEmpty(structItem.structureInteractionSpriteUrl))
+            {
+                yield return DownloadSprite(item.itemID, structItem.structureInteractionSpriteUrl,
+                                            _structureInteractionSpriteCache);
+            }
         }
     }
 
-    private IEnumerator DownloadSprite(string itemId, string url)
+    private IEnumerator DownloadSprite(string itemId, string url,
+                                       Dictionary<string, Sprite> targetCache = null)
     {
+        targetCache ??= _spriteCache;
+
         using var req = UnityWebRequestTexture.GetTexture(url);
         yield return req.SendWebRequest();
 
         if (req.result != UnityWebRequest.Result.Success)
         {
-            Debug.LogWarning($"[ItemCatalogService] Icon download failed for '{itemId}': {req.error}");
+            Debug.LogWarning($"[ItemCatalogService] Sprite download failed for '{itemId}': {req.error}");
             yield break;
         }
 
         var tex    = DownloadHandlerTexture.GetContent(req);
-        
+
         // Pixel art settings: crisp filtering and 16 pixels per unit
         tex.filterMode = FilterMode.Point;
         var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 16f);
-        _spriteCache[itemId] = sprite;
-        Debug.Log($"[ItemCatalogService] Icon ready for '{itemId}'.");
+        targetCache[itemId] = sprite;
+        Debug.Log($"[ItemCatalogService] Sprite ready for '{itemId}'.");
     }
 }

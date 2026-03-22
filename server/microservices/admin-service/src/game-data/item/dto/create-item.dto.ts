@@ -261,6 +261,10 @@ export class CreateItemDto {
   @IsInt()
   structureLevel?: number;
 
+  @IsOptional()
+  @IsString()
+  structureInteractionSpriteUrl?: string;
+
   // ── Fertilizer (itemType: 14) ───────────────────────────────────────────────
   // No additional fields beyond the shared base item properties.
 }
