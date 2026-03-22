@@ -139,14 +139,14 @@ public class NPCDialogueView : MonoBehaviour
 
         currentOptions.Clear();
     }
-    public void ShowReward(string itemName, Sprite icon, int amount)
+    public void ShowReward( Sprite icon, int amount)
     {
         rewardSlot.SetActive(true);
         rewardLabel.gameObject.SetActive(true);
         rewardIcon.gameObject.SetActive(true);
         rewardText.gameObject.SetActive(true);
 
-        rewardLabel.text = itemName;
+        //rewardLabel.text = itemName;
         rewardIcon.sprite = icon;
         rewardText.text = "x" + amount;
     }
