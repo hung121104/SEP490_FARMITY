@@ -1,20 +1,27 @@
 using UnityEngine;
 using Photon.Pun;
 using System.Collections;
+using System;
+using System.Collections.Generic;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
-using CombatManager.SO;
 
 namespace CombatManager.Presenter
 {
     /// <summary>
     /// Presenter for Weapon Animation system.
-    /// Phase 3: Now accepts weapon prefab from WeaponDataSO.
-    /// Spawns correct prefab per weapon type.
+    /// Uses item-catalog WeaponData and resolves prefab by weaponPrefabKey.
     /// </summary>
     public class WeaponAnimationPresenter : MonoBehaviour
     {
+        [Serializable]
+        private class PrefabKeyBinding
+        {
+            public string key;
+            public GameObject prefab;
+        }
+
         public static WeaponAnimationPresenter Instance { get; private set; }
 
         [Header("Model")]
@@ -22,6 +29,9 @@ namespace CombatManager.Presenter
 
         [Header("Fallback Prefab (if weapon has no prefab assigned)")]
         [SerializeField] private GameObject fallbackWeaponPrefab;
+
+        [Header("Weapon Prefab Resolver")]
+        [SerializeField] private List<PrefabKeyBinding> weaponPrefabs = new List<PrefabKeyBinding>();
 
         [Header("Position Settings")]
         [SerializeField] private Vector3 anchorOffset = Vector3.zero;
@@ -33,8 +43,7 @@ namespace CombatManager.Presenter
 
         private IWeaponAnimationService service;
 
-        // ✅ NEW: Track current weapon SO
-        private WeaponDataSO currentWeaponData;
+        private WeaponData currentWeaponData;
 
         #region Unity Lifecycle
 
@@ -108,7 +117,7 @@ namespace CombatManager.Presenter
             WeaponEquipPresenter.OnWeaponUnequipped -= OnWeaponUnequipped;
         }
 
-        private void OnWeaponEquipped(WeaponDataSO weaponData)
+        private void OnWeaponEquipped(WeaponData weaponData)
         {
             if (weaponData == null)
             {
@@ -177,19 +186,21 @@ namespace CombatManager.Presenter
             if (centerPoint == null)
                 centerPoint = playerObj.transform;
 
-            // ✅ Use weapon prefab from WeaponDataSO first, fallback to inspector prefab
             GameObject prefabToUse = null;
 
-            if (currentWeaponData != null && currentWeaponData.weaponPrefab != null)
+            if (currentWeaponData != null)
             {
-                prefabToUse = currentWeaponData.weaponPrefab;
-                Debug.Log($"[WeaponAnimationPresenter] Using weapon prefab: {prefabToUse.name} " +
-                          $"for {currentWeaponData.weaponType}");
+                prefabToUse = ResolveWeaponPrefab(currentWeaponData.weaponPrefabKey);
+                if (prefabToUse != null)
+                {
+                    Debug.Log($"[WeaponAnimationPresenter] Using weapon prefab key '{currentWeaponData.weaponPrefabKey}' -> {prefabToUse.name}");
+                }
             }
-            else if (fallbackWeaponPrefab != null)
+
+            if (prefabToUse == null && fallbackWeaponPrefab != null)
             {
                 prefabToUse = fallbackWeaponPrefab;
-                Debug.LogWarning($"[WeaponAnimationPresenter] No weapon prefab in WeaponDataSO, " +
+                Debug.LogWarning($"[WeaponAnimationPresenter] Weapon prefab key unresolved, " +
                                  $"using fallback: {fallbackWeaponPrefab.name}");
             }
             else
@@ -210,6 +221,21 @@ namespace CombatManager.Presenter
 
             Debug.Log("[WeaponAnimationPresenter] Initialized successfully");
             return true;
+        }
+
+        private GameObject ResolveWeaponPrefab(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                return null;
+
+            for (int i = 0; i < weaponPrefabs.Count; i++)
+            {
+                if (string.Equals(weaponPrefabs[i].key, key, StringComparison.OrdinalIgnoreCase))
+                    return weaponPrefabs[i].prefab;
+            }
+
+            Debug.LogWarning($"[WeaponAnimationPresenter] No prefab bound for weapon key '{key}'");
+            return null;
         }
 
         private GameObject FindLocalPlayerEntity()
@@ -276,7 +302,7 @@ namespace CombatManager.Presenter
         public IWeaponAnimationService GetService() => service;
 
         // ✅ NEW
-        public WeaponDataSO GetCurrentWeaponData() => currentWeaponData;
+        public WeaponData GetCurrentWeaponData() => currentWeaponData;
 
         #endregion
     }

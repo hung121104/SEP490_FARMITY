@@ -136,6 +136,33 @@ export class Item {
   @Prop()
   weaponMaterialId?: string;
 
+  @Prop()
+  weaponType?: number;
+
+  @Prop()
+  tier?: number;
+
+  @Prop()
+  attackCooldown?: number;
+
+  @Prop()
+  knockbackForce?: number;
+
+  @Prop()
+  projectileSpeed?: number;
+
+  @Prop()
+  projectileRange?: number;
+
+  @Prop()
+  projectileKnockback?: number;
+
+  @Prop()
+  linkedSkillId?: string;
+
+  @Prop()
+  weaponPrefabKey?: string;
+
   // ── itemType: 7 – Fish ─────────────────────────────────────────────────────
 
   @Prop()

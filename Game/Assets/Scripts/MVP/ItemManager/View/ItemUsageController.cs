@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using CombatManager.Presenter;
 
 public class ItemUsageController : MonoBehaviour
 {
@@ -68,6 +69,17 @@ public class ItemUsageController : MonoBehaviour
     {
         _currentItem = item;
 
+        if (item is WeaponData weapon)
+        {
+            WeaponEquipPresenter.Instance?.EquipWeapon(weapon);
+            return;
+        }
+
+        if (WeaponEquipPresenter.Instance != null && WeaponEquipPresenter.Instance.IsWeaponEquipped())
+        {
+            WeaponEquipPresenter.Instance.UnequipWeapon();
+        }
+
         if (item is ToolData tool)
         {
             string configId = MaterialCatalogService.Instance?.GetMaterial(tool.toolMaterialId)?.materialId;
@@ -136,8 +148,7 @@ public class ItemUsageController : MonoBehaviour
                 break;
 
             case ItemType.Weapon:
-                if (itemUsagePresenter.UseWeapon(item, targetPosition))
-                    presenter.ConsumeCurrentItem(1);
+                itemUsagePresenter.UseWeapon(item, targetPosition);
                 break;
 
             case ItemType.Pollen:

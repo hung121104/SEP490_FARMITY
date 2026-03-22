@@ -4,7 +4,6 @@ using System.Collections;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
-using CombatManager.SO;
 
 namespace CombatManager.Presenter
 {
@@ -44,8 +43,8 @@ namespace CombatManager.Presenter
         private Transform localPlayerTransform;
 
         // ✅ Cache current weapon for GetCooldownPercent()
-        private WeaponDataSO currentWeaponCache;
-
+        private WeaponData currentWeaponCache;
+                    // Projectile stats are fully item-driven from WeaponData
         #region Unity Lifecycle
 
         private void Start()
@@ -214,14 +213,14 @@ namespace CombatManager.Presenter
             service.ExecuteAttack();
 
             // ✅ Cooldown now from weapon, not statsService
-            service.SetAttackCooldown(currentWeapon.attackCooldown);
+            service.SetAttackCooldown(currentWeapon.GetAttackCooldownSafe());
         }
 
         #endregion
 
         #region Melee Attack
 
-        private void ExecuteMeleeAttack(int baseDamage, WeaponDataSO currentWeapon)
+        private void ExecuteMeleeAttack(int baseDamage, WeaponData currentWeapon)
         {
             int comboStep = service.GetCurrentComboStep();
             GameObject vfxPrefab = service.GetVFXPrefab(comboStep);
@@ -291,7 +290,7 @@ namespace CombatManager.Presenter
 
         #region Staff Projectile Attack
 
-        private void ExecuteStaffAttack(int baseDamage, WeaponDataSO currentWeapon)
+        private void ExecuteStaffAttack(int baseDamage, WeaponData currentWeapon)
         {
             if (staffProjectilePrefab == null)
             {
@@ -316,7 +315,7 @@ namespace CombatManager.Presenter
                 Quaternion.identity
             );
 
-            // ✅ All projectile stats now read from WeaponDataSO
+            // Projectile stats are fully item-driven from WeaponData
             ProjectileModel projectileModel = new ProjectileModel
             {
                 direction       = direction,
@@ -363,7 +362,7 @@ namespace CombatManager.Presenter
 
             // ✅ Use weapon cooldown as reference, fallback to statsService
             float cooldownRef = currentWeaponCache != null
-                ? currentWeaponCache.attackCooldown
+                ? currentWeaponCache.GetAttackCooldownSafe()
                 : statsService?.GetCooldownTime() ?? 1f;
 
             return service.GetCooldownPercent(cooldownRef);

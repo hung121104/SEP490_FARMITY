@@ -1,5 +1,4 @@
 using UnityEngine;
-using CombatManager.SO;
 using CombatManager.Model;
 
 namespace CombatManager.Presenter
@@ -21,7 +20,7 @@ namespace CombatManager.Presenter
         #region Events
 
         /// <summary>Fired when a weapon is equipped. Passes the weapon data.</summary>
-        public static event System.Action<WeaponDataSO> OnWeaponEquipped;
+        public static event System.Action<WeaponData> OnWeaponEquipped;
 
         /// <summary>Fired when weapon is unequipped.</summary>
         public static event System.Action OnWeaponUnequipped;
@@ -30,7 +29,7 @@ namespace CombatManager.Presenter
 
         #region Runtime State
 
-        private WeaponDataSO currentWeapon;
+        private WeaponData currentWeapon;
         private bool isWeaponEquipped = false;
 
         #endregion
@@ -60,7 +59,7 @@ namespace CombatManager.Presenter
         /// <summary>
         /// Equip a weapon. Fires OnWeaponEquipped and activates combat mode.
         /// </summary>
-        public void EquipWeapon(WeaponDataSO weaponData)
+        public void EquipWeapon(WeaponData weaponData)
         {
             if (weaponData == null)
             {
@@ -123,7 +122,7 @@ namespace CombatManager.Presenter
 
         #region Public API
 
-        public WeaponDataSO GetCurrentWeapon() => currentWeapon;
+        public WeaponData GetCurrentWeapon() => currentWeapon;
         public bool IsWeaponEquipped() => isWeaponEquipped;
         public WeaponType GetCurrentWeaponType() => currentWeapon?.weaponType ?? WeaponType.None;
 

@@ -1,4 +1,4 @@
-/// <summary>Weapon item data. Replaces WeaponDataSO.</summary>
+/// <summary>Weapon item data used by combat runtime.</summary>
 [System.Serializable]
 public class WeaponData : ItemData
 {
@@ -11,10 +11,48 @@ public class WeaponData : ItemData
     /// </summary>
     public string weaponMaterialId = "";
 
+    // Combat runtime fields (database driven)
+    public CombatManager.Model.WeaponType weaponType = CombatManager.Model.WeaponType.None;
+    public int tier = 1;
+    public float attackCooldown = 0.5f;
+    public float knockbackForce = 5f;
+    public float projectileSpeed = 10f;
+    public float projectileRange = 8f;
+    public float projectileKnockback = 4f;
+    public string linkedSkillId = "";
+    public string weaponPrefabKey = "";
+
     public WeaponData()
     {
         isStackable = false;
         maxStack    = 1;
+    }
+
+    public string weaponName => itemName;
+
+    public bool IsValid()
+    {
+        if (weaponType == CombatManager.Model.WeaponType.None)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(itemName))
+            return false;
+
+        if (string.IsNullOrWhiteSpace(weaponPrefabKey))
+            return false;
+
+        return true;
+    }
+
+    public float GetAttackCooldownSafe()
+    {
+        if (attackCooldown > 0f)
+            return attackCooldown;
+
+        if (attackSpeed > 0.01f)
+            return 1f / attackSpeed;
+
+        return 0.5f;
     }
 }
 

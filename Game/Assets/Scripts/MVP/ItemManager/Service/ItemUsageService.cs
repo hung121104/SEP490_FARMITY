@@ -1,4 +1,5 @@
 using UnityEngine;
+using CombatManager.Presenter;
 
 /// <summary>
 /// Dispatches item usage to the appropriate service based on item type.
@@ -63,6 +64,13 @@ public class ItemUsageService : IItemUsageService
     public bool UseWeapon(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsageService] UseWeapon: " + item.itemID + " at: " + pos);
+        if (item is not WeaponData weapon)
+        {
+            Debug.LogWarning("[ItemUsageService] UseWeapon: item is not WeaponData");
+            return false;
+        }
+
+        WeaponEquipPresenter.Instance?.EquipWeapon(weapon);
         return true;
     }
 

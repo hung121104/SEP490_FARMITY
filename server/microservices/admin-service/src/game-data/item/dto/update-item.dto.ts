@@ -161,6 +161,42 @@ export class UpdateItemDto {
   @IsString()
   weaponMaterialId?: string;
 
+  @IsOptional()
+  @IsInt()
+  weaponType?: number;
+
+  @IsOptional()
+  @IsInt()
+  tier?: number;
+
+  @IsOptional()
+  @IsNumber()
+  attackCooldown?: number;
+
+  @IsOptional()
+  @IsNumber()
+  knockbackForce?: number;
+
+  @IsOptional()
+  @IsNumber()
+  projectileSpeed?: number;
+
+  @IsOptional()
+  @IsNumber()
+  projectileRange?: number;
+
+  @IsOptional()
+  @IsNumber()
+  projectileKnockback?: number;
+
+  @IsOptional()
+  @IsString()
+  linkedSkillId?: string;
+
+  @IsOptional()
+  @IsString()
+  weaponPrefabKey?: string;
+
   // ── Fish (itemType: 7) ─────────────────────────────────────────────────────
 
   @IsOptional()

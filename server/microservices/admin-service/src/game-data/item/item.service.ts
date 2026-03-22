@@ -1,16 +1,20 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Item, ItemDocument } from './item.schema';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { CombatSkill, CombatSkillDocument } from '../combat-skill/combat-skill.schema';
+import { CombatSkillOwnership } from '../combat-skill/combat-skill.enums';
 
 const FERTILIZER_ITEM_TYPE = 14;
+const WEAPON_ITEM_TYPE = 6;
 
 @Injectable()
 export class ItemService {
   constructor(
     @InjectModel(Item.name) private itemModel: Model<ItemDocument>,
+    @InjectModel(CombatSkill.name) private combatSkillModel: Model<CombatSkillDocument>,
   ) {}
 
   async create(createItemDto: CreateItemDto): Promise<Item> {
@@ -18,6 +22,9 @@ export class ItemService {
     if (existing) {
       throw new ConflictException(`Item with itemID "${createItemDto.itemID}" already exists`);
     }
+
+    await this.validateWeaponLinkedSkill(createItemDto.itemType, createItemDto.linkedSkillId);
+
     const item = new this.itemModel(createItemDto);
     return item.save();
   }
@@ -59,10 +66,20 @@ export class ItemService {
   }
 
   async update(itemID: string, dto: UpdateItemDto): Promise<Item> {
+    const existing = await this.itemModel.findOne({ itemID }).exec();
+    if (!existing) throw new NotFoundException(`Item with itemID "${itemID}" not found`);
+
+    const effectiveItemType = dto.itemType !== undefined ? dto.itemType : existing.itemType;
+    const effectiveLinkedSkillId = dto.linkedSkillId !== undefined
+      ? dto.linkedSkillId
+      : existing.linkedSkillId;
+
+    await this.validateWeaponLinkedSkill(effectiveItemType, effectiveLinkedSkillId);
+
     const updated = await this.itemModel
       .findOneAndUpdate({ itemID }, { $set: dto }, { new: true })
       .exec();
-    if (!updated) throw new NotFoundException(`Item with itemID "${itemID}" not found`);
+
     return updated;
   }
 
@@ -169,6 +186,15 @@ export class ItemService {
       critChance: undefined,
       attackSpeed: undefined,
       weaponMaterialId: undefined,
+      weaponType: undefined,
+      tier: undefined,
+      attackCooldown: undefined,
+      knockbackForce: undefined,
+      projectileSpeed: undefined,
+      projectileRange: undefined,
+      projectileKnockback: undefined,
+      linkedSkillId: undefined,
+      weaponPrefabKey: undefined,
       difficulty: undefined,
       fishingSeasons: undefined,
       isLegendary: undefined,
@@ -181,5 +207,28 @@ export class ItemService {
       relatedQuestID: undefined,
       autoConsume: undefined,
     };
+  }
+
+  private async validateWeaponLinkedSkill(
+    itemType: number,
+    linkedSkillId?: string,
+  ): Promise<void> {
+    const normalized = typeof linkedSkillId === 'string' ? linkedSkillId.trim() : '';
+    if (!normalized) return;
+
+    if (itemType !== WEAPON_ITEM_TYPE) {
+      throw new BadRequestException('linkedSkillId is only allowed for Weapon items');
+    }
+
+    const skill = await this.combatSkillModel.findOne({ skillId: normalized }).lean().exec();
+    if (!skill) {
+      throw new BadRequestException(`linkedSkillId '${normalized}' does not exist`);
+    }
+
+    if (skill.ownership !== CombatSkillOwnership.WeaponSkill) {
+      throw new BadRequestException(
+        `linkedSkillId '${normalized}' must reference a WeaponSkill ownership entry`,
+      );
+    }
   }
 }

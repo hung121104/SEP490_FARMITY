@@ -549,9 +549,15 @@ namespace CombatManager.Presenter
             WeaponEquipPresenter.OnWeaponUnequipped -= OnWeaponUnequipped;
         }
 
-        private void OnWeaponEquipped(WeaponDataSO weaponData)
+        private void OnWeaponEquipped(WeaponData weaponData)
         {
             if (weaponSkillSlotView == null) return;
+            if (weaponData == null)
+            {
+                weaponSkillSlotView.SetEmpty();
+                currentWeaponSkillData = null;
+                return;
+            }
 
             if (CombatSkillCatalogService.Instance == null || !CombatSkillCatalogService.Instance.IsReady)
             {

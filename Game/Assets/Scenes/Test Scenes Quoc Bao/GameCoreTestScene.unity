@@ -38596,14 +38596,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 257846ef22fcd5a4a9dcd082e0b9ebfe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  testSwordBronze: {fileID: 11400000, guid: 1718d2e70ac3ebd4ca199f24317af178, type: 2}
-  testSwordIron: {fileID: 11400000, guid: dc66ee77ad37f92479254d4030021530, type: 2}
-  testSpear: {fileID: 11400000, guid: d72050c572a97da4baecdc93fcfc121b, type: 2}
-  testStaff: {fileID: 11400000, guid: f49c64c3bc1bd064ebb2a54aa7b518cb, type: 2}
-  equipSwordBronzeKey: 52
-  equipSwordIronKey: 53
-  equipSpearKey: 54
-  equipStaffKey: 55
   unequipKey: 56
 --- !u!1 &1102945952
 GameObject:
