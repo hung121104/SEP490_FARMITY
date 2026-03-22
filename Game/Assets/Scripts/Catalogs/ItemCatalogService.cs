@@ -90,6 +90,8 @@ public class ItemCatalogService : MonoBehaviour
         }
 
         return result;
+    }
+
     /// <summary>Returns the cached structure interaction Sprite, or null if not available.</summary>
     public Sprite GetCachedStructureInteractionSprite(string itemId)
     {

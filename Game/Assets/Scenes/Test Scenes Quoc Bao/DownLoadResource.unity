@@ -229,7 +229,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   projectilePrefabs:
-  - key: 
+  - key: AirSlash_Projectile
     prefab: {fileID: 2996777577814843754, guid: 0228e8e4e652ae94e83f85676d3f128d, type: 3}
   - key: 
     prefab: {fileID: 2996777577814843754, guid: 361c72b4eb57a1243b47af566d1f9693, type: 3}

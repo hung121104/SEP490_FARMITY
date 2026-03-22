@@ -195,16 +195,19 @@ namespace CombatManager.Presenter
                 }
             }
 
-            if (prefabToUse == null && fallbackWeaponPrefab != null)
+            if (prefabToUse == null)
             {
-                prefabToUse = fallbackWeaponPrefab;
-                Debug.LogWarning($"[WeaponAnimationPresenter] Weapon prefab key unresolved, " +
-                                 $"using fallback: {fallbackWeaponPrefab.name}");
-            }
-            else
-            {
-                Debug.LogError("[WeaponAnimationPresenter] No weapon prefab available!");
-                return false;
+                if (fallbackWeaponPrefab != null)
+                {
+                    prefabToUse = fallbackWeaponPrefab;
+                    Debug.LogWarning($"[WeaponAnimationPresenter] Weapon prefab key unresolved, " +
+                                     $"using fallback: {fallbackWeaponPrefab.name}");
+                }
+                else
+                {
+                    Debug.LogError("[WeaponAnimationPresenter] No weapon prefab available!");
+                    return false;
+                }
             }
 
             service = new WeaponAnimationService(model);
