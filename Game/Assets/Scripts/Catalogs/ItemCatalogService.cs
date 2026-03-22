@@ -70,6 +70,27 @@ public class ItemCatalogService : MonoBehaviour
         return s;
     }
 
+    /// <summary>Returns a copy of all catalog items.</summary>
+    public List<ItemData> GetAllItems()
+    {
+        return new List<ItemData>(_catalog.Values);
+    }
+
+    /// <summary>Returns all catalog items of the requested item type.</summary>
+    public List<ItemData> GetItemsByType(ItemType itemType)
+    {
+        var result = new List<ItemData>();
+        foreach (ItemData item in _catalog.Values)
+        {
+            if (item != null && item.itemType == itemType)
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
+    }
+
     // ── Loading ───────────────────────────────────────────────────────────────
 
     private const int MAX_RETRIES = 3;
