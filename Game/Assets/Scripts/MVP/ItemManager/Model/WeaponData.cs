@@ -20,7 +20,7 @@ public class WeaponData : ItemData
     public float projectileKnockback = 4f;
     public string linkedSkillId = "";
     public string weaponVisualConfigId = "";
-    [System.Obsolete("Deprecated: prefab now resolves by weaponType via WeaponPrefabCatalogService")]
+    [System.Obsolete("Deprecated: prefab now resolves by weaponType via WeaponAnimationPresenter base prefabs")]
     public string weaponPrefabKey = "";
 
     public WeaponData()

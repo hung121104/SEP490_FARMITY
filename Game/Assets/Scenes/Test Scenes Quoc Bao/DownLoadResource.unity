@@ -1061,53 +1061,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 55ca903d8923bb043b2f1f4b27606403, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!1 &936866770
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 936866772}
-  - component: {fileID: 936866771}
-  m_Layer: 0
-  m_Name: WeaponCatalogService
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &936866771
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 936866770}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1f87d69e28826f9429092997121f75d9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  swordPrefab: {fileID: 8171461803801935278, guid: 0dc3195a5b158b944842525bad010852, type: 3}
-  staffPrefab: {fileID: 8171461803801935278, guid: 183fbf716ee7fb4408520214138a1ba1, type: 3}
-  spearPrefab: {fileID: 8171461803801935278, guid: 2349b768c2985ff419154dd4c82109e7, type: 3}
---- !u!4 &936866772
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 936866770}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -165.256, y: 70.060196, z: 31.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &955298697
 GameObject:
   m_ObjectHideFlags: 0
@@ -1630,6 +1583,51 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81893a07d6b661641ab5e18ba4c388c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &1688642604
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1688642606}
+  - component: {fileID: 1688642605}
+  m_Layer: 0
+  m_Name: WeaponCatalogManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1688642605
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1688642604}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d26967ec12019ff45830562bf6a5cb43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  catalogType: weapon
+--- !u!4 &1688642606
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1688642604}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -165.256, y: 70.060196, z: 31.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1799556988
 GameObject:
   m_ObjectHideFlags: 0
@@ -2070,4 +2068,4 @@ SceneRoots:
   - {fileID: 1139218349}
   - {fileID: 266079810}
   - {fileID: 383920721}
-  - {fileID: 936866772}
+  - {fileID: 1688642606}

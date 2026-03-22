@@ -21,6 +21,11 @@ namespace CombatManager.Presenter
         [Header("Fallback Prefab (if weapon has no prefab assigned)")]
         [SerializeField] private GameObject fallbackWeaponPrefab;
 
+        [Header("Base Weapon Prefabs")]
+        [SerializeField] private GameObject swordBasePrefab;
+        [SerializeField] private GameObject staffBasePrefab;
+        [SerializeField] private GameObject spearBasePrefab;
+
         [Header("Position Settings")]
         [SerializeField] private Vector3 anchorOffset = Vector3.zero;
         [SerializeField] private Vector3 gripLocalOffset = Vector3.zero;
@@ -178,16 +183,7 @@ namespace CombatManager.Presenter
 
             if (currentWeaponData != null)
             {
-                WeaponPrefabCatalogService weaponCatalog = WeaponPrefabCatalogService.Instance;
-                if (weaponCatalog == null)
-                {
-                    Debug.LogWarning("[WeaponAnimationPresenter] WeaponPrefabCatalogService not found. " +
-                                     "Add it to the download/bootstrap scene.");
-                }
-                else
-                {
-                    prefabToUse = weaponCatalog.ResolvePrefab(currentWeaponData.weaponType);
-                }
+                prefabToUse = ResolveBaseWeaponPrefab(currentWeaponData.weaponType);
 
                 if (prefabToUse != null)
                 {
@@ -222,6 +218,17 @@ namespace CombatManager.Presenter
 
             Debug.Log("[WeaponAnimationPresenter] Initialized successfully");
             return true;
+        }
+
+        private GameObject ResolveBaseWeaponPrefab(WeaponType weaponType)
+        {
+            return weaponType switch
+            {
+                WeaponType.Sword => swordBasePrefab,
+                WeaponType.Staff => staffBasePrefab,
+                WeaponType.Spear => spearBasePrefab,
+                _ => null,
+            };
         }
 
         private GameObject FindLocalPlayerEntity()
