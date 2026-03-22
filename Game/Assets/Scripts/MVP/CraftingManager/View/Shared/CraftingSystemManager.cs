@@ -233,9 +233,9 @@ public class CraftingSystemManager : MonoBehaviour
     /// <summary>
     /// Open crafting UI
     /// </summary>
-    public void OpenCraftingUI()
+    public void OpenCraftingUI(int stationLevel = 0)
     {
-        craftingPresenter?.OpenCraftingUI();
+        craftingPresenter?.OpenCraftingUI(stationLevel);
         inventoryGameView?.OpenCraftingInventory(craftingMainPanel);
     }
 
@@ -251,9 +251,9 @@ public class CraftingSystemManager : MonoBehaviour
     /// <summary>
     /// Open cooking UI
     /// </summary>
-    public void OpenCookingUI()
+    public void OpenCookingUI(int stationLevel = 0)
     {
-        cookingPresenter?.OpenCookingUI();
+        cookingPresenter?.OpenCookingUI(stationLevel);
         inventoryGameView?.OpenCookingInventory(cookingMainPanel);
     }
 

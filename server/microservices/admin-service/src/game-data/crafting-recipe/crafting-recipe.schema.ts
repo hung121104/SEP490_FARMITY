@@ -38,6 +38,10 @@ export class CraftingRecipe {
   @Prop({ required: true, default: 0 })
   category: number;
 
+  /** Minimum structure tier required: 0=Wood, 1=Bronze, 2=Iron, 3=Gold */
+  @Prop({ required: true, default: 0 })
+  recipeLevel: number;
+
   // ── Result ─────────────────────────────────────────────────────────────────
 
   /** itemID (from ItemCatalog) of the crafted result. */
