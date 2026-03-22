@@ -30,4 +30,4 @@ MonoBehaviour:
   projectileSpeed: 10
   projectileRange: 8
   projectileKnockback: 4
-  linkedSkillId: 
+  linkedSkillId: WeaponSkill_SwordSpecial
