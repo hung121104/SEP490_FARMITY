@@ -73,6 +73,13 @@ public class StructureDataModule : IWorldDataModule
         return chunk.TryGetStructure(wx, wy, out structure);
     }
 
+    public bool UpdateStructureHpAtWorldPosition(Vector3 worldPos, int newHp)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.UpdateStructureHp(wx, wy, newHp);
+    }
+
     public void ClearAll()
     {
         // Only clear structure data, not crops — iterate shared chunks
