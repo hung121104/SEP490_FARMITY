@@ -109,6 +109,26 @@ public class ItemUsageController : MonoBehaviour
                 itemUsagePresenter.UseTool(item, targetPosition);
                 break;
 
+            case ItemType.Fertilizer:
+                void OnFertilizeResult(bool success)
+                {
+                    CropFertilizingView.OnFertilizeResult -= OnFertilizeResult;
+                    Debug.Log($"[ItemUsageController] Fertilizer result: {(success ? "SUCCESS" : "FAILED")}");
+                    if (success)
+                        presenter.ConsumeCurrentItem(1);
+                }
+                CropFertilizingView.OnFertilizeResult += OnFertilizeResult;
+                bool fertilizerEventFired = itemUsagePresenter.UseFertilizer(item, targetPosition);
+                if (!fertilizerEventFired)
+                {
+                    Debug.LogWarning($"[ItemUsageController] Fertilizer event was NOT fired. " +
+                        $"Item runtime type: {item.GetType().Name} (expected FertilizerData). " +
+                        $"Check: 1) Item has itemType=Fertilizer in catalog, " +
+                        $"2) CropFertilizingView exists in scene and is enabled.");
+                    CropFertilizingView.OnFertilizeResult -= OnFertilizeResult;
+                }
+                break;
+
             case ItemType.Consumable:
                 var (consumed, amount) = itemUsagePresenter.UseConsumable(item, targetPosition);
                 if (consumed && amount > 0)

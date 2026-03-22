@@ -1,14 +1,15 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 /// <summary>
 /// Unified chunk data — stores BOTH crop tile data and structure tile data inside
 /// one dictionary per chunk. Each entry (TileSlot) covers a single world position.
 ///
 /// Mutual Exclusion Rules:
-///   - A tile with HasCrop = true cannot have HasStructure = true and vice versa.
-///   - PlantCrop() and PlaceStructure() both enforce this automatically.
+///   - A tile can have only one occupant kind: crop, structure, or resource.
+///   - PlantCrop(), PlaceStructure(), and PlaceResource() enforce this automatically.
 ///   - IsTilled is a ground-state flag shared by both (a tile must be tilled before planting,
 ///     but structures can be placed on any non-occupied tile regardless of tilled state).
 /// </summary>
@@ -20,12 +21,21 @@ public class UnifiedChunkData : BaseChunkData
     [Serializable]
     public struct CropTileData
     {
+        [JsonProperty("plantId")]
         public string PlantId;          // plant identifier (from PlantDataSO.PlantId)
+        [JsonProperty("cropStage")]
         public byte   CropStage;        // current growth stage index
+        [JsonProperty("growthTimer")]
         public float  GrowthTimer;      // seconds accumulated toward next stage
+        [JsonProperty("pollenHarvestCount")]
         public byte   PollenHarvestCount; // pollen collections this flowering stage
+        [JsonProperty("isWatered")]
         public bool   IsWatered;        // watered flag (affects growth speed)
+        [JsonIgnore]
+        public float  WaterDecayTimer;  // in-game minutes accumulated toward water expiry (not saved to server)
+        [JsonProperty("isFertilized")]
         public bool   IsFertilized;     // fertilizer applied (affects growth speed)
+        [JsonProperty("isPollinated")]
         public bool   IsPollinated;     // hybrid already applied, prevents double cross
     }
 
@@ -34,8 +44,16 @@ public class UnifiedChunkData : BaseChunkData
     [Serializable]
     public struct StructureTileData
     {
-        public string StructureId;  // structure identifier (e.g. "fence_wood")
-        public int    PlacedDay;    // in-game day the structure was placed
+        public string StructureId;     // structure identifier (e.g. "fence_wood")
+        public int    CurrentHp;       // remaining hp for destruction logic (ephemeral, not serialized)
+        public byte   StructureLevel;  // upgrade level (1-3), used by chest/furnace for slot count
+    }
+
+    [Serializable]
+    public struct ResourceTileData
+    {
+        public string ResourceId;  // resource identifier (e.g. "oak_tree")
+        public int CurrentHp;      // remaining hp for harvesting logic
     }
 
     // ── Unified tile slot — one per world position ────────────────────────
@@ -56,6 +74,10 @@ public class UnifiedChunkData : BaseChunkData
         // Structure slot
         public bool              HasStructure;
         public StructureTileData Structure;
+
+        // Resource slot
+        public bool             HasResource;
+        public ResourceTileData Resource;
     }
 
     // ── Storage ───────────────────────────────────────────────────────────
@@ -105,7 +127,7 @@ public class UnifiedChunkData : BaseChunkData
         long key = GetKey(worldX, worldY);
         if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.IsTilled) return false;
         slot.IsTilled = false;
-        if (!slot.HasCrop && !slot.HasStructure)
+        if (!slot.HasCrop && !slot.HasStructure && !slot.HasResource)
         {
             tiles.Remove(key);
             // Track this position so BuildPayload can send type="empty" to overwrite
@@ -173,7 +195,7 @@ public class UnifiedChunkData : BaseChunkData
         }
 
         slot.HasCrop = true;
-        slot.Crop    = new CropTileData { PlantId = plantId };
+        slot.Crop    = new CropTileData { PlantId = plantId, IsWatered = slot.Crop.IsWatered, WaterDecayTimer = slot.Crop.WaterDecayTimer };
         tiles[key]   = slot;
         IsDirty      = true;
         return true;
@@ -187,8 +209,11 @@ public class UnifiedChunkData : BaseChunkData
         slot.HasCrop = false;
         slot.Crop    = default;
 
-        if (!slot.IsTilled && !slot.HasStructure)
+        if (!slot.IsTilled && !slot.HasStructure && !slot.HasResource)
+        {
             tiles.Remove(key);
+            PendingUntilledPositions.Add((worldX, worldY));
+        }
         else
             tiles[key] = slot;
 
@@ -276,7 +301,8 @@ public class UnifiedChunkData : BaseChunkData
     {
         long key = GetKey(worldX, worldY);
         if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.IsTilled) return false;
-        slot.Crop.IsWatered = true;
+        slot.Crop.IsWatered       = true;
+        slot.Crop.WaterDecayTimer = 0f;   // reset decay clock whenever freshly watered
         tiles[key] = slot;
         IsDirty    = true;
         return true;
@@ -296,6 +322,25 @@ public class UnifiedChunkData : BaseChunkData
     {
         long key = GetKey(worldX, worldY);
         return tiles.TryGetValue(key, out TileSlot slot) && slot.Crop.IsWatered;
+    }
+
+    public bool AddWaterDecayTime(int worldX, int worldY, float deltaMinutes)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.Crop.IsWatered) return false;
+        slot.Crop.WaterDecayTimer += deltaMinutes;
+        tiles[key] = slot;
+        IsDirty    = true;
+        return true;
+    }
+
+    public bool SetWaterDecayTimer(int worldX, int worldY, float minutes)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileSlot slot)) return false;
+        slot.Crop.WaterDecayTimer = minutes;
+        tiles[key] = slot;
+        return true;
     }
 
     // ── Fertilizer ────────────────────────────────────────────────────────
@@ -389,7 +434,7 @@ public class UnifiedChunkData : BaseChunkData
     /// Fails if a crop is already present (mutual exclusion).
     /// Structures CANNOT be placed on tilled soil.
     /// </summary>
-    public bool PlaceStructure(string structureId, int worldX, int worldY)
+    public bool PlaceStructure(string structureId, int worldX, int worldY, int initialHp = 0, byte structureLevel = 1)
     {
         long key = GetKey(worldX, worldY);
 
@@ -405,13 +450,18 @@ public class UnifiedChunkData : BaseChunkData
                 Debug.LogWarning($"[UnifiedChunkData] Cannot place structure at ({worldX},{worldY}) — crop is there.");
                 return false;
             }
+            if (slot.HasResource)
+            {
+                Debug.LogWarning($"[UnifiedChunkData] Cannot place structure at ({worldX},{worldY}) — resource is there.");
+                return false;
+            }
             if (slot.IsTilled)
             {
                 Debug.LogWarning($"[UnifiedChunkData] Cannot place structure at ({worldX},{worldY}) — tile is tilled.");
                 return false;
             }
             slot.HasStructure = true;
-            slot.Structure    = new StructureTileData { StructureId = structureId };
+            slot.Structure    = new StructureTileData { StructureId = structureId, CurrentHp = initialHp, StructureLevel = structureLevel };
             tiles[key]        = slot;
         }
         else
@@ -421,7 +471,7 @@ public class UnifiedChunkData : BaseChunkData
                 WorldX       = worldX,
                 WorldY       = worldY,
                 HasStructure = true,
-                Structure    = new StructureTileData { StructureId = structureId }
+                Structure    = new StructureTileData { StructureId = structureId, CurrentHp = initialHp, StructureLevel = structureLevel }
             };
         }
 
@@ -435,8 +485,11 @@ public class UnifiedChunkData : BaseChunkData
         if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.HasStructure) return false;
         slot.HasStructure = false;
         slot.Structure    = default;
-        if (!slot.IsTilled && !slot.HasCrop)
+        if (!slot.IsTilled && !slot.HasCrop && !slot.HasResource)
+        {
             tiles.Remove(key);
+            PendingUntilledPositions.Add((worldX, worldY));
+        }
         else
             tiles[key] = slot;
         IsDirty = true;
@@ -477,6 +530,124 @@ public class UnifiedChunkData : BaseChunkData
         return count;
     }
 
+    public bool UpdateStructureHp(int worldX, int worldY, int currentHp)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.HasStructure) return false;
+
+        slot.Structure.CurrentHp = currentHp;
+        tiles[key] = slot;
+        IsDirty = true;
+        return true;
+    }
+
+    public int GetStructureHp(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        if (tiles.TryGetValue(key, out TileSlot slot) && slot.HasStructure)
+        {
+            return slot.Structure.CurrentHp;
+        }
+        return 0;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // RESOURCES
+    // ══════════════════════════════════════════════════════════════════════
+
+    public bool PlaceResource(string resourceId, int currentHp, int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+
+        if (tiles.TryGetValue(key, out TileSlot slot))
+        {
+            if (slot.HasResource || slot.HasCrop || slot.HasStructure)
+                return false;
+
+            slot.HasResource = true;
+            slot.Resource = new ResourceTileData
+            {
+                ResourceId = resourceId,
+                CurrentHp = currentHp,
+            };
+            tiles[key] = slot;
+        }
+        else
+        {
+            tiles[key] = new TileSlot
+            {
+                WorldX = worldX,
+                WorldY = worldY,
+                HasResource = true,
+                Resource = new ResourceTileData
+                {
+                    ResourceId = resourceId,
+                    CurrentHp = currentHp,
+                },
+            };
+        }
+
+        IsDirty = true;
+        return true;
+    }
+
+    public bool RemoveResource(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.HasResource) return false;
+
+        slot.HasResource = false;
+        slot.Resource = default;
+
+        if (!slot.IsTilled && !slot.HasCrop && !slot.HasStructure)
+        {
+            tiles.Remove(key);
+            PendingUntilledPositions.Add((worldX, worldY));
+        }
+        else
+            tiles[key] = slot;
+
+        IsDirty = true;
+        return true;
+    }
+
+    public bool HasResource(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        return tiles.TryGetValue(key, out TileSlot slot) && slot.HasResource;
+    }
+
+    public bool TryGetResource(int worldX, int worldY, out ResourceTileData resource)
+    {
+        long key = GetKey(worldX, worldY);
+        if (tiles.TryGetValue(key, out TileSlot slot) && slot.HasResource)
+        {
+            resource = slot.Resource;
+            return true;
+        }
+        resource = default;
+        return false;
+    }
+
+    public int GetResourceCount()
+    {
+        int count = 0;
+        foreach (var slot in tiles.Values)
+            if (slot.HasResource) count++;
+        return count;
+    }
+
+    public bool UpdateResourceHp(int worldX, int worldY, int currentHp)
+    {
+        long key = GetKey(worldX, worldY);
+        if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.HasResource) return false;
+
+        slot.Resource.CurrentHp = currentHp;
+        tiles[key] = slot;
+        IsDirty = true;
+        return true;
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     // SERIALIZATION  (BaseChunkData abstract implementation)
     // Format:
@@ -484,8 +655,9 @@ public class UnifiedChunkData : BaseChunkData
     //   Per slot: WorldX(4) WorldY(4) flags(1)
     //             [if HasCrop]       PlantIdLen(1) PlantId(N) CropStage(1) GrowthTimer(4)
     //                                PollenCount(1) IsWatered(1) IsFertilized(1) IsPollinated(1)
-    //             [if HasStructure]  StructIdLen(1) StructId(N) PlacedDay(4)
-    // flags byte: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure
+    //             [if HasStructure]  StructIdLen(1) StructId(N) CurrentHp(4) StructureLevel(1)
+    //             [if HasResource]   ResourceIdLen(1) ResourceId(N) CurrentHp(4)
+    // flags byte: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure, bit3=HasResource
     // ══════════════════════════════════════════════════════════════════════
 
     public override byte[] ToBytes()
@@ -505,6 +677,7 @@ public class UnifiedChunkData : BaseChunkData
             if (slot.IsTilled)      flags |= 1;
             if (slot.HasCrop)       flags |= 2;
             if (slot.HasStructure)  flags |= 4;
+            if (slot.HasResource)   flags |= 8;
             bytes.Add(flags);
 
             if (slot.HasCrop)
@@ -518,6 +691,7 @@ public class UnifiedChunkData : BaseChunkData
                 bytes.AddRange(BitConverter.GetBytes(slot.Crop.GrowthTimer));
                 bytes.Add(slot.Crop.PollenHarvestCount);
                 bytes.Add((byte)(slot.Crop.IsWatered    ? 1 : 0));
+                bytes.AddRange(BitConverter.GetBytes(slot.Crop.WaterDecayTimer));
                 bytes.Add((byte)(slot.Crop.IsFertilized ? 1 : 0));
                 bytes.Add((byte)(slot.Crop.IsPollinated ? 1 : 0));
             }
@@ -529,7 +703,18 @@ public class UnifiedChunkData : BaseChunkData
                     : System.Text.Encoding.UTF8.GetBytes(slot.Structure.StructureId);
                 bytes.Add((byte)structIdBytes.Length);
                 bytes.AddRange(structIdBytes);
-                bytes.AddRange(BitConverter.GetBytes(slot.Structure.PlacedDay));
+                bytes.AddRange(BitConverter.GetBytes(slot.Structure.CurrentHp));
+                bytes.Add(slot.Structure.StructureLevel);
+            }
+
+            if (slot.HasResource)
+            {
+                byte[] resourceIdBytes = string.IsNullOrEmpty(slot.Resource.ResourceId)
+                    ? Array.Empty<byte>()
+                    : System.Text.Encoding.UTF8.GetBytes(slot.Resource.ResourceId);
+                bytes.Add((byte)resourceIdBytes.Length);
+                bytes.AddRange(resourceIdBytes);
+                bytes.AddRange(BitConverter.GetBytes(slot.Resource.CurrentHp));
             }
         }
 
@@ -562,6 +747,7 @@ public class UnifiedChunkData : BaseChunkData
             slot.IsTilled     = (flags & 1) != 0;
             slot.HasCrop      = (flags & 2) != 0;
             slot.HasStructure = (flags & 4) != 0;
+            slot.HasResource  = (flags & 8) != 0;
 
             if (slot.HasCrop)
             {
@@ -575,6 +761,7 @@ public class UnifiedChunkData : BaseChunkData
                 slot.Crop.GrowthTimer        = BitConverter.ToSingle(data, offset); offset += 4;
                 slot.Crop.PollenHarvestCount = offset < data.Length ? data[offset++] : (byte)0;
                 slot.Crop.IsWatered          = offset < data.Length && data[offset++] == 1;
+                slot.Crop.WaterDecayTimer    = offset + 4 <= data.Length ? BitConverter.ToSingle(data, offset) : 0f; offset += 4;
                 slot.Crop.IsFertilized       = offset < data.Length && data[offset++] == 1;
                 slot.Crop.IsPollinated       = offset < data.Length && data[offset++] == 1;
             }
@@ -586,7 +773,22 @@ public class UnifiedChunkData : BaseChunkData
                     ? System.Text.Encoding.UTF8.GetString(data, offset, structIdLen)
                     : string.Empty;
                 offset += structIdLen;
-                slot.Structure.PlacedDay = offset + 4 <= data.Length
+                slot.Structure.CurrentHp = offset + 4 <= data.Length
+                    ? BitConverter.ToInt32(data, offset) : 0;
+                offset += 4;
+                slot.Structure.StructureLevel = offset < data.Length
+                    ? data[offset++]
+                    : (byte)1;
+            }
+
+            if (slot.HasResource)
+            {
+                int resourceIdLen = offset < data.Length ? data[offset++] : 0;
+                slot.Resource.ResourceId = resourceIdLen > 0
+                    ? System.Text.Encoding.UTF8.GetString(data, offset, resourceIdLen)
+                    : string.Empty;
+                offset += resourceIdLen;
+                slot.Resource.CurrentHp = offset + 4 <= data.Length
                     ? BitConverter.ToInt32(data, offset)
                     : 0;
                 offset += 4;
@@ -609,13 +811,22 @@ public class UnifiedChunkData : BaseChunkData
             {
                 int plantIdLen = string.IsNullOrEmpty(slot.Crop.PlantId)
                     ? 0 : System.Text.Encoding.UTF8.GetByteCount(slot.Crop.PlantId);
-                size += 1 + plantIdLen + 1 + 4 + 1 + 1 + 1 + 1;
+                // PlantIdLen(1) + PlantId(N) + CropStage(1) + GrowthTimer(4)
+                // + PollenCount(1) + IsWatered(1) + WaterDecayTimer(4) + IsFertilized(1) + IsPollinated(1)
+                size += 1 + plantIdLen + 1 + 4 + 1 + 1 + 4 + 1 + 1;
             }
             if (slot.HasStructure)
             {
                 int structIdLen = string.IsNullOrEmpty(slot.Structure.StructureId)
                     ? 0 : System.Text.Encoding.UTF8.GetByteCount(slot.Structure.StructureId);
-                size += 1 + structIdLen + 4;
+                // StructIdLen(1) + StructId(N) + CurrentHp(4) + StructureLevel(1)
+                size += 1 + structIdLen + 4 + 1;
+            }
+            if (slot.HasResource)
+            {
+                int resourceIdLen = string.IsNullOrEmpty(slot.Resource.ResourceId)
+                    ? 0 : System.Text.Encoding.UTF8.GetByteCount(slot.Resource.ResourceId);
+                size += 1 + resourceIdLen + 4;
             }
         }
         return size;

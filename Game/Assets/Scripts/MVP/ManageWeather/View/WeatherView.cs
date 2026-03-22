@@ -4,7 +4,13 @@ using ExitGames.Client.Photon;
 
 public class WeatherView : MonoBehaviourPunCallbacks
 {
-  
+    /// <summary>Fired once when weather transitions to Rain.</summary>
+    public static event System.Action OnRainStarted;
+    /// <summary>Fired once when weather transitions away from Rain.</summary>
+    public static event System.Action OnRainStopped;
+    /// <summary>True while the current weather is Rain.</summary>
+    public static bool IsRaining { get; private set; }
+
     [Header("Weather Settings")]
     [SerializeField] private SeasonManagerView seasonManager;
     [Header("Weather Settings")]
@@ -42,7 +48,36 @@ public class WeatherView : MonoBehaviourPunCallbacks
             seasonManager.OnSeasonChanged += OnSeasonChanged;
         }
 
-        presenter.Initialize(rainChance);
+        if (PhotonNetwork.IsMasterClient)
+            StartCoroutine(WaitForBootstrapperAndInit());
+        else
+        {
+            presenter.Initialize(rainChance);
+            if (timeManager != null)
+                timeManager.OnDayChanged += presenter.OnNewDay;
+            forecastPresenter.Refresh();
+        }
+    }
+
+    private System.Collections.IEnumerator WaitForBootstrapperAndInit()
+    {
+        // Wait for WorldDataBootstrapper to finish loading saved data
+        while (WorldDataBootstrapper.Instance != null && !WorldDataBootstrapper.Instance.IsReady)
+            yield return null;
+
+        var wdm = WorldDataManager.Instance;
+        // If world has been saved before (day > 0), restore weather from save.
+        // day defaults to 0 on schema, game starts with day >= 1 after first save.
+        if (wdm != null && wdm.Day > 0)
+        {
+            presenter.SetRainChance(rainChance);
+            presenter.RestoreFromSave(wdm.WeatherToday, wdm.WeatherTomorrow);
+            Debug.Log($"[WeatherView] Restored weather from save: today={wdm.WeatherToday}, tomorrow={wdm.WeatherTomorrow}");
+        }
+        else
+        {
+            presenter.Initialize(rainChance);
+        }
 
         if (timeManager != null)
             timeManager.OnDayChanged += presenter.OnNewDay;
@@ -60,23 +95,54 @@ public class WeatherView : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        
+        // Re-apply season rain chance now that we're in a room and season is known.
+        if (seasonManager != null)
+            ApplySeasonRainChance(seasonManager.CurrentSeason);
+
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            // Guard against double-subscription if Start() already ran before joining.
+            if (timeManager != null)
+            {
+                timeManager.OnDayChanged -= presenter.OnNewDay;
+                timeManager.OnDayChanged += presenter.OnNewDay;
+            }
+            // Load weather from room props (handles both: Start ran before join, and
+            // join happened before Start ran but master hadn't pushed props yet).
+            presenter.Initialize(rainChance);
+        }
+
         forecastPresenter.Refresh();
     }
 
     public void DisplayWeather(WeatherType weather)
     {
         bool shouldRain = weather == WeatherType.Rain;
+        bool wasRaining = IsRaining;
+        IsRaining = shouldRain;
 
         if (rainManager != null)
             rainManager.SetRainState(shouldRain);
-        Debug.Log("DisplayWeather called: " + weather);
 
+        // Fire transition events
+        if (shouldRain && !wasRaining)
+            OnRainStarted?.Invoke();
+        else if (!shouldRain && wasRaining)
+            OnRainStopped?.Invoke();
+
+        // Keep WorldDataManager in sync for auto-save
+        if (WorldDataManager.Instance != null)
+            WorldDataManager.Instance.SetWeather(
+                (int)presenter.GetTodayWeather(),
+                (int)presenter.GetTomorrowWeather());
+
+        Debug.Log("DisplayWeather called: " + weather);
     }
 
     private void OnDestroy()
     {
         presenter.OnWeatherChanged -= DisplayWeather;
+        IsRaining = false;
     }
     private void OnSeasonChanged(Season newSeason)
     {

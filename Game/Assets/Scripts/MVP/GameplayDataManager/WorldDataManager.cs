@@ -60,6 +60,7 @@ public class WorldDataManager : MonoBehaviour
     private CropDataModule cropModule;
     private StructureDataModule structureModule;
     private InventoryDataModule inventoryModule;
+    private ChestDataModule chestModule;
     
     // Quick lookup: chunkPosition -> sectionId
     private Dictionary<Vector2Int, int> chunkToSectionMap = new Dictionary<Vector2Int, int>();
@@ -85,6 +86,28 @@ public class WorldDataManager : MonoBehaviour
     public int Minute => minute;
     public int Gold   => gold;
 
+    // Weather state
+    [SerializeField] private int weatherToday;
+    [SerializeField] private int weatherTomorrow;
+    public int WeatherToday    => weatherToday;
+    public int WeatherTomorrow => weatherTomorrow;
+
+    public void SetWeather(int today, int tomorrow)
+    {
+        weatherToday    = today;
+        weatherTomorrow = tomorrow;
+    }
+
+    /// <summary>Called by TimeManagerView to keep WDM in sync for auto-save.</summary>
+    public void SetTime(int d, int mo, int y, int h, int mi)
+    {
+        day    = d;
+        month  = mo;
+        year   = y;
+        hour   = h;
+        minute = mi;
+    }
+
     /// <summary>Called by WorldDataBootstrapper to load world time/economy data.</summary>
     public void PopulateWorldMeta(WorldApiResponse data)
     {
@@ -95,7 +118,9 @@ public class WorldDataManager : MonoBehaviour
         hour      = data.hour;
         minute    = data.minute;
         gold      = data.gold;
-        Debug.Log($"[WorldDataManager] World meta loaded: {worldName} | Day {day} | Gold {gold}");
+        weatherToday    = data.weatherToday;
+        weatherTomorrow = data.weatherTomorrow;
+        Debug.Log($"[WorldDataManager] World meta loaded: {worldName} | Day {day} | Gold {gold} | Weather: today={weatherToday} tomorrow={weatherTomorrow}");
     }
 
     /// <summary>
@@ -140,6 +165,20 @@ public class WorldDataManager : MonoBehaviour
                 if (td.type == "tilled" || td.type == "crop")
                 {
                     this.TillTileAtWorldPosition(worldPos);
+
+                    // Restore watered state for tilled-only tiles (crops handle it below)
+                    if (td.type == "tilled" && td.isWatered && CropData != null)
+                    {
+                        var chunkPos  = WorldToChunkCoords(worldPos);
+                        int sectionId = GetSectionIdFromWorldPosition(worldPos);
+                        var chunkData = CropData.GetChunk(sectionId, chunkPos);
+                        if (chunkData != null)
+                        {
+                            chunkData.WaterTile(worldX, worldY);
+                            if (td.waterDecayTimer > 0f)
+                                chunkData.SetWaterDecayTimer(worldX, worldY, td.waterDecayTimer);
+                        }
+                    }
                 }
 
                 // ── Restore crop ──
@@ -163,7 +202,13 @@ public class WorldDataManager : MonoBehaviour
 
                         if (chunkData != null)
                         {
-                            if (td.isWatered)    chunkData.WaterTile(worldX, worldY);
+                            if (td.isWatered)
+                            {
+                                chunkData.WaterTile(worldX, worldY);
+                                // WaterTile resets the timer to 0 — restore the saved value
+                                if (td.waterDecayTimer > 0f)
+                                    chunkData.SetWaterDecayTimer(worldX, worldY, td.waterDecayTimer);
+                            }
                             if (td.isFertilized)  chunkData.FertilizeTile(worldX, worldY);
                             if (td.isPollinated)  chunkData.SetPollinated(worldX, worldY, true);
 
@@ -176,7 +221,19 @@ public class WorldDataManager : MonoBehaviour
                     }
                 }
 
-                // —— Restore structure ——
+                // ── Restore resource ──
+                if (td.type == "resource" && !string.IsNullOrEmpty(td.resourceId))
+                {
+                    int sectionId = GetSectionIdFromWorldPosition(worldPos);
+                    var chunkPos = WorldToChunkCoords(worldPos);
+                    var chunkData = CropData?.GetChunk(sectionId, chunkPos);
+                    if (chunkData != null)
+                    {
+                        int hp = td.currentHp > 0 ? td.currentHp : 1;
+                        chunkData.PlaceResource(td.resourceId, hp, worldX, worldY);
+                    }
+                }
+
                 tilesApplied++;
             }
         }
@@ -190,6 +247,7 @@ public class WorldDataManager : MonoBehaviour
     public CropDataModule      CropData      => cropModule;
     public StructureDataModule StructureData => structureModule;
     public InventoryDataModule InventoryData => inventoryModule;
+    public ChestDataModule     ChestData     => chestModule;
     
     private void Awake()
     {
@@ -274,6 +332,11 @@ public class WorldDataManager : MonoBehaviour
         inventoryModule = new InventoryDataModule();
         inventoryModule.Initialize(this);
         modules[inventoryModule.ModuleName] = inventoryModule;
+
+        // Chest Module
+        chestModule = new ChestDataModule();
+        chestModule.Initialize(this);
+        modules[chestModule.ModuleName] = chestModule;
     }
     
     #region Core Coordinate Utilities

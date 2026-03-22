@@ -262,6 +262,9 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             hour   = wdm?.Hour,
             minute = wdm?.Minute,
             gold   = wdm?.Gold,
+            // Weather state from WorldDataManager
+            weatherToday    = wdm?.WeatherToday,
+            weatherTomorrow = wdm?.WeatherTomorrow,
         };
 
         // ── Characters — read live positions from PlayerEntity GameObjects ──
@@ -286,10 +289,13 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             if (appearance != null)
             {
                 var (hair, outfit, hat, tool) = appearance.GetCurrentAppearance();
-                charUpdate.hairConfigId   = string.IsNullOrEmpty(hair)   ? null : hair;
-                charUpdate.outfitConfigId = string.IsNullOrEmpty(outfit) ? null : outfit;
-                charUpdate.hatConfigId    = string.IsNullOrEmpty(hat)    ? null : hat;
-                charUpdate.toolConfigId   = string.IsNullOrEmpty(tool)   ? null : tool;
+                // Send empty string (not null) so the server clears the field when the
+                // player removes an outfit. NullValueHandling.Include on the DTO ensures
+                // empty strings are serialised and the server always receives the update.
+                charUpdate.hairConfigId   = hair   ?? string.Empty;
+                charUpdate.outfitConfigId = outfit ?? string.Empty;
+                charUpdate.hatConfigId    = hat    ?? string.Empty;
+                charUpdate.toolConfigId   = tool   ?? string.Empty;
             }
 
             characters.Add(charUpdate);
@@ -311,7 +317,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
                 foreach (var slot in chunkData.GetAllTiles())
                 {
-                    if (!slot.IsTilled && !slot.HasCrop) continue;  // skip empty slots
+                    if (!slot.IsTilled && !slot.HasCrop && !slot.HasResource) continue;  // skip empty slots
 
                     // localIndex = localX + localY * 30
                     int localX     = slot.WorldX - chunkX * 30;
@@ -322,18 +328,30 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
                     if (slot.HasCrop)
                     {
-                        td.type               = "crop";
-                        td.plantId            = slot.Crop.PlantId;
-                        td.cropStage          = slot.Crop.CropStage;
-                        td.growthTimer        = slot.Crop.GrowthTimer;
-                        td.pollenHarvestCount = slot.Crop.PollenHarvestCount;
-                        td.isWatered          = slot.Crop.IsWatered;
-                        td.isFertilized       = slot.Crop.IsFertilized;
-                        td.isPollinated       = slot.Crop.IsPollinated;
+                        td.type = "crop";
+                        // Auto-map all CropTileData public fields. WaterDecayTimer is
+                        // excluded via [JsonIgnore] on the struct — no manual updates needed
+                        // when fields are added to CropTileData in the future.
+                        var cropFields = Newtonsoft.Json.Linq.JObject.FromObject(slot.Crop);
+                        td._extra = cropFields.ToObject<Dictionary<string, Newtonsoft.Json.Linq.JToken>>();
                     }
-                    else  // tilled only
+                    else if (slot.HasResource)
+                    {
+                        td.type = "resource";
+                        td._extra = new Dictionary<string, Newtonsoft.Json.Linq.JToken>
+                        {
+                            ["resourceId"] = slot.Resource.ResourceId,
+                            ["currentHp"] = slot.Resource.CurrentHp,
+                        };
+                    }
+                    else  // tilled only — still need to persist watered state
                     {
                         td.type = "tilled";
+                        if (slot.Crop.IsWatered)
+                        {
+                            var tilledFields = Newtonsoft.Json.Linq.JObject.FromObject(slot.Crop);
+                            td._extra = tilledFields.ToObject<Dictionary<string, Newtonsoft.Json.Linq.JToken>>();
+                        }
                     }
 
                     tileDict[localIndex.ToString()] = td;

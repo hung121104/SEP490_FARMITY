@@ -23,8 +23,13 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     
     // Cached references
     private ChunkLoadingManager chunkLoadingManager;
-    
+
     // Photon event codes
+    private const byte STRUCTURE_PLACED_EVENT = 90;
+    private const byte STRUCTURE_REMOVED_EVENT = 91;
+    private const byte STRUCTURE_HP_UPDATED_EVENT = 92;
+    private const byte STRUCTURE_HIT_REQUEST_EVENT = 93;
+    private const byte STRUCTURE_HIT_EFFECT_EVENT = 94;
     private const byte REQUEST_WORLD_SYNC_EVENT = 110;
     private const byte WORLD_SYNC_BATCH_EVENT = 111;
     private const byte WORLD_SYNC_COMPLETE_EVENT = 112;
@@ -35,8 +40,20 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private const byte TILE_UNTILLED_EVENT = 117;
     private const byte POLLEN_HARVESTED_EVENT  = 118;
     private const byte CROP_CROSSBRED_EVENT     = 119;
-    private const byte STRUCTURE_PLACED_EVENT  = 90;
-    private const byte STRUCTURE_REMOVED_EVENT = 91;
+    private const byte TILE_WATERED_EVENT      = 120;
+    private const byte TILE_UNWATERED_EVENT    = 121;
+    private const byte RESOURCE_HP_UPDATED_EVENT = 122;
+    private const byte RESOURCE_REMOVED_EVENT    = 123;
+    private const byte RESOURCE_SPAWNED_EVENT    = 124;
+    private const byte TILE_FERTILIZED_EVENT     = 125;
+    
+    // Static events for Structure Destruction System
+    public static event Action<int, int, int> OnResourceHpUpdated;
+    public static event Action<int, int>      OnResourceRemoved;
+    public static event Action<int, int, string> OnResourceSpawned;
+    public static event Action<int, int, int, string> OnStructureHitRequest; // worldX, worldY, damage, playerActorId
+    public static event Action<int, int, int> OnStructureHpUpdated;
+    public static event Action<int, int, string> OnStructureRemoved; // worldX, worldY, lastHitPlayerId
     
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
@@ -178,6 +195,43 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             case STRUCTURE_REMOVED_EVENT:
                 HandleStructureRemoved(photonEvent.CustomData);
                 break;
+
+            case TILE_WATERED_EVENT:
+                HandleTileWatered(photonEvent.CustomData);
+                break;
+
+            case TILE_UNWATERED_EVENT:
+                HandleTileUnwatered(photonEvent.CustomData);
+                break;
+
+            case TILE_FERTILIZED_EVENT:
+                HandleTileFertilized(photonEvent.CustomData);
+                break;
+
+            case RESOURCE_HP_UPDATED_EVENT:
+                HandleResourceHpUpdated(photonEvent.CustomData);
+                break;
+
+            case RESOURCE_REMOVED_EVENT:
+                HandleResourceRemoved(photonEvent.CustomData);
+                break;
+
+            case RESOURCE_SPAWNED_EVENT:
+                HandleResourceSpawned(photonEvent.CustomData);
+                break;
+
+            case STRUCTURE_HP_UPDATED_EVENT:
+                HandleStructureHpUpdated(photonEvent.CustomData);
+                break;
+
+            case STRUCTURE_HIT_REQUEST_EVENT:
+                if (PhotonNetwork.IsMasterClient)
+                    HandleStructureHitRequest(photonEvent.CustomData);
+                break;
+
+            case STRUCTURE_HIT_EFFECT_EVENT:
+                HandleStructureHitEffect(photonEvent.CustomData);
+                break;
         }
     }
     
@@ -222,7 +276,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             foreach (var chunkPair in section)
             {
                 UnifiedChunkData chunk = chunkPair.Value;
-                if (chunk.GetCropCount() == 0 && chunk.GetTilledCount() == 0 && chunk.GetStructureCount() == 0) continue; // Skip truly empty chunks
+                if (chunk.GetCropCount() == 0 && chunk.GetTilledCount() == 0 && chunk.GetStructureCount() == 0 && chunk.GetResourceCount() == 0) continue; // Skip truly empty chunks
 
                 var allSlots = chunk.GetAllTiles();
                 var entries  = new SyncTileEntry[allSlots.Count];
@@ -237,7 +291,14 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         HasCrop      = slot.HasCrop,
                         Crop         = slot.Crop,
                         HasStructure = slot.HasStructure,
-                        StructureId  = slot.HasStructure ? slot.Structure.StructureId : null
+                        StructureId    = slot.HasStructure ? slot.Structure.StructureId : null,
+                        StructureHp    = slot.HasStructure ? slot.Structure.CurrentHp : 0,
+                        StructureLevel = slot.HasStructure ? slot.Structure.StructureLevel : (byte)1,
+                        HasResource  = slot.HasResource,
+                        ResourceId   = slot.HasResource ? slot.Resource.ResourceId : null,
+                        ResourceHp   = slot.HasResource ? (byte)slot.Resource.CurrentHp : (byte)0,
+                        IsWatered    = slot.IsTilled && slot.Crop.IsWatered,
+                        IsFertilized = slot.HasCrop && slot.Crop.IsFertilized
                     };
                 }
                 ChunkSyncData syncData = new ChunkSyncData
@@ -334,13 +395,16 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 continue;
             }
             
-            // Clear existing data and load synced tiles (tilled, crops, and structures)
+            // Clear existing data and load synced tiles (tilled, crops, resources, and structures)
             chunk.Clear();
 
             foreach (var entry in chunkData.Tiles)
             {
                 if (entry.IsTilled)
                     chunk.TillTile(entry.WorldX, entry.WorldY);
+                
+                if (entry.IsWatered)
+                    chunk.WaterTile(entry.WorldX, entry.WorldY);
 
                 if (entry.HasCrop)
                 {
@@ -350,21 +414,38 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     // Restore pollen count (UpdateCropStage resets it, so do this after)
                     for (byte p = 0; p < entry.Crop.PollenHarvestCount; p++)
                         chunk.IncrementPollenHarvestCount(entry.WorldX, entry.WorldY);
+
+                    // Restore fertilized state
+                    if (entry.IsFertilized)
+                        chunk.FertilizeTile(entry.WorldX, entry.WorldY);
                 }
 
-                // Restore structure data
+                // Restore structure data with HP for multiplayer damage tracking
                 if (entry.HasStructure && !string.IsNullOrEmpty(entry.StructureId))
                 {
-                    chunk.PlaceStructure(entry.StructureId, entry.WorldX, entry.WorldY);
+                    chunk.PlaceStructure(entry.StructureId, entry.WorldX, entry.WorldY, entry.StructureHp, entry.StructureLevel);
+                }
+
+                // Restore resource data
+                if (entry.HasResource && !string.IsNullOrEmpty(entry.ResourceId))
+                {
+                    chunk.PlaceResource(entry.ResourceId, entry.ResourceHp > 0 ? entry.ResourceHp : 1, entry.WorldX, entry.WorldY);
                 }
             }
 
             // Ensure visuals are spawned for this chunk on the client
             if (chunkLoadingManager != null)
             {
-                chunkLoadingManager.EnsureChunkLoaded(chunkPos);
-                // Refresh visuals to apply tilled tiles, crops, and structures
-                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+                if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+                {
+                    // Chunk already loaded — data changed, refresh visuals
+                    chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+                }
+                else
+                {
+                    // Chunk not loaded — load + spawn visuals (includes fresh data)
+                    chunkLoadingManager.EnsureChunkLoaded(chunkPos);
+                }
             }
         }
         
@@ -596,6 +677,11 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.TillTileAtWorldPosition(worldPos);
+        
+        if (WeatherView.IsRaining)
+        {
+            WorldDataManager.Instance.WaterTileAtWorldPosition(worldPos);
+        }
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received tile tilled at ({worldX}, {worldY})");
@@ -721,11 +807,11 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     /// <summary>
     /// Broadcast structure placed event to all other players.
     /// </summary>
-    public void BroadcastStructurePlaced(int worldX, int worldY, string structureId)
+    public void BroadcastStructurePlaced(int worldX, int worldY, string structureId, byte structureLevel = 1)
     {
         if (!PhotonNetwork.IsConnected) return;
 
-        object[] data = new object[] { worldX, worldY, structureId };
+        object[] data = new object[] { worldX, worldY, structureId, (int)structureLevel };
 
         RaiseEventOptions options = new RaiseEventOptions
         {
@@ -751,12 +837,24 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         int worldX         = (int)dataArray[0];
         int worldY         = (int)dataArray[1];
         string structureId = (string)dataArray[2];
+        byte structureLevel = dataArray.Length > 3 ? (byte)(int)dataArray[3] : (byte)1;
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        WorldDataManager.Instance.PlaceStructureAtWorldPosition(worldPos, structureId);
+
+        // Get MaxHealth from StructurePool for initial HP
+        int initialHp = 3; // default
+        StructurePool pool = FindAnyObjectByType<StructurePool>();
+        if (pool != null)
+        {
+            StructureData structData = pool.GetStructureData(structureId);
+            if (structData != null)
+                initialHp = structData.MaxHealth;
+        }
+
+        WorldDataManager.Instance.PlaceStructureAtWorldPosition(worldPos, structureId, initialHp, structureLevel);
 
         if (showDebugLogs)
-            Debug.Log($"[ChunkSync] Received structure placed: '{structureId}' at ({worldX},{worldY})");
+            Debug.Log($"[ChunkSync] Received structure placed: '{structureId}' at ({worldX},{worldY}) HP={initialHp} level={structureLevel}");
 
         if (chunkLoadingManager != null)
         {
@@ -768,12 +866,28 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Broadcast structure removed event to all other players.
+    /// Include lastHitPlayerId for item drop when removed due to HP=0.
     /// </summary>
-    public void BroadcastStructureRemoved(int worldX, int worldY)
+    public void BroadcastStructureRemoved(int worldX, int worldY, string lastHitPlayerId = null)
     {
+        // Fire locally so the initiating player (Master) destroys the visual immediately
+        OnStructureRemoved?.Invoke(worldX, worldY, lastHitPlayerId ?? string.Empty);
+
+        // Master: refresh chunk visuals immediately so structure disappears right away
+        if (PhotonNetwork.IsMasterClient && chunkLoadingManager != null)
+        {
+            Vector3 worldPos = new Vector3(worldX, worldY, 0);
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+        }
+
         if (!PhotonNetwork.IsConnected) return;
 
-        object[] data = new object[] { worldX, worldY };
+        // Include last hitter info if provided (for destruction sync)
+        object[] data = lastHitPlayerId != null 
+            ? new object[] { worldX, worldY, lastHitPlayerId }
+            : new object[] { worldX, worldY };
 
         RaiseEventOptions options = new RaiseEventOptions
         {
@@ -790,7 +904,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         MarkDirty(worldX, worldY);
 
         if (showDebugLogs)
-            Debug.Log($"[ChunkSync] BroadcastStructureRemoved at ({worldX},{worldY})");
+            Debug.Log($"[ChunkSync] BroadcastStructureRemoved at ({worldX},{worldY})" + 
+                      (lastHitPlayerId != null ? $" by player {lastHitPlayerId}" : ""));
     }
 
     private void HandleStructureRemoved(object data)
@@ -798,18 +913,221 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         object[] dataArray = (object[])data;
         int worldX = (int)dataArray[0];
         int worldY = (int)dataArray[1];
+        
+        // Optional: last hitter info for item drop
+        string lastHitPlayerId = dataArray.Length > 2 ? (string)dataArray[2] : null;
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
 
-        // Despawn the visual GameObject before removing data
-        DespawnStructureVisual(worldPos);
+        // Get structure data BEFORE removing (for item drop)
+        string structureId = null;
+        UnifiedChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(worldPos);
+        if (chunk != null && chunk.TryGetStructure(worldX, worldY, out var structureData))
+        {
+            structureId = structureData.StructureId;
+        }
 
         WorldDataManager.Instance.RemoveStructureAtWorldPosition(worldPos);
 
         if (showDebugLogs)
-            Debug.Log($"[ChunkSync] Received structure removed at ({worldX},{worldY})");
+            Debug.Log($"[ChunkSync] Received structure removed at ({worldX},{worldY})" +
+                      (lastHitPlayerId != null ? $" by player {lastHitPlayerId}" : ""));
 
-        // Refresh chunk visuals
+        // Drop chest contents to last hitter before unregistering chest
+        StructureDestructionService.ProcessChestContentsDrop(worldX, worldY, lastHitPlayerId);
+
+        // Handle structure item drop for last hitter
+        StructureDestructionService.ProcessStructureItemDrop(worldX, worldY, structureId, lastHitPlayerId);
+
+        // Refresh chunk visuals - this will properly release structures back to pool
+        if (chunkLoadingManager != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+                // RefreshChunkVisuals handles structure cleanup
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+        }
+    }
+
+    /// <summary>
+    /// Broadcast structure HP updated event to all other players.
+    /// </summary>
+    public void BroadcastStructureHpUpdated(int worldX, int worldY, int newHp)
+    {
+        // Fire locally so the initiating player sees their own VFX
+        OnStructureHpUpdated?.Invoke(worldX, worldY, newHp);
+
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY, newHp };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            STRUCTURE_HP_UPDATED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] BroadcastStructureHpUpdated at ({worldX},{worldY}) -> {newHp}");
+    }
+
+    private void HandleStructureHpUpdated(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+        int newHp  = (int)dataArray[2];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        
+        // Update HP in WorldDataManager
+        WorldDataManager.Instance.UpdateStructureHpAtWorldPosition(worldPos, newHp);
+
+        // Fire C# event so StructureDestructionView can play hit animation
+        OnStructureHpUpdated?.Invoke(worldX, worldY, newHp);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received Structure HP Updated at ({worldX},{worldY}) -> {newHp}");
+
+        MarkDirty(worldX, worldY);
+    }
+
+    // ── Structure Hit Request System (for race condition prevention) ───────
+
+    /// <summary>
+    /// Non-master: Send hit request to Master for processing.
+    /// Master will calculate damage and broadcast result.
+    /// </summary>
+    public void RequestStructureHit(int worldX, int worldY, int damage, string playerActorId)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+        if (PhotonNetwork.IsMasterClient) return; // Master processes directly
+
+        object[] data = new object[] { worldX, worldY, damage, playerActorId };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.MasterClient
+        };
+
+        PhotonNetwork.RaiseEvent(
+            STRUCTURE_HIT_REQUEST_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] RequestStructureHit at ({worldX},{worldY}) dmg={damage} from player {playerActorId}");
+    }
+
+    /// <summary>
+    /// Master only: Handle hit request from client.
+    /// Fires OnStructureHitRequest event for StructureDestructionService to process.
+    /// </summary>
+    private void HandleStructureHitRequest(object data)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+        int damage = (int)dataArray[2];
+        string playerActorId = (string)dataArray[3];
+
+        // Fire event - StructureDestructionService will handle it
+        OnStructureHitRequest?.Invoke(worldX, worldY, damage, playerActorId);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Master: HandleStructureHitRequest at ({worldX},{worldY}) dmg={damage} from {playerActorId}");
+    }
+
+    /// <summary>
+    /// Broadcast that a player hit a structure (for visual feedback on all clients).
+    /// </summary>
+    public void BroadcastLocalHitEffect(int worldX, int worldY)
+    {
+        // Fire locally for immediate feedback
+        OnStructureHpUpdated?.Invoke(worldX, worldY, -1); // -1 means "hit effect only"
+
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY, PhotonNetwork.LocalPlayer.ActorNumber };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            STRUCTURE_HIT_EFFECT_EVENT,
+            data,
+            options,
+            SendOptions.SendUnreliable // Visual only, can be unreliable
+        );
+    }
+
+    /// <summary>
+    /// Client: Handle hit effect from other player.
+    /// </summary>
+    private void HandleStructureHitEffect(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+        int actorNumber = (int)dataArray[2];
+
+        // Fire event for visual feedback
+        OnStructureHpUpdated?.Invoke(worldX, worldY, -1); // -1 means "hit effect only"
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] HandleStructureHitEffect at ({worldX},{worldY}) from player {actorNumber}");
+    }
+
+    /// <summary>
+    /// Broadcast tile watered event to all other players.
+    /// </summary>
+    public void BroadcastTileWatered(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            TILE_WATERED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleTileWatered(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        WorldDataManager.Instance.WaterTileAtWorldPosition(worldPos);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received tile watered at ({worldX},{worldY})");
+
         if (chunkLoadingManager != null)
         {
             Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
@@ -818,44 +1136,222 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // ── Structure visual helpers ──────────────────────────────────────────
+    /// <summary>
+    /// Broadcast that the water has expired at (worldX, worldY) — MasterClient only.
+    /// </summary>
+    public void BroadcastTileUnwatered(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            TILE_UNWATERED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleTileUnwatered(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        WorldDataManager.Instance.UnwaterTileAtWorldPosition(worldPos);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received tile unwatered (decay) at ({worldX},{worldY})");
+
+        // Remove only the single watered overlay tile — no full chunk re-render needed
+        chunkLoadingManager?.ClearWateredTileAt(worldPos);
+    }
+
+    // ── Fertilizer Broadcasts & Handlers ──────────────────────────────────
 
     /// <summary>
-    /// Despawn the structure visual at worldPos when a remote player removes one.
-    /// Finds the structure GameObject by position and returns it to the pool.
+    /// Broadcast tile fertilized event to all other players.
     /// </summary>
-    private void DespawnStructureVisual(Vector3 worldPos)
+    public void BroadcastTileFertilized(int worldX, int worldY)
     {
-        // Find the structure visual at this position
-        // Structures are named "Structure_<id>" and positioned exactly at world coords
-        int wx = Mathf.FloorToInt(worldPos.x);
-        int wy = Mathf.FloorToInt(worldPos.y);
+        if (!PhotonNetwork.IsConnected) return;
 
-        // Look up the structureId from data BEFORE it's removed
-        string structureId = null;
-        if (WorldDataManager.Instance.TryGetStructureAtWorldPosition(worldPos, out var structData))
-            structureId = structData.StructureId;
+        object[] data = new object[] { worldX, worldY };
 
-        if (string.IsNullOrEmpty(structureId)) return;
-
-        var structurePool = FindAnyObjectByType<StructurePool>();
-        // Search for the GameObject at this position
-        GameObject[] candidates = GameObject.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
-        foreach (var go in candidates)
+        RaiseEventOptions options = new RaiseEventOptions
         {
-            if (go.name.StartsWith($"Structure_{structureId}"))
-            {
-                Vector3 goPos = go.transform.position;
-                if (Mathf.FloorToInt(goPos.x) == wx && Mathf.FloorToInt(goPos.y) == wy)
-                {
-                    if (structurePool != null)
-                        structurePool.Release(structureId, go);
-                    else
-                        Destroy(go);
-                    return;
-                }
-            }
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            TILE_FERTILIZED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleTileFertilized(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        WorldDataManager.Instance.FertilizeTileAtWorldPosition(worldPos);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received tile fertilized at ({worldX},{worldY})");
+
+        if (chunkLoadingManager != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
+            if (chunkLoadingManager.IsChunkLoaded(chunkPos))
+                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
         }
+    }
+
+    // ── Resource Broadcasts & Handlers ────────────────────────────────────
+
+    public void BroadcastResourceHpUpdated(int worldX, int worldY, int newHp)
+    {
+        // Fire locally so the initiating player sees their own VFX
+        OnResourceHpUpdated?.Invoke(worldX, worldY, newHp);
+
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY, newHp };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            RESOURCE_HP_UPDATED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleResourceHpUpdated(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+        int newHp  = (int)dataArray[2];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+        
+        // Ensure WorldDataManager is robust enough to not explode here.
+        WorldDataManager.Instance.UpdateResourceHpAtWorldPosition(worldPos, newHp);
+
+        // Fire C# event so ResourceSpawnerManager can play hit animation
+        OnResourceHpUpdated?.Invoke(worldX, worldY, newHp);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received Resource HP Updated at ({worldX},{worldY}) -> {newHp}");
+
+        MarkDirty(worldX, worldY);
+    }
+
+    public void BroadcastResourceRemoved(int worldX, int worldY)
+    {
+        // Fire locally so the initiating player destroys the visual
+        OnResourceRemoved?.Invoke(worldX, worldY);
+
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            RESOURCE_REMOVED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleResourceRemoved(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+
+        // Remove from local RAM
+        WorldDataManager.Instance.RemoveResourceAtWorldPosition(worldPos);
+
+        // Fire C# event so ResourceSpawnerManager can destroy the visual GameObject
+        OnResourceRemoved?.Invoke(worldX, worldY);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received Resource Removed at ({worldX},{worldY})");
+
+        MarkDirty(worldX, worldY);
+    }
+
+    public void BroadcastResourceSpawned(int worldX, int worldY, string resourceId, int currentHp)
+    {
+        if (!PhotonNetwork.IsConnected) return;
+
+        object[] data = new object[] { worldX, worldY, resourceId, currentHp };
+
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+
+        PhotonNetwork.RaiseEvent(
+            RESOURCE_SPAWNED_EVENT,
+            data,
+            options,
+            SendOptions.SendReliable
+        );
+
+        MarkDirty(worldX, worldY);
+    }
+
+    private void HandleResourceSpawned(object data)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = (int)dataArray[0];
+        int worldY = (int)dataArray[1];
+        string resourceId = (string)dataArray[2];
+        int currentHp = (int)dataArray[3];
+
+        Vector3 worldPos = new Vector3(worldX, worldY, 0);
+
+        // Add to local RAM
+        WorldDataManager.Instance.PlaceResourceAtWorldPosition(worldPos, resourceId, currentHp);
+
+        // Fire C# event so ResourceSpawnerManager can instantiate the visual GameObject
+        OnResourceSpawned?.Invoke(worldX, worldY, resourceId);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Received Resource Spawned at ({worldX},{worldY}) -> {resourceId}");
     }
 
     #region Serialization Helpers
@@ -884,12 +1380,19 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         public UnifiedChunkData.CropTileData Crop;
         public bool   HasStructure;
         public string StructureId;
+        public int    StructureHp;
+        public byte   StructureLevel;
+        public bool   HasResource;
+        public string ResourceId;
+        public byte   ResourceHp;
+        public bool   IsWatered;
+        public bool   IsFertilized;
     }
     
     // Wire format per tile entry:
     //   WorldX(4) WorldY(4) flags(1)
     //   [if HasCrop:      PlantIdLen(1) PlantId(N) Stage(1) GrowthTimer(4) PollenCount(1)]
-    //   [if HasStructure:  StructIdLen(1) StructId(N)]
+    //   [if HasStructure:  StructIdLen(1) StructId(N) StructureHp(4) StructureLevel(1)]
     // flags: bit0=IsTilled, bit1=HasCrop, bit2=HasStructure
     private byte[] SerializeBatch(ChunkSyncData[] batch)
     {
@@ -917,6 +1420,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 if (entry.IsTilled)     flags |= 1;
                 if (entry.HasCrop)      flags |= 2;
                 if (entry.HasStructure) flags |= 4;
+                if (entry.HasResource)  flags |= 8;
+                if (entry.IsWatered)    flags |= 16;
+                if (entry.IsFertilized) flags |= 32;
                 bytes.Add(flags);                                            // 1
 
                 if (entry.HasCrop)
@@ -938,6 +1444,18 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                         : System.Text.Encoding.UTF8.GetBytes(entry.StructureId);
                     bytes.Add((byte)structIdBytes.Length);                   // 1
                     bytes.AddRange(structIdBytes);                           // N
+                    bytes.AddRange(System.BitConverter.GetBytes(entry.StructureHp)); // 4
+                    bytes.Add(entry.StructureLevel);                            // 1
+                }
+
+                if (entry.HasResource)
+                {
+                    byte[] resIdBytes = string.IsNullOrEmpty(entry.ResourceId)
+                        ? System.Array.Empty<byte>()
+                        : System.Text.Encoding.UTF8.GetBytes(entry.ResourceId);
+                    bytes.Add((byte)resIdBytes.Length);
+                    bytes.AddRange(resIdBytes);
+                    bytes.Add(entry.ResourceHp);
                 }
             }
         }
@@ -973,6 +1491,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 entry.IsTilled     = (flags & 1) != 0;
                 entry.HasCrop      = (flags & 2) != 0;
                 entry.HasStructure = (flags & 4) != 0;
+                entry.HasResource  = (flags & 8) != 0;
+                entry.IsWatered    = (flags & 16) != 0;
+                entry.IsFertilized = (flags & 32) != 0;
 
                 if (entry.HasCrop)
                 {
@@ -991,6 +1512,19 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     entry.StructureId = structIdLen > 0
                         ? System.Text.Encoding.UTF8.GetString(data, offset, structIdLen) : string.Empty;
                     offset += structIdLen;
+                    entry.StructureHp = offset + 4 <= data.Length
+                        ? System.BitConverter.ToInt32(data, offset) : 0;
+                    offset += 4;
+                    entry.StructureLevel = offset < data.Length ? data[offset++] : (byte)1;
+                }
+
+                if (entry.HasResource)
+                {
+                    int resIdLen = offset < data.Length ? data[offset++] : 0;
+                    entry.ResourceId = resIdLen > 0
+                        ? System.Text.Encoding.UTF8.GetString(data, offset, resIdLen) : string.Empty;
+                    offset += resIdLen;
+                    entry.ResourceHp = offset < data.Length ? data[offset++] : (byte)0;
                 }
 
                 chunk.Tiles[j] = entry;

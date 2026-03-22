@@ -179,6 +179,8 @@ export class WorldService {
     if (dto.hour !== undefined) worldUpdate.hour = dto.hour;
     if (dto.minute !== undefined) worldUpdate.minute = dto.minute;
     if (dto.gold !== undefined) worldUpdate.gold = dto.gold;
+    if (dto.weatherToday !== undefined) worldUpdate.weatherToday = dto.weatherToday;
+    if (dto.weatherTomorrow !== undefined) worldUpdate.weatherTomorrow = dto.weatherTomorrow;
 
     const updatedWorld = Object.keys(worldUpdate).length > 0
       ? await this.worldModel.findByIdAndUpdate(dto.worldId, { $set: worldUpdate }, { new: true }).exec()
@@ -239,6 +241,8 @@ export class WorldService {
       if (dto.year !== undefined)   worldUpdate.year   = dto.year;
       if (dto.hour !== undefined)   worldUpdate.hour   = dto.hour;
       if (dto.minute !== undefined) worldUpdate.minute = dto.minute;
+      if (dto.weatherToday !== undefined) worldUpdate.weatherToday = dto.weatherToday;
+      if (dto.weatherTomorrow !== undefined) worldUpdate.weatherTomorrow = dto.weatherTomorrow;
 
       if (Object.keys(worldUpdate).length > 0) {
         await this.worldModel.findByIdAndUpdate(
@@ -382,5 +386,86 @@ export class WorldService {
   async getWorldsByOwner(dto: { ownerId: string }): Promise<World[]> {
     const ownerObjId = dto.ownerId ? new Types.ObjectId(dto.ownerId) : undefined;
     return this.worldModel.find({ ownerId: ownerObjId }).exec();
+  }
+
+  async getWorldBlacklist(dto: { worldId: string; requesterId: string; requesterIsAdmin?: boolean }) {
+    if (!dto.worldId) throw new RpcException({ status: 400, message: 'worldId required' });
+    if (!dto.requesterId) throw new RpcException({ status: 400, message: 'requesterId required' });
+
+    const world = await this.worldModel.findById(dto.worldId).exec();
+    if (!world) throw new RpcException({ status: 404, message: 'World not found' });
+
+    return {
+      worldId: world._id.toString(),
+      blacklistedPlayerIds: Array.isArray(world.blacklistedPlayerIds) ? world.blacklistedPlayerIds : [],
+    };
+  }
+
+  async addWorldBlacklistPlayer(dto: { worldId: string; requesterId: string; requesterIsAdmin?: boolean; playerId: string }) {
+    if (!dto.worldId) throw new RpcException({ status: 400, message: 'worldId required' });
+    if (!dto.requesterId) throw new RpcException({ status: 400, message: 'requesterId required' });
+    if (!dto.playerId) throw new RpcException({ status: 400, message: 'playerId required' });
+
+    const world = await this.worldModel.findById(dto.worldId).exec();
+    if (!world) throw new RpcException({ status: 404, message: 'World not found' });
+
+    const isAdmin = !!dto.requesterIsAdmin;
+    const requesterId = dto.requesterId;
+    const isOwner = !!requesterId && world.ownerId?.toString() === requesterId;
+    if (!isOwner && !isAdmin) {
+      throw new RpcException({ status: 401, message: 'Not authorized to manage this world blacklist' });
+    }
+
+    if (dto.playerId === world.ownerId?.toString()) {
+      throw new RpcException({ status: 400, message: 'Owner cannot blacklist self' });
+    }
+
+    const current = Array.isArray(world.blacklistedPlayerIds) ? world.blacklistedPlayerIds : [];
+    const merged = Array.from(new Set([...current, dto.playerId]));
+    const wasAdded = merged.length !== current.length;
+
+    if (wasAdded) {
+      world.blacklistedPlayerIds = merged;
+      await world.save();
+    }
+
+    return {
+      worldId: world._id.toString(),
+      playerId: dto.playerId,
+      added: wasAdded,
+      blacklistedPlayerIds: merged,
+    };
+  }
+
+  async removeWorldBlacklistPlayer(dto: { worldId: string; requesterId: string; requesterIsAdmin?: boolean; playerId: string }) {
+    if (!dto.worldId) throw new RpcException({ status: 400, message: 'worldId required' });
+    if (!dto.requesterId) throw new RpcException({ status: 400, message: 'requesterId required' });
+    if (!dto.playerId) throw new RpcException({ status: 400, message: 'playerId required' });
+
+    const world = await this.worldModel.findById(dto.worldId).exec();
+    if (!world) throw new RpcException({ status: 404, message: 'World not found' });
+
+    const isAdmin = !!dto.requesterIsAdmin;
+    const requesterId = dto.requesterId;
+    const isOwner = !!requesterId && world.ownerId?.toString() === requesterId;
+    if (!isOwner && !isAdmin) {
+      throw new RpcException({ status: 401, message: 'Not authorized to manage this world blacklist' });
+    }
+
+    const current = Array.isArray(world.blacklistedPlayerIds) ? world.blacklistedPlayerIds : [];
+    const filtered = current.filter((id) => id !== dto.playerId);
+    const wasRemoved = filtered.length !== current.length;
+
+    if (wasRemoved) {
+      world.blacklistedPlayerIds = filtered;
+      await world.save();
+    }
+
+    return {
+      worldId: world._id.toString(),
+      playerId: dto.playerId,
+      removed: wasRemoved,
+      blacklistedPlayerIds: filtered,
+    };
   }
 }

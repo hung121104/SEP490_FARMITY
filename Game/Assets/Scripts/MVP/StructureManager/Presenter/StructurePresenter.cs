@@ -1,5 +1,5 @@
 using UnityEngine;
-using System.Collections.Generic;
+using System;
 
 /// <summary>
 /// Presenter for structure placement / removal following the MVP pattern.
@@ -17,13 +17,48 @@ public class StructurePresenter
         this.showDebugLogs = showDebugLogs;
     }
 
+    // ── Data Building (moved from View) ───────────────────────────────────
+
+    /// <summary>
+    /// Builds a StructureData from raw item data.
+    /// The View passes a <paramref name="getPrefab"/> delegate because prefab selection
+    /// is a visual/Inspector concern that belongs to the View layer.
+    /// </summary>
+    public StructureData BuildStructureData(StructureItemData itemData,
+                                            Func<StructureInteractionType, GameObject> getPrefab)
+    {
+        if (itemData == null) return null;
+
+        StructureInteractionType interactionType =
+            (StructureInteractionType)itemData.structureInteractionType;
+
+        GameObject prefab = getPrefab(interactionType);
+        if (prefab == null)
+        {
+            Debug.LogWarning($"[StructurePresenter] No prefab for '{itemData.itemID}'");
+            return null;
+        }
+
+        return new StructureData(itemData, prefab);
+    }
+
+    /// <summary>
+    /// Resolves StructureData for an item ID using the catalog service.
+    /// The View provides the prefab resolver callback.
+    /// </summary>
+    public StructureData GetStructureData(string itemID, Func<StructureInteractionType, GameObject> getPrefab)
+    {
+        var itemData = ItemCatalogService.Instance?.GetItemData(itemID) as StructureItemData;
+        return BuildStructureData(itemData, getPrefab);
+    }
+
     // ── Placement Validation (called every frame during ghost preview) ────
 
     /// <summary>
     /// Returns true if the structure can be placed at <paramref name="anchorWorldPos"/>.
     /// The View uses the result to colour the ghost green/red.
     /// </summary>
-    public bool CanPlace(Vector3 anchorWorldPos, StructureDataSO data)
+    public bool CanPlace(Vector3 anchorWorldPos, StructureData data)
     {
         return structureService.CanPlaceStructure(anchorWorldPos, data);
     }
@@ -33,7 +68,7 @@ public class StructurePresenter
     /// <summary>
     /// Attempts to place the structure. Called by the View when the player clicks.
     /// </summary>
-    public bool HandlePlaceStructure(Vector3 anchorWorldPos, StructureDataSO data)
+    public bool HandlePlaceStructure(Vector3 anchorWorldPos, StructureData data)
     {
         if (data == null) return false;
 
@@ -55,7 +90,7 @@ public class StructurePresenter
     /// <summary>
     /// Attempts to remove the structure. Called by the View when demolish criteria are met.
     /// </summary>
-    public bool HandleRemoveStructure(Vector3 worldPosition, StructureDataSO data)
+    public bool HandleRemoveStructure(Vector3 worldPosition, StructureData data)
     {
         if (data == null) return false;
 
@@ -69,35 +104,4 @@ public class StructurePresenter
 
         return success;
     }
-
-    // ── Network Receive — TEMPORARILY DISABLED for local testing ─────────
-
-    // /// <summary>
-    // /// Called when a remote player places a structure (event from ChunkDataSyncManager).
-    // /// Updates local data and refreshes visuals.
-    // /// </summary>
-    // public void HandleNetworkStructurePlaced(Vector3 worldPosition, string structureId)
-    // {
-    //     WorldDataManager.Instance.PlaceStructureAtWorldPosition(worldPosition, structureId);
-    //
-    //     if (showDebugLogs)
-    //         Debug.Log($"[Network] Structure '{structureId}' placed at ({worldPosition.x:F0},{worldPosition.y:F0})");
-    //
-    //     Vector2Int chunkPos = structureService.WorldToChunkCoords(worldPosition);
-    //     structureService.RefreshChunkVisuals(chunkPos);
-    // }
-
-    // /// <summary>
-    // /// Called when a remote player removes a structure (event from ChunkDataSyncManager).
-    // /// </summary>
-    // public void HandleNetworkStructureRemoved(Vector3 worldPosition)
-    // {
-    //     WorldDataManager.Instance.RemoveStructureAtWorldPosition(worldPosition);
-    //
-    //     if (showDebugLogs)
-    //         Debug.Log($"[Network] Structure removed at ({worldPosition.x:F0},{worldPosition.y:F0})");
-    //
-    //     Vector2Int chunkPos = structureService.WorldToChunkCoords(worldPosition);
-    //     structureService.RefreshChunkVisuals(chunkPos);
-    // }
 }

@@ -17,6 +17,7 @@ import {
   UploadedFile,
   UploadedFiles,
   BadRequestException,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
@@ -44,6 +45,12 @@ import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
+import {
+  UpdateWorldBlacklistDto,
+  WorldBlacklistQueryDto,
+} from './dto/world-blacklist.dto';
+
+const FERTILIZER_ITEM_TYPE = 14;
 
 @Controller()
 export class GatewayController {
@@ -72,6 +79,120 @@ export class GatewayController {
       message = payload.message || payload.error || JSON.stringify(payload);
     }
     return new HttpException(message, status);
+  }
+
+  private async enrichBlacklistResponse(payload: any) {
+    const blacklistedPlayerIds: string[] = Array.isArray(payload?.blacklistedPlayerIds)
+      ? payload.blacklistedPlayerIds.map((id: unknown) => String(id))
+      : [];
+
+    if (blacklistedPlayerIds.length === 0) {
+      return {
+        ...payload,
+        blacklistedPlayers: [],
+      };
+    }
+
+    const uniqueIds = Array.from(new Set(blacklistedPlayerIds));
+    const lookup = await Promise.all(
+      uniqueIds.map(async (accountId) => {
+        try {
+          const account: any = await firstValueFrom(this.authClient.send('find-account', accountId));
+          return { accountId, username: account?.username ?? null };
+        } catch {
+          return { accountId, username: null };
+        }
+      }),
+    );
+
+    const usernameMap = new Map(lookup.map((item) => [item.accountId, item.username]));
+
+    return {
+      ...payload,
+      blacklistedPlayers: blacklistedPlayerIds.map((accountId) => ({
+        accountId,
+        username: usernameMap.get(accountId) ?? null,
+      })),
+    };
+  }
+
+  private parseCrossResults(crossResults: any): any {
+    if (crossResults === undefined) return undefined;
+
+    try {
+      return typeof crossResults === 'string'
+        ? JSON.parse(crossResults)
+        : crossResults;
+    } catch {
+      throw new BadRequestException(
+        'crossResults must be a valid JSON array, e.g. [{"targetPlantId":"plant_corn","resultPlantId":"plant_hybrid_corn"}]',
+      );
+    }
+  }
+
+  private buildCreateItemDto(
+    body: any,
+    iconUrl: string,
+    forcedItemType?: number,
+  ): CreateItemDto {
+    const dto: CreateItemDto = {
+      ...body,
+      iconUrl,
+      itemType: forcedItemType ?? Number(body.itemType),
+      itemCategory: Number(body.itemCategory),
+      maxStack: Number(body.maxStack),
+      basePrice: Number(body.basePrice ?? 0),
+      buyPrice: Number(body.buyPrice ?? 0),
+      isStackable: body.isStackable === 'true' || body.isStackable === true,
+      canBeSold: body.canBeSold !== 'false' && body.canBeSold !== false,
+      canBeBought: body.canBeBought === 'true' || body.canBeBought === true,
+      isQuestItem: body.isQuestItem === 'true' || body.isQuestItem === true,
+      isArtifact: body.isArtifact === 'true' || body.isArtifact === true,
+      isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
+    };
+
+    const crossResults = this.parseCrossResults(body.crossResults);
+    if (crossResults !== undefined) dto.crossResults = crossResults;
+
+    return dto;
+  }
+
+  private buildUpdateItemDto(
+    body: any,
+    iconUrl?: string,
+    forcedItemType?: number,
+  ): UpdateItemDto {
+    const dto: UpdateItemDto = { ...body };
+
+    if (iconUrl) dto.iconUrl = iconUrl;
+    if (forcedItemType !== undefined) dto.itemType = forcedItemType;
+    else if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
+
+    if (body.itemCategory !== undefined)
+      dto.itemCategory = Number(body.itemCategory);
+    if (body.maxStack !== undefined) dto.maxStack = Number(body.maxStack);
+    if (body.basePrice !== undefined) dto.basePrice = Number(body.basePrice);
+    if (body.buyPrice !== undefined) dto.buyPrice = Number(body.buyPrice);
+    if (body.isStackable !== undefined)
+      dto.isStackable =
+        body.isStackable === 'true' || body.isStackable === true;
+    if (body.canBeSold !== undefined)
+      dto.canBeSold = body.canBeSold !== 'false' && body.canBeSold !== false;
+    if (body.canBeBought !== undefined)
+      dto.canBeBought =
+        body.canBeBought === 'true' || body.canBeBought === true;
+    if (body.isQuestItem !== undefined)
+      dto.isQuestItem =
+        body.isQuestItem === 'true' || body.isQuestItem === true;
+    if (body.isArtifact !== undefined)
+      dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
+    if (body.isRareItem !== undefined)
+      dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
+
+    const crossResults = this.parseCrossResults(body.crossResults);
+    if (crossResults !== undefined) dto.crossResults = crossResults;
+
+    return dto;
   }
 
   @Post('player-data/world')
@@ -179,6 +300,74 @@ export class GatewayController {
         message = payload.message || payload.error || JSON.stringify(payload);
       }
       throw new HttpException(message, status);
+    }
+  }
+
+  @Get('player-data/world/blacklist')
+  async getWorldBlacklist(@Query() query: WorldBlacklistQueryDto, @Req() req: Request) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      const response = await firstValueFrom(
+        this.playerDataClient.send('get-world-blacklist', {
+          worldId: query._id,
+          requesterId,
+          requesterIsAdmin,
+        }),
+      );
+      return await this.enrichBlacklistResponse(response);
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('player-data/world/blacklist')
+  async addWorldBlacklistPlayer(
+    @Body() dto: UpdateWorldBlacklistDto,
+    @Req() req: Request,
+  ) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      const response = await firstValueFrom(
+        this.playerDataClient.send('add-world-blacklist-player', {
+          worldId: dto._id,
+          requesterId,
+          requesterIsAdmin,
+          playerId: dto.playerId,
+        }),
+      );
+      return await this.enrichBlacklistResponse(response);
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('player-data/world/blacklist')
+  async removeWorldBlacklistPlayer(
+    @Body() dto: UpdateWorldBlacklistDto,
+    @Req() req: Request,
+  ) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      const response = await firstValueFrom(
+        this.playerDataClient.send('remove-world-blacklist-player', {
+          worldId: dto._id,
+          requesterId,
+          requesterIsAdmin,
+          playerId: dto.playerId,
+        }),
+      );
+      return await this.enrichBlacklistResponse(response);
+    } catch (err) {
+      throw this.rpcError(err);
     }
   }
 
@@ -434,6 +623,126 @@ export class GatewayController {
     }
   }
 
+  // ── Game Data: Resource Configs ─────────────────────────────────────────────
+
+  @Get('game-data/resource-configs/catalog')
+  async getResourceConfigCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-resource-config-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('game-data/resource-configs')
+  @UseInterceptors(
+    FileInterceptor('sprite', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createResourceConfig(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const dto: any = {
+        resourceId: body.resourceId,
+        name: body.name,
+        maxHp: Number(body.maxHp),
+      };
+
+      if (body.requiredToolId) dto.requiredToolId = body.requiredToolId;
+      if (body.resourceType) dto.resourceType = body.resourceType;
+      if (body.spawnWeight !== undefined)
+        dto.spawnWeight = Number(body.spawnWeight);
+
+      if (file) {
+        dto.spriteUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'resource-sprites',
+        );
+      }
+
+      if (body.dropTable) {
+        try {
+          dto.dropTable =
+            typeof body.dropTable === 'string'
+              ? JSON.parse(body.dropTable)
+              : body.dropTable;
+        } catch {
+          throw new BadRequestException('dropTable must be a valid JSON array');
+        }
+      } else {
+        dto.dropTable = [];
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('create-resource-config', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Put('game-data/resource-configs/:resourceId')
+  @UseInterceptors(
+    FileInterceptor('sprite', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateResourceConfig(
+    @Param('resourceId') resourceId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const dto: any = {};
+      if (body.name) dto.name = body.name;
+      if (body.maxHp !== undefined) dto.maxHp = Number(body.maxHp);
+      if (body.requiredToolId !== undefined)
+        dto.requiredToolId = body.requiredToolId;
+      if (body.resourceType !== undefined)
+        dto.resourceType = body.resourceType;
+      if (body.spawnWeight !== undefined)
+        dto.spawnWeight = Number(body.spawnWeight);
+
+      if (file) {
+        dto.spriteUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'resource-sprites',
+        );
+      }
+
+      if (body.dropTable !== undefined) {
+        try {
+          dto.dropTable =
+            typeof body.dropTable === 'string'
+              ? JSON.parse(body.dropTable)
+              : body.dropTable;
+        } catch {
+          throw new BadRequestException('dropTable must be a valid JSON array');
+        }
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('update-resource-config', { resourceId, dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('game-data/resource-configs/:resourceId')
+  async deleteResourceConfig(@Param('resourceId') resourceId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-resource-config', { resourceId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   // ── Game Data: Items ────────────────────────────────────────────────────────
 
   /** POST /game-data/items/create — accepts multipart/form-data with an icon file
@@ -458,36 +767,7 @@ export class GatewayController {
         body.folder || 'item-icons',
       );
 
-      // Parse numeric/boolean fields that arrive as strings from form-data
-      const dto: CreateItemDto = {
-        ...body,
-        iconUrl,
-        itemType: Number(body.itemType),
-        itemCategory: Number(body.itemCategory),
-        maxStack: Number(body.maxStack),
-        basePrice: Number(body.basePrice ?? 0),
-        buyPrice: Number(body.buyPrice ?? 0),
-        isStackable: body.isStackable === 'true' || body.isStackable === true,
-        canBeSold: body.canBeSold !== 'false' && body.canBeSold !== false,
-        canBeBought: body.canBeBought === 'true' || body.canBeBought === true,
-        isQuestItem: body.isQuestItem === 'true' || body.isQuestItem === true,
-        isArtifact: body.isArtifact === 'true' || body.isArtifact === true,
-        isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
-      };
-
-      // crossResults arrives as a JSON string in multipart form-data
-      if (body.crossResults !== undefined) {
-        try {
-          dto.crossResults =
-            typeof body.crossResults === 'string'
-              ? JSON.parse(body.crossResults)
-              : body.crossResults;
-        } catch {
-          throw new BadRequestException(
-            'crossResults must be a valid JSON array, e.g. [{"targetPlantId":"plant_corn","resultPlantId":"plant_hybrid_corn"}]',
-          );
-        }
-      }
+      const dto = this.buildCreateItemDto(body, iconUrl);
 
       return await firstValueFrom(this.adminClient.send('create-item', dto));
     } catch (err) {
@@ -552,51 +832,15 @@ export class GatewayController {
     @Body() body: any,
   ) {
     try {
-      const dto: UpdateItemDto = { ...body };
-
-      // If a new icon was uploaded, replace the iconUrl
+      let iconUrl: string | undefined;
       if (file) {
-        dto.iconUrl = await this.cloudinaryService.uploadFile(
+        iconUrl = await this.cloudinaryService.uploadFile(
           file,
           body.folder || 'item-icons',
         );
       }
 
-      // Parse numeric / boolean fields that arrive as strings from form-data
-      if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
-      if (body.itemCategory !== undefined)
-        dto.itemCategory = Number(body.itemCategory);
-      if (body.maxStack !== undefined) dto.maxStack = Number(body.maxStack);
-      if (body.basePrice !== undefined) dto.basePrice = Number(body.basePrice);
-      if (body.buyPrice !== undefined) dto.buyPrice = Number(body.buyPrice);
-      if (body.isStackable !== undefined)
-        dto.isStackable =
-          body.isStackable === 'true' || body.isStackable === true;
-      if (body.canBeSold !== undefined)
-        dto.canBeSold = body.canBeSold !== 'false' && body.canBeSold !== false;
-      if (body.canBeBought !== undefined)
-        dto.canBeBought =
-          body.canBeBought === 'true' || body.canBeBought === true;
-      if (body.isQuestItem !== undefined)
-        dto.isQuestItem =
-          body.isQuestItem === 'true' || body.isQuestItem === true;
-      if (body.isArtifact !== undefined)
-        dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
-      if (body.isRareItem !== undefined)
-        dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
-
-      if (body.crossResults !== undefined) {
-        try {
-          dto.crossResults =
-            typeof body.crossResults === 'string'
-              ? JSON.parse(body.crossResults)
-              : body.crossResults;
-        } catch {
-          throw new BadRequestException(
-            'crossResults must be a valid JSON array',
-          );
-        }
-      }
+      const dto = this.buildUpdateItemDto(body, iconUrl);
 
       return await firstValueFrom(
         this.adminClient.send('update-item', { itemID, dto }),
@@ -612,6 +856,123 @@ export class GatewayController {
   async deleteItem(@Param('itemID') itemID: string) {
     try {
       return await firstValueFrom(this.adminClient.send('delete-item', itemID));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('game-data/fertilizers/create')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createFertilizer(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'An icon file is required (field name: "icon")',
+      );
+
+    try {
+      const iconUrl = await this.cloudinaryService.uploadFile(
+        file,
+        body.folder || 'item-icons',
+      );
+      const dto = this.buildCreateItemDto(body, iconUrl, FERTILIZER_ITEM_TYPE);
+
+      return await firstValueFrom(
+        this.adminClient.send('create-fertilizer', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/catalog')
+  async getFertilizerCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/all')
+  async getAllFertilizers() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-fertilizers', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/by-item-id/:itemID')
+  async getFertilizerByItemId(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-by-item-id', itemID),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/:id')
+  async getFertilizerById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-by-id', id),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Put('game-data/fertilizers/:itemID')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateFertilizer(
+    @Param('itemID') itemID: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      let iconUrl: string | undefined;
+      if (file) {
+        iconUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'item-icons',
+        );
+      }
+
+      const dto = this.buildUpdateItemDto(
+        body,
+        iconUrl,
+        FERTILIZER_ITEM_TYPE,
+      );
+
+      return await firstValueFrom(
+        this.adminClient.send('update-fertilizer', { itemID, dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('game-data/fertilizers/:itemID')
+  async deleteFertilizer(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-fertilizer', itemID),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1163,7 +1524,7 @@ export class GatewayController {
     if (!accountId) throw new UnauthorizedException('Missing account');
     try {
       return await firstValueFrom(
-        this.playerDataClient.send('get-player-achievements', String(accountId)),
+        this.authClient.send('get-player-achievements', String(accountId)),
       );
     } catch (err) {
       throw this.rpcError(err);
@@ -1180,9 +1541,30 @@ export class GatewayController {
     if (!accountId) throw new UnauthorizedException('Missing account');
     try {
       return await firstValueFrom(
-        this.playerDataClient.send('update-achievement-progress', {
+        this.authClient.send('update-achievement-progress', {
           ...dto,
           accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/achievement/progress/batch — update progress for multiple requirements in one call */
+  @Put('player-data/achievement/progress/batch')
+  async updateAchievementProgressBatch(
+    @Body(new ParseArrayPipe({ items: UpdateAchievementProgressDto }))
+    updates: UpdateAchievementProgressDto[],
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    try {
+      return await firstValueFrom(
+        this.authClient.send('update-achievement-progress-batch', {
+          accountId: String(accountId),
+          updates,
         }),
       );
     } catch (err) {

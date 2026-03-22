@@ -18,13 +18,22 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
    - [Media Gallery](#media-gallery)
 4. [Game Data Management](#game-data-management)
    - [Items Catalog](#items-catalog)
-   - [Plants Catalog](#plants-catalog)
-   - [Crafting Recipes](#crafting-recipes)
-   - [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
-   - [Material Catalog](#material-catalog)
+
+- [Fertilizer Catalog](#fertilizer-catalog)
+- [Plants Catalog](#plants-catalog)
+- [Crafting Recipes](#crafting-recipes)
+- [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
+
+- [Resource Config Catalog](#resource-config-catalog)
+- [Material Catalog](#material-catalog)
+
 5. [Player Data](#player-data)
    - [World Management](#world-management)
+  - [World Blacklist](#world-blacklist)
+  - [Player Achievements](#player-achievements)
    - [Character Management](#character-management)
+
+6. [Achievement Definitions (Admin)](#achievement-definitions-admin)
 
 ---
 
@@ -33,7 +42,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 ### User Authentication
 
 - **POST** `/auth/register`: Register a new user account.
-  - Body: 
+  - Body:
     ```json
     {
       "username": "string",
@@ -50,7 +59,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 
 - **POST** `/auth/login-ingame`: Login for in-game authentication (Photon PUN 2 compatible).
   - Body: `{ "username": "string", "password": "string" }`
-  - Response: 
+  - Response:
     ```json
     {
       "ResultCode": 1,
@@ -66,7 +75,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 ### Admin Authentication
 
 - **POST** `/auth/register-admin`: Register a new admin account.
-  - Body: 
+  - Body:
     ```json
     {
       "username": "string",
@@ -79,7 +88,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 
 - **POST** `/auth/login-admin`: Login as admin for web management.
   - Body: `{ "username": "string", "password": "string" }`
-  - Response: 
+  - Response:
     ```json
     {
       "userId": "string",
@@ -126,7 +135,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Content-Type: `multipart/form-data`
   - Fields:
-    - `background` *(file, required)* — Background image (max 10 MB). Uploaded to Cloudinary folder `game-config` automatically; `currentBackgroundUrl` set from the resulting `secure_url`.
+    - `background` _(file, required)_ — Background image (max 10 MB). Uploaded to Cloudinary folder `game-config` automatically; `currentBackgroundUrl` set from the resulting `secure_url`.
   - Response:
     ```json
     {
@@ -173,10 +182,11 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 #### Upload Flow (with Cloudinary)
 
 **Step 1: Get Upload Signature (admin only)**
+
 - **POST** `/news/upload-signature`
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Body: `{ "folder": "news" }`
-  - Response: 
+  - Response:
     ```json
     {
       "cloudName": "string",
@@ -189,8 +199,9 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Note: Configure Cloudinary credentials in `admin-service/.env` file.
 
 **Step 2: Upload Image to Cloudinary**
+
 - **POST** `https://api.cloudinary.com/v1_1/{cloudName}/image/upload`
-  - Body (form-data): 
+  - Body (form-data):
     ```
     file: (your image file)
     api_key: (from step 1 response)
@@ -232,10 +243,11 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 #### Upload Flow (with Cloudinary)
 
 **Step 1: Get Upload Signature (admin only)**
+
 - **POST** `/media/upload-signature`
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Body: `{ "folder": "media" }`
-  - Response: 
+  - Response:
     ```json
     {
       "cloudName": "string",
@@ -248,8 +260,9 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Note: Configure Cloudinary credentials in `admin-service/.env` file.
 
 **Step 2: Upload Image to Cloudinary**
+
 - **POST** `https://api.cloudinary.com/v1_1/{cloudName}/image/upload`
-  - Body (form-data): 
+  - Body (form-data):
     ```
     file: (your image file)
     api_key: (from step 1 response)
@@ -306,7 +319,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
       "gold": "number (optional, default: 0)"
     }
     ```
-  - Response: 
+  - Response:
     ```json
     {
       "_id": "string",
@@ -355,7 +368,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     }
     ```
   - Response: Updated world document with `characters` array
-  - Note: 
+  - Note:
     - All fields except `worldId` are optional
     - `characters` array is optional and capped at 4 entries
     - Each character is matched by `(worldId, accountId)` and created or updated
@@ -367,6 +380,163 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Response: Deleted world document or `null`
   - Note: Only world owner can delete
 
+### World Blacklist
+
+- **GET** `/player-data/world/blacklist?_id=string`: Get blacklist for a world.
+  - Headers: `Authorization: Bearer <token>`
+  - Query params: `_id` - MongoDB ObjectId string (world ID)
+  - Access: Any authenticated user
+  - Response:
+    ```json
+    {
+      "worldId": "string",
+      "blacklistedPlayerIds": ["string"],
+      "blacklistedPlayers": [
+        {
+          "accountId": "string",
+          "username": "string | null"
+        }
+      ]
+    }
+    ```
+  - Note: `blacklistedPlayerIds` is source-of-truth storage. `blacklistedPlayers` is runtime-enriched for UI display and not persisted.
+
+- **POST** `/player-data/world/blacklist`: Add one player account to a world blacklist.
+  - Headers: `Authorization: Bearer <token>`
+  - Access: World owner or admin
+  - Body:
+    ```json
+    {
+      "_id": "string",
+      "playerId": "string"
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "worldId": "string",
+      "playerId": "string",
+      "added": "boolean",
+      "blacklistedPlayerIds": ["string"],
+      "blacklistedPlayers": [
+        {
+          "accountId": "string",
+          "username": "string | null"
+        }
+      ]
+    }
+    ```
+  - Notes:
+    - Deduplicated: adding an existing ID returns `added: false`
+    - Owner cannot blacklist self
+
+- **DELETE** `/player-data/world/blacklist`: Remove one player account from a world blacklist.
+  - Headers: `Authorization: Bearer <token>`
+  - Access: World owner or admin
+  - Body:
+    ```json
+    {
+      "_id": "string",
+      "playerId": "string"
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "worldId": "string",
+      "playerId": "string",
+      "removed": "boolean",
+      "blacklistedPlayerIds": ["string"],
+      "blacklistedPlayers": [
+        {
+          "accountId": "string",
+          "username": "string | null"
+        }
+      ]
+    }
+    ```
+  - Note: Idempotent: removing a non-existing ID returns `removed: false`
+
+### Player Achievements
+
+- **GET** `/player-data/achievement`: Get all achievement definitions merged with the authenticated player's progress.
+  - Headers: `Authorization: Bearer <token>`
+  - Response: Array of achievement objects:
+    ```json
+    [
+      {
+        "achievementId": "string",
+        "name": "string",
+        "description": "string",
+        "requirements": [
+          {
+            "type": "string",
+            "target": "number",
+            "entityId": "string (optional)",
+            "label": "string"
+          }
+        ],
+        "progress": ["number"],
+        "achievedAt": "string | null",
+        "isAchieved": "boolean"
+      }
+    ]
+    ```
+
+- **PUT** `/player-data/achievement/progress`: Update one requirement progress using absolute value.
+  - Headers: `Authorization: Bearer <token>`
+  - Body:
+    ```json
+    {
+      "achievementId": "string",
+      "requirementIndex": 0,
+      "progress": 10
+    }
+    ```
+  - Notes:
+    - `requirementIndex` is zero-based
+    - Progress is monotonic (stale/lower value is ignored)
+
+- **PUT** `/player-data/achievement/progress/batch`: Update multiple requirement progress values in one call.
+  - Headers: `Authorization: Bearer <token>`
+  - Body:
+    ```json
+    [
+      {
+        "achievementId": "string",
+        "requirementIndex": 0,
+        "progress": 10
+      }
+    ]
+    ```
+  - Response:
+    ```json
+    {
+      "summary": {
+        "total": "number",
+        "updated": "number",
+        "noop": "number",
+        "failed": "number"
+      },
+      "results": [
+        {
+          "index": "number",
+          "achievementId": "string",
+          "requirementIndex": "number",
+          "submittedProgress": "number",
+          "status": "updated | noop | failed",
+          "message": "string (optional)",
+          "achievement": "object (optional)"
+        }
+      ],
+      "updatedAchievements": ["object"]
+    }
+    ```
+  - Notes:
+    - Idempotent/retry-safe
+    - Per-item partial failure reporting
+    - Stale/lower values return `noop`
+
 ---
 
 ### Character Management
@@ -376,7 +546,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Path params:
     - `worldId` - MongoDB ObjectId string (ID of the world)
     - `accountId` - MongoDB ObjectId string (ID of player's account)
-  - Response: 
+  - Response:
     ```json
     {
       "worldId": "string",
@@ -386,7 +556,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
       "sectionIndex": "number"
     }
     ```
-  - Note: 
+  - Note:
     - Only world owner can access this endpoint
     - Returns existing character or creates new one with default position (0, 0, 0)
     - Used when a player joins a world owned by another player
@@ -395,7 +565,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 
 ## Game Data Management
 
-> Managed by `admin-service`. These endpoints control the game's item and plant catalogs consumed by Unity clients.
+> Managed by `admin-service`. These endpoints control the game's item, fertilizer, and plant catalogs consumed by Unity clients.
 
 ### Items Catalog
 
@@ -405,7 +575,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Content-Type: `multipart/form-data`
   - Fields:
-    - `icon` *(file, required)* — Item icon image (max 5 MB). Uploaded to Cloudinary internally; `iconUrl` set automatically.
+    - `icon` _(file, required)_ — Item icon image (max 5 MB). Uploaded to Cloudinary internally; `iconUrl` set automatically.
     - All other item fields as form-data text fields (see [Base Fields](#base-fields) and [Item Type Fields](#itemtype-discriminator--extra-fields) tables)
   - Response: Saved item document including `_id` and `iconUrl` (Cloudinary `secure_url`)
   - Note: Returns `409 Conflict` if an item with the same `itemID` already exists
@@ -443,45 +613,115 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 
 Required for ALL item types:
 
-| Field | Type | Description |
-|---|---|---|
-| `itemID` | string | Unique game-side identifier (e.g., `"iron_hoe"`) |
-| `itemName` | string | Display name |
-| `description` | string | Flavour text |
-| `icon` | file | Item sprite (auto-set on upload) |
-| `itemType` | int | Type discriminator (see [Item Type Fields](#itemtype-discriminator--extra-fields)) |
-| `itemCategory` | int | 0=Farming, 1=Mining, 2=Fishing, 3=Cooking, etc. |
-| `maxStack` | int | Maximum stack size (set to 1 for tools/weapons) |
-| `isStackable` | bool | `false` for tools/weapons |
-| `basePrice` | int | Base sell value |
-| `buyPrice` | int | Store buy price (`0` = cannot be bought) |
-| `canBeSold` | bool | Whether item can be sold |
-| `canBeBought` | bool | Whether item can be bought |
-| `isQuestItem` | bool | Quest-related flag |
-| `isArtifact` | bool | Artifact flag |
-| `isRareItem` | bool | Rarity flag |
-| `npcPreferenceNames` | string[] | Optional NPC name list |
-| `npcPreferenceReactions` | int[] | Optional reaction values (-2 to 2, maps 1-to-1 with names) |
+| Field                    | Type     | Description                                                                        |
+| ------------------------ | -------- | ---------------------------------------------------------------------------------- |
+| `itemID`                 | string   | Unique game-side identifier (e.g., `"iron_hoe"`)                                   |
+| `itemName`               | string   | Display name                                                                       |
+| `description`            | string   | Flavour text                                                                       |
+| `icon`                   | file     | Item sprite (auto-set on upload)                                                   |
+| `itemType`               | int      | Type discriminator (see [Item Type Fields](#itemtype-discriminator--extra-fields)) |
+| `itemCategory`           | int      | 0=Farming, 1=Mining, 2=Fishing, 3=Cooking, etc.                                    |
+| `maxStack`               | int      | Maximum stack size (set to 1 for tools/weapons)                                    |
+| `isStackable`            | bool     | `false` for tools/weapons                                                          |
+| `basePrice`              | int      | Base sell value                                                                    |
+| `buyPrice`               | int      | Store buy price (`0` = cannot be bought)                                           |
+| `canBeSold`              | bool     | Whether item can be sold                                                           |
+| `canBeBought`            | bool     | Whether item can be bought                                                         |
+| `isQuestItem`            | bool     | Quest-related flag                                                                 |
+| `isArtifact`             | bool     | Artifact flag                                                                      |
+| `isRareItem`             | bool     | Rarity flag                                                                        |
+| `npcPreferenceNames`     | string[] | Optional NPC name list                                                             |
+| `npcPreferenceReactions` | int[]    | Optional reaction values (-2 to 2, maps 1-to-1 with names)                         |
 
 #### `itemType` Discriminator & Extra Fields
 
 Depending on `itemType`, specific extra fields must be included:
 
-| `itemType` | Name | Required Extra Fields | Type & Notes |
-|---|---|---|---|
-| `0` | Tool | `toolType`<br>`toolLevel`<br>`toolPower`<br>`toolMaterialId` | int: 0=Hoe, 1=WateringCan, 2=Pickaxe, 3=Axe, 4=FishingRod<br>int: Tool level (e.g., 1)<br>int: Tool power (e.g., 1)<br>string: `materialId` of a Material document (e.g., `"mat_copper"`). See [Material Catalog](#material-catalog). |
-| `1` | Seed | `plantId` | string: ID of `PlantData` entry this seed grows (e.g., `"plant_corn"`) |
-| `2` | Crop | *(none)* | |
-| `3` | Pollen | `sourcePlantId`<br>`pollinationSuccessChance`<br>`viabilityDays`<br>`crossResults` | string: `plantId` of the plant that produced this pollen (e.g., `"plant_corn"`)<br>float: Chance of pollination success (e.g., `0.5`)<br>int: Days the pollen remains viable (e.g., `3`)<br>array: Cross-breeding table — `[{ "targetPlantId": "string", "resultPlantId": "string" }]`. Each entry maps a receiver `plantId` to the hybrid `plantId` that spawns when this pollen is applied to it. Consumed by `PollenData.FindResultPlantId()` in the Unity client. |
-| `4` | Consumable | `energyRestore`<br>`healthRestore`<br>`bufferDuration` | int: Stamina restored<br>int: Health restored<br>float: Buff duration |
-| `5` | Material | *(none)* | |
-| `6` | Weapon | `damage`<br>`critChance`<br>`attackSpeed`<br>`weaponMaterialId` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>float: Attack speed (e.g., 1.0)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog). |
-| `7` | Fish | `difficulty`<br>`fishingSeasons`<br>`isLegendary` | int: Difficulty level (e.g., 1)<br>int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>bool: (default `false`) |
-| `8` | Cooking | `energyRestore`<br>`healthRestore`<br>`bufferDuration` | int: Stamina restored<br>int: Health restored<br>float: Buff duration |
-| `9` | Forage | `foragingSeasons`<br>`energyRestore` | int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>int: (default `5`) |
-| `10` | Resource | `isOre`<br>`requiresSmelting`<br>`smeltedResultId` | bool: (default `false`)<br>bool: (default `false`)<br>string: ID of smelt output (default `""`) |
-| `11` | Gift | `isUniversalLike`<br>`isUniversalLove` | bool: (default `false`)<br>bool: (default `false`) |
-| `12` | Quest | `relatedQuestID`<br>`autoConsume` | string: Related quest ID (e.g., `"quest_goblins_01"`)<br>bool: (default `false`) |
+| `itemType` | Name       | Required Extra Fields                                                              | Type & Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------- | ---------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`        | Tool       | `toolType`<br>`toolLevel`<br>`toolPower`<br>`toolMaterialId`                       | int: 0=Hoe, 1=WateringCan, 2=Pickaxe, 3=Axe, 4=FishingRod<br>int: Tool level (e.g., 1)<br>int: Tool power (e.g., 1)<br>string: `materialId` of a Material document (e.g., `"mat_copper"`). See [Material Catalog](#material-catalog).                                                                                                                                                                                                                                 |
+| `1`        | Seed       | `plantId`                                                                          | string: ID of `PlantData` entry this seed grows (e.g., `"plant_corn"`)                                                                                                                                                                                                                                                                                                                                                                                                |
+| `2`        | Crop       | _(none)_                                                                           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `3`        | Pollen     | `sourcePlantId`<br>`pollinationSuccessChance`<br>`viabilityDays`<br>`crossResults` | string: `plantId` of the plant that produced this pollen (e.g., `"plant_corn"`)<br>float: Chance of pollination success (e.g., `0.5`)<br>int: Days the pollen remains viable (e.g., `3`)<br>array: Cross-breeding table — `[{ "targetPlantId": "string", "resultPlantId": "string" }]`. Each entry maps a receiver `plantId` to the hybrid `plantId` that spawns when this pollen is applied to it. Consumed by `PollenData.FindResultPlantId()` in the Unity client. |
+| `4`        | Consumable | `energyRestore`<br>`healthRestore`<br>`bufferDuration`                             | int: Stamina restored<br>int: Health restored<br>float: Buff duration                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `5`        | Material   | _(none)_                                                                           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `6`        | Weapon     | `damage`<br>`critChance`<br>`attackSpeed`<br>`weaponMaterialId`                    | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>float: Attack speed (e.g., 1.0)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).                                                                                                                                                                                                                                                       |
+| `7`        | Fish       | `difficulty`<br>`fishingSeasons`<br>`isLegendary`                                  | int: Difficulty level (e.g., 1)<br>int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                 |
+| `8`        | Cooking    | `energyRestore`<br>`healthRestore`<br>`bufferDuration`                             | int: Stamina restored<br>int: Health restored<br>float: Buff duration                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `9`        | Forage     | `foragingSeasons`<br>`energyRestore`                                               | int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>int: (default `5`)                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `10`       | Resource   | `isOre`<br>`requiresSmelting`<br>`smeltedResultId`                                 | bool: (default `false`)<br>bool: (default `false`)<br>string: ID of smelt output (default `""`)                                                                                                                                                                                                                                                                                                                                                                       |
+| `11`       | Gift       | `isUniversalLike`<br>`isUniversalLove`                                             | bool: (default `false`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `12`       | Quest      | `relatedQuestID`<br>`autoConsume`                                                  | string: Related quest ID (e.g., `"quest_goblins_01"`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                                      |
+| `13`       | Structure  | `structureInteractionType`                                                         | int: 0=Storage, 1=Crafting, 2=Smelting, 3=Fence, 4=Decoration                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `14`       | Fertilizer | _(none)_                                                                           | Stackable fertilizer item consumed on successful crop fertilization                                                                                                                                                                                                                                                                                                                                                                                                   |
+
+---
+
+### Fertilizer Catalog
+
+> Dedicated CRUD facade for fertilizer entries in the item catalog. These routes always persist `itemType = 14` and are intended for stackable fertilizer items used by the crop fertilizing mechanic.
+
+#### HTTP Endpoints
+
+- **POST** `/game-data/fertilizers/create`: Create a new fertilizer definition (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Fields:
+    - `icon` _(file, required)_ — Fertilizer icon image (max 5 MB). Uploaded to Cloudinary internally; `iconUrl` set automatically.
+    - Shared base item fields as form-data text fields: `itemID`, `itemName`, `description`, `itemCategory`, `maxStack`, `isStackable`, `basePrice`, `buyPrice`, `canBeSold`, `canBeBought`, `isQuestItem`, `isArtifact`, `isRareItem`, `npcPreferenceNames`, `npcPreferenceReactions`.
+  - Response: Saved fertilizer document including `_id`, `iconUrl`, and `itemType: 14`
+  - Note: Returns `409 Conflict` if an item with the same `itemID` already exists
+
+- **GET** `/game-data/fertilizers/catalog`: Get the fertilizer catalog in Unity-client format.
+  - Response: `{ "items": [ ...fertilizerObjects ] }`
+
+- **GET** `/game-data/fertilizers/all`: Get flat array of all fertilizer documents.
+  - Response: `[ ...fertilizerObjects ]`
+
+- **GET** `/game-data/fertilizers/by-item-id/:itemID`: Find fertilizer by game-side string ID.
+  - Path param: `itemID` - Snake_case string identifier (e.g., `fertilizer_basic`)
+  - Response: Fertilizer document or `null`
+
+- **GET** `/game-data/fertilizers/:id`: Find fertilizer by MongoDB `_id`.
+  - Path param: `id` - MongoDB ObjectId string
+  - Response: Fertilizer document or `null`
+
+- **PUT** `/game-data/fertilizers/:itemID`: Update an existing fertilizer by game-side `itemID` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Path param: `itemID` - game-side string identifier (e.g., `fertilizer_basic`)
+  - Fields: Any subset of the shared base item fields as form-data text fields (all optional). Include an `icon` file to replace the icon (max 5 MB, re-uploaded to Cloudinary automatically).
+  - Response: Updated fertilizer document
+  - Note: Returns `404` if fertilizer not found
+
+- **DELETE** `/game-data/fertilizers/:itemID`: Delete a fertilizer by game-side `itemID` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `itemID` - game-side string identifier (e.g., `fertilizer_basic`)
+  - Response: Deleted fertilizer document
+  - Note: Returns `404` if fertilizer not found
+
+#### Fertilizer Fields
+
+| Field                    | Type     | Required     | Notes                                                   |
+| ------------------------ | -------- | ------------ | ------------------------------------------------------- |
+| `itemID`                 | string   | ✅           | Unique fertilizer identifier used by the client         |
+| `itemName`               | string   | ✅           | Display name                                            |
+| `description`            | string   | ✅           | Item tooltip text                                       |
+| `icon`                   | file     | ✅ on create | Uploaded icon image; gateway stores resulting `iconUrl` |
+| `itemCategory`           | int      | ✅           | Category enum value, typically Farming                  |
+| `maxStack`               | int      | ✅           | Maximum stack size                                      |
+| `isStackable`            | bool     | ✅           | Typically `true` for fertilizer                         |
+| `basePrice`              | int      | ✅           | Base sell price                                         |
+| `buyPrice`               | int      | ✅           | Shop price                                              |
+| `canBeSold`              | bool     | ✅           | Whether fertilizer can be sold                          |
+| `canBeBought`            | bool     | ✅           | Whether fertilizer can be bought                        |
+| `isQuestItem`            | bool     | ✅           | Quest flag                                              |
+| `isArtifact`             | bool     | ✅           | Artifact flag                                           |
+| `isRareItem`             | bool     | ✅           | Rare item flag                                          |
+| `npcPreferenceNames`     | string[] | —            | Optional NPC preference names                           |
+| `npcPreferenceReactions` | int[]    | —            | Optional NPC reaction values                            |
+
+`itemType` is forced to `14` by the gateway and does not need to be supplied.
 
 ---
 
@@ -495,13 +735,13 @@ Depending on `itemType`, specific extra fields must be included:
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Content-Type: `multipart/form-data`
   - **File fields** (each max 5 MB, uploaded to Cloudinary folder `plant-sprites` automatically):
-    
-    | Field name | Required | Description |
-    |---|---|---|
-    | `stageSprites` | ✅ | Repeated file field — files are assigned to stages by their order in the form (first file → stage 0, second → stage 1, etc.). Count must match `growthStages` entries. |
-    | `hybridFlowerSprite` | Hybrid only | Sprite at `pollenStage` (sets `hybridFlowerIconUrl`) |
-    | `hybridMatureSprite` | Hybrid only | Sprite at `pollenStage + 1` (sets `hybridMatureIconUrl`) |
-  
+
+    | Field name           | Required    | Description                                                                                                                                                            |
+    | -------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+    | `stageSprites`       | ✅          | Repeated file field — files are assigned to stages by their order in the form (first file → stage 0, second → stage 1, etc.). Count must match `growthStages` entries. |
+    | `hybridFlowerSprite` | Hybrid only | Sprite at `pollenStage` (sets `hybridFlowerIconUrl`)                                                                                                                   |
+    | `hybridMatureSprite` | Hybrid only | Sprite at `pollenStage + 1` (sets `hybridMatureIconUrl`)                                                                                                               |
+
   - **Text fields**: All other plant fields as form-data strings, except:
     - `growthStages` — Send as **JSON string**, e.g., `[{"stageNum":0,"growthDurationMinutes":0},{"stageNum":1,"growthDurationMinutes":30}]`. `stageIconUrl` filled automatically from uploaded sprites.
   - Response: Saved plant document including `_id` and all resolved `stageIconUrl` CDN URLs
@@ -528,11 +768,11 @@ Depending on `itemType`, specific extra fields must be included:
   - Path param: `plantId` - game-side string identifier (e.g., `plant_corn`)
   - **Optional file fields** (each max 5 MB, re-uploaded to Cloudinary `plant-sprites`):
 
-    | Field name | Description |
-    |---|---|
-    | `stageSprites` | Repeated file field — replaces all stage sprites. Assigned by form order (1st file → stage 0, etc.). Must be sent together with a `growthStages` JSON body field; file count must match stage count. When omitted, each stage in the `growthStages` JSON **must include its existing `stageIconUrl`** (Mongoose requires the field). |
-    | `hybridFlowerSprite` | Replaces `hybridFlowerIconUrl`. Can be sent independently without `growthStages`. |
-    | `hybridMatureSprite` | Replaces `hybridMatureIconUrl`. Can be sent independently without `growthStages`. |
+    | Field name           | Description                                                                                                                                                                                                                                                                                                                          |
+    | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+    | `stageSprites`       | Repeated file field — replaces all stage sprites. Assigned by form order (1st file → stage 0, etc.). Must be sent together with a `growthStages` JSON body field; file count must match stage count. When omitted, each stage in the `growthStages` JSON **must include its existing `stageIconUrl`** (Mongoose requires the field). |
+    | `hybridFlowerSprite` | Replaces `hybridFlowerIconUrl`. Can be sent independently without `growthStages`.                                                                                                                                                                                                                                                    |
+    | `hybridMatureSprite` | Replaces `hybridMatureIconUrl`. Can be sent independently without `growthStages`.                                                                                                                                                                                                                                                    |
 
   - **Optional text fields**: Any subset of plant fields (all optional). `growthStages` as JSON string if replacing stages. When updating stage data without uploading new sprites, each stage entry must include `stageIconUrl` (copy existing CDN URL) to pass Mongoose validation.
   - Response: Updated plant document
@@ -544,33 +784,67 @@ Depending on `itemType`, specific extra fields must be included:
   - Response: Deleted plant document
   - Note: Returns `404` if plant not found
 
+### Achievement Definitions (Admin)
+
+- **POST** `/game-data/achievements/create`: Create a new achievement definition (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Body:
+    ```json
+    {
+      "achievementId": "string",
+      "name": "string",
+      "description": "string",
+      "requirements": [
+        {
+          "type": "KILL | HARVEST | PLANT | CRAFT | FISH | COLLECT | DISCOVER | QUEST_COMPLETE | REACH_LEVEL | COOK | TRADE",
+          "target": 1,
+          "entityId": "string (optional)",
+          "label": "string"
+        }
+      ]
+    }
+    ```
+
+- **GET** `/game-data/achievements/all`: Get all achievement definitions.
+  - Response: Array of achievement definitions
+
+- **GET** `/game-data/achievements/:achievementId`: Get one achievement definition by `achievementId`.
+  - Response: Achievement definition object
+
+- **PUT** `/game-data/achievements/:achievementId`: Update one achievement definition (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Body: Any subset of `name`, `description`, `requirements`
+
+- **DELETE** `/game-data/achievements/:achievementId`: Delete one achievement definition (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+
 #### Plant Fields
 
-| Field | Type | Required | Default | Notes |
-|---|---|---|---|---|
-| `plantId` | string | ✅ | — | Unique game-side ID (e.g., `"plant_corn"`) |
-| `plantName` | string | ✅ | — | Display name |
-| `growthStages` | JSON string | ✅ | — | Stringified array of `{ stageNum, growthDurationMinutes }` objects (at least 1 entry). On create, omit `stageIconUrl` — filled automatically from uploaded sprites. On update, include `stageIconUrl` in each entry if not uploading new sprites. |
-| `harvestedItemId` | string | ✅ | — | `itemID` of crop/item dropped on harvest (from ItemCatalog) |
-| `canProducePollen` | bool | — | `false` | Whether pollen can be collected |
-| `pollenStage` | int | — | `3` | Stage index at which pollen becomes collectible |
-| `pollenItemId` | string | — | — | `itemID` of pollen item given on collection |
-| `maxPollenHarvestsPerStage` | int | — | `1` | `0` = unlimited |
-| `growingSeason` | int | — | `0` | `0` = Sunny, `1` = Rainy |
-| `isHybrid` | bool | — | `false` | `true` for cross-breeding result plants |
-| `receiverPlantId` | string | — | — | `plantId` of plant that received pollen *(hybrid only)* |
-| `pollenPlantId` | string | — | — | `plantId` of plant whose pollen was applied *(hybrid only)* |
-| `hybridFlowerIconUrl` | string | — | — | **Auto-filled** from `hybridFlowerSprite` file upload *(hybrid only)* |
-| `hybridMatureIconUrl` | string | — | — | **Auto-filled** from `hybridMatureSprite` file upload *(hybrid only)* |
-| `dropSeeds` | bool | — | `false` | When `false`, harvest never generates seeds *(hybrid only)* |
+| Field                       | Type        | Required | Default | Notes                                                                                                                                                                                                                                             |
+| --------------------------- | ----------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plantId`                   | string      | ✅       | —       | Unique game-side ID (e.g., `"plant_corn"`)                                                                                                                                                                                                        |
+| `plantName`                 | string      | ✅       | —       | Display name                                                                                                                                                                                                                                      |
+| `growthStages`              | JSON string | ✅       | —       | Stringified array of `{ stageNum, growthDurationMinutes }` objects (at least 1 entry). On create, omit `stageIconUrl` — filled automatically from uploaded sprites. On update, include `stageIconUrl` in each entry if not uploading new sprites. |
+| `harvestedItemId`           | string      | ✅       | —       | `itemID` of crop/item dropped on harvest (from ItemCatalog)                                                                                                                                                                                       |
+| `canProducePollen`          | bool        | —        | `false` | Whether pollen can be collected                                                                                                                                                                                                                   |
+| `pollenStage`               | int         | —        | `3`     | Stage index at which pollen becomes collectible                                                                                                                                                                                                   |
+| `pollenItemId`              | string      | —        | —       | `itemID` of pollen item given on collection                                                                                                                                                                                                       |
+| `maxPollenHarvestsPerStage` | int         | —        | `1`     | `0` = unlimited                                                                                                                                                                                                                                   |
+| `growingSeason`             | int         | —        | `0`     | `0` = Sunny, `1` = Rainy                                                                                                                                                                                                                          |
+| `isHybrid`                  | bool        | —        | `false` | `true` for cross-breeding result plants                                                                                                                                                                                                           |
+| `receiverPlantId`           | string      | —        | —       | `plantId` of plant that received pollen _(hybrid only)_                                                                                                                                                                                           |
+| `pollenPlantId`             | string      | —        | —       | `plantId` of plant whose pollen was applied _(hybrid only)_                                                                                                                                                                                       |
+| `hybridFlowerIconUrl`       | string      | —        | —       | **Auto-filled** from `hybridFlowerSprite` file upload _(hybrid only)_                                                                                                                                                                             |
+| `hybridMatureIconUrl`       | string      | —        | —       | **Auto-filled** from `hybridMatureSprite` file upload _(hybrid only)_                                                                                                                                                                             |
+| `dropSeeds`                 | bool        | —        | `false` | When `false`, harvest never generates seeds _(hybrid only)_                                                                                                                                                                                       |
 
 #### `growthStages` Entry Fields
 
-| Field | Type | Notes |
-|---|---|---|
-| `stageNum` | int | Stage index (0-based) |
-| `growthDurationMinutes` | float | In-game minutes to grow through this stage (e.g., `60` = 1 in-game hour) |
-| `stageIconUrl` | string | **Auto-filled** by gateway from `stageSprites` uploads (assigned by form order: 1st file → stage 0, 2nd → stage 1, etc.). On **create**, do not include in the JSON (gateway injects it). On **update without sprites**, include the existing CDN URL in each stage object — Mongoose requires the field. |
+| Field                   | Type   | Notes                                                                                                                                                                                                                                                                                                     |
+| ----------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stageNum`              | int    | Stage index (0-based)                                                                                                                                                                                                                                                                                     |
+| `growthDurationMinutes` | float  | In-game minutes to grow through this stage (e.g., `60` = 1 in-game hour)                                                                                                                                                                                                                                  |
+| `stageIconUrl`          | string | **Auto-filled** by gateway from `stageSprites` uploads (assigned by form order: 1st file → stage 0, 2nd → stage 1, etc.). On **create**, do not include in the JSON (gateway injects it). On **update without sprites**, include the existing CDN URL in each stage object — Mongoose requires the field. |
 
 ---
 
@@ -589,13 +863,11 @@ Depending on `itemType`, specific extra fields must be included:
       "recipeName": "string",
       "description": "string",
       "recipeType": 0,
-      "category": 0,//int 0-general, 1-tool, 2-food, 3-materials, 4-furniture, 5-equipment
+      "category": 0, //int 0-general, 1-tool, 2-food, 3-materials, 4-furniture, 5-equipment
       "resultItemId": "string",
       "resultQuantity": 1,
       "resultQuality": 0,
-      "ingredients": [
-        { "itemId": "string", "quantity": 1 }
-      ],
+      "ingredients": [{ "itemId": "string", "quantity": 1 }],
       "isUnlockedByDefault": false
     }
     ```
@@ -629,9 +901,7 @@ Depending on `itemType`, specific extra fields must be included:
       "resultItemId": "string",
       "resultQuantity": 1,
       "resultQuality": 0,
-      "ingredients": [
-        { "itemId": "string", "quantity": 1 }
-      ],
+      "ingredients": [{ "itemId": "string", "quantity": 1 }],
       "isUnlockedByDefault": false
     }
     ```
@@ -675,13 +945,13 @@ Depending on `itemType`, specific extra fields must be included:
   - Content-Type: `multipart/form-data`
   - Fields:
 
-    | Field | Type | Required | Notes |
-    |---|---|---|---|
-    | `spritesheet` | file (PNG) | ✅ | Spritesheet image, max 10 MB. Uploaded to Cloudinary folder `skin-spritesheets` automatically. |
-    | `configId` | text | ✅ | Stable string key used by Unity (e.g., `"farmer_base"`, `"frog_outfit"`). Used as Cloudinary public ID. |
-    | `displayName` | text | ✅ | Human-readable label shown in the admin panel. |
-    | `cellSize` | text (int) | — | Width and height of each sprite cell in pixels. Default: `64`. |
-    | `layer` | text | — | Paper Doll layer: `body`, `tool`, `hair`, `hat`, `outfit`, etc. Default: `body`. |
+    | Field         | Type       | Required | Notes                                                                                                   |
+    | ------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------- |
+    | `spritesheet` | file (PNG) | ✅       | Spritesheet image, max 10 MB. Uploaded to Cloudinary folder `skin-spritesheets` automatically.          |
+    | `configId`    | text       | ✅       | Stable string key used by Unity (e.g., `"farmer_base"`, `"frog_outfit"`). Used as Cloudinary public ID. |
+    | `displayName` | text       | ✅       | Human-readable label shown in the admin panel.                                                          |
+    | `cellSize`    | text (int) | —        | Width and height of each sprite cell in pixels. Default: `64`.                                          |
+    | `layer`       | text       | —        | Paper Doll layer: `body`, `tool`, `hair`, `hat`, `outfit`, etc. Default: `body`.                        |
 
   - Response: Created skin config document including `_id` and the Cloudinary `spritesheetUrl`.
   - Note: Returns `409 Conflict` if a skin config with the same `configId` already exists.
@@ -692,12 +962,12 @@ Depending on `itemType`, specific extra fields must be included:
   - Path param: `configId` — the stable string key (e.g., `farmer_base`).
   - Fields (all optional):
 
-    | Field | Type | Notes |
-    |---|---|---|
+    | Field         | Type       | Notes                                                                                                                                                          |
+    | ------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
     | `spritesheet` | file (PNG) | New spritesheet, max 10 MB. When provided, re-uploads to Cloudinary using `configId` as public ID and updates `spritesheetUrl`. Omit to keep the existing URL. |
-    | `displayName` | text | New display name. |
-    | `cellSize` | text (int) | New cell size in pixels. |
-    | `layer` | text | New layer tag. |
+    | `displayName` | text       | New display name.                                                                                                                                              |
+    | `cellSize`    | text (int) | New cell size in pixels.                                                                                                                                       |
+    | `layer`       | text       | New layer tag.                                                                                                                                                 |
 
   - Response: Updated skin config document.
   - Note: Returns `404` if no entry with this `configId` exists.
@@ -710,13 +980,13 @@ Depending on `itemType`, specific extra fields must be included:
 
 #### Skin Config Fields
 
-| Field | Type | Required | Default | Notes |
-|---|---|---|---|---|
-| `configId` | string | ✅ | — | Unique stable key used by Unity (e.g., `"farmer_base"`, `"frog_outfit"`, `"copper_tool"`). |
-| `spritesheetUrl` | string | ✅ | — | Public Cloudinary URL of the PNG. **Set automatically** from the uploaded `spritesheet` file. |
-| `cellSize` | int | — | `64` | Width = height of each sprite frame in pixels. Must divide evenly into the sheet dimensions. |
-| `displayName` | string | ✅ | — | Label shown in the admin panel. |
-| `layer` | string | — | `"body"` | Which Paper Doll layer this sheet belongs to. Values: `body`, `tool`, `hair`, `hat`, `outfit`. |
+| Field            | Type   | Required | Default  | Notes                                                                                          |
+| ---------------- | ------ | -------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `configId`       | string | ✅       | —        | Unique stable key used by Unity (e.g., `"farmer_base"`, `"frog_outfit"`, `"copper_tool"`).     |
+| `spritesheetUrl` | string | ✅       | —        | Public Cloudinary URL of the PNG. **Set automatically** from the uploaded `spritesheet` file.  |
+| `cellSize`       | int    | —        | `64`     | Width = height of each sprite frame in pixels. Must divide evenly into the sheet dimensions.   |
+| `displayName`    | string | ✅       | —        | Label shown in the admin panel.                                                                |
+| `layer`          | string | —        | `"body"` | Which Paper Doll layer this sheet belongs to. Values: `body`, `tool`, `hair`, `hat`, `outfit`. |
 
 #### Unity Integration Notes
 
@@ -752,14 +1022,14 @@ Depending on `itemType`, specific extra fields must be included:
   - Content-Type: `multipart/form-data`
   - Fields:
 
-    | Field | Type | Required | Notes |
-    |---|---|---|---|
-    | `spritesheet` | file (PNG) | ✅ | Tool-layer animation sheet, max 10 MB. Uploaded to Cloudinary folder `material-spritesheets` automatically. |
-    | `materialId` | text | ✅ | Stable string key (e.g., `mat_copper`). Used as Cloudinary public ID and as `configId` in `SkinCatalogManager`. |
-    | `materialName` | text | ✅ | Display name (e.g., `Copper`). |
-    | `materialTier` | text (int) | — | Numeric tier for stat scaling. Default: `1`. |
-    | `cellSize` | text (int) | — | Sprite cell width/height in pixels. Default: `64`. |
-    | `description` | text | — | Optional flavour text. |
+    | Field          | Type       | Required | Notes                                                                                                           |
+    | -------------- | ---------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+    | `spritesheet`  | file (PNG) | ✅       | Tool-layer animation sheet, max 10 MB. Uploaded to Cloudinary folder `material-spritesheets` automatically.     |
+    | `materialId`   | text       | ✅       | Stable string key (e.g., `mat_copper`). Used as Cloudinary public ID and as `configId` in `SkinCatalogManager`. |
+    | `materialName` | text       | ✅       | Display name (e.g., `Copper`).                                                                                  |
+    | `materialTier` | text (int) | —        | Numeric tier for stat scaling. Default: `1`.                                                                    |
+    | `cellSize`     | text (int) | —        | Sprite cell width/height in pixels. Default: `64`.                                                              |
+    | `description`  | text       | —        | Optional flavour text.                                                                                          |
 
   - Response: Created material document including `_id` and `spritesheetUrl`.
   - Note: Returns `409 Conflict` if a material with the same `materialId` already exists.
@@ -770,13 +1040,13 @@ Depending on `itemType`, specific extra fields must be included:
   - Path param: `materialId` — stable string key (e.g., `mat_copper`)
   - Fields (all optional):
 
-    | Field | Type | Notes |
-    |---|---|---|
-    | `spritesheet` | file (PNG) | New sheet, max 10 MB. Re-uploads to Cloudinary using `materialId` as public ID. Omit to keep existing URL. |
-    | `materialName` | text | New display name. |
-    | `materialTier` | text (int) | New tier value. |
-    | `cellSize` | text (int) | New cell size in pixels. |
-    | `description` | text | New description. |
+    | Field          | Type       | Notes                                                                                                      |
+    | -------------- | ---------- | ---------------------------------------------------------------------------------------------------------- |
+    | `spritesheet`  | file (PNG) | New sheet, max 10 MB. Re-uploads to Cloudinary using `materialId` as public ID. Omit to keep existing URL. |
+    | `materialName` | text       | New display name.                                                                                          |
+    | `materialTier` | text (int) | New tier value.                                                                                            |
+    | `cellSize`     | text (int) | New cell size in pixels.                                                                                   |
+    | `description`  | text       | New description.                                                                                           |
 
   - Response: Updated material document.
   - Note: Returns `404` if not found.
@@ -789,14 +1059,14 @@ Depending on `itemType`, specific extra fields must be included:
 
 #### Material Fields
 
-| Field | Type | Required | Default | Notes |
-|---|---|---|---|---|
-| `materialId` | string | ✅ | — | Stable string key (e.g., `"mat_copper"`). Also used as `configId` in `SkinCatalogManager`. |
-| `materialName` | string | ✅ | — | Display name (e.g., `"Copper"`). |
-| `materialTier` | int | — | `1` | Numeric tier for future stat scaling. Higher = stronger material. |
-| `spritesheetUrl` | string | ✅ | — | Cloudinary URL of the tool animation PNG. **Set automatically** from the uploaded `spritesheet` file. |
-| `cellSize` | int | — | `64` | Uniform sprite cell width/height in pixels. |
-| `description` | string | — | `""` | Optional flavour text. |
+| Field            | Type   | Required | Default | Notes                                                                                                 |
+| ---------------- | ------ | -------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| `materialId`     | string | ✅       | —       | Stable string key (e.g., `"mat_copper"`). Also used as `configId` in `SkinCatalogManager`.            |
+| `materialName`   | string | ✅       | —       | Display name (e.g., `"Copper"`).                                                                      |
+| `materialTier`   | int    | —        | `1`     | Numeric tier for future stat scaling. Higher = stronger material.                                     |
+| `spritesheetUrl` | string | ✅       | —       | Cloudinary URL of the tool animation PNG. **Set automatically** from the uploaded `spritesheet` file. |
+| `cellSize`       | int    | —        | `64`    | Uniform sprite cell width/height in pixels.                                                           |
+| `description`    | string | —        | `""`    | Optional flavour text.                                                                                |
 
 #### Unity Integration Notes
 
@@ -805,4 +1075,82 @@ Depending on `itemType`, specific extra fields must be included:
 - `ItemUsageController` looks up `tool.toolMaterialId` via `MaterialCatalogService.Instance.GetMaterial(id)` and passes `materialEntry.materialId` directly to `EquipmentManager.EquipTool()` as the configId.
 - To add a new material tier: `POST /game-data/materials` once — no code changes required.
 
+---
 
+### Resource Config Catalog
+
+> Defines harvestable world resources (trees, rocks, etc.) consumed by Unity `ResourceCatalogManager` and runtime host-authoritative spawn/HP logic.
+>
+> **Status:** In progress. Schema/DTO support is in place in `admin-service`, but gateway HTTP routes are not yet fully wired.
+
+#### Planned HTTP Endpoints
+
+- **GET** `/game-data/resource-configs/catalog`: Get full resource catalog in Unity-client format (public).
+  - Response:
+    ```json
+    {
+      "resources": [
+        {
+          "resourceId": "string",
+          "name": "string",
+          "maxHp": 100,
+          "requiredToolType": "string",
+          "minToolPower": 1,
+          "spriteUrl": "string|null",
+          "dropTable": [
+            {
+              "itemId": "string",
+              "minAmount": 1,
+              "maxAmount": 3,
+              "dropChance": 0.5
+            }
+          ]
+        }
+      ]
+    }
+    ```
+  - Note: Consumed by `ResourceCatalogManager.cs` on client startup.
+
+- **POST** `/game-data/resource-configs` _(admin only, planned)_: Create a resource config.
+  - Content-Type: `multipart/form-data`
+  - Fields: `sprite` (file) and all Resource Config text fields (with `dropTable` as a JSON string).
+- **PUT** `/game-data/resource-configs/:resourceId` _(admin only, planned)_: Update a resource config.
+  - Content-Type: `multipart/form-data`
+  - Fields: Optional `sprite` file to replace the current sprite, and any text fields.
+- **DELETE** `/game-data/resource-configs/:resourceId` _(admin only, planned)_: Delete a resource config.
+
+#### Resource Config Fields
+
+| Field              | Type         | Required | Notes                                                                                   |
+| ------------------ | ------------ | -------- | --------------------------------------------------------------------------------------- |
+| `sprite`           | file (PNG)   | —        | Resource sprite. Uploaded to Cloudinary automatically; sets `spriteUrl`.                |
+| `resourceId`       | string       | ✅       | Stable game-side identifier (e.g., `oak_tree`, `stone_rock`)                            |
+| `name`             | string       | ✅       | Display name                                                                            |
+| `maxHp`            | int          | ✅       | Initial HP used by host RAM state                                                       |
+| `resourceType`     | string       | ✅       | Classification of the resource (`tree`, `rock`, or `ore`) for prefab/collider selection |
+| `spawnWeight`      | int          | —        | Relative probability weight for random spawning within chunks (default is 1)            |
+| `requiredToolType` | string       | —        | Required tool type to harvest this resource (default `Axe`)                             |
+| `minToolPower`     | int          | —        | Minimum tool power required to harvest (default 1)                                      |
+| `spriteUrl`        | string\|null | —        | Cloudinary URL for the resource sprite. **Auto-filled** if a `sprite` file is uploaded. |
+| `dropTable`        | array        | ✅       | Array of item drops with chance and amount range                                        |
+
+---
+
+### Resource Interaction (Photon PUN RPC)
+
+> Resource hit/destroy is **not** an HTTP endpoint. It is host-authoritative PUN2 RPC flow.
+
+- Client -> Host request:
+  - `RequestHitResource(chunkX, chunkY, tileIndex, damage, toolId)`
+  - Sends `RPC_Host_ProcessHit(..., PhotonMessageInfo)` to `RpcTarget.MasterClient`.
+
+- Host processing (single source of truth):
+  - Validates tile is a resource in RAM.
+  - Applies damage to `currentHp`.
+  - Marks chunk dirty (`IsDirty = true`, `WorldSaveManager.TryMarkChunkDirty(...)`).
+  - If HP > 0: broadcasts `RPC_Client_PlayHitEffect(...)`.
+  - If HP <= 0: removes resource from RAM, rolls dropTable loot, spawns loot room objects, broadcasts `RPC_Client_DestroyResource(...)`.
+
+- Client visual sync:
+  - `RPC_Client_PlayHitEffect(...)` plays local hit VFX/animation.
+  - `RPC_Client_DestroyResource(...)` destroys local spawned resource visual.

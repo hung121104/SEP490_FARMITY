@@ -15,7 +15,4 @@ public interface IDroppedItemView
 
     /// <summary>Stop the blink animation and restore full alpha.</summary>
     void StopBlinking();
-
-    /// <summary>Show or hide the "[F] Pick up" prompt.</summary>
-    void SetPickupPromptVisible(bool visible);
 }

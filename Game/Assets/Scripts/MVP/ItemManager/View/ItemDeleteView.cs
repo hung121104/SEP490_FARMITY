@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -270,13 +270,36 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
         gameObject.SetActive(!gameObject.activeSelf);
     }
 
+    #region Position API
+
+    /// <summary>
+    /// Changes the anchored position of the Delete Zone to easily align with different views.
+    /// </summary>
+    public void SetAnchoredPosition(Vector2 newPosition)
+    {
+        RectTransform rectTransform = GetComponent<RectTransform>();
+        if (rectTransform != null)
+        {
+            rectTransform.anchoredPosition = newPosition;
+        }
+    }
+
+    /// <summary>
+    /// Changes the local position as a fallback if not using RectTransform purely.
+    /// </summary>
+    public void SetLocalPosition(Vector3 newPosition)
+    {
+        transform.localPosition = newPosition;
+    }
+
+    #endregion
+
     #region Public API
 
     public void Show()
     {
         gameObject.SetActive(true);
         acceptingDrops = true;
-        Debug.Log($"[DEBUG DeleteView] Hide() called\n{System.Environment.StackTrace}");
     }
 
     public void Hide()

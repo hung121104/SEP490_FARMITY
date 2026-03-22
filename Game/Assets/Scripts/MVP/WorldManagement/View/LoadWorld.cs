@@ -13,7 +13,12 @@ public class LoadWorld : MonoBehaviourPunCallbacks
 
         PhotonNetwork.PhotonServerSettings.AppSettings.FixedRegion = "hk";
 
-        if (PhotonNetwork.IsConnectedAndReady ||
+        if (PhotonNetwork.InLobby)
+        {
+            // Already in a lobby — go directly to room joining.
+            OnJoinedLobby();
+        }
+        else if (PhotonNetwork.IsConnectedAndReady ||
             PhotonNetwork.NetworkClientState == Photon.Realtime.ClientState.ConnectedToMasterServer)
         {
             // Already connected after leaving a room — jump straight to lobby.
@@ -23,13 +28,24 @@ public class LoadWorld : MonoBehaviourPunCallbacks
         else if (!PhotonNetwork.IsConnected)
         {
             // Fresh connection — safe to set AuthValues now.
-            if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
-            {
-                PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
-            }
-            PhotonNetwork.ConnectUsingSettings();
+            ConnectWithAuth();
         }
-        // else: still connecting — OnConnectedToMaster will fire automatically
+        // else: still transitioning (e.g. Disconnecting) — OnDisconnected will fire and reconnect.
+    }
+
+    public override void OnDisconnected(Photon.Realtime.DisconnectCause cause)
+    {
+        Debug.Log($"[LoadWorld] OnDisconnected: {cause}. Reconnecting...");
+        ConnectWithAuth();
+    }
+
+    private void ConnectWithAuth()
+    {
+        if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
+        {
+            PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues(SessionManager.Instance.UserId);
+        }
+        PhotonNetwork.ConnectUsingSettings();
     }
 
     public override void OnConnectedToMaster()
@@ -66,15 +82,27 @@ public class LoadWorld : MonoBehaviourPunCallbacks
         string displayName = !string.IsNullOrEmpty(manager.WorldName) 
             ? manager.WorldName 
             : selectedId;
-        customProps["displayName"] = displayName;
+        customProps[WorldRoomProperties.DisplayName] = displayName;
+        customProps[WorldRoomProperties.WorldId] = selectedId;
+        customProps[WorldRoomProperties.IsPublic] = false;
+        customProps[WorldRoomProperties.OwnerId] = SessionManager.Instance?.UserId ?? string.Empty;
+        customProps[WorldRoomProperties.HasPassword] = false;
+        customProps[WorldRoomProperties.PasswordHash] = string.Empty;
         
         var roomOptions = new RoomOptions 
         { 
             MaxPlayers = 4, 
-            IsVisible = true, 
-            IsOpen = true,
+            IsVisible = false,
+            IsOpen = true,   // must be true so other players can join
             CustomRoomProperties = customProps,
-            CustomRoomPropertiesForLobby = new string[] { "displayName" },
+            CustomRoomPropertiesForLobby = new string[]
+            {
+                WorldRoomProperties.DisplayName,
+                WorldRoomProperties.WorldId,
+                WorldRoomProperties.IsPublic,
+                WorldRoomProperties.HasPassword,
+                WorldRoomProperties.PasswordHash
+            },
             EmptyRoomTtl = 0,
         };
         
@@ -82,6 +110,10 @@ public class LoadWorld : MonoBehaviourPunCallbacks
     }
     public override void OnJoinedRoom()
     {
-        PhotonNetwork.LoadLevel("GameCoreTestScene");
+        // With AutomaticallySyncScene = true, only the master calls LoadLevel.
+        // Non-master clients are synced automatically by PUN when the master's scene is recorded.
+        // With AutomaticallySyncScene = false, all clients call it themselves.
+        if (PhotonNetwork.IsMasterClient || !PhotonNetwork.AutomaticallySyncScene)
+            PhotonNetwork.LoadLevel("GameCoreTestScene");
     }
 }

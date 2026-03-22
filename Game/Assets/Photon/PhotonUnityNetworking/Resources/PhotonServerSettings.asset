@@ -52,6 +52,14 @@ MonoBehaviour:
   - RPC_TriggerPlow
   - RPC_SyncFishingAnimation
   - RPC_RestoreAppearance
+  - RPC_TriggerWater
+  - RPC_Client_DestroyResource
+  - RPC_Client_PlayHitEffect
+  - RPC_Host_ProcessHit
+  - RPC_SpawnResourceVisual
+  - RPC_TriggerChop
+  - RPC_AllSyncGold
+  - RPC_MasterHandleGoldChange
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

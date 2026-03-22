@@ -17,7 +17,8 @@ public enum ItemType
     Resource,       // Raw materials
     Gift,           // Special gift items
     Quest,          // Quest-specific items
-    Structure       // Placeable structures (Chest, Furnace, Fence…)
+    Structure,      // Placeable structures (Chest, Furnace, Fence…)
+    Fertilizer      // Stackable fertilizer used on planted crops
 }
 
 public enum ItemCategory
@@ -63,6 +64,7 @@ public enum GiftReaction
 public enum ItemUsageType
 {
     Tool,
+    Fertilizer,
     Seed,
     Consumable,
     Weapon,
@@ -137,9 +139,10 @@ public enum ToolType
 
 public enum StructureInteractionType
 {
-    None,       // Decorative only — no interaction
     Storage,    // Opens Storage UI (Chest)
     Crafting,   // Opens Crafting UI (Workbench)
-    Smelting    // Opens Smelting/Furnace UI
+    Smelting,    // Opens Smelting/Furnace UI
+    Fence,
+    Decoration
 }
 

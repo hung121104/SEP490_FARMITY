@@ -19,9 +19,6 @@ public class StructureDataModule : IWorldDataModule
         this.manager       = manager;
         this.showDebugLogs = manager.showDebugLogs;
 
-        // No chunk creation here — we share UnifiedChunkData with CropDataModule.
-        // CropDataModule.Initialize() runs first and creates all chunk objects.
-
         if (showDebugLogs)
             Debug.Log($"[StructureDataModule] Initialized (sharing chunks with CropDataModule)");
     }
@@ -39,17 +36,17 @@ public class StructureDataModule : IWorldDataModule
         return manager.CropData?.GetSection(sectionId);
     }
 
-    public bool PlaceStructureAtWorldPosition(Vector3 worldPos, string structureId)
+    public bool PlaceStructureAtWorldPosition(Vector3 worldPos, string structureId, int initialHp, byte structureLevel = 1)
     {
         if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
             return false;
 
-        bool success = chunk.PlaceStructure(structureId, wx, wy);
+        bool success = chunk.PlaceStructure(structureId, wx, wy, initialHp, structureLevel);
         if (success && showDebugLogs)
         {
             var config = manager.GetSectionConfig(sectionId);
             Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
-            Debug.Log($"[StructureDataModule] Placed '{structureId}' at ({wx},{wy}) [Chunk: {chunkPos}, Section: {config?.SectionName}]");
+            Debug.Log($"[StructureDataModule] Placed '{structureId}' at ({wx},{wy}) with HP={initialHp} [Chunk: {chunkPos}, Section: {config?.SectionName}]");
         }
         return success;
     }

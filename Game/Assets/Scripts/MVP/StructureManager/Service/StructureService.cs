@@ -24,7 +24,7 @@ public class StructureService : IStructureService
 
     // ── Validation ────────────────────────────────────────────────────────
 
-    public bool CanPlaceStructure(Vector3 worldPosition, StructureDataSO data)
+    public bool CanPlaceStructure(Vector3 worldPosition, StructureData data)
     {
         if (data == null) return false;
 
@@ -78,7 +78,7 @@ public class StructureService : IStructureService
 
     // ── Placement ─────────────────────────────────────────────────────────
 
-    public bool PlaceStructure(Vector3 worldPosition, StructureDataSO data)
+    public bool PlaceStructure(Vector3 worldPosition, StructureData data)
     {
         if (!CanPlaceStructure(worldPosition, data))
             return false;
@@ -86,9 +86,10 @@ public class StructureService : IStructureService
         int anchorX = Mathf.FloorToInt(worldPosition.x);
         int anchorY = Mathf.FloorToInt(worldPosition.y);
 
-        // Write the single tile to WorldDataManager
+        // Write the single tile to WorldDataManager with full HP
         Vector3 tileWorld = new Vector3(anchorX, anchorY, 0f);
-        bool ok = WorldDataManager.Instance.PlaceStructureAtWorldPosition(tileWorld, data.StructureId);
+        int initialHp = data.MaxHealth; // Initialize with full HP
+        bool ok = WorldDataManager.Instance.PlaceStructureAtWorldPosition(tileWorld, data.StructureId, initialHp, (byte)data.StructureLevel);
         if (!ok)
         {
             Debug.LogError($"[StructureService] Failed to write tile ({anchorX},{anchorY}).");
@@ -96,21 +97,21 @@ public class StructureService : IStructureService
         }
 
         if (showDebugLogs)
-            Debug.Log($"[StructureService] ✓ Placed '{data.StructureId}' at ({anchorX},{anchorY})");
+            Debug.Log($"[StructureService] ✓ Placed '{data.StructureId}' at ({anchorX},{anchorY}) with HP={initialHp}");
 
         // Refresh visuals
         RefreshAffectedChunks(anchorX, anchorY, 1, 1);
 
         // Network sync
         if (PhotonNetwork.IsConnected && syncManager != null)
-            BroadcastStructurePlaced(anchorX, anchorY, data.StructureId);
+            BroadcastStructurePlaced(anchorX, anchorY, data.StructureId, (byte)data.StructureLevel);
 
         return true;
     }
 
     // ── Removal ───────────────────────────────────────────────────────────
 
-    public bool RemoveStructure(Vector3 worldPosition, StructureDataSO data)
+    public bool RemoveStructure(Vector3 worldPosition, StructureData data)
     {
         if (data == null) return false;
 
@@ -133,9 +134,9 @@ public class StructureService : IStructureService
 
     // ── Network Broadcasting ──────────────────────────────────────────────
 
-    public void BroadcastStructurePlaced(int worldX, int worldY, string structureId)
+    public void BroadcastStructurePlaced(int worldX, int worldY, string structureId, byte structureLevel = 1)
     {
-        syncManager.BroadcastStructurePlaced(worldX, worldY, structureId);
+        syncManager.BroadcastStructurePlaced(worldX, worldY, structureId, structureLevel);
     }
 
     public void BroadcastStructureRemoved(int worldX, int worldY)
