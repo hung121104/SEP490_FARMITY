@@ -160,6 +160,21 @@ export class GatewayController {
     const crossResults = this.parseCrossResults(body.crossResults);
     if (crossResults !== undefined) dto.crossResults = crossResults;
 
+    if (body.damage !== undefined) dto.damage = Number(body.damage);
+    if (body.critChance !== undefined) dto.critChance = Number(body.critChance);
+    if (body.weaponType !== undefined) dto.weaponType = Number(body.weaponType);
+    if (body.tier !== undefined) dto.tier = Number(body.tier);
+    if (body.attackCooldown !== undefined)
+      dto.attackCooldown = Number(body.attackCooldown);
+    if (body.knockbackForce !== undefined)
+      dto.knockbackForce = Number(body.knockbackForce);
+    if (body.projectileSpeed !== undefined)
+      dto.projectileSpeed = Number(body.projectileSpeed);
+    if (body.projectileRange !== undefined)
+      dto.projectileRange = Number(body.projectileRange);
+    if (body.projectileKnockback !== undefined)
+      dto.projectileKnockback = Number(body.projectileKnockback);
+
     return dto;
   }
 
@@ -199,6 +214,21 @@ export class GatewayController {
 
     const crossResults = this.parseCrossResults(body.crossResults);
     if (crossResults !== undefined) dto.crossResults = crossResults;
+
+    if (body.damage !== undefined) dto.damage = Number(body.damage);
+    if (body.critChance !== undefined) dto.critChance = Number(body.critChance);
+    if (body.weaponType !== undefined) dto.weaponType = Number(body.weaponType);
+    if (body.tier !== undefined) dto.tier = Number(body.tier);
+    if (body.attackCooldown !== undefined)
+      dto.attackCooldown = Number(body.attackCooldown);
+    if (body.knockbackForce !== undefined)
+      dto.knockbackForce = Number(body.knockbackForce);
+    if (body.projectileSpeed !== undefined)
+      dto.projectileSpeed = Number(body.projectileSpeed);
+    if (body.projectileRange !== undefined)
+      dto.projectileRange = Number(body.projectileRange);
+    if (body.projectileKnockback !== undefined)
+      dto.projectileKnockback = Number(body.projectileKnockback);
 
     return dto;
   }

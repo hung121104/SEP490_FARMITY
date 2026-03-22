@@ -1072,7 +1072,7 @@ GameObject:
   - component: {fileID: 936866772}
   - component: {fileID: 936866771}
   m_Layer: 0
-  m_Name: WeaponPrefabCatalogService
+  m_Name: WeaponCatalogService
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1090,15 +1090,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f87d69e28826f9429092997121f75d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  weaponPrefabs:
-  - key: 
-    prefab: {fileID: 8171461803801935278, guid: 0dc3195a5b158b944842525bad010852, type: 3}
-  - key: Iron_sword
-    prefab: {fileID: 8171461803801935278, guid: d6d2e6067af5d954ab1c69b244e394bc, type: 3}
-  - key: 
-    prefab: {fileID: 8171461803801935278, guid: 2349b768c2985ff419154dd4c82109e7, type: 3}
-  - key: 
-    prefab: {fileID: 8171461803801935278, guid: 183fbf716ee7fb4408520214138a1ba1, type: 3}
+  swordPrefab: {fileID: 8171461803801935278, guid: 0dc3195a5b158b944842525bad010852, type: 3}
+  staffPrefab: {fileID: 8171461803801935278, guid: 183fbf716ee7fb4408520214138a1ba1, type: 3}
+  spearPrefab: {fileID: 8171461803801935278, guid: 2349b768c2985ff419154dd4c82109e7, type: 3}
 --- !u!4 &936866772
 Transform:
   m_ObjectHideFlags: 0

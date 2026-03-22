@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 3351180906108929909}
   - component: {fileID: 1835541139890474109}
   - component: {fileID: 3252363585421596620}
+  - component: {fileID: -5143265161772559745}
   m_Layer: 3
   m_Name: Spear
   m_TagString: Untagged
@@ -110,3 +111,17 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &-5143265161772559745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8171461803801935278}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a0c53389fb458646a24f0b2442f91e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  masterRenderer: {fileID: 1835541139890474109}
+  configId: 

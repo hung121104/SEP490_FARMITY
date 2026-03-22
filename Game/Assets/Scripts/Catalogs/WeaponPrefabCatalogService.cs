@@ -1,24 +1,18 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
+using CombatManager.Model;
 
 /// <summary>
 /// Global weapon prefab resolver loaded in the download/bootstrap scene.
-/// Maps weaponPrefabKey strings to weapon prefabs used by WeaponAnimationPresenter.
+/// Maps WeaponType to one of three base weapon prefabs used by WeaponAnimationPresenter.
 /// </summary>
 public class WeaponPrefabCatalogService : MonoBehaviour
 {
-    [Serializable]
-    private class PrefabKeyBinding
-    {
-        public string key;
-        public GameObject prefab;
-    }
-
     public static WeaponPrefabCatalogService Instance { get; private set; }
 
-    [Header("Weapon Prefab Resolver")]
-    [SerializeField] private List<PrefabKeyBinding> weaponPrefabs = new List<PrefabKeyBinding>();
+    [Header("Base Weapon Prefabs")]
+    [SerializeField] private GameObject swordPrefab;
+    [SerializeField] private GameObject staffPrefab;
+    [SerializeField] private GameObject spearPrefab;
 
     private void Awake()
     {
@@ -32,22 +26,23 @@ public class WeaponPrefabCatalogService : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    public GameObject ResolvePrefab(string key)
+    public GameObject ResolvePrefab(WeaponType weaponType)
     {
-        if (string.IsNullOrWhiteSpace(key))
+        return weaponType switch
         {
-            return null;
-        }
+            WeaponType.Sword => swordPrefab,
+            WeaponType.Staff => staffPrefab,
+            WeaponType.Spear => spearPrefab,
+            _ => null,
+        };
+    }
 
-        for (int i = 0; i < weaponPrefabs.Count; i++)
+    private void OnValidate()
+    {
+        if (swordPrefab == null || staffPrefab == null || spearPrefab == null)
         {
-            if (string.Equals(weaponPrefabs[i].key, key, StringComparison.OrdinalIgnoreCase))
-            {
-                return weaponPrefabs[i].prefab;
-            }
+            Debug.LogWarning(
+                "[WeaponPrefabCatalogService] Assign Sword, Staff, and Spear prefabs in the Inspector.");
         }
-
-        Debug.LogWarning($"[WeaponPrefabCatalogService] No prefab bound for weapon key '{key}'");
-        return null;
     }
 }

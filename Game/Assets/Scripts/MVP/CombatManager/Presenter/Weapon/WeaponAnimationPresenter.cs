@@ -9,7 +9,7 @@ namespace CombatManager.Presenter
 {
     /// <summary>
     /// Presenter for Weapon Animation system.
-    /// Uses item-catalog WeaponData and resolves prefab by weaponPrefabKey.
+    /// Uses item-catalog WeaponData and resolves one of three base prefabs by weaponType.
     /// </summary>
     public class WeaponAnimationPresenter : MonoBehaviour
     {
@@ -186,12 +186,12 @@ namespace CombatManager.Presenter
                 }
                 else
                 {
-                    prefabToUse = weaponCatalog.ResolvePrefab(currentWeaponData.weaponPrefabKey);
+                    prefabToUse = weaponCatalog.ResolvePrefab(currentWeaponData.weaponType);
                 }
 
                 if (prefabToUse != null)
                 {
-                    Debug.Log($"[WeaponAnimationPresenter] Using weapon prefab key '{currentWeaponData.weaponPrefabKey}' -> {prefabToUse.name}");
+                    Debug.Log($"[WeaponAnimationPresenter] Using base prefab for {currentWeaponData.weaponType} -> {prefabToUse.name}");
                 }
             }
 
@@ -263,6 +263,7 @@ namespace CombatManager.Presenter
             }
 
             service.SpawnWeapon();
+            ApplyWeaponVisualConfig();
         }
 
         public void DespawnWeapon()
@@ -289,6 +290,44 @@ namespace CombatManager.Presenter
 
         // ✅ NEW
         public WeaponData GetCurrentWeaponData() => currentWeaponData;
+
+        private void ApplyWeaponVisualConfig()
+        {
+            if (currentWeaponData == null)
+                return;
+
+            string visualConfigId = currentWeaponData.weaponVisualConfigId;
+            if (string.IsNullOrWhiteSpace(visualConfigId))
+            {
+                // Soft fallback for migration safety while old data is being updated.
+                visualConfigId = currentWeaponData.weaponMaterialId;
+            }
+
+            if (string.IsNullOrWhiteSpace(visualConfigId))
+            {
+                Debug.LogWarning(
+                    $"[WeaponAnimationPresenter] No weaponVisualConfigId on '{currentWeaponData.weaponName}'. " +
+                    "Base prefab sprite will be used.");
+                return;
+            }
+
+            GameObject weaponVisual = service?.GetWeaponVisual();
+            if (weaponVisual == null)
+                return;
+
+            DynamicSpriteSwapper swapper = weaponVisual.GetComponentInChildren<DynamicSpriteSwapper>();
+            if (swapper == null)
+            {
+                Debug.LogWarning(
+                    $"[WeaponAnimationPresenter] Weapon prefab '{weaponVisual.name}' has no DynamicSpriteSwapper. " +
+                    "Cannot apply weaponVisualConfigId.");
+                return;
+            }
+
+            swapper.ConfigId = visualConfigId;
+            Debug.Log(
+                $"[WeaponAnimationPresenter] Applied weapon visual config '{visualConfigId}' to '{weaponVisual.name}'");
+        }
 
         #endregion
     }

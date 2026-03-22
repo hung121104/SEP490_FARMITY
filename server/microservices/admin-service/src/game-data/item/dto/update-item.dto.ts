@@ -193,6 +193,10 @@ export class UpdateItemDto {
   @IsString()
   weaponPrefabKey?: string;
 
+  @IsOptional()
+  @IsString()
+  weaponVisualConfigId?: string;
+
   // ── Fish (itemType: 7) ─────────────────────────────────────────────────────
 
   @IsOptional()

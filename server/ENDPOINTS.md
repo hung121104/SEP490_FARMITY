@@ -18,17 +18,15 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
    - [Media Gallery](#media-gallery)
 4. [Game Data Management](#game-data-management)
    - [Items Catalog](#items-catalog)
-  - [Combat Skills Catalog](#combat-skills-catalog)
   - [Weapon Items (Extended Fields)](#weapon-items-extended-fields)
-
-- [Fertilizer Catalog](#fertilizer-catalog)
-- [Plants Catalog](#plants-catalog)
-- [Crafting Recipes](#crafting-recipes)
-- [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
-
-- [Resource Config Catalog](#resource-config-catalog)
-- [Material Catalog](#material-catalog)
-- [Quest Catalog](#quest-catalog)
+  - [Combat Skills Catalog](#combat-skills-catalog)
+  - [Fertilizer Catalog](#fertilizer-catalog)
+  - [Plants Catalog](#plants-catalog)
+  - [Crafting Recipes](#crafting-recipes)
+  - [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
+  - [Resource Config Catalog](#resource-config-catalog)
+  - [Material Catalog](#material-catalog)
+  - [Quest Catalog](#quest-catalog)
 
 7. [Real-Time Sync (Photon PUN Events)](#real-time-sync-photon-pun-events)
    - [Resource Interaction](#resource-interaction-photon-pun-rpc)
@@ -735,7 +733,7 @@ Depending on `itemType`, specific extra fields must be included:
 | `3`        | Pollen     | `sourcePlantId`<br>`pollinationSuccessChance`<br>`viabilityDays`<br>`crossResults` | string: `plantId` of the plant that produced this pollen (e.g., `"plant_corn"`)<br>float: Chance of pollination success (e.g., `0.5`)<br>int: Days the pollen remains viable (e.g., `3`)<br>array: Cross-breeding table — `[{ "targetPlantId": "string", "resultPlantId": "string" }]`. Each entry maps a receiver `plantId` to the hybrid `plantId` that spawns when this pollen is applied to it. Consumed by `PollenData.FindResultPlantId()` in the Unity client. |
 | `4`        | Consumable | `energyRestore`<br>`healthRestore`<br>`bufferDuration`                             | int: Stamina restored<br>int: Health restored<br>float: Buff duration                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `5`        | Material   | _(none)_                                                                           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `6`        | Weapon     | `damage`<br>`critChance`<br>`weaponMaterialId`<br>`weaponType`<br>`tier`<br>`attackCooldown`<br>`knockbackForce`<br>`projectileSpeed`<br>`projectileRange`<br>`projectileKnockback`<br>`weaponPrefabKey` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).<br>int: WeaponType enum value<br>int: Tier value<br>float: Attack cooldown seconds<br>float: Melee knockback<br>float: Staff projectile speed<br>float: Staff projectile range<br>float: Staff projectile knockback<br>string: Client prefab resolver key. See [Weapon Items (Extended Fields)](#weapon-items-extended-fields). |
+| `6`        | Weapon     | `damage`<br>`critChance`<br>`weaponMaterialId`<br>`weaponType`<br>`tier`<br>`attackCooldown`<br>`knockbackForce`<br>`projectileSpeed`<br>`projectileRange`<br>`projectileKnockback`<br>`weaponVisualConfigId` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).<br>int: WeaponType enum value<br>int: Tier value<br>float: Attack cooldown seconds<br>float: Melee knockback<br>float: Staff projectile speed<br>float: Staff projectile range<br>float: Staff projectile knockback<br>string: SkinCatalog config key used by DynamicSpriteSwapper. See [Weapon Items (Extended Fields)](#weapon-items-extended-fields). |
 | `7`        | Fish       | `difficulty`<br>`fishingSeasons`<br>`isLegendary`                                  | int: Difficulty level (e.g., 1)<br>int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                 |
 | `8`        | Cooking    | `energyRestore`<br>`healthRestore`<br>`bufferDuration`                             | int: Stamina restored<br>int: Health restored<br>float: Buff duration                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `9`        | Forage     | `foragingSeasons`<br>`energyRestore`                                               | int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>int: (default `5`)                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -744,6 +742,129 @@ Depending on `itemType`, specific extra fields must be included:
 | `12`       | Quest      | `relatedQuestID`<br>`autoConsume`                                                  | string: Related quest ID (e.g., `"quest_goblins_01"`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                                      |
 | `13`       | Structure  | `structureInteractionType`<br>`structureLevel`<br>`structureInteractionSprite`     | int: 0=Storage, 1=Crafting, 2=Smelting, 3=Fence, 4=Decoration<br>int: Level/tier of the structure (0=Wood, 1=Bronze, 2=Iron, 3=Gold)<br>file (PNG): Interaction sprite (e.g., chest open icon). Uploaded to Cloudinary; sets `structureInteractionSpriteUrl` automatically.                                                                                                                                                                                           |
 | `14`       | Fertilizer | _(none)_                                                                           | Stackable fertilizer item consumed on successful crop fertilization                                                                                                                                                                                                                                                                                                                                                                                                   |
+
+---
+
+### Weapon Items (Extended Fields)
+
+> Weapon items are still managed through the Item endpoints, but require additional combat-runtime fields for the new DB-driven weapon flow.
+
+#### HTTP Endpoints (same routes as Items)
+
+- **POST** `/game-data/items/create`: Create a weapon item (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Required basics: all Item base fields + `itemType = 6`
+  - Response: Saved item document including all weapon runtime fields
+
+- **PUT** `/game-data/items/:itemID`: Update a weapon item (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Path param: `itemID`
+  - Body: Any subset of weapon fields and base item fields
+  - Response: Updated item document
+
+- **GET** `/game-data/items/by-item-id/:itemID`: Get one weapon item.
+- **GET** `/game-data/items/catalog`: Get full catalog (weapon entries included).
+- **DELETE** `/game-data/items/:itemID`: Delete a weapon item.
+
+#### Weapon Fields (for web manage page)
+
+Base weapon fields (existing):
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `damage` | int | ✅ | Base damage |
+| `critChance` | int | ✅ | Critical chance percentage |
+| `weaponMaterialId` | string | ✅ | Material `materialId` from Material Catalog |
+
+Extended runtime fields (new):
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `weaponType` | int | ✅ | Weapon type enum used by combat routing |
+| `tier` | int | ✅ | Weapon tier |
+| `attackCooldown` | number | ✅ | Attack cooldown in seconds |
+| `knockbackForce` | number | ✅ | Melee knockback force |
+| `projectileSpeed` | number | ✅ for staff-type weapons | Projectile speed |
+| `projectileRange` | number | ✅ for staff-type weapons | Projectile max range |
+| `projectileKnockback` | number | ✅ for staff-type weapons | Projectile knockback force |
+| `weaponVisualConfigId` | string | ✅ | SkinCatalog config key for weapon sprite sheet (runtime swap) |
+| `linkedSkillId` | string | Optional | Skill ID for weapon special slot |
+
+#### Web Dropdown / Select Guide
+
+Use dropdowns (not free number inputs) for these fields:
+
+| Field | UI Type | Allowed Values | Source |
+| --- | --- | --- | --- |
+| `itemType` | Fixed/hidden | `6` = Weapon | ItemType enum (Game client) |
+| `weaponType` | Dropdown | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` | `CombatManager.Model.WeaponType` |
+| `itemCategory` | Dropdown | `0=Farming`, `1=Mining`, `2=Fishing`, `3=Cooking`, `4=Crafting`, `5=Combat`, `6=Foraging`, `7=Special` | `ItemCategory` enum (Game client) |
+| `weaponMaterialId` | Searchable dropdown | `materialId` values | GET `/game-data/materials/catalog` |
+| `linkedSkillId` | Searchable dropdown (optional) | `skillId` values where `ownership = WeaponSkill` | GET `/game-data/combat-skills/all` then filter |
+| `canBeSold` | Dropdown/Toggle | `true` / `false` | Boolean |
+| `canBeBought` | Dropdown/Toggle | `true` / `false` | Boolean |
+| `isQuestItem` | Dropdown/Toggle | `true` / `false` | Boolean |
+| `isArtifact` | Dropdown/Toggle | `true` / `false` | Boolean |
+| `isRareItem` | Dropdown/Toggle | `true` / `false` | Boolean |
+
+Weapon page recommended defaults:
+
+- `itemType = 6`
+- `isStackable = false`
+- `maxStack = 1`
+
+Linked-skill dropdown rule:
+
+- Show only skills with `ownership = WeaponSkill`.
+- Save selected option as `linkedSkillId` (string skillId).
+- Allow empty selection (no weapon special skill).
+
+#### Validation Rules
+
+- `itemType` must be `6` for weapon setup.
+- `weaponVisualConfigId` is required for weapon items.
+- `linkedSkillId` is only valid when item is a weapon.
+- If `linkedSkillId` is provided, it must exist in Combat Skills catalog.
+- If `linkedSkillId` is provided, that skill must have ownership `WeaponSkill`.
+
+#### Example Create Payload (multipart text fields)
+
+```json
+{
+  "itemID": "weapon_bronze_sword",
+  "itemName": "Bronze Sword",
+  "description": "Starter sword",
+  "itemType": 6,
+  "itemCategory": 0,
+  "maxStack": 1,
+  "isStackable": false,
+  "basePrice": 50,
+  "buyPrice": 120,
+  "canBeSold": true,
+  "canBeBought": true,
+  "isQuestItem": false,
+  "isArtifact": false,
+  "isRareItem": false,
+  "damage": 15,
+  "critChance": 5,
+  "weaponMaterialId": "mat_bronze",
+  "weaponType": 1,
+  "tier": 1,
+  "attackCooldown": 0.5,
+  "knockbackForce": 5,
+  "projectileSpeed": 0,
+  "projectileRange": 0,
+  "projectileKnockback": 0,
+  "weaponVisualConfigId": "weapon_sword_bronze_visual",
+  "linkedSkillId": "skill_weapon_sword_special"
+}
+```
+
+Runtime note:
+
+- Client no longer needs a prefab key per weapon. Weapon prefab is chosen by `weaponType` (Sword/Staff/Spear base prefab), then the equipped sprite is swapped by `weaponVisualConfigId` through `DynamicSpriteSwapper`.
 
 ---
 
@@ -896,124 +1017,6 @@ Notes for web form behavior:
 - If `ownership = WeaponSkill`, require `requiredWeaponType` > 0.
 - Show projectile fields primarily for `category = Projectile`.
 - Show slash VFX fields primarily for `category = Slash`.
-
----
-
-### Weapon Items (Extended Fields)
-
-> Weapon items are still managed through the Item endpoints, but require additional combat-runtime fields for the new DB-driven weapon flow.
-
-#### HTTP Endpoints (same routes as Items)
-
-- **POST** `/game-data/items/create`: Create a weapon item (admin only).
-  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
-  - Content-Type: `multipart/form-data`
-  - Required basics: all Item base fields + `itemType = 6`
-  - Response: Saved item document including all weapon runtime fields
-
-- **PUT** `/game-data/items/:itemID`: Update a weapon item (admin only).
-  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
-  - Content-Type: `multipart/form-data`
-  - Path param: `itemID`
-  - Body: Any subset of weapon fields and base item fields
-  - Response: Updated item document
-
-- **GET** `/game-data/items/by-item-id/:itemID`: Get one weapon item.
-- **GET** `/game-data/items/catalog`: Get full catalog (weapon entries included).
-- **DELETE** `/game-data/items/:itemID`: Delete a weapon item.
-
-#### Weapon Fields (for web manage page)
-
-Base weapon fields (existing):
-
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `damage` | int | ✅ | Base damage |
-| `critChance` | int | ✅ | Critical chance percentage |
-| `weaponMaterialId` | string | ✅ | Material `materialId` from Material Catalog |
-
-Extended runtime fields (new):
-
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `weaponType` | int | ✅ | Weapon type enum used by combat routing |
-| `tier` | int | ✅ | Weapon tier |
-| `attackCooldown` | number | ✅ | Attack cooldown in seconds |
-| `knockbackForce` | number | ✅ | Melee knockback force |
-| `projectileSpeed` | number | ✅ for staff-type weapons | Projectile speed |
-| `projectileRange` | number | ✅ for staff-type weapons | Projectile max range |
-| `projectileKnockback` | number | ✅ for staff-type weapons | Projectile knockback force |
-| `weaponPrefabKey` | string | ✅ | Client-side prefab resolver key |
-| `linkedSkillId` | string | Optional | Skill ID for weapon special slot |
-
-#### Web Dropdown / Select Guide
-
-Use dropdowns (not free number inputs) for these fields:
-
-| Field | UI Type | Allowed Values | Source |
-| --- | --- | --- | --- |
-| `itemType` | Fixed/hidden | `6` = Weapon | ItemType enum (Game client) |
-| `weaponType` | Dropdown | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` | `CombatManager.Model.WeaponType` |
-| `itemCategory` | Dropdown | `0=Farming`, `1=Mining`, `2=Fishing`, `3=Cooking`, `4=Crafting`, `5=Combat`, `6=Foraging`, `7=Special` | `ItemCategory` enum (Game client) |
-| `weaponMaterialId` | Searchable dropdown | `materialId` values | GET `/game-data/materials/catalog` |
-| `linkedSkillId` | Searchable dropdown (optional) | `skillId` values where `ownership = WeaponSkill` | GET `/game-data/combat-skills/all` then filter |
-| `canBeSold` | Dropdown/Toggle | `true` / `false` | Boolean |
-| `canBeBought` | Dropdown/Toggle | `true` / `false` | Boolean |
-| `isQuestItem` | Dropdown/Toggle | `true` / `false` | Boolean |
-| `isArtifact` | Dropdown/Toggle | `true` / `false` | Boolean |
-| `isRareItem` | Dropdown/Toggle | `true` / `false` | Boolean |
-
-Weapon page recommended defaults:
-
-- `itemType = 6`
-- `isStackable = false`
-- `maxStack = 1`
-
-Linked-skill dropdown rule:
-
-- Show only skills with `ownership = WeaponSkill`.
-- Save selected option as `linkedSkillId` (string skillId).
-- Allow empty selection (no weapon special skill).
-
-#### Validation Rules
-
-- `itemType` must be `6` for weapon setup.
-- `linkedSkillId` is only valid when item is a weapon.
-- If `linkedSkillId` is provided, it must exist in Combat Skills catalog.
-- If `linkedSkillId` is provided, that skill must have ownership `WeaponSkill`.
-
-#### Example Create Payload (multipart text fields)
-
-```json
-{
-  "itemID": "weapon_bronze_sword",
-  "itemName": "Bronze Sword",
-  "description": "Starter sword",
-  "itemType": 6,
-  "itemCategory": 0,
-  "maxStack": 1,
-  "isStackable": false,
-  "basePrice": 50,
-  "buyPrice": 120,
-  "canBeSold": true,
-  "canBeBought": true,
-  "isQuestItem": false,
-  "isArtifact": false,
-  "isRareItem": false,
-  "damage": 15,
-  "critChance": 5,
-  "weaponMaterialId": "mat_bronze",
-  "weaponType": 1,
-  "tier": 1,
-  "attackCooldown": 0.5,
-  "knockbackForce": 5,
-  "projectileSpeed": 0,
-  "projectileRange": 0,
-  "projectileKnockback": 0,
-  "weaponPrefabKey": "weapon_sword_bronze",
-  "linkedSkillId": "skill_weapon_sword_special"
-}
-```
 
 ---
 

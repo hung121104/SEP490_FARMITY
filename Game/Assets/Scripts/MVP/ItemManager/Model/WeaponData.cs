@@ -19,6 +19,8 @@ public class WeaponData : ItemData
     public float projectileRange = 8f;
     public float projectileKnockback = 4f;
     public string linkedSkillId = "";
+    public string weaponVisualConfigId = "";
+    [System.Obsolete("Deprecated: prefab now resolves by weaponType via WeaponPrefabCatalogService")]
     public string weaponPrefabKey = "";
 
     public WeaponData()
@@ -35,9 +37,6 @@ public class WeaponData : ItemData
             return false;
 
         if (string.IsNullOrWhiteSpace(itemName))
-            return false;
-
-        if (string.IsNullOrWhiteSpace(weaponPrefabKey))
             return false;
 
         return true;

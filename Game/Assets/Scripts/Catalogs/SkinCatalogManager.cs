@@ -101,8 +101,9 @@ public class SkinCatalogManager : MonoBehaviour
     /// </summary>
     public Sprite[] GetSprites(string configId)
     {
-        if (string.IsNullOrEmpty(configId)) return null;
-        _catalog.TryGetValue(configId, out var sprites);
+        string normalized = NormalizeConfigId(configId);
+        if (string.IsNullOrEmpty(normalized)) return null;
+        _catalog.TryGetValue(normalized, out var sprites);
         return sprites;
     }
 
@@ -300,7 +301,7 @@ public class SkinCatalogManager : MonoBehaviour
         }
 
         Sprite[] sprites = SliceSheet(sheet, entry.configId, cellSize);
-        _catalog[entry.configId] = sprites;
+        _catalog[NormalizeConfigId(entry.configId)] = sprites;
 
         onDone?.Invoke();
     }
@@ -401,6 +402,13 @@ public class SkinCatalogManager : MonoBehaviour
             Debug.LogError($"[SkinCatalogManager] JSON parse error: {ex.Message}");
             return null;
         }
+    }
+
+    private static string NormalizeConfigId(string configId)
+    {
+        return string.IsNullOrWhiteSpace(configId)
+            ? string.Empty
+            : configId.Trim().ToLowerInvariant();
     }
 
     private void MarkReady()

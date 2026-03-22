@@ -41,6 +41,16 @@ export class CreateItemDto {
   damage?: number;
   critChance?: number;
   weaponMaterialId?: string;
+  weaponType?: number;
+  tier?: number;
+  attackCooldown?: number;
+  knockbackForce?: number;
+  projectileSpeed?: number;
+  projectileRange?: number;
+  projectileKnockback?: number;
+  linkedSkillId?: string;
+  weaponPrefabKey?: string;
+  weaponVisualConfigId?: string;
 
   // Fish
   difficulty?: number;

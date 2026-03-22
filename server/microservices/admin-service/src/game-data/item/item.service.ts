@@ -23,6 +23,10 @@ export class ItemService {
       throw new ConflictException(`Item with itemID "${createItemDto.itemID}" already exists`);
     }
 
+    this.validateWeaponVisualConfig(
+      createItemDto.itemType,
+      createItemDto.weaponVisualConfigId,
+    );
     await this.validateWeaponLinkedSkill(createItemDto.itemType, createItemDto.linkedSkillId);
 
     const item = new this.itemModel(createItemDto);
@@ -73,7 +77,11 @@ export class ItemService {
     const effectiveLinkedSkillId = dto.linkedSkillId !== undefined
       ? dto.linkedSkillId
       : existing.linkedSkillId;
+    const effectiveWeaponVisualConfigId = dto.weaponVisualConfigId !== undefined
+      ? dto.weaponVisualConfigId
+      : existing.weaponVisualConfigId;
 
+    this.validateWeaponVisualConfig(effectiveItemType, effectiveWeaponVisualConfigId);
     await this.validateWeaponLinkedSkill(effectiveItemType, effectiveLinkedSkillId);
 
     const updated = await this.itemModel
@@ -194,6 +202,7 @@ export class ItemService {
       projectileKnockback: undefined,
       linkedSkillId: undefined,
       weaponPrefabKey: undefined,
+      weaponVisualConfigId: undefined,
       difficulty: undefined,
       fishingSeasons: undefined,
       isLegendary: undefined,
@@ -227,6 +236,31 @@ export class ItemService {
     if (skill.ownership !== CombatSkillOwnership.WeaponSkill) {
       throw new BadRequestException(
         `linkedSkillId '${normalized}' must reference a WeaponSkill ownership entry`,
+      );
+    }
+  }
+
+  private validateWeaponVisualConfig(
+    itemType: number,
+    weaponVisualConfigId?: string,
+  ): void {
+    const normalized =
+      typeof weaponVisualConfigId === 'string'
+        ? weaponVisualConfigId.trim()
+        : '';
+
+    if (itemType === WEAPON_ITEM_TYPE) {
+      if (!normalized) {
+        throw new BadRequestException(
+          'weaponVisualConfigId is required for Weapon items',
+        );
+      }
+      return;
+    }
+
+    if (normalized) {
+      throw new BadRequestException(
+        'weaponVisualConfigId is only allowed for Weapon items',
       );
     }
   }
