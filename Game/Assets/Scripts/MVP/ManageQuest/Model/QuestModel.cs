@@ -8,6 +8,8 @@ public class QuestModel
     public string questId;
     public string questName;
     public string description;
+    public string npcName;
+    public int weight;
     public string nextQuestId;
     public QuestReward reward;
 
@@ -29,7 +31,6 @@ public class QuestObjective
     public string objectiveId;
     public string description;
 
-    public ObjectiveType type;
     public string itemId;
 
     public int requiredAmount;
@@ -38,15 +39,7 @@ public class QuestObjective
     public bool IsCompleted => currentAmount >= requiredAmount;
 }
 
-public enum ObjectiveType
-{
-    CollectItem,
-    DefeatEnemy,
-    ReachLocation,
-    TalkNPC,
-    Custom
 
-}
 
 public enum QuestStatus
 {

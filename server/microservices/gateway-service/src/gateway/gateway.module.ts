@@ -83,6 +83,9 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/materials', method: RequestMethod.POST },
         { path: 'game-data/materials/:materialId', method: RequestMethod.PUT },
         { path: 'game-data/materials/:materialId', method: RequestMethod.DELETE },
+        { path: 'game-data/quests', method: RequestMethod.POST },
+        { path: 'game-data/quests/:questId', method: RequestMethod.PUT },
+        { path: 'game-data/quests/:questId', method: RequestMethod.DELETE },
       );
 
     // enforce admin only on admin routes
@@ -117,6 +120,9 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/materials', method: RequestMethod.POST },
         { path: 'game-data/materials/:materialId', method: RequestMethod.PUT },
         { path: 'game-data/materials/:materialId', method: RequestMethod.DELETE },
+        { path: 'game-data/quests', method: RequestMethod.POST },
+        { path: 'game-data/quests/:questId', method: RequestMethod.PUT },
+        { path: 'game-data/quests/:questId', method: RequestMethod.DELETE },
       );
   }
 }
