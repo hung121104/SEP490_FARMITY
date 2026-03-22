@@ -37,6 +37,7 @@ Shader "Custom/ProjectedShadow2D"
         _ShadowLeanX    ("Shadow Lean X",    Float)       = 0.5
         _ShadowScaleX   ("Shadow Scale X",   Float)       = 1.0
         _ShadowFlattenY ("Shadow Flatten Y", Range(0, 1)) = 0.5
+        _ShadowYOffset  ("Shadow Y Offset",  Float)       = 0.0
         _ShadowAlpha    ("Shadow Alpha",     Range(0, 1)) = 0.4
     }
 
@@ -99,6 +100,7 @@ Shader "Custom/ProjectedShadow2D"
                 UNITY_DEFINE_INSTANCED_PROP(float,  _ShadowLeanX)
                 UNITY_DEFINE_INSTANCED_PROP(float,  _ShadowScaleX)
                 UNITY_DEFINE_INSTANCED_PROP(float,  _ShadowFlattenY)
+                UNITY_DEFINE_INSTANCED_PROP(float,  _ShadowYOffset)
                 UNITY_DEFINE_INSTANCED_PROP(float,  _ShadowAlpha)
             UNITY_INSTANCING_BUFFER_END(Props)
 
@@ -120,6 +122,7 @@ Shader "Custom/ProjectedShadow2D"
                 float scaleX   = UNITY_ACCESS_INSTANCED_PROP(Props, _ShadowScaleX);
                 float leanX    = UNITY_ACCESS_INSTANCED_PROP(Props, _ShadowLeanX);
                 float flattenY = UNITY_ACCESS_INSTANCED_PROP(Props, _ShadowFlattenY);
+                float yOffset  = UNITY_ACCESS_INSTANCED_PROP(Props, _ShadowYOffset);
 
                 pos.x = pos.x * scaleX + origY * leanX;
 
@@ -129,6 +132,9 @@ Shader "Custom/ProjectedShadow2D"
                 //   origY = h (head) → pos.y = -h * flattenY (below feet)
                 // _ShadowFlattenY = 0 → fully flat  |  = 1 → full sprite height
                 pos.y = -origY * flattenY;
+                // Compensates the runtime transform shift used to enlarge culling
+                // coverage, keeping the shadow visually in the same place.
+                pos.y += yOffset;
 
                 OUT.positionHCS = TransformObjectToHClip(pos);
                 // Sprite UVs are already atlas-correct; no tiling/offset needed.

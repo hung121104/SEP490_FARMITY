@@ -59,11 +59,13 @@ public class SpriteShadowShader : MonoBehaviour
     private static readonly int ID_ShadowScaleX   = Shader.PropertyToID("_ShadowScaleX");
     private static readonly int ID_ShadowAlpha    = Shader.PropertyToID("_ShadowAlpha");
     private static readonly int ID_ShadowFlattenY = Shader.PropertyToID("_ShadowFlattenY");
+    private static readonly int ID_ShadowYOffset  = Shader.PropertyToID("_ShadowYOffset");
 
     // ── Internal state ──────────────────────────────────────────────────────
     private SpriteRenderer        _source;
     private SpriteRenderer        _shadow;
     private MaterialPropertyBlock _mpb;
+    private float                 _cullShiftY;
     // Last non-null sprite: keeps the shadow visible during brief null windows
     // (e.g. the one frame a DynamicSpriteSwapper clears its renderer while
     // switching configId, or while the skin catalog is still loading).
@@ -213,6 +215,7 @@ public class SpriteShadowShader : MonoBehaviour
         _shadow.flipX            = _source.flipX;
         _shadow.sortingLayerName = shadowSortingLayer;
         _shadow.sortingOrder     = shadowSortingOrder;
+        UpdateCullShift(_lastValidSprite);
 
         if (shadowMaterial != null && _shadow.sharedMaterial != shadowMaterial)
             _shadow.sharedMaterial = shadowMaterial;
@@ -245,6 +248,7 @@ public class SpriteShadowShader : MonoBehaviour
         _mpb.SetFloat(ID_ShadowScaleX,   1f);
         _mpb.SetFloat(ID_ShadowAlpha,    shadowColor.a * intensity);
         _mpb.SetFloat(ID_ShadowFlattenY, shadowFlattenY);
+        _mpb.SetFloat(ID_ShadowYOffset,  _cullShiftY);
         _shadow.SetPropertyBlock(_mpb);
         _shadow.enabled = (intensity >= 0.01f);
 
@@ -324,6 +328,7 @@ public class SpriteShadowShader : MonoBehaviour
         _shadow.flipX            = _source.flipX;
         _shadow.sortingLayerName = shadowSortingLayer;
         _shadow.sortingOrder     = shadowSortingOrder;
+        UpdateCullShift(_lastValidSprite);
 
         // ── 6. Compute shadow lean from the current sun angle ───────────────
         // Arc runs from sunriseAngle (170°, upper-left) through 90° (noon, top)
@@ -350,6 +355,7 @@ public class SpriteShadowShader : MonoBehaviour
         _mpb.SetFloat(ID_ShadowScaleX,   1f);
         _mpb.SetFloat(ID_ShadowAlpha,    shadowColor.a * intensity);
         _mpb.SetFloat(ID_ShadowFlattenY, shadowFlattenY);
+        _mpb.SetFloat(ID_ShadowYOffset,  _cullShiftY);
         _shadow.SetPropertyBlock(_mpb);
 
         // ── 8. Toggle visibility AFTER the MPB is fully written ─────────────
@@ -357,6 +363,23 @@ public class SpriteShadowShader : MonoBehaviour
         if (showDebugLogs && _shadow.enabled != shouldBeEnabled)
             Debug.Log($"[SpriteShadow] {name} LateUpdate — visibility changed: {_shadow.enabled} → {shouldBeEnabled} (intensity={intensity:F3})");
         _shadow.enabled = shouldBeEnabled;
+    }
+
+    /// <summary>
+    /// Moves the shadow renderer transform downward so Unity's CPU culling
+    /// bounds cover the projected area. The shader then adds the same amount
+    /// back to keep the final shadow position unchanged.
+    /// </summary>
+    private void UpdateCullShift(Sprite sprite)
+    {
+        if (_shadow == null || sprite == null) return;
+
+        float spriteHeight = sprite.bounds.size.y;
+        _cullShiftY = spriteHeight * (0.5f + 0.5f * shadowFlattenY);
+
+        Vector3 localPos = _shadow.transform.localPosition;
+        localPos.y = -_cullShiftY;
+        _shadow.transform.localPosition = localPos;
     }
 
     void OnDisable()

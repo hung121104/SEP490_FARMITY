@@ -86,9 +86,9 @@ MonoBehaviour:
     key0: {r: 0.1, g: 0.1, b: 0.25, a: 1}
     key1: {r: 0.1, g: 0.1, b: 0.25, a: 1}
     key2: {r: 1, g: 0.65, b: 0.3, a: 0}
-    key3: {r: 1, g: 0.98, b: 0.9, a: 0}
-    key4: {r: 1, g: 1, b: 1, a: 0}
-    key5: {r: 1, g: 0.98, b: 0.9, a: 0}
+    key3: {r: 1, g: 0.9218868, b: 0.6094339, a: 0}
+    key4: {r: 1, g: 0.9967733, b: 0.8886792, a: 0}
+    key5: {r: 1, g: 0.92490566, b: 0.6245283, a: 0}
     key6: {r: 1, g: 0.5, b: 0.2, a: 0}
     key7: {r: 0.1, g: 0.1, b: 0.25, a: 0}
     ctime0: 0
@@ -234,8 +234,8 @@ MonoBehaviour:
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
-      time: 0.3
-      value: 0.5
+      time: 0.33
+      value: 0.8
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -244,7 +244,7 @@ MonoBehaviour:
       outWeight: 0
     - serializedVersion: 3
       time: 0.5
-      value: 0.75
+      value: 1
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -252,8 +252,8 @@ MonoBehaviour:
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
-      time: 0.7
-      value: 0.5
+      time: 0.67
+      value: 0.8
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -281,9 +281,10 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  sunArcRadius: 200
-  sunLightOuterRadius: 400
-  sunLightOuterAngle: 360
+  sunLightOuterRadius: 25
+  sunLightOuterAngle: 90
+  sunShadowSoftness: 0.5
+  sunArcRadius: 20
   sunShadowIntensity:
     serializedVersion: 2
     m_Curve:
@@ -353,7 +354,6 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  sunShadowSoftness: 0
   shadowXScaleDawn: 0.5
   shadowXScaleNoon: 1
   sunriseAngle: 170
@@ -367,3 +367,80 @@ MonoBehaviour:
   eveningRaysEnd: 0.833
   shadowCullBuffer: 4
   shadowNightThreshold: 0.1
+  cloudShadowOpacity:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.25
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.33
+      value: 0.5
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.5
+      value: 0.6
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.67
+      value: 0.5
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.75
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  cloudScale: 65.9
+  cloudSpeed: 0.01
+  cloudContrast: -10.5
+  cloudThreshold: 0.6
+  cloudDirection: {x: 1, y: 0.5}
+  cloudDivergeAngle: 0
+  cloudShadowMin: 0.549
+  cloudRainOpacityMultiplier: 2

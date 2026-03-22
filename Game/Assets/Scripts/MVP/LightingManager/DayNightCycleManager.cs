@@ -26,6 +26,9 @@ public class DayNightCycleManager : MonoBehaviour
     /// <summary>Current computed intensity (after rain multiplier).</summary>
     public float CurrentIntensity { get; private set; }
 
+    /// <summary>Current cloud shadow opacity (0 at night, scaled by rain).</summary>
+    public float CloudShadowOpacity { get; private set; }
+
     /// <summary>The ScriptableObject driving all curves. Exposed so SpriteShadowShader
     /// can auto-populate its config reference from the singleton rather than needing
     /// a manual Inspector assignment on every prefab instance.</summary>
@@ -97,8 +100,13 @@ public class DayNightCycleManager : MonoBehaviour
         globalLight.intensity = CurrentIntensity;
         globalLight.color     = baseColor;
 
+        // 6. Cloud shadow opacity (driven by config curve + rain multiplier)
+        float baseCloudOpacity = config.cloudShadowOpacity.Evaluate(DayProgress);
+        float cloudRainMul     = Mathf.Lerp(1f, config.cloudRainOpacityMultiplier, _rainBlend);
+        CloudShadowOpacity     = Mathf.Clamp01(baseCloudOpacity * cloudRainMul);
+
         if (showDebugLogs && Time.frameCount % 120 == 0)
-            Debug.Log($"[DayNight] hour={timeManager.hour} min={timeManager.minute:F0} dayProgress={DayProgress:F3} intensity={CurrentIntensity:F3} color={baseColor} rain={_rainBlend:F2}");
+            Debug.Log($"[DayNight] hour={timeManager.hour} min={timeManager.minute:F0} dayProgress={DayProgress:F3} intensity={CurrentIntensity:F3} color={baseColor} rain={_rainBlend:F2} cloudOpacity={CloudShadowOpacity:F2}");
     }
 
     // ─── Weather callbacks ───────────────────────────────────────

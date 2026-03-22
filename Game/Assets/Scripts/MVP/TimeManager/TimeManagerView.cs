@@ -105,12 +105,13 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
             return;
         }
         
-        // Only Master Client advances time
+        // All clients advance time locally for smooth visuals.
+        // Non-master clients are periodically corrected by OnRoomPropertiesUpdate.
+        AdvanceTime();
+
+        // Only master client broadcasts authoritative time to room properties
         if (PhotonNetwork.IsMasterClient)
         {
-            AdvanceTime();
-            
-            // Periodically sync to room properties
             if (Time.time >= nextSyncTime)
             {
                 SyncTimeToRoomProperties();
@@ -240,15 +241,27 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
             }
             if (propertiesThatChanged.ContainsKey(PROP_MONTH))
             {
-                month = (int)propertiesThatChanged[PROP_MONTH];
+                int newMonth = (int)propertiesThatChanged[PROP_MONTH];
+                bool monthActuallyChanged = newMonth != month;
+                month = newMonth;
                 season = (Season)(month - 1);
                 timeUpdated = true;
+                // Fire events so SeasonManagerView and WeatherView stay in sync.
+                if (monthActuallyChanged)
+                {
+                    OnMonthChanged?.Invoke();
+                    OnSeasonChanged?.Invoke();
+                }
             }
             if (propertiesThatChanged.ContainsKey(PROP_DAY))
             {
-                day = (int)propertiesThatChanged[PROP_DAY];
+                int newDay = (int)propertiesThatChanged[PROP_DAY];
+                bool dayActuallyChanged = newDay != day;
+                day = newDay;
                 week = ((day - 1) / DaysPerWeek) + 1;
                 timeUpdated = true;
+                if (dayActuallyChanged)
+                    OnDayChanged?.Invoke();
             }
             if (propertiesThatChanged.ContainsKey(PROP_HOUR))
             {
@@ -268,6 +281,19 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
         }
     }
     
+    /// <summary>
+    /// Called when this client successfully joins a room.
+    /// Handles the case where Start() ran before the room was joined
+    /// (e.g. DontDestroyOnLoad lobby scene).
+    /// </summary>
+    public override void OnJoinedRoom()
+    {
+        if (!PhotonNetwork.IsMasterClient)
+            LoadTimeFromRoomProperties();
+        else
+            nextSyncTime = Time.time + syncInterval;
+    }
+
     /// <summary>
     /// Called when this client becomes the Master Client
     /// </summary>
