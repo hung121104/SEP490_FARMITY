@@ -60,6 +60,9 @@ export class Character {
 
   @Prop({ default: '' })
   toolConfigId: string;
+
+  @Prop({ type: [String], default: [] })
+  playerSkillSlotIds: string[];
 }
 
 export const CharacterSchema = SchemaFactory.createForClass(Character);

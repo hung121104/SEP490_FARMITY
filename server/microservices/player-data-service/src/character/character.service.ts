@@ -113,6 +113,60 @@ export class CharacterService implements OnModuleInit {
     return result;
   }
 
+  async getSkillLoadout(
+    worldId: string | Types.ObjectId,
+    accountId: string | Types.ObjectId,
+  ): Promise<{ worldId: string; accountId: string; playerSkillSlotIds: string[] }> {
+    const worldOid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
+    const accountOid = typeof accountId === 'string' ? new Types.ObjectId(accountId) : accountId;
+
+    const character = await this.characterModel
+      .findOne({ worldId: worldOid, accountId: accountOid })
+      .lean()
+      .exec();
+
+    return {
+      worldId: worldOid.toString(),
+      accountId: accountOid.toString(),
+      playerSkillSlotIds: Array.isArray(character?.playerSkillSlotIds)
+        ? character.playerSkillSlotIds.map((id) => (id ?? '').trim())
+        : [],
+    };
+  }
+
+  async updateSkillLoadout(
+    worldId: string | Types.ObjectId,
+    accountId: string | Types.ObjectId,
+    playerSkillSlotIds: string[],
+  ): Promise<{ worldId: string; accountId: string; playerSkillSlotIds: string[] }> {
+    const worldOid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
+    const accountOid = typeof accountId === 'string' ? new Types.ObjectId(accountId) : accountId;
+    const normalized = Array.isArray(playerSkillSlotIds)
+      ? playerSkillSlotIds.map((id) => (typeof id === 'string' ? id.trim() : ''))
+      : [];
+
+    await this.characterModel.findOneAndUpdate(
+      { worldId: worldOid, accountId: accountOid },
+      {
+        $set: { playerSkillSlotIds: normalized },
+        $setOnInsert: {
+          worldId: worldOid,
+          accountId: accountOid,
+          positionX: 0,
+          positionY: 0,
+          sectionIndex: 0,
+        },
+      },
+      { upsert: true, new: true },
+    );
+
+    return {
+      worldId: worldOid.toString(),
+      accountId: accountOid.toString(),
+      playerSkillSlotIds: normalized,
+    };
+  }
+
   // ────────────────────────────────────────────────────────────────────────────
   //  applyInventoryDeltas
   //

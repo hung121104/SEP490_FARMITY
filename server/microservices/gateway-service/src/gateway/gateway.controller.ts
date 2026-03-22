@@ -45,6 +45,7 @@ import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
+import { UpdateSkillLoadoutDto } from './dto/update-skill-loadout.dto';
 import {
   UpdateWorldBlacklistDto,
   WorldBlacklistQueryDto,
@@ -1643,6 +1644,50 @@ export class GatewayController {
         this.authClient.send('update-achievement-progress-batch', {
           accountId: String(accountId),
           updates,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /player-data/combat/skill-loadout?worldId=... — get this player's persisted skill slots for a world */
+  @Get('player-data/combat/skill-loadout')
+  async getSkillLoadout(@Query('worldId') worldId: string, @Req() req: Request) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    if (!worldId) throw new BadRequestException('worldId is required');
+
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('get-character-skill-loadout', {
+          worldId,
+          accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/combat/skill-loadout — update this player's persisted skill slots */
+  @Put('player-data/combat/skill-loadout')
+  async updateSkillLoadout(
+    @Body() dto: UpdateSkillLoadoutDto,
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    if (!dto?.worldId) throw new BadRequestException('worldId is required');
+
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('update-character-skill-loadout', {
+          worldId: dto.worldId,
+          accountId: String(accountId),
+          playerSkillSlotIds: Array.isArray(dto.playerSkillSlotIds)
+            ? dto.playerSkillSlotIds
+            : [],
         }),
       );
     } catch (err) {

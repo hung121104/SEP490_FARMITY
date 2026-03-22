@@ -46,6 +46,8 @@ namespace CombatManager.Presenter
         private ISkillHotbarService service;
         private List<SkillHotbarSlotView> slots = new List<SkillHotbarSlotView>();
         private WeaponSkillSlotView weaponSkillSlotView;
+        private ISkillLoadoutSyncService loadoutSyncService;
+        private bool isBootstrappingLoadout;
 
         // ✅ Current weapon skill data (set when weapon equipped)
         private SkillData currentWeaponSkillData;
@@ -69,6 +71,13 @@ namespace CombatManager.Presenter
             }
             Instance = this;
             service = new SkillHotbarService(model);
+
+            SkillLoadoutSyncService syncComponent = GetComponent<SkillLoadoutSyncService>();
+            if (syncComponent == null)
+            {
+                syncComponent = gameObject.AddComponent<SkillLoadoutSyncService>();
+            }
+            loadoutSyncService = syncComponent;
         }
 
         private void Start()
@@ -120,9 +129,94 @@ namespace CombatManager.Presenter
                 yield break;
             }
 
-            LinkDefaultSkills();
+            string[] loadedSlotIds = null;
+            bool loadedFromServer = false;
+            if (loadoutSyncService != null)
+            {
+                yield return loadoutSyncService.InitializeAndFetch(
+                    equippedSkillsData.Length,
+                    (ids) =>
+                    {
+                        loadedSlotIds = ids;
+                        loadedFromServer = HasAnySkillId(ids);
+                    },
+                    (error) => Debug.LogWarning($"[SkillHotbarPresenter] Skill loadout fetch failed: {error}")
+                );
+            }
+
+            isBootstrappingLoadout = true;
+            if (loadedFromServer)
+            {
+                ApplySkillLoadoutByIds(loadedSlotIds);
+            }
+            else
+            {
+                LinkDefaultSkills();
+            }
+            isBootstrappingLoadout = false;
+
+            loadoutSyncService?.SetRuntimeSnapshot(
+                BuildEquippedSkillIdSnapshot(),
+                markDirty: !loadedFromServer
+            );
+
             RefreshAllSlots();
             Debug.Log("[SkillHotbarPresenter] Skill setup complete!");
+        }
+
+        private void ApplySkillLoadoutByIds(string[] slotIds)
+        {
+            if (slotIds == null || CombatSkillCatalogService.Instance == null) return;
+
+            for (int i = 0; i < equippedSkillsData.Length; i++)
+            {
+                equippedSkillsData[i] = null;
+                if (i >= slotIds.Length) continue;
+
+                string skillId = slotIds[i];
+                if (string.IsNullOrWhiteSpace(skillId)) continue;
+
+                SkillData skill = CombatSkillCatalogService.Instance.GetSkillById(skillId);
+                if (skill == null)
+                {
+                    Debug.LogWarning($"[SkillHotbarPresenter] Persisted skill '{skillId}' not found in catalog.");
+                    continue;
+                }
+
+                if (skill.IsWeaponSkill)
+                {
+                    Debug.LogWarning($"[SkillHotbarPresenter] Persisted skill '{skill.skillName}' is WeaponSkill and cannot be in player hotbar.");
+                    continue;
+                }
+
+                equippedSkillsData[i] = skill;
+            }
+        }
+
+        private bool HasAnySkillId(string[] slotIds)
+        {
+            if (slotIds == null) return false;
+            for (int i = 0; i < slotIds.Length; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(slotIds[i])) return true;
+            }
+            return false;
+        }
+
+        private string[] BuildEquippedSkillIdSnapshot()
+        {
+            string[] snapshot = new string[equippedSkillsData.Length];
+            for (int i = 0; i < equippedSkillsData.Length; i++)
+            {
+                snapshot[i] = equippedSkillsData[i] != null ? equippedSkillsData[i].skillId : string.Empty;
+            }
+            return snapshot;
+        }
+
+        private void MarkLoadoutDirty()
+        {
+            if (isBootstrappingLoadout) return;
+            loadoutSyncService?.SetRuntimeSnapshot(BuildEquippedSkillIdSnapshot(), markDirty: true);
         }
 
         private void LinkDefaultSkills()
@@ -278,6 +372,7 @@ namespace CombatManager.Presenter
 
             equippedSkillsData[slotIndex] = skillData;
             Debug.Log($"[SkillHotbarPresenter] Equipped '{skillData?.skillName}' → slot {slotIndex}");
+            MarkLoadoutDirty();
         }
 
         public void UnequipSkill(int slotIndex)
@@ -285,6 +380,7 @@ namespace CombatManager.Presenter
             if (!IsSlotIndexValid(slotIndex)) return;
             equippedSkillsData[slotIndex] = null;
             Debug.Log($"[SkillHotbarPresenter] Unequipped slot {slotIndex}");
+            MarkLoadoutDirty();
         }
 
         public void SwapSkills(int slotA, int slotB)
@@ -296,6 +392,7 @@ namespace CombatManager.Presenter
             equippedSkillsData[slotB] = temp;
 
             Debug.Log($"[SkillHotbarPresenter] Swapped slot {slotA} ↔ slot {slotB}");
+            MarkLoadoutDirty();
         }
 
         #endregion
