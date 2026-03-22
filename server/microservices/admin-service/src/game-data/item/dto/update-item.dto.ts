@@ -154,10 +154,6 @@ export class UpdateItemDto {
   critChance?: number;
 
   @IsOptional()
-  @IsNumber()
-  attackSpeed?: number;
-
-  @IsOptional()
   @IsString()
   weaponMaterialId?: string;
 

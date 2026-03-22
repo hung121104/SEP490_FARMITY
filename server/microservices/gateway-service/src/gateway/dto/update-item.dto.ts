@@ -39,7 +39,6 @@ export class UpdateItemDto {
   // Weapon
   damage?: number;
   critChance?: number;
-  attackSpeed?: number;
   weaponMaterialId?: string;
 
   // Fish

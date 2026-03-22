@@ -129,9 +129,6 @@ export class Item {
   @Prop()
   critChance?: number;
 
-  @Prop()
-  attackSpeed?: number;
-
   /** References a Material document by materialId (e.g. 'mat_steel'). */
   @Prop()
   weaponMaterialId?: string;

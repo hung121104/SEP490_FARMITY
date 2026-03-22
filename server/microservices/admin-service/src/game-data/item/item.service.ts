@@ -184,7 +184,6 @@ export class ItemService {
       bufferDuration: undefined,
       damage: undefined,
       critChance: undefined,
-      attackSpeed: undefined,
       weaponMaterialId: undefined,
       weaponType: undefined,
       tier: undefined,

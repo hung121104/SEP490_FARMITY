@@ -4,7 +4,6 @@ public class WeaponData : ItemData
 {
     public int    damage          = 10;
     public int    critChance      = 5;
-    public float  attackSpeed     = 1.0f;
     /// <summary>
     /// References a Material document by materialId (e.g. "mat_steel").
     /// Resolved at runtime via MaterialCatalogService.GetMaterial().
@@ -48,9 +47,6 @@ public class WeaponData : ItemData
     {
         if (attackCooldown > 0f)
             return attackCooldown;
-
-        if (attackSpeed > 0.01f)
-            return 1f / attackSpeed;
 
         return 0.5f;
     }

@@ -40,7 +40,6 @@ export class CreateItemDto {
   // Weapon
   damage?: number;
   critChance?: number;
-  attackSpeed?: number;
   weaponMaterialId?: string;
 
   // Fish

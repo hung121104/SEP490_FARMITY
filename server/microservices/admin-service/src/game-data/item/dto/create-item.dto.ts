@@ -156,10 +156,6 @@ export class CreateItemDto {
   critChance?: number;
 
   @IsOptional()
-  @IsNumber()
-  attackSpeed?: number;
-
-  @IsOptional()
   @IsString()
   weaponMaterialId?: string;
 
