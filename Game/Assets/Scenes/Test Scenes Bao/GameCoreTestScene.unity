@@ -4404,8 +4404,8 @@ MonoBehaviour:
   StoragePrefab: {fileID: 2204487346316466391, guid: 7d72e1778a0fa6b47a642882830f9b38, type: 3}
   CraftingPrefab: {fileID: 2204487346316466391, guid: 8fb4099573c0581469eb0f81049f712e, type: 3}
   SmeltingPrefab: {fileID: 2204487346316466391, guid: 1573010c872efcc44a01e6757958bcb9, type: 3}
-  FencePrefab: {fileID: 0}
-  DecorationPrefab: {fileID: 0}
+  FencePrefab: {fileID: 2204487346316466391, guid: 4cd27e6c78dae6340b8b850488c34994, type: 3}
+  DecorationPrefab: {fileID: 2204487346316466391, guid: f36c842b0bfe39242bf6b1e30d12709f, type: 3}
   placementRange: 2
   playerTag: PlayerEntity
   playerCameraTag: MainCamera
@@ -4428,7 +4428,7 @@ MonoBehaviour:
   validTools: 030000000200000000000000
   regenDelaySeconds: 10
   interactionRange: 2
-  showDebugLogs: 1
+  showDebugLogs: 0
   flashColor: {r: 1, g: 0, b: 0, a: 1}
   flashDuration: 0.1
   shakeIntensity: 0.1
@@ -34971,7 +34971,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &843540055
 RectTransform:
   m_ObjectHideFlags: 0
@@ -41797,8 +41797,6 @@ MonoBehaviour:
   inventoryMenuRoot: {fileID: 1992598973}
   spriteRenderer: {fileID: 1146011600}
   questView: {fileID: 429389107}
-  questDatabase: {fileID: 11400000, guid: 8a944947f2eb2e041bc3f7f4b3e3e180, type: 2}
-  questIndex: 1
   questLogController: {fileID: 2111404908}
 --- !u!95 &1146011599
 Animator:
@@ -91556,6 +91554,7 @@ MonoBehaviour:
   - pumpkin_seed
   - strawberry_seed
   - item_wooden_crafting_table
+  - wooden_fence
   quantityPerItem: 1
   qualityOverride: 0
   addItemKey: 116
@@ -103789,7 +103788,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2056635914
 RectTransform:
   m_ObjectHideFlags: 0

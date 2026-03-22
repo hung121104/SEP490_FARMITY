@@ -181,10 +181,10 @@ export class Item {
 
   // ── itemType: 13 – Structure ──────────────────────────────────────────────
 
-  @Prop()
+  @Prop({ default: 5 })
   structureInteractionType?: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   structureLevel?: number;
 
   /** Sprite URL/path used when interacting with this structure (e.g. chest open sprite) */
