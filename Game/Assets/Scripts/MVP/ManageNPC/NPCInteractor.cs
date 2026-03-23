@@ -1,5 +1,6 @@
-﻿    using UnityEngine;
-    using System.Collections.Generic;
+﻿    using System.Collections.Generic;
+    using UnityEngine;
+using static UnityEngine.InputSystem.LowLevel.InputStateHistory;
 
 public class NPCInteractor : MonoBehaviour
 {
@@ -197,8 +198,13 @@ public class NPCInteractor : MonoBehaviour
 
                                 questService.GiveReward(activeQuest.questId, inventory);
                                 questService.CompleteQuest(activeQuest.questId);
+                                var reward = activeQuest.reward;
+                                Sprite rewardSprite = ItemCatalogService.Instance.GetCachedSprite(reward.itemId);
+                                ItemData itemData = ItemCatalogService.Instance.GetItemData(reward.itemId);
+                                string displayName = itemData != null ? itemData.itemName : reward.itemId;
+                                dialogueView.ShowReward(rewardSprite, reward.quantity);
 
-                                ShowSimpleDialogue("Thank you for your help! Here is your reward..");
+                                ShowSimpleDialogue($"Thank you! You received: {displayName} x{reward.quantity}.");
                             }
                         }
                         else
