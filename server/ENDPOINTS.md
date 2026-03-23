@@ -748,164 +748,82 @@ Depending on `itemType`, specific extra fields must be included:
 
 ### Weapon Items (Extended Fields)
 
-> Weapon items are still managed through the Item endpoints, but require additional combat-runtime fields for the new DB-driven weapon flow.
+> There is no separate weapon endpoint group. Weapon entries use the standard Item endpoints with `itemType = 6`.
 
 #### HTTP Endpoints (same routes as Items)
 
-- **POST** `/game-data/items/create`: Create a weapon item (admin only).
-  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
-  - Content-Type: `multipart/form-data`
-  - Required basics: all Item base fields + `itemType = 6`
-  - Response: Saved item document including all weapon runtime fields
+- **POST** `/game-data/items/create` (admin): create weapon item (`itemType = 6`).
+- **PUT** `/game-data/items/:itemID` (admin): update weapon item.
+- **GET** `/game-data/items/by-item-id/:itemID`: get one weapon item.
+- **GET** `/game-data/items/catalog`: get full item catalog (includes weapons).
+- **DELETE** `/game-data/items/:itemID` (admin): delete weapon item.
 
-- **PUT** `/game-data/items/:itemID`: Update a weapon item (admin only).
-  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
-  - Content-Type: `multipart/form-data`
-  - Path param: `itemID`
-  - Body: Any subset of weapon fields and base item fields
-  - Response: Updated item document
-
-- **GET** `/game-data/items/by-item-id/:itemID`: Get one weapon item.
-- **GET** `/game-data/items/catalog`: Get full catalog (weapon entries included).
-- **DELETE** `/game-data/items/:itemID`: Delete a weapon item.
-
-#### Weapon Fields (for web manage page)
-
-Base weapon fields (existing):
+#### Required Weapon Runtime Fields
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `damage` | int | ✅ | Base damage |
 | `critChance` | int | ✅ | Critical chance percentage |
 | `weaponMaterialId` | string | ✅ | Material `materialId` from Material Catalog |
-
-Extended runtime fields (new):
-
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `weaponType` | int | ✅ | Weapon type enum used by combat routing |
+| `weaponType` | int | ✅ | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` |
 | `tier` | int | ✅ | Weapon tier |
-| `attackCooldown` | number | ✅ | Attack cooldown in seconds |
-| `knockbackForce` | number | ✅ | Melee knockback force |
-| `projectileSpeed` | number | ✅ for staff-type weapons | Projectile speed |
-| `projectileRange` | number | ✅ for staff-type weapons | Projectile max range |
-| `projectileKnockback` | number | ✅ for staff-type weapons | Projectile knockback force |
-| `weaponVisualConfigId` | string | ✅ | CombatCatalog `configId` for weapon sprite sheet (runtime swap) |
-| `linkedSkillId` | string | Optional | Skill ID for weapon special slot |
+| `attackCooldown` | number | ✅ | Attack cooldown seconds |
+| `knockbackForce` | number | ✅ | Melee knockback |
+| `projectileSpeed` | number | ✅ for staff weapons | Projectile speed |
+| `projectileRange` | number | ✅ for staff weapons | Projectile range |
+| `projectileKnockback` | number | ✅ for staff weapons | Projectile knockback |
+| `weaponVisualConfigId` | string | ✅ | Combat Catalog `configId` for weapon sprite swap |
+| `linkedSkillId` | string | — | Optional weapon special skill id |
 
-#### Web Dropdown / Select Guide
+#### Runtime Note
 
-Use dropdowns (not free number inputs) for these fields:
-
-| Field | UI Type | Allowed Values | Source |
-| --- | --- | --- | --- |
-| `itemType` | Fixed/hidden | `6` = Weapon | ItemType enum (Game client) |
-| `weaponType` | Dropdown | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` | `CombatManager.Model.WeaponType` |
-| `itemCategory` | Dropdown | `0=Farming`, `1=Mining`, `2=Fishing`, `3=Cooking`, `4=Crafting`, `5=Combat`, `6=Foraging`, `7=Special` | `ItemCategory` enum (Game client) |
-| `weaponMaterialId` | Searchable dropdown | `materialId` values | GET `/game-data/materials/catalog` |
-| `linkedSkillId` | Searchable dropdown (optional) | `skillId` values where `ownership = WeaponSkill` | GET `/game-data/combat-skills/all` then filter |
-| `canBeSold` | Dropdown/Toggle | `true` / `false` | Boolean |
-| `canBeBought` | Dropdown/Toggle | `true` / `false` | Boolean |
-| `isQuestItem` | Dropdown/Toggle | `true` / `false` | Boolean |
-| `isArtifact` | Dropdown/Toggle | `true` / `false` | Boolean |
-| `isRareItem` | Dropdown/Toggle | `true` / `false` | Boolean |
-
-Weapon page recommended defaults:
-
-- `itemType = 6`
-- `isStackable = false`
-- `maxStack = 1`
-
-Linked-skill dropdown rule:
-
-- Show only skills with `ownership = WeaponSkill`.
-- Save selected option as `linkedSkillId` (string skillId).
-- Allow empty selection (no weapon special skill).
-
-#### Validation Rules
-
-- `itemType` must be `6` for weapon setup.
-- `weaponVisualConfigId` is required for weapon items.
-- `linkedSkillId` is only valid when item is a weapon.
-- If `linkedSkillId` is provided, it must exist in Combat Skills catalog.
-- If `linkedSkillId` is provided, that skill must have ownership `WeaponSkill`.
-
-#### Example Create Payload (multipart text fields)
-
-```json
-{
-  "itemID": "weapon_bronze_sword",
-  "itemName": "Bronze Sword",
-  "description": "Starter sword",
-  "itemType": 6,
-  "itemCategory": 0,
-  "maxStack": 1,
-  "isStackable": false,
-  "basePrice": 50,
-  "buyPrice": 120,
-  "canBeSold": true,
-  "canBeBought": true,
-  "isQuestItem": false,
-  "isArtifact": false,
-  "isRareItem": false,
-  "damage": 15,
-  "critChance": 5,
-  "weaponMaterialId": "mat_bronze",
-  "weaponType": 1,
-  "tier": 1,
-  "attackCooldown": 0.5,
-  "knockbackForce": 5,
-  "projectileSpeed": 0,
-  "projectileRange": 0,
-  "projectileKnockback": 0,
-  "weaponVisualConfigId": "weapon_sword_bronze_visual",
-  "linkedSkillId": "skill_weapon_sword_special"
-}
-```
-
-Runtime note:
-
-- Client no longer needs a prefab key per weapon. Weapon prefab is chosen by `weaponType` (Sword/Staff/Spear base prefab), then the equipped sprite is swapped by `weaponVisualConfigId` through `DynamicSpriteSwapper`.
+- Weapon prefab selection is by `weaponType` base prefab.
+- Visual sprite comes from `weaponVisualConfigId` via Combat Catalog + runtime sprite swap.
 
 ---
 
 ### Combat Catalog
 
-> Dedicated combat visual spritesheet catalog for runtime-swapped combat assets. Start with `type = weapon` entries now; extend later for `skill_vfx` and other combat visuals.
+> Dedicated combat visual catalog for runtime combat assets. Supports both spritesheet-based visuals (`weapon`) and color-tint-only configs (`skill_vfx`).
 
 #### HTTP Endpoints
 
-- **GET** `/game-data/combat-catalogs`: Get full combat catalog (public).
-  - Optional query param: `type` — filter by entry type (e.g., `?type=weapon`).
-  - Response: Array of combat catalog entries.
+- **GET** `/game-data/combat-catalogs` (public): get combat catalog entries.
+  - Optional query: `type` (for example `?type=weapon` or `?type=skill_vfx`).
 
-- **POST** `/game-data/combat-catalogs`: Create a new combat catalog entry (admin only).
+- **POST** `/game-data/combat-catalogs` (admin): create combat catalog entry.
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Content-Type: `multipart/form-data`
   - Fields:
 
-    | Field         | Type       | Required | Notes                                                                                                     |
-    | ------------- | ---------- | -------- | --------------------------------------------------------------------------------------------------------- |
-    | `spritesheet` | file (PNG) | ✅       | Combat spritesheet, max 10 MB. Uploaded to Cloudinary folder `combat-spritesheets` automatically.       |
-    | `configId`    | text       | ✅       | Stable lookup key used by runtime (e.g., `weapon_sword_iron`).                                          |
-    | `displayName` | text       | ✅       | Display label for admin UI.                                                                              |
-    | `type`        | text       | —        | Entry group for filtering. Default: `weapon`. Planned values include `weapon`, `skill_vfx`.            |
-    | `cellSize`    | text (int) | —        | Uniform sprite cell width/height in pixels. Default: `64`.                                              |
+    | Field | Type | Required | Notes |
+    | --- | --- | --- | --- |
+    | `configId` | text | ✅ | Stable lookup key used by runtime (e.g., `weapon_sword_iron`, `skill_slash_fire`). |
+    | `displayName` | text | ✅ | Display label for admin UI. |
+    | `type` | text | — | Entry group. Default: `weapon`. Supported: `weapon`, `skill_vfx`. |
+    | `spritesheet` | file (PNG) | ✅ for non-`skill_vfx` | Combat spritesheet, max 10 MB. Uploaded to Cloudinary folder `combat-spritesheets`. |
+    | `cellSize` | text (int) | — | Uniform sprite cell width/height in pixels. Default: `64`. |
+    | `primaryColorHex` | text | ✅ for `skill_vfx` | Tint color for runtime (hex, e.g., `#FF7A00`). |
+    | `secondaryColorHex` | text | — | Optional secondary tint (hex). |
+    | `colorIntensity` | text (float) | — | Optional color multiplier. Default: `1`. |
+    | `tintAlpha` | text (float) | — | Optional final alpha [0..1]. Default: `1`. |
 
-  - Response: Created combat catalog document including `_id` and `spritesheetUrl`.
-  - Note: Returns `409 Conflict` if `configId` already exists.
+  - Notes:
+    - `type=weapon` requires a `spritesheet` file.
+    - `type=skill_vfx` allows no `spritesheet` and uses tint fields only.
+    - `409 Conflict` if `configId` exists.
 
-- **PUT** `/game-data/combat-catalogs/:configId`: Update an existing combat catalog entry (admin only).
+- **PUT** `/game-data/combat-catalogs/:configId` (admin): update combat catalog entry.
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Content-Type: `multipart/form-data`
   - Path param: `configId`
   - Fields (all optional):
     - `spritesheet` file to replace the sheet (re-uploads to Cloudinary).
-    - `displayName`, `type`, `cellSize` text fields.
+    - `displayName`, `type`, `cellSize`, `primaryColorHex`, `secondaryColorHex`, `colorIntensity`, `tintAlpha` text fields.
   - Response: Updated combat catalog document.
   - Note: Returns `404` if not found.
 
-- **DELETE** `/game-data/combat-catalogs/:configId`: Delete a combat catalog entry (admin only).
+- **DELETE** `/game-data/combat-catalogs/:configId` (admin): delete combat catalog entry.
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Path param: `configId`
   - Response: `204 No Content`
@@ -915,17 +833,23 @@ Runtime note:
 
 | Field | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |
-| `configId` | string | ✅ | — | Stable runtime lookup key used by `weaponVisualConfigId` and future combat visual keys. |
-| `type` | string | — | `weapon` | Entry category for filtering (e.g., `weapon`, `skill_vfx`). |
-| `spritesheetUrl` | string | ✅ | — | Public CDN URL, auto-filled from uploaded `spritesheet` file. |
+| `configId` | string | ✅ | — | Stable runtime lookup key used by `weaponVisualConfigId` and `skillVisualConfigId`. |
+| `type` | string | — | `weapon` | Entry category for filtering (`weapon`, `skill_vfx`). |
+| `spritesheetUrl` | string | ✅ for non-`skill_vfx` | — | Public CDN URL, auto-filled from uploaded `spritesheet` file when provided. |
 | `cellSize` | int | — | `64` | Width = height for each frame cell in pixels. |
 | `displayName` | string | ✅ | — | Human-readable label in web admin. |
+| `primaryColorHex` | string | ✅ for `skill_vfx` | — | Main tint color in hex format. |
+| `secondaryColorHex` | string | — | `""` | Optional extra tint value for future shader use. |
+| `colorIntensity` | float | — | `1` | Color multiplier applied at runtime. |
+| `tintAlpha` | float | — | `1` | Final alpha applied at runtime. |
 
 #### Unity Integration Notes
 
-- Unity `CombatCatalogManager` calls `GET /game-data/combat-catalogs?type=weapon` on startup.
-- Each entry is registered into `SkinCatalogManager` under `configId`, so `DynamicSpriteSwapper` can resolve it at runtime.
-- Weapon items should set `weaponVisualConfigId` to a CombatCatalog `configId`.
+- Unity loads combat catalog on startup.
+- Entries with `spritesheetUrl` are used for sprite sheets (weapon visuals).
+- `type=skill_vfx` entries are tint configs for animated skill prefabs.
+- Weapon items use `weaponVisualConfigId`.
+- Combat skills use `skillVisualConfigId`.
 
 ---
 
@@ -1051,17 +975,15 @@ Runtime note:
 | `cooldown` | number | — | Seconds |
 | `diceTier` | enum | — | `D6`, `D8`, `D10`, `D12`, `D20` |
 | `skillMultiplier` | number | — | Damage multiplier |
-| `projectilePrefabKey` | string | — | Client prefab key resolver input |
 | `projectileSpeed` | number | — | Projectile speed |
 | `projectileRange` | number | — | Projectile max range |
 | `projectileKnockback` | number | — | Projectile knockback force |
-| `slashVfxKey` | string | — | Client slash VFX prefab key |
+| `skillVisualConfigId` | string | — | CombatCatalog `configId` (type `skill_vfx`) used to tint spawned skill VFX |
 | `slashVfxDuration` | number | — | Slash VFX lifetime |
 | `slashVfxSpawnOffset` | number | — | Forward spawn offset |
 | `slashVfxPositionOffsetX` | number | — | Additional X offset |
 | `slashVfxPositionOffsetY` | number | — | Additional Y offset |
 | `slashKnockbackForce` | number | — | Slash hit knockback force |
-| `damagePopupPrefabKey` | string | — | Client damage popup prefab key |
 
 #### Combat Skill Dropdown / Select Guide
 
@@ -1076,8 +998,7 @@ Notes for web form behavior:
 
 - If `ownership = PlayerSkill`, set `requiredWeaponType = 0`.
 - If `ownership = WeaponSkill`, require `requiredWeaponType` > 0.
-- Show projectile fields primarily for `category = Projectile`.
-- Show slash VFX fields primarily for `category = Slash`.
+- For new skills, create a Combat Catalog `type=skill_vfx` entry and set `skillVisualConfigId`.
 
 ---
 

@@ -15,7 +15,7 @@ export class CombatCatalog {
   @Prop({ required: true, default: 'weapon' })
   type: string;
 
-  @Prop({ required: true })
+  @Prop({ default: '' })
   spritesheetUrl: string;
 
   @Prop({ required: true, default: 64 })
@@ -23,6 +23,18 @@ export class CombatCatalog {
 
   @Prop({ required: true })
   displayName: string;
+
+  @Prop({ default: '' })
+  primaryColorHex: string;
+
+  @Prop({ default: '' })
+  secondaryColorHex: string;
+
+  @Prop({ default: 1 })
+  colorIntensity: number;
+
+  @Prop({ default: 1 })
+  tintAlpha: number;
 }
 
 export const CombatCatalogSchema = SchemaFactory.createForClass(CombatCatalog);

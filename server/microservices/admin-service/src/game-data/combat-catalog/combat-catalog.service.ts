@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CombatCatalog, CombatCatalogDocument } from './combat-catalog.schema';
@@ -27,12 +32,19 @@ export class CombatCatalogService {
       );
     }
 
+    const normalizedType = (dto.type || 'weapon').trim().toLowerCase();
+    this.validateCatalogPayload(normalizedType, dto.spritesheetUrl, dto.primaryColorHex);
+
     const doc = new this.combatCatalogModel({
       configId: dto.configId,
-      type: dto.type || 'weapon',
-      spritesheetUrl: dto.spritesheetUrl,
+      type: normalizedType,
+      spritesheetUrl: dto.spritesheetUrl || '',
       cellSize: dto.cellSize ?? 64,
       displayName: dto.displayName,
+      primaryColorHex: dto.primaryColorHex || '',
+      secondaryColorHex: dto.secondaryColorHex || '',
+      colorIntensity: dto.colorIntensity ?? 1,
+      tintAlpha: dto.tintAlpha ?? 1,
     });
 
     return doc.save();
@@ -41,19 +53,51 @@ export class CombatCatalogService {
   async update(
     configId: string,
     patch: Partial<
-      Pick<CombatCatalog, 'type' | 'spritesheetUrl' | 'cellSize' | 'displayName'>
+      Pick<
+        CombatCatalog,
+        | 'type'
+        | 'spritesheetUrl'
+        | 'cellSize'
+        | 'displayName'
+        | 'primaryColorHex'
+        | 'secondaryColorHex'
+        | 'colorIntensity'
+        | 'tintAlpha'
+      >
     >,
   ): Promise<CombatCatalog> {
-    const updated = await this.combatCatalogModel
-      .findOneAndUpdate({ configId }, { $set: patch }, { new: true })
-      .lean()
-      .exec();
-
-    if (!updated) {
+    const existing = await this.combatCatalogModel.findOne({ configId }).lean().exec();
+    if (!existing) {
       throw new NotFoundException(
         `CombatCatalog with configId '${configId}' not found.`,
       );
     }
+
+    const merged = {
+      ...existing,
+      ...patch,
+      type: (patch.type ?? existing.type ?? 'weapon').trim().toLowerCase(),
+    };
+
+    this.validateCatalogPayload(
+      merged.type,
+      merged.spritesheetUrl,
+      merged.primaryColorHex,
+    );
+
+    const updated = await this.combatCatalogModel
+      .findOneAndUpdate(
+        { configId },
+        {
+          $set: {
+            ...patch,
+            type: merged.type,
+          },
+        },
+        { new: true },
+      )
+      .lean()
+      .exec();
 
     return updated;
   }
@@ -63,6 +107,27 @@ export class CombatCatalogService {
     if (result.deletedCount === 0) {
       throw new NotFoundException(
         `CombatCatalog with configId '${configId}' not found.`,
+      );
+    }
+  }
+
+  private validateCatalogPayload(
+    type: string,
+    spritesheetUrl?: string,
+    primaryColorHex?: string,
+  ): void {
+    if (type === 'skill_vfx') {
+      if (!primaryColorHex || !primaryColorHex.trim()) {
+        throw new BadRequestException(
+          "'primaryColorHex' is required for combat catalog entries with type='skill_vfx'.",
+        );
+      }
+      return;
+    }
+
+    if (!spritesheetUrl || !spritesheetUrl.trim()) {
+      throw new BadRequestException(
+        "'spritesheetUrl' is required for non-skill_vfx combat catalog entries.",
       );
     }
   }

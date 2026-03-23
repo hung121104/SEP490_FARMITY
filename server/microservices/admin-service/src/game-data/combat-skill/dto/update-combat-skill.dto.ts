@@ -48,10 +48,6 @@ export class UpdateCombatSkillDto {
 	skillMultiplier?: number;
 
 	@IsOptional()
-	@IsString()
-	projectilePrefabKey?: string;
-
-	@IsOptional()
 	@IsNumber()
 	projectileSpeed?: number;
 
@@ -65,7 +61,7 @@ export class UpdateCombatSkillDto {
 
 	@IsOptional()
 	@IsString()
-	slashVfxKey?: string;
+	skillVisualConfigId?: string;
 
 	@IsOptional()
 	@IsNumber()
@@ -86,8 +82,4 @@ export class UpdateCombatSkillDto {
 	@IsOptional()
 	@IsNumber()
 	slashKnockbackForce?: number;
-
-	@IsOptional()
-	@IsString()
-	damagePopupPrefabKey?: string;
 }

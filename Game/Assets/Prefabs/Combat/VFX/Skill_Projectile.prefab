@@ -11,9 +11,10 @@ GameObject:
   - component: {fileID: 372741990453722817}
   - component: {fileID: 1287363463556040799}
   - component: {fileID: 3652096954840313609}
-  - component: {fileID: 2272456177918871505}
-  - component: {fileID: 5966640161715239488}
-  - component: {fileID: 1806382767243101563}
+  - component: {fileID: 5232472936946208108}
+  - component: {fileID: 6834932070776856297}
+  - component: {fileID: 1285027981637607636}
+  - component: {fileID: 6019287765743746139}
   m_Layer: 11
   m_Name: Skill_Projectile
   m_TagString: Bullet
@@ -31,7 +32,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -3.4815, y: -8.542, z: 0}
-  m_LocalScale: {x: 0.6276, y: 0.532, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -80,7 +81,7 @@ SpriteRenderer:
   m_SortingLayerID: 1697184185
   m_SortingLayer: 3
   m_SortingOrder: 200
-  m_Sprite: {fileID: -8961674735814929796, guid: 655217b28727c84478270b381584b0d4, type: 3}
+  m_Sprite: {fileID: -2937912103407283272, guid: 2e3333a7ab081c144a7221cd637cbca7, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -118,7 +119,29 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 1
   m_Constraints: 0
---- !u!60 &2272456177918871505
+--- !u!95 &5232472936946208108
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2996777577814843754}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 8e4ad24f8a64b1041b5ef6d9e8b38511, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!60 &6834932070776856297
 PolygonCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -156,7 +179,7 @@ PolygonCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 3.875, y: 3}
+    oldSize: {x: 3, y: 2}
     newSize: {x: 3, y: 3}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -164,16 +187,17 @@ PolygonCollider2D:
   m_AutoTiling: 0
   m_Points:
     m_Paths:
-    - - {x: 0.875, y: 1.5}
-      - {x: 0.3125, y: 1.5}
-      - {x: -1.375, y: -0.4375}
-      - {x: -1.375, y: -1.125}
-      - {x: 0.375, y: -1.125}
-      - {x: 0.375, y: -1.0625}
-      - {x: 1.4375, y: -0.125}
-      - {x: 1.4375, y: 1.0625}
+    - - {x: -0.75, y: 0.375}
+      - {x: -1, y: 0}
+      - {x: -1, y: -0.25}
+      - {x: -0.75, y: -0.4375}
+      - {x: -0.125, y: -0.4375}
+      - {x: 0.625, y: -0.3125}
+      - {x: 0.8125, y: -0.0625}
+      - {x: 0.75, y: 0.1875}
+      - {x: -0.125, y: 0.375}
   m_UseDelaunayMesh: 0
---- !u!114 &5966640161715239488
+--- !u!114 &1285027981637607636
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -185,7 +209,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec43e87e8a5a6d942b7d282eb5ae4d7b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &1806382767243101563
+--- !u!114 &6019287765743746139
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

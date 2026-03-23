@@ -19,6 +19,8 @@ public class CombatCatalogManager : MonoBehaviour
 
     [Tooltip("Filter by catalog type. Use 'weapon' for weapon visuals.")]
     [SerializeField] private string catalogType = "weapon";
+    [Tooltip("If enabled, load all combat catalog types in one request (weapon + skill_vfx).")]
+    [SerializeField] private bool fetchAllTypes = true;
 
     public bool IsReady { get; private set; }
 
@@ -52,6 +54,25 @@ public class CombatCatalogManager : MonoBehaviour
 
     public IReadOnlyDictionary<string, CombatCatalogEntry> GetAllEntries() => _catalog;
 
+    public bool TryGetPrimaryTint(string configId, out Color tint)
+    {
+        tint = Color.white;
+        CombatCatalogEntry entry = GetEntry(configId);
+        if (entry == null || string.IsNullOrWhiteSpace(entry.primaryColorHex))
+            return false;
+
+        if (!ColorUtility.TryParseHtmlString(entry.primaryColorHex, out Color parsed))
+            return false;
+
+        float intensity = Mathf.Max(0f, entry.colorIntensity <= 0f ? 1f : entry.colorIntensity);
+        parsed.r = Mathf.Clamp01(parsed.r * intensity);
+        parsed.g = Mathf.Clamp01(parsed.g * intensity);
+        parsed.b = Mathf.Clamp01(parsed.b * intensity);
+        parsed.a = Mathf.Clamp01(entry.tintAlpha <= 0f ? parsed.a : entry.tintAlpha);
+        tint = parsed;
+        return true;
+    }
+
     public void Retry()
     {
         if (!IsReady)
@@ -73,7 +94,7 @@ public class CombatCatalogManager : MonoBehaviour
         _catalog.Clear();
 
         string url = $"{AppConfig.ApiBaseUrl}/game-data/combat-catalogs";
-        if (!string.IsNullOrWhiteSpace(catalogType))
+        if (!fetchAllTypes && !string.IsNullOrWhiteSpace(catalogType))
             url += $"?type={UnityWebRequest.EscapeURL(catalogType)}";
 
         List<CombatCatalogEntry> entries = null;
@@ -137,6 +158,22 @@ public class CombatCatalogManager : MonoBehaviour
             {
                 pending--;
                 completed++;
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(entry.spritesheetUrl))
+            {
+                pending--;
+                completed++;
+                CatalogProgressManager.ReportProgress(completed, entries.Count, "Combat Catalog");
+
+                if (pending <= 0)
+                {
+                    IsReady = true;
+                    OnReady?.Invoke();
+                    Debug.Log($"[CombatCatalogManager] Ready with {_catalog.Count} entry(ies). type='{catalogType}'");
+                    CatalogProgressManager.NotifyCompleted();
+                }
                 continue;
             }
 

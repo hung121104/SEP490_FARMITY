@@ -52,9 +52,6 @@ export class CombatSkill {
   @Prop({ default: 1.5 })
   skillMultiplier: number;
 
-  @Prop({ default: '' })
-  projectilePrefabKey: string;
-
   @Prop({ default: 10 })
   projectileSpeed: number;
 
@@ -65,7 +62,7 @@ export class CombatSkill {
   projectileKnockback: number;
 
   @Prop({ default: '' })
-  slashVfxKey: string;
+  skillVisualConfigId: string;
 
   @Prop({ default: 0.5 })
   slashVfxDuration: number;
@@ -81,9 +78,6 @@ export class CombatSkill {
 
   @Prop({ default: 5 })
   slashKnockbackForce: number;
-
-  @Prop({ default: '' })
-  damagePopupPrefabKey: string;
 }
 
 export const CombatSkillSchema = SchemaFactory.createForClass(CombatSkill);

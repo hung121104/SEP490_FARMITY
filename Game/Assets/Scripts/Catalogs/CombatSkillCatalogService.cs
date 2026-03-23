@@ -10,17 +10,10 @@ using UnityEngine.Networking;
 
 /// <summary>
 /// Singleton runtime catalog for combat skills.
-/// Fetches GET /game-data/combat-skills/catalog and resolves runtime assets by key.
+/// Fetches GET /game-data/combat-skills/catalog and attaches configured base prefabs.
 /// </summary>
 public class CombatSkillCatalogService : MonoBehaviour
 {
-    [Serializable]
-    private class PrefabKeyBinding
-    {
-        public string key;
-        public GameObject prefab;
-    }
-
     [Serializable]
     private class CombatSkillCatalogResponse
     {
@@ -30,9 +23,9 @@ public class CombatSkillCatalogService : MonoBehaviour
     public static CombatSkillCatalogService Instance { get; private set; }
 
     [Header("Prefab Resolver")]
-    [SerializeField] private List<PrefabKeyBinding> projectilePrefabs = new List<PrefabKeyBinding>();
-    [SerializeField] private List<PrefabKeyBinding> slashVfxPrefabs = new List<PrefabKeyBinding>();
-    [SerializeField] private List<PrefabKeyBinding> damagePopupPrefabs = new List<PrefabKeyBinding>();
+    [SerializeField] private GameObject baseProjectilePrefab;
+    [SerializeField] private GameObject baseSlashVfxPrefab;
+    [SerializeField] private GameObject baseDamagePopupPrefab;
 
     [Header("Runtime")]
     [SerializeField] private bool autoFetchOnStart = true;
@@ -184,27 +177,10 @@ public class CombatSkillCatalogService : MonoBehaviour
 
     private void ResolveSkillAssets(SkillData skill)
     {
-        skill.projectilePrefab = ResolvePrefab(projectilePrefabs, skill.projectilePrefabKey);
-        skill.slashVFXPrefab = ResolvePrefab(slashVfxPrefabs, skill.slashVfxKey);
-        skill.damagePopupPrefab = ResolvePrefab(damagePopupPrefabs, skill.damagePopupPrefabKey);
+        skill.projectilePrefab = baseProjectilePrefab;
+        skill.slashVFXPrefab = baseSlashVfxPrefab;
+        skill.damagePopupPrefab = baseDamagePopupPrefab;
+
         skill.slashVFXPositionOffset = new Vector2(skill.slashVfxPositionOffsetX, skill.slashVfxPositionOffsetY);
-    }
-
-    private static GameObject ResolvePrefab(List<PrefabKeyBinding> bindings, string key)
-    {
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            return null;
-        }
-
-        for (int i = 0; i < bindings.Count; i++)
-        {
-            if (string.Equals(bindings[i].key, key, StringComparison.OrdinalIgnoreCase))
-            {
-                return bindings[i].prefab;
-            }
-        }
-
-        return null;
     }
 }

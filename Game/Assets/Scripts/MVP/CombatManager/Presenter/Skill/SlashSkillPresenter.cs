@@ -123,6 +123,8 @@ namespace CombatManager.Presenter
                 Quaternion.Euler(0f, 0f, angle)
             );
 
+            ApplySkillTint(vfxObj, currentSkillData.skillVisualConfigId);
+
             // ✅ Flip fix for left-facing direction
             if (direction.x < 0)
             {
@@ -152,6 +154,34 @@ namespace CombatManager.Presenter
             }
 
             Destroy(vfxObj, currentSkillData.slashVFXDuration);
+        }
+
+        private static void ApplySkillTint(GameObject target, string skillVisualConfigId)
+        {
+            if (target == null || string.IsNullOrWhiteSpace(skillVisualConfigId))
+                return;
+
+            CombatCatalogManager catalog = CombatCatalogManager.Instance;
+            if (catalog == null)
+                return;
+
+            if (!catalog.TryGetPrimaryTint(skillVisualConfigId, out Color tint))
+            {
+                Debug.LogWarning(
+                    $"[SlashSkillPresenter] Missing or invalid tint config '{skillVisualConfigId}'.");
+                return;
+            }
+
+            SpriteRenderer[] renderers = target.GetComponentsInChildren<SpriteRenderer>(true);
+            foreach (SpriteRenderer renderer in renderers)
+                renderer.color = tint;
+
+            ParticleSystem[] particles = target.GetComponentsInChildren<ParticleSystem>(true);
+            foreach (ParticleSystem particle in particles)
+            {
+                var main = particle.main;
+                main.startColor = tint;
+            }
         }
 
         #endregion

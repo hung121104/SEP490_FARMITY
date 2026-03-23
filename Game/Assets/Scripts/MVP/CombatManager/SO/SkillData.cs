@@ -46,8 +46,6 @@ namespace CombatManager.SO
 
         [Header("Projectile Settings (Category = Projectile)")]
         [Tooltip("Projectile prefab with ProjectilePresenter attached.")]
-        [JsonProperty("projectilePrefabKey")]
-        public string projectilePrefabKey = "";
         public GameObject projectilePrefab;
         [JsonProperty("projectileSpeed")]
         public float projectileSpeed = 10f;
@@ -58,8 +56,8 @@ namespace CombatManager.SO
 
         [Header("Slash Settings (Category = Slash)")]
         [Tooltip("VFX prefab with SlashHitboxPresenter attached.")]
-        [JsonProperty("slashVfxKey")]
-        public string slashVfxKey = "";
+        [JsonProperty("skillVisualConfigId")]
+        public string skillVisualConfigId = "";
         public GameObject slashVFXPrefab;
         [JsonProperty("slashVfxDuration")]
         public float slashVFXDuration = 0.5f;
@@ -72,8 +70,6 @@ namespace CombatManager.SO
         public Vector2 slashVFXPositionOffset = Vector2.zero;
         [JsonProperty("slashKnockbackForce")]
         public float slashKnockbackForce = 5f;
-        [JsonProperty("damagePopupPrefabKey")]
-        public string damagePopupPrefabKey = "";
         public GameObject damagePopupPrefab;
 
         #region Public Helpers

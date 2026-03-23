@@ -2012,25 +2012,38 @@ export class GatewayController {
     @UploadedFile() file: Express.Multer.File,
     @Body() body: any,
   ) {
-    if (!file)
-      throw new BadRequestException(
-        'A spritesheet file is required (field name: "spritesheet")',
-      );
-
     try {
-      const spritesheetUrl = await this.cloudinaryService.uploadFile(
-        file,
-        'combat-spritesheets',
-        body.configId || undefined,
-      );
+      const type = (body.type || 'weapon').toString().trim().toLowerCase();
+      const isSkillVfx = type === 'skill_vfx';
+
+      let spritesheetUrl: string | undefined;
+      if (file) {
+        spritesheetUrl = await this.cloudinaryService.uploadFile(
+          file,
+          'combat-spritesheets',
+          body.configId || undefined,
+        );
+      } else if (!isSkillVfx) {
+        throw new BadRequestException(
+          'A spritesheet file is required (field name: "spritesheet") for non-skill_vfx entries.',
+        );
+      }
 
       const dto = {
         configId: body.configId,
         displayName: body.displayName,
-        type: body.type || 'weapon',
+        type,
         spritesheetUrl,
         cellSize:
           body.cellSize !== undefined ? Number(body.cellSize) : undefined,
+        primaryColorHex: body.primaryColorHex,
+        secondaryColorHex: body.secondaryColorHex,
+        colorIntensity:
+          body.colorIntensity !== undefined
+            ? Number(body.colorIntensity)
+            : undefined,
+        tintAlpha:
+          body.tintAlpha !== undefined ? Number(body.tintAlpha) : undefined,
       };
 
       return await firstValueFrom(
@@ -2062,6 +2075,14 @@ export class GatewayController {
       if (body.displayName !== undefined) patch.displayName = body.displayName;
       if (body.type !== undefined) patch.type = body.type;
       if (body.cellSize !== undefined) patch.cellSize = Number(body.cellSize);
+      if (body.primaryColorHex !== undefined)
+        patch.primaryColorHex = body.primaryColorHex;
+      if (body.secondaryColorHex !== undefined)
+        patch.secondaryColorHex = body.secondaryColorHex;
+      if (body.colorIntensity !== undefined)
+        patch.colorIntensity = Number(body.colorIntensity);
+      if (body.tintAlpha !== undefined)
+        patch.tintAlpha = Number(body.tintAlpha);
 
       if (file) {
         patch.spritesheetUrl = await this.cloudinaryService.uploadFile(

@@ -26,6 +26,10 @@ export class CombatCatalogController {
       spritesheetUrl?: string;
       cellSize?: number;
       displayName?: string;
+      primaryColorHex?: string;
+      secondaryColorHex?: string;
+      colorIntensity?: number;
+      tintAlpha?: number;
     },
   ) {
     const { configId, ...patch } = payload;

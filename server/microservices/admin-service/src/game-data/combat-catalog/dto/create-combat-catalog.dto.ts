@@ -1,4 +1,13 @@
-import { IsString, IsNotEmpty, IsInt, IsOptional, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsInt,
+  IsOptional,
+  Min,
+  Max,
+  IsNumber,
+  IsHexColor,
+} from 'class-validator';
 
 export class CreateCombatCatalogDto {
   @IsString()
@@ -9,8 +18,8 @@ export class CreateCombatCatalogDto {
   @IsNotEmpty()
   type: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   spritesheetUrl: string;
 
   @IsInt()
@@ -21,4 +30,24 @@ export class CreateCombatCatalogDto {
   @IsString()
   @IsNotEmpty()
   displayName: string;
+
+  @IsOptional()
+  @IsHexColor()
+  primaryColorHex?: string;
+
+  @IsOptional()
+  @IsHexColor()
+  secondaryColorHex?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(4)
+  colorIntensity?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  tintAlpha?: number;
 }
