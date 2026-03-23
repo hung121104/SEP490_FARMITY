@@ -146,9 +146,3 @@ public enum StructureInteractionType
     Decoration
 }
 
-public enum CleanupNotificationType
-{
-    Info,
-    Warning
-}
-
