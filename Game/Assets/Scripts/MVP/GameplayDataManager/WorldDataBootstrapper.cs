@@ -168,6 +168,37 @@ public class WorldDataBootstrapper : MonoBehaviour
                 Debug.Log($"[WorldDataBootstrapper] Loaded {data.chests.Count} chest(s) from save.");
             }
 
+            // --- Orphaned data cleanup ---
+            // Validate all world data references against loaded catalogs.
+            // Removes entries whose catalog data no longer exists (hard-deleted by admin).
+            if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
+                && WorldDataManager.Instance != null)
+            {
+                var cleanupService = new OrphanedDataCleanupService(
+                    ItemCatalogService.Instance,
+                    PlantCatalogService.Instance,
+                    ResourceCatalogManager.Instance,
+                    RecipeCatalogService.Instance,
+                    WorldDataManager.Instance);
+
+                var report = cleanupService.RunCleanup();
+                if (report.TotalCleaned > 0)
+                {
+                    Debug.LogWarning($"[WorldDataBootstrapper] Orphaned data cleanup: " +
+                        $"crops={report.OrphanedCrops}, structures={report.OrphanedStructures}, " +
+                        $"resources={report.OrphanedResources}, inventory={report.OrphanedInventorySlots}, " +
+                        $"chests={report.OrphanedChestSlots}, recipes={report.OrphanedRecipes}");
+
+                    // Show notification to the player
+                    var notificationView = FindAnyObjectByType<CleanupNotificationView>();
+                    if (notificationView != null)
+                    {
+                        var presenter = new CleanupNotificationPresenter(notificationView);
+                        presenter.NotifyCleanup(report);
+                    }
+                }
+            }
+
             IsReady = true;
             Debug.Log($"[WorldDataBootstrapper] Ready. World: {data.worldName} | Characters: {data.characters?.Count ?? 0} | Chunks: {data.chunks?.Count ?? 0} | Chests: {data.chests?.Count ?? 0}");
         }

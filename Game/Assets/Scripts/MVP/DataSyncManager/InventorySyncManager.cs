@@ -488,6 +488,28 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
         if (showDebugLogs)
             Debug.Log($"[InvSync] ✓ Inventory sync complete! {totalInventories} inventories loaded");
 
+        // --- Orphaned inventory cleanup for late-join player ---
+        if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
+            && WorldDataManager.Instance?.InventoryData != null)
+        {
+            int cleaned = 0;
+            foreach (var charId in WorldDataManager.Instance.InventoryData.GetAllCharacterIds())
+            {
+                for (byte i = 0; i < 36; i++)
+                {
+                    if (WorldDataManager.Instance.InventoryData.TryGetSlot(charId, i, out var slot)
+                        && !slot.IsEmpty
+                        && ItemCatalogService.Instance.GetItemData(slot.ItemId) == null)
+                    {
+                        WorldDataManager.Instance.InventoryData.ClearSlot(charId, i);
+                        cleaned++;
+                    }
+                }
+            }
+            if (cleaned > 0)
+                Debug.LogWarning($"[InvSync] Late-join cleanup: removed {cleaned} orphaned inventory slot(s)");
+        }
+
         OnInventoryChanged?.Invoke();
     }
 

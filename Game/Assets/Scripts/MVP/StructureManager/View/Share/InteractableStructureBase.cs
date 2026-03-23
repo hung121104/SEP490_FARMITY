@@ -266,6 +266,14 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     protected void SetupStructureInteractionBadge(string structureId)
     {
+        // Destroy previous badge to prevent duplicates when reused from pool
+        if (_structureInteractionBadge != null)
+        {
+            Destroy(_structureInteractionBadge);
+            _structureInteractionBadge = null;
+            _structureInteractionRenderer = null;
+        }
+
         var sprite = ItemCatalogService.Instance?.GetCachedStructureInteractionSprite(structureId);
         if (sprite == null) return;
 
@@ -275,7 +283,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         _structureInteractionRenderer = _structureInteractionBadge.AddComponent<SpriteRenderer>();
         _structureInteractionRenderer.sprite = sprite;
         _structureInteractionRenderer.sortingLayerName = "WalkInfront";
-        _structureInteractionRenderer.sortingOrder = 1;
+        _structureInteractionRenderer.sortingOrder = 0;
         _structureInteractionBadge.SetActive(false);
     }
 
