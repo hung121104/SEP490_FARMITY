@@ -41,6 +41,8 @@ public class PlayerDataManager : MonoBehaviour
 				outfitConfigId = c.outfitConfigId,
 				hatConfigId    = c.hatConfigId,
 				toolConfigId   = c.toolConfigId,
+				currentStamina = c.currentStamina,
+				viableStamina  = c.viableStamina,
 			});
 		}
 		Debug.Log($"[PlayerDataManager] Populated {players.Count} characters.");

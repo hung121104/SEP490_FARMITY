@@ -60,6 +60,12 @@ export class Character {
 
   @Prop({ default: '' })
   toolConfigId: string;
+
+  @Prop({ default: 200 })
+  currentStamina: number;
+
+  @Prop({ default: 200 })
+  viableStamina: number;
 }
 
 export const CharacterSchema = SchemaFactory.createForClass(Character);

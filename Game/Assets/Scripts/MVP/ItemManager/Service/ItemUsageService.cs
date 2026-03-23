@@ -26,6 +26,13 @@ public class ItemUsageService : IItemUsageService
             return false;
         }
 
+        var stamina = StaminaView.FindLocal();
+        if (stamina != null && !stamina.TryConsumeToolStamina(toolData.staminaCost))
+        {
+            Debug.Log("[ItemUsageService] Blocked tool use due to low stamina.");
+            return false;
+        }
+
         return toolData.toolType switch
         {
             ToolType.Hoe         => useToolService.UseHoe(toolData, pos),
@@ -57,6 +64,46 @@ public class ItemUsageService : IItemUsageService
     public (bool, int) UseConsumable(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsageService] UseConsumable: " + item.itemID + " at: " + pos);
+
+        var stamina = StaminaView.FindLocal();
+        if (stamina == null) return (true, 1);
+
+        if (item is ConsumableData consumable)
+        {
+            float viableRestore = consumable.viableRestore > 0f
+                ? consumable.viableRestore
+                : consumable.energyRestore;
+
+            stamina.ApplyConsumableEffects(
+                viableRestore,
+                consumable.regenBoostMultiplier,
+                consumable.toolEfficiencyReductionPercent,
+                consumable.effectDurationSeconds > 0f ? consumable.effectDurationSeconds : consumable.bufferDuration);
+            return (true, 1);
+        }
+
+        if (item is CookingData cooking)
+        {
+            float viableRestore = cooking.viableRestore > 0f
+                ? cooking.viableRestore
+                : cooking.energyRestore;
+            stamina.ApplyConsumableEffects(
+                viableRestore,
+                cooking.regenBoostMultiplier,
+                cooking.toolEfficiencyReductionPercent,
+                cooking.effectDurationSeconds > 0f ? cooking.effectDurationSeconds : cooking.bufferDuration);
+            return (true, 1);
+        }
+
+        if (item is ForageData forage)
+        {
+            float viableRestore = forage.viableRestore > 0f
+                ? forage.viableRestore
+                : forage.energyRestore;
+            stamina.ApplyConsumableEffects(viableRestore, 1f, 0f, 0f);
+            return (true, 1);
+        }
+
         return (true, 1);
     }
 

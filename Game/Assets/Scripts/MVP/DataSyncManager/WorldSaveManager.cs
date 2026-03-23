@@ -74,6 +74,22 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
     private void OnEnable()  => Application.wantsToQuit += OnWantsToQuit;
     private void OnDisable() => Application.wantsToQuit -= OnWantsToQuit;
 
+    // OnPlayerLeftRoom fires on the master BEFORE Photon destroys the leaving player's
+    // owns objects, so BuildPayload() can still read their StaminaView / position.
+    // This ensures a non-master's final stamina (and position) are persisted even when
+    // the auto-save timer has not yet elapsed.
+    public override void OnPlayerLeftRoom(Photon.Realtime.Player otherPlayer)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (WorldDataBootstrapper.Instance == null || !WorldDataBootstrapper.Instance.IsReady) return;
+        if (_isSaving) return;
+
+        if (ShowDebugLogs)
+            Debug.Log($"[WorldSave] Player '{otherPlayer.NickName}' left — triggering immediate save.");
+
+        StartCoroutine(AutoSaveCoroutine());
+    }
+
     private void Update()
     {
         if (!PhotonNetwork.IsMasterClient || _isSaving) return;
@@ -156,6 +172,26 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
         if (saved)
         {
+            // Sync saved stamina values back into PlayerDataManager so that if a joined
+            // client re-enters mid-session, TryRestoreFromSavedCharacterData() reads the
+            // current in-session values instead of the stale initial API-load values.
+            if (payload.characters != null && PlayerDataManager.Instance != null)
+            {
+                foreach (var charUpdate in payload.characters)
+                {
+                    if (string.IsNullOrEmpty(charUpdate.accountId)) continue;
+                    int idx = PlayerDataManager.Instance.players
+                        .FindIndex(p => p.accountId == charUpdate.accountId);
+                    if (idx < 0) continue;
+                    var pd = PlayerDataManager.Instance.players[idx];
+                    if (charUpdate.currentStamina.HasValue)
+                        pd.currentStamina = charUpdate.currentStamina.Value;
+                    if (charUpdate.viableStamina.HasValue)
+                        pd.viableStamina = charUpdate.viableStamina.Value;
+                    PlayerDataManager.Instance.players[idx] = pd;
+                }
+            }
+
             ClearPendingUntilledForDirtyChunks();
             _dirtyChunks.Clear();
             WorldDataManager.Instance?.InventoryData?.ClearAllDirtyFlags();
@@ -302,6 +338,13 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                 charUpdate.outfitConfigId = outfit ?? string.Empty;
                 charUpdate.hatConfigId    = hat    ?? string.Empty;
                 charUpdate.toolConfigId   = tool   ?? string.Empty;
+            }
+
+            var stamina = go.GetComponent<StaminaView>();
+            if (stamina != null)
+            {
+                charUpdate.currentStamina = stamina.CurrentStamina;
+                charUpdate.viableStamina = stamina.ViableStamina;
             }
 
             characters.Add(charUpdate);

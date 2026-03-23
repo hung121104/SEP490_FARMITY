@@ -47,6 +47,8 @@ export class UpsertCharacterInWorldDto {
   positionX: number;
   positionY: number;
   sectionIndex?: number;
+  currentStamina?: number;
+  viableStamina?: number;
 }
 
 export class UpdateWorldDto {

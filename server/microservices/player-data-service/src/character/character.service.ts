@@ -52,6 +52,8 @@ export class CharacterService implements OnModuleInit {
       positionX: 0,
       positionY: 0,
       sectionIndex: 0,
+      currentStamina: 200,
+      viableStamina: 200,
     } as Partial<Character>;
 
     // Use array form to support passing session option
@@ -104,10 +106,26 @@ export class CharacterService implements OnModuleInit {
     if (dto.outfitConfigId !== undefined) update.outfitConfigId = dto.outfitConfigId;
     if (dto.hatConfigId    !== undefined) update.hatConfigId    = dto.hatConfigId;
     if (dto.toolConfigId   !== undefined) update.toolConfigId   = dto.toolConfigId;
+    if (dto.currentStamina !== undefined) update.currentStamina = dto.currentStamina;
+    if (dto.viableStamina  !== undefined) update.viableStamina  = dto.viableStamina;
+
+    const setOnInsert: Record<string, any> = {
+      worldId: worldOid,
+      accountId: accountOid,
+    };
+
+    // Avoid MongoDB path conflicts by only defaulting fields here when they are
+    // not already present in $set for this request.
+    if (dto.sectionIndex === undefined) setOnInsert.sectionIndex = 0;
+    if (dto.currentStamina === undefined) setOnInsert.currentStamina = 200;
+    if (dto.viableStamina === undefined) setOnInsert.viableStamina = 200;
 
     const result = await this.characterModel.findOneAndUpdate(
       { worldId: worldOid, accountId: accountOid },
-      { $set: update, $setOnInsert: { worldId: worldOid, accountId: accountOid, sectionIndex: dto.sectionIndex ?? 0 } },
+      {
+        $set: update,
+        $setOnInsert: setOnInsert,
+      },
       { upsert: true, new: true, ...(options?.session ? { session: options.session } : {}) },
     );
     return result;

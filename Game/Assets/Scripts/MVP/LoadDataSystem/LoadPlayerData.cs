@@ -106,6 +106,16 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
 
     private IEnumerator WaitAndApplyAllPositions()
     {
+        // Skip position restore entirely for freshly-created worlds — the server assigns
+        // positionX=0 / positionY=0 as defaults which would teleport the player away from
+        // the designed spawn point.  The flag is cleared here so re-entering later works.
+        if (WorldSelectionManager.Instance != null && WorldSelectionManager.Instance.IsNewWorld)
+        {
+            Debug.Log("[LoadPlayerData] New world detected — skipping position restore, keeping spawn-point position.");
+            WorldSelectionManager.Instance.SetNewWorld(false);
+            yield break;
+        }
+
         if (!PhotonNetwork.IsMasterClient)
         {
             // Non-master: self-load position directly from API — don't depend on master.

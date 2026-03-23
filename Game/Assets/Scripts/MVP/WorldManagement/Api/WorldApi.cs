@@ -158,6 +158,12 @@ public static class WorldApi
             [JsonProperty("outfitConfigId")] public string outfitConfigId;
             [JsonProperty("hatConfigId")]    public string hatConfigId;
             [JsonProperty("toolConfigId")]   public string toolConfigId;
+
+            [JsonProperty("currentStamina", NullValueHandling = NullValueHandling.Ignore)]
+            public float? currentStamina;
+
+            [JsonProperty("viableStamina", NullValueHandling = NullValueHandling.Ignore)]
+            public float? viableStamina;
         }
     }
 

@@ -16,4 +16,7 @@ public struct PlayerData
     public string outfitConfigId;
     public string hatConfigId;
     public string toolConfigId;
+
+    public float currentStamina;
+    public float viableStamina;
 }

@@ -60,6 +60,11 @@ MonoBehaviour:
   - RPC_TriggerChop
   - RPC_AllSyncGold
   - RPC_MasterHandleGoldChange
+  - RPC_ApplyAuthoritativeState
+  - RPC_RequestConsumable
+  - RPC_RequestSleepRestore
+  - RPC_RequestToolConsume
+  - RPC_SetSprintIntent
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

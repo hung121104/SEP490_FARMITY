@@ -49,6 +49,9 @@ public class WorldApiResponse
         public string hatConfigId;
         public string toolConfigId;
 
+        public float currentStamina;
+        public float viableStamina;
+
         /// <summary>
         /// Saved inventory slots — key = slot index as string ("0"–"35").
         /// Null/empty if no inventory was saved.

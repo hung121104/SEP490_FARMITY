@@ -10,4 +10,7 @@ export class UpsertCharacterDto {
   outfitConfigId?: string;
   hatConfigId?: string;
   toolConfigId?: string;
+
+  currentStamina?: number;
+  viableStamina?: number;
 }
