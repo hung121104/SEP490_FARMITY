@@ -43,7 +43,7 @@ namespace CombatManager.Presenter
         [SerializeField] private float rotationOffsetDegrees = 0f;
 
         [Header("Debug")]
-        [SerializeField] private bool enableWeaponVisualDebug = true;
+        [SerializeField] private bool enableWeaponVisualDebug = false;
 
         private IWeaponAnimationService service;
 
@@ -51,7 +51,6 @@ namespace CombatManager.Presenter
         private Coroutine applyVisualCoroutine;
         private readonly List<SpriteRenderer> activeWeaponRenderers = new List<SpriteRenderer>();
         private Sprite activeWeaponSprite;
-        private int spriteOverrideLogCount;
 
         #region Unity Lifecycle
 
@@ -307,7 +306,6 @@ namespace CombatManager.Presenter
 
             activeWeaponRenderers.Clear();
             activeWeaponSprite = null;
-            spriteOverrideLogCount = 0;
 
             service?.DespawnWeapon();
         }
@@ -356,9 +354,12 @@ namespace CombatManager.Presenter
 
                 if (attempt == 1)
                 {
-                    Debug.LogWarning(
-                        $"[WeaponAnimationPresenter] Icon sprite not ready for '{currentWeaponData.weaponName}' " +
-                        $"(itemID='{currentWeaponData.itemID}'). Retrying...");
+                    if (enableWeaponVisualDebug)
+                    {
+                        Debug.Log(
+                            $"[WeaponAnimationPresenter] Icon sprite not ready for '{currentWeaponData.weaponName}' " +
+                            $"(itemID='{currentWeaponData.itemID}'). Retrying...");
+                    }
                 }
 
                 yield return new WaitForSeconds(retryDelay);
@@ -381,13 +382,13 @@ namespace CombatManager.Presenter
                 activeWeaponRenderers.Clear();
                 activeWeaponRenderers.AddRange(targetRenderers);
                 activeWeaponSprite = resolvedSprite;
-                spriteOverrideLogCount = 0;
 
-                Debug.Log(
-                    $"[WeaponAnimationPresenter] Applied item icon visual to '{weaponVisual.name}' " +
-                    $"from itemID='{currentWeaponData.itemID}'.");
-
-                LogWeaponVisualState("AppliedVisual", weaponVisual, targetRenderers, resolvedSprite);
+                if (enableWeaponVisualDebug)
+                {
+                    Debug.Log(
+                        $"[WeaponAnimationPresenter] Applied item icon visual to '{weaponVisual.name}' " +
+                        $"from itemID='{currentWeaponData.itemID}'.");
+                }
             }
             else
             {
@@ -453,42 +454,9 @@ namespace CombatManager.Presenter
 
                 if (renderer.sprite != activeWeaponSprite)
                 {
-                    string previous = renderer.sprite != null ? renderer.sprite.name : "<null>";
                     renderer.sprite = activeWeaponSprite;
                     renderer.enabled = true;
-
-                    if (enableWeaponVisualDebug && spriteOverrideLogCount < 10)
-                    {
-                        Debug.LogWarning(
-                            $"[WeaponAnimationPresenter] Sprite override reapplied on '{renderer.name}'. " +
-                            $"Previous='{previous}', Forced='{activeWeaponSprite.name}'.");
-                        spriteOverrideLogCount++;
-                    }
                 }
-            }
-        }
-
-        private void LogWeaponVisualState(string phase, GameObject weaponVisual, List<SpriteRenderer> targetRenderers, Sprite resolvedSprite)
-        {
-            if (!enableWeaponVisualDebug || weaponVisual == null)
-                return;
-
-            Animator[] animators = weaponVisual.GetComponentsInChildren<Animator>(true);
-            DynamicSpriteSwapper[] swappers = weaponVisual.GetComponentsInChildren<DynamicSpriteSwapper>(true);
-
-            Debug.Log(
-                $"[WeaponAnimationPresenter][{phase}] weapon='{weaponVisual.name}', itemID='{currentWeaponData?.itemID}', " +
-                $"iconUrl='{currentWeaponData?.iconUrl}', sprite='{resolvedSprite?.name}', " +
-                $"size={resolvedSprite?.rect.width}x{resolvedSprite?.rect.height}, ppu={resolvedSprite?.pixelsPerUnit}, " +
-                $"renderers={targetRenderers.Count}, animators={animators.Length}, swappers={swappers.Length}");
-
-            foreach (SpriteRenderer renderer in targetRenderers)
-            {
-                if (renderer == null) continue;
-                string spriteName = renderer.sprite != null ? renderer.sprite.name : "<null>";
-                Debug.Log(
-                    $"[WeaponAnimationPresenter][{phase}] renderer='{renderer.name}', enabled={renderer.enabled}, " +
-                    $"currentSprite='{spriteName}'");
             }
         }
 
