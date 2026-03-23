@@ -458,13 +458,41 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     /// </summary>
     private void HandleWorldSyncComplete()
     {
+        // --- Orphaned data cleanup for late-join player ---
+        if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
+            && WorldDataManager.Instance != null)
+        {
+            var cleanupService = new OrphanedDataCleanupService(
+                ItemCatalogService.Instance,
+                PlantCatalogService.Instance,
+                ResourceCatalogManager.Instance,
+                RecipeCatalogService.Instance,
+                WorldDataManager.Instance);
+
+            var report = cleanupService.RunCleanup();
+            if (report.TotalCleaned > 0)
+            {
+                Debug.LogWarning($"[ChunkSync] Late-join orphaned data cleanup: " +
+                    $"crops={report.OrphanedCrops}, structures={report.OrphanedStructures}, " +
+                    $"resources={report.OrphanedResources}, inventory={report.OrphanedInventorySlots}, " +
+                    $"chests={report.OrphanedChestSlots}, recipes={report.OrphanedRecipes}");
+
+                var notificationView = UnityEngine.Object.FindAnyObjectByType<CleanupNotificationView>();
+                if (notificationView != null)
+                {
+                    var presenter = new CleanupNotificationPresenter(notificationView);
+                    presenter.NotifyCleanup(report);
+                }
+            }
+        }
+
         int totalCrops = (int)WorldDataManager.Instance.GetStats().TotalCrops;
-        
+
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] ✓ World sync complete! Loaded {totalCrops} crops");
-        
+
         hasSyncedThisSession = true;
-        
+
         // Log stats
         WorldDataManager.Instance.LogStats();
     }
