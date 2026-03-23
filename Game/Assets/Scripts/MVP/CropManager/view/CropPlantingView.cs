@@ -214,42 +214,26 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
             return;
         }
 
-        _previewSR.sprite   = seedSprite;
-        _previewSR.enabled  = true;
-        _previewSR.transform.position = new Vector3(
-            Mathf.Floor(tile.x),
-            Mathf.Floor(tile.y) + 0.062f,
-            0f);
+        _previewSR.sprite  = seedSprite;
+        _previewSR.enabled = true;
+        // Keep preview exactly on the same snapped tile used for planting logic.
+        _previewSR.transform.position = new Vector3(tile.x + 0.5f, tile.y + 0.2f, 0f);
     }
 
     /// <summary>Calculates target tile for preview every frame (no deduplication).</summary>
     private Vector3 GetPreviewTargetTile()
     {
-        Vector3 playerPos     = playerTransform.position;
-        Vector3 mouseWorldPos = ScreenToWorldPosition(Input.mousePosition);
-        mouseWorldPos.z       = 0f;
-
-        int playerTileX = Mathf.RoundToInt(playerPos.x);
-        int playerTileY = Mathf.RoundToInt(playerPos.y);
-
-        Vector2 dir = new Vector2(mouseWorldPos.x - playerPos.x, mouseWorldPos.y - playerPos.y);
-
-        int offsetX = 0, offsetY = 0;
-        if (dir.magnitude >= 0.5f)
+        switch (plantingMode)
         {
-            dir.Normalize();
-            if      (dir.x >  0.4f) offsetX =  1;
-            else if (dir.x < -0.4f) offsetX = -1;
-            if      (dir.y >  0.4f) offsetY =  1;
-            else if (dir.y < -0.4f) offsetY = -1;
+            case PlantingMode.AtMouse:
+                return GetMouseWorldPosition();
+            case PlantingMode.AroundPlayer:
+                return GetDirectionalTileAroundPlayer(1);
+            case PlantingMode.FarAroundPlayer:
+                return GetDirectionalTileAroundPlayer(2);
+            default:
+                return Vector3.zero;
         }
-
-        int maxRadius = (plantingMode == PlantingMode.FarAroundPlayer) ? 2 : 1;
-        offsetX = Mathf.Clamp(offsetX, -maxRadius, maxRadius);
-        offsetY = Mathf.Clamp(offsetY, -maxRadius, maxRadius);
-
-        Vector3 target = new Vector3(playerTileX + offsetX, playerTileY + offsetY, 0f);
-        return Vector3.Distance(playerPos, target) <= plantingRange ? target : Vector3.zero;
     }
 
     // ── Planting positions ─────────────────────────────────────────────────

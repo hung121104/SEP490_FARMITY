@@ -70,37 +70,27 @@ public class ItemUsageService : IItemUsageService
 
         if (item is ConsumableData consumable)
         {
-            float viableRestore = consumable.viableRestore > 0f
-                ? consumable.viableRestore
-                : consumable.energyRestore;
-
             stamina.ApplyConsumableEffects(
-                viableRestore,
+                consumable.viableRestore,
                 consumable.regenBoostMultiplier,
                 consumable.toolEfficiencyReductionPercent,
-                consumable.effectDurationSeconds > 0f ? consumable.effectDurationSeconds : consumable.bufferDuration);
+                consumable.effectDurationSeconds);
             return (true, 1);
         }
 
         if (item is CookingData cooking)
         {
-            float viableRestore = cooking.viableRestore > 0f
-                ? cooking.viableRestore
-                : cooking.energyRestore;
             stamina.ApplyConsumableEffects(
-                viableRestore,
+                cooking.viableRestore,
                 cooking.regenBoostMultiplier,
                 cooking.toolEfficiencyReductionPercent,
-                cooking.effectDurationSeconds > 0f ? cooking.effectDurationSeconds : cooking.bufferDuration);
+                cooking.effectDurationSeconds);
             return (true, 1);
         }
 
         if (item is ForageData forage)
         {
-            float viableRestore = forage.viableRestore > 0f
-                ? forage.viableRestore
-                : forage.energyRestore;
-            stamina.ApplyConsumableEffects(viableRestore, 1f, 0f, 0f);
+            stamina.ApplyConsumableEffects(forage.viableRestore, 1f, 0f, 0f);
             return (true, 1);
         }
 
