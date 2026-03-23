@@ -30,6 +30,12 @@ namespace CombatManager.Presenter
         [SerializeField] private Vector3 anchorOffset = Vector3.zero;
         [SerializeField] private Vector3 gripLocalOffset = Vector3.zero;
 
+        [Header("Catalog Pivot Compensation (normalized pivot 0..1)")]
+        [SerializeField] private Vector2 catalogBasePivot = new Vector2(0.5f, 0.065f);
+        [SerializeField] private Vector2 swordDesiredPivot = new Vector2(0.81f, 0.19f);
+        [SerializeField] private Vector2 staffDesiredPivot = new Vector2(0.83f, 0.14f);
+        [SerializeField] private Vector2 spearDesiredPivot = new Vector2(0.71f, 0.28f);
+
         [Header("Rotation Settings")]
         [Tooltip("If sword sprite points RIGHT at 0°, keep 0. If points UP, set -90.")]
         [SerializeField] private float rotationOffsetDegrees = 0f;
@@ -270,6 +276,7 @@ namespace CombatManager.Presenter
             }
 
             service.SpawnWeapon();
+            ApplyWeaponPivotCompensation();
             ApplyWeaponVisualConfig();
         }
 
@@ -334,6 +341,35 @@ namespace CombatManager.Presenter
             swapper.ConfigId = visualConfigId;
             Debug.Log(
                 $"[WeaponAnimationPresenter] Applied weapon visual config '{visualConfigId}' to '{weaponVisual.name}'");
+        }
+
+        private void ApplyWeaponPivotCompensation()
+        {
+            GameObject weaponVisual = service?.GetWeaponVisual();
+            if (weaponVisual == null)
+                return;
+
+            Vector3 compensatedLocalOffset = gripLocalOffset + GetPivotCompensationOffset(currentWeaponData?.weaponType ?? WeaponType.None);
+            weaponVisual.transform.localPosition = compensatedLocalOffset;
+
+            Debug.Log(
+                $"[WeaponAnimationPresenter] Applied pivot compensation {compensatedLocalOffset} " +
+                $"for weapon type {currentWeaponData?.weaponType}");
+        }
+
+        private Vector3 GetPivotCompensationOffset(WeaponType weaponType)
+        {
+            Vector2 desiredPivot = weaponType switch
+            {
+                WeaponType.Sword => swordDesiredPivot,
+                WeaponType.Staff => staffDesiredPivot,
+                WeaponType.Spear => spearDesiredPivot,
+                _ => catalogBasePivot,
+            };
+
+            // To mimic changing sprite pivot at runtime, offset the transform by the inverse pivot delta.
+            Vector2 delta = catalogBasePivot - desiredPivot;
+            return new Vector3(delta.x, delta.y, 0f);
         }
 
         #endregion
