@@ -4,6 +4,7 @@ using System.Collections;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
+using UnityEngine.EventSystems;
 
 namespace CombatManager.Presenter
 {
@@ -159,6 +160,12 @@ namespace CombatManager.Presenter
 
         private void CheckAttackInput()
         {
+            if (SkillManagementPresenter.Instance != null && SkillManagementPresenter.Instance.IsPanelOpen())
+                return;
+
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+                return;
+
             if (CombatModePresenter.Instance == null ||
                 !CombatModePresenter.Instance.IsCombatModeActive())
                 return;

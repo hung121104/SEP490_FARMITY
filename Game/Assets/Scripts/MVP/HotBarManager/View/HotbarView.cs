@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.InputSystem;
+using CombatManager.Presenter;
 
 public class HotbarView : MonoBehaviour
 {
@@ -168,6 +169,7 @@ public class HotbarView : MonoBehaviour
     private void OnUseItemPerformed(InputAction.CallbackContext ctx)
     {
         if (!isInitialized) return;
+        if (SkillManagementPresenter.Instance != null && SkillManagementPresenter.Instance.IsPanelOpen()) return;
         if (!enableLeftClick) return;   // suppressed by CropHarvestingView when targeting a crop
         OnUseItemInput?.Invoke();
     }
