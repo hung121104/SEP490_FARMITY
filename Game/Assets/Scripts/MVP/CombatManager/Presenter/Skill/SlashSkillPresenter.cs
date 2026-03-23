@@ -16,6 +16,10 @@ namespace CombatManager.Presenter
     {
         public static SlashSkillPresenter Instance { get; private set; }
 
+        [Header("Runtime Prefabs")]
+        [SerializeField] private GameObject baseSlashVfxPrefab;
+        [SerializeField] private GameObject baseDamagePopupPrefab;
+
         // Current skill data being executed (set by SkillHotbarPresenter)
         private SkillData currentSkillData;
 
@@ -98,10 +102,10 @@ namespace CombatManager.Presenter
 
         private void SpawnSlashVFX(int damage, Vector3 direction)
         {
-            if (currentSkillData.slashVFXPrefab == null)
+            if (baseSlashVfxPrefab == null)
             {
                 Debug.LogWarning($"[SlashSkillPresenter] " +
-                                 $"slashVFXPrefab not assigned in {currentSkillData.skillName}!");
+                                 "baseSlashVfxPrefab is not assigned in presenter.");
                 return;
             }
 
@@ -113,12 +117,12 @@ namespace CombatManager.Presenter
 
             Vector3 spawnPos = centerPoint.position
                              + direction * currentSkillData.slashVFXSpawnOffset
-                             + (Vector3)currentSkillData.slashVFXPositionOffset;
+                             + (Vector3)currentSkillData.SlashVfxPositionOffset;
 
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
 
             GameObject vfxObj = Instantiate(
-                currentSkillData.slashVFXPrefab,
+                baseSlashVfxPrefab,
                 spawnPos,
                 Quaternion.Euler(0f, 0f, angle)
             );
@@ -141,7 +145,7 @@ namespace CombatManager.Presenter
                     currentSkillData.slashKnockbackForce,
                     enemyLayers,
                     playerTransform,
-                    currentSkillData.damagePopupPrefab,
+                    baseDamagePopupPrefab,
                     currentSkillData.slashVFXDuration
                 );
                 Debug.Log($"[SlashSkillPresenter] VFX spawned! " +

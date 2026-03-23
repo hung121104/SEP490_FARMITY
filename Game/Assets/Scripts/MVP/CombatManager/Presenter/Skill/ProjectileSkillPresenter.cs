@@ -16,6 +16,9 @@ namespace CombatManager.Presenter
     {
         public static ProjectileSkillPresenter Instance { get; private set; }
 
+        [Header("Runtime Prefabs")]
+        [SerializeField] private GameObject baseProjectilePrefab;
+
         // Current skill data being executed (set by SkillHotbarPresenter)
         private SkillData currentSkillData;
 
@@ -93,10 +96,10 @@ namespace CombatManager.Presenter
 
         private void FireProjectile(int damage, Vector3 direction)
         {
-            if (currentSkillData.projectilePrefab == null)
+            if (baseProjectilePrefab == null)
             {
                 Debug.LogWarning($"[ProjectileSkillPresenter] " +
-                                 $"projectilePrefab not assigned in {currentSkillData.skillName}!");
+                                 $"baseProjectilePrefab is not assigned in presenter.");
                 return;
             }
 
@@ -107,7 +110,7 @@ namespace CombatManager.Presenter
             }
 
             GameObject projectileGO = Instantiate(
-                currentSkillData.projectilePrefab,
+                baseProjectilePrefab,
                 playerTransform.position,
                 Quaternion.identity
             );

@@ -10,7 +10,7 @@ using UnityEngine.Networking;
 
 /// <summary>
 /// Singleton runtime catalog for combat skills.
-/// Fetches GET /game-data/combat-skills/catalog and attaches configured base prefabs.
+/// Fetches GET /game-data/combat-skills/catalog and caches data/icons only.
 /// </summary>
 public class CombatSkillCatalogService : MonoBehaviour
 {
@@ -22,19 +22,18 @@ public class CombatSkillCatalogService : MonoBehaviour
 
     public static CombatSkillCatalogService Instance { get; private set; }
 
-    [Header("Prefab Resolver")]
-    [SerializeField] private GameObject baseProjectilePrefab;
-    [SerializeField] private GameObject baseSlashVfxPrefab;
-    [SerializeField] private GameObject baseDamagePopupPrefab;
-
     [Header("Runtime")]
     [SerializeField] private bool autoFetchOnStart = true;
 
-    private readonly Dictionary<string, SkillData> catalog = new Dictionary<string, SkillData>();
+    private readonly Dictionary<string, SkillData> catalog = new Dictionary<string, SkillData>(StringComparer.OrdinalIgnoreCase);
     private readonly JsonSerializerSettings jsonSettings = new JsonSerializerSettings
     {
         Converters = { new StringEnumConverter() },
     };
+
+    private const int MAX_RETRIES = 3;
+    private const float RETRY_DELAY = 2f;
+    private const string CATALOG_NAME = "Combat Skill Catalog";
 
     public bool IsReady { get; private set; }
 
@@ -54,6 +53,7 @@ public class CombatSkillCatalogService : MonoBehaviour
     {
         if (autoFetchOnStart)
         {
+            CatalogProgressManager.NotifyStarted();
             StartCoroutine(FetchCatalog());
         }
     }
@@ -62,6 +62,7 @@ public class CombatSkillCatalogService : MonoBehaviour
     {
         if (!IsReady)
         {
+            CatalogProgressManager.NotifyStarted();
             StartCoroutine(FetchCatalog());
         }
     }
@@ -88,27 +89,43 @@ public class CombatSkillCatalogService : MonoBehaviour
         catalog.Clear();
 
         string url = $"{AppConfig.ApiBaseUrl}/game-data/combat-skills/catalog";
-        using UnityWebRequest request = UnityWebRequest.Get(url);
-        request.timeout = 15;
-        yield return request.SendWebRequest();
+        CombatSkillCatalogResponse response = null;
 
-        if (request.result != UnityWebRequest.Result.Success)
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++)
         {
-            Debug.LogError($"[CombatSkillCatalogService] Fetch failed: {request.error}");
-            yield break;
+            using UnityWebRequest request = UnityWebRequest.Get(url);
+            request.timeout = 15;
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning(
+                    $"[CombatSkillCatalogService] Attempt {attempt}/{MAX_RETRIES} failed: {request.error}");
+                if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
+                continue;
+            }
+
+            try
+            {
+                response = JsonConvert.DeserializeObject<CombatSkillCatalogResponse>(
+                    request.downloadHandler.text,
+                    jsonSettings
+                );
+                break;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning(
+                    $"[CombatSkillCatalogService] JSON parse error (attempt {attempt}): {ex.Message}");
+            }
+
+            if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
         }
 
-        CombatSkillCatalogResponse response;
-        try
+        if (response == null)
         {
-            response = JsonConvert.DeserializeObject<CombatSkillCatalogResponse>(
-                request.downloadHandler.text,
-                jsonSettings
-            );
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"[CombatSkillCatalogService] JSON parse failed: {ex.Message}");
+            Debug.LogError($"[CombatSkillCatalogService] All {MAX_RETRIES} attempts failed for {url}");
+            CatalogProgressManager.NotifyFailed(CATALOG_NAME);
             yield break;
         }
 
@@ -116,6 +133,7 @@ public class CombatSkillCatalogService : MonoBehaviour
         {
             Debug.LogWarning("[CombatSkillCatalogService] Empty skill catalog response.");
             IsReady = true;
+            CatalogProgressManager.NotifyCompleted();
             yield break;
         }
 
@@ -131,7 +149,6 @@ public class CombatSkillCatalogService : MonoBehaviour
                 Debug.LogWarning($"[CombatSkillCatalogService] Skill '{skill.skillId}' has category None. It cannot be triggered until category is set (Projectile/Slash/etc).");
             }
 
-            ResolveSkillAssets(skill);
             catalog[skill.skillId] = skill;
         }
 
@@ -139,14 +156,20 @@ public class CombatSkillCatalogService : MonoBehaviour
 
         IsReady = true;
         Debug.Log($"[CombatSkillCatalogService] Ready with {catalog.Count} skills.");
+        CatalogProgressManager.NotifyCompleted();
     }
 
     private IEnumerator DownloadIcons()
     {
+        int total = catalog.Count;
+        int processed = 0;
+
         foreach (SkillData skill in catalog.Values)
         {
             if (string.IsNullOrWhiteSpace(skill.iconUrl))
             {
+                processed++;
+                CatalogProgressManager.ReportProgress(processed, total, CATALOG_NAME);
                 continue;
             }
 
@@ -156,12 +179,16 @@ public class CombatSkillCatalogService : MonoBehaviour
             if (req.result != UnityWebRequest.Result.Success)
             {
                 Debug.LogWarning($"[CombatSkillCatalogService] Icon download failed for {skill.skillId}: {req.error}");
+                processed++;
+                CatalogProgressManager.ReportProgress(processed, total, CATALOG_NAME);
                 continue;
             }
 
             Texture2D tex = DownloadHandlerTexture.GetContent(req);
             if (tex == null)
             {
+                processed++;
+                CatalogProgressManager.ReportProgress(processed, total, CATALOG_NAME);
                 continue;
             }
 
@@ -172,15 +199,9 @@ public class CombatSkillCatalogService : MonoBehaviour
                 new Vector2(0.5f, 0.5f),
                 16f
             );
+
+            processed++;
+            CatalogProgressManager.ReportProgress(processed, total, CATALOG_NAME);
         }
-    }
-
-    private void ResolveSkillAssets(SkillData skill)
-    {
-        skill.projectilePrefab = baseProjectilePrefab;
-        skill.slashVFXPrefab = baseSlashVfxPrefab;
-        skill.damagePopupPrefab = baseDamagePopupPrefab;
-
-        skill.slashVFXPositionOffset = new Vector2(skill.slashVfxPositionOffsetX, skill.slashVfxPositionOffsetY);
     }
 }

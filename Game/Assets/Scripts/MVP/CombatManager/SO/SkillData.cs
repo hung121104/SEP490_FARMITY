@@ -45,8 +45,6 @@ namespace CombatManager.SO
         public float skillMultiplier = 1.5f;
 
         [Header("Projectile Settings (Category = Projectile)")]
-        [Tooltip("Projectile prefab with ProjectilePresenter attached.")]
-        public GameObject projectilePrefab;
         [JsonProperty("projectileSpeed")]
         public float projectileSpeed = 10f;
         [JsonProperty("projectileRange")]
@@ -55,10 +53,8 @@ namespace CombatManager.SO
         public float projectileKnockback = 5f;
 
         [Header("Slash Settings (Category = Slash)")]
-        [Tooltip("VFX prefab with SlashHitboxPresenter attached.")]
         [JsonProperty("skillVisualConfigId")]
         public string skillVisualConfigId = "";
-        public GameObject slashVFXPrefab;
         [JsonProperty("slashVfxDuration")]
         public float slashVFXDuration = 0.5f;
         [JsonProperty("slashVfxSpawnOffset")]
@@ -67,10 +63,8 @@ namespace CombatManager.SO
         public float slashVfxPositionOffsetX = 0f;
         [JsonProperty("slashVfxPositionOffsetY")]
         public float slashVfxPositionOffsetY = 0f;
-        public Vector2 slashVFXPositionOffset = Vector2.zero;
         [JsonProperty("slashKnockbackForce")]
         public float slashKnockbackForce = 5f;
-        public GameObject damagePopupPrefab;
 
         #region Public Helpers
 
@@ -78,6 +72,7 @@ namespace CombatManager.SO
         public bool IsWeaponSkill => skillOwnership == SkillOwnership.WeaponSkill;
         public bool IsProjectile  => skillCategory  == SkillCategory.Projectile;
         public bool IsSlash       => skillCategory  == SkillCategory.Slash;
+        public Vector2 SlashVfxPositionOffset => new Vector2(slashVfxPositionOffsetX, slashVfxPositionOffsetY);
 
         #endregion
     }
