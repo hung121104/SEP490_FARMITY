@@ -5,22 +5,15 @@ using UnityEngine.Networking;
 using Newtonsoft.Json;
 
 /// <summary>
-/// Loads combat visual spritesheets from /game-data/combat-catalogs and
-/// registers them into SkinCatalogManager using configId as lookup key.
-///
-/// This lets DynamicSpriteSwapper continue using one runtime sprite source,
-/// while combat visuals are authored in a dedicated combat catalog.
+/// Loads skill VFX tint configs from /game-data/combat-catalogs?type=skill_vfx.
+/// Combat catalog no longer stores weapon spritesheets.
 /// </summary>
 public class CombatCatalogManager : MonoBehaviour
 {
     public static CombatCatalogManager Instance { get; private set; }
 
     private readonly Dictionary<string, CombatCatalogEntry> _catalog = new();
-
-    [Tooltip("Filter by catalog type. Use 'weapon' for weapon visuals.")]
-    [SerializeField] private string catalogType = "weapon";
-    [Tooltip("If enabled, load all combat catalog types in one request (weapon + skill_vfx).")]
-    [SerializeField] private bool fetchAllTypes = true;
+    private const string CatalogType = "skill_vfx";
 
     public bool IsReady { get; private set; }
 
@@ -38,9 +31,6 @@ public class CombatCatalogManager : MonoBehaviour
 
     private IEnumerator Start()
     {
-        while (SkinCatalogManager.Instance == null)
-            yield return null;
-
         CatalogProgressManager.NotifyStarted();
         yield return FetchCatalog();
     }
@@ -93,9 +83,7 @@ public class CombatCatalogManager : MonoBehaviour
         IsReady = false;
         _catalog.Clear();
 
-        string url = $"{AppConfig.ApiBaseUrl}/game-data/combat-catalogs";
-        if (!fetchAllTypes && !string.IsNullOrWhiteSpace(catalogType))
-            url += $"?type={UnityWebRequest.EscapeURL(catalogType)}";
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/combat-catalogs?type={CatalogType}";
 
         List<CombatCatalogEntry> entries = null;
 
@@ -149,53 +137,9 @@ public class CombatCatalogManager : MonoBehaviour
             _catalog[entry.configId.Trim().ToLowerInvariant()] = entry;
         }
 
-        int pending = entries.Count;
-        int completed = 0;
-
-        foreach (var entry in entries)
-        {
-            if (entry == null || string.IsNullOrWhiteSpace(entry.configId))
-            {
-                pending--;
-                completed++;
-                continue;
-            }
-
-            if (string.IsNullOrWhiteSpace(entry.spritesheetUrl))
-            {
-                pending--;
-                completed++;
-                CatalogProgressManager.ReportProgress(completed, entries.Count, "Combat Catalog");
-
-                if (pending <= 0)
-                {
-                    IsReady = true;
-                    OnReady?.Invoke();
-                    Debug.Log($"[CombatCatalogManager] Ready with {_catalog.Count} entry(ies). type='{catalogType}'");
-                    CatalogProgressManager.NotifyCompleted();
-                }
-                continue;
-            }
-
-            StartCoroutine(SkinCatalogManager.Instance.LoadExternalSheet(
-                entry.configId,
-                entry.spritesheetUrl,
-                entry.cellSize,
-                () =>
-                {
-                    pending--;
-                    completed++;
-                    CatalogProgressManager.ReportProgress(completed, entries.Count, "Combat Catalog");
-
-                    if (pending <= 0)
-                    {
-                        IsReady = true;
-                        OnReady?.Invoke();
-                        Debug.Log($"[CombatCatalogManager] Ready with {_catalog.Count} entry(ies). type='{catalogType}'");
-                        CatalogProgressManager.NotifyCompleted();
-                    }
-                }
-            ));
-        }
+        IsReady = true;
+        OnReady?.Invoke();
+        Debug.Log($"[CombatCatalogManager] Ready with {_catalog.Count} entry(ies). type='{CatalogType}'");
+        CatalogProgressManager.NotifyCompleted();
     }
 }

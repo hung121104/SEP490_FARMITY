@@ -3,23 +3,14 @@ import { Document } from 'mongoose';
 
 export type CombatCatalogDocument = CombatCatalog & Document;
 
-/**
- * Represents one combat visual spritesheet entry consumed by combat runtime.
- * type examples: 'weapon', 'skill_vfx'
- */
+/** Represents one skill VFX tint config consumed by combat runtime. */
 @Schema({ timestamps: true })
 export class CombatCatalog {
   @Prop({ required: true, unique: true })
   configId: string;
 
-  @Prop({ required: true, default: 'weapon' })
+  @Prop({ required: true, default: 'skill_vfx' })
   type: string;
-
-  @Prop({ default: '' })
-  spritesheetUrl: string;
-
-  @Prop({ required: true, default: 64 })
-  cellSize: number;
 
   @Prop({ required: true })
   displayName: string;

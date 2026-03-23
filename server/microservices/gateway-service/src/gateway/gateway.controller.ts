@@ -1998,34 +1998,14 @@ export class GatewayController {
     }
   }
 
-  /**
-   * POST /game-data/combat-catalogs — admin-only.
-   * Accepts multipart/form-data.
-   * File field : spritesheet  (PNG, max 10 MB) — required.
-   * Text fields: configId, displayName, type?, cellSize?
-   */
+  /** POST /game-data/combat-catalogs — admin-only (skill_vfx tint configs only). */
   @Post('game-data/combat-catalogs')
-  @UseInterceptors(
-    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
-  )
-  async createCombatCatalog(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() body: any,
-  ) {
+  async createCombatCatalog(@Body() body: any) {
     try {
-      const type = (body.type || 'weapon').toString().trim().toLowerCase();
-      const isSkillVfx = type === 'skill_vfx';
-
-      let spritesheetUrl: string | undefined;
-      if (file) {
-        spritesheetUrl = await this.cloudinaryService.uploadFile(
-          file,
-          'combat-spritesheets',
-          body.configId || undefined,
-        );
-      } else if (!isSkillVfx) {
+      const type = (body.type || 'skill_vfx').toString().trim().toLowerCase();
+      if (type !== 'skill_vfx') {
         throw new BadRequestException(
-          'A spritesheet file is required (field name: "spritesheet") for non-skill_vfx entries.',
+          "Combat catalog now supports only type='skill_vfx'.",
         );
       }
 
@@ -2033,9 +2013,6 @@ export class GatewayController {
         configId: body.configId,
         displayName: body.displayName,
         type,
-        spritesheetUrl,
-        cellSize:
-          body.cellSize !== undefined ? Number(body.cellSize) : undefined,
         primaryColorHex: body.primaryColorHex,
         secondaryColorHex: body.secondaryColorHex,
         colorIntensity:
@@ -2055,26 +2032,24 @@ export class GatewayController {
     }
   }
 
-  /**
-   * PUT /game-data/combat-catalogs/:configId — admin-only.
-   * Accepts multipart/form-data.
-   * File field : spritesheet  (PNG, max 10 MB) — optional.
-   * Text fields: displayName?, type?, cellSize?
-   */
+  /** PUT /game-data/combat-catalogs/:configId — admin-only (skill_vfx tint configs only). */
   @Put('game-data/combat-catalogs/:configId')
-  @UseInterceptors(
-    FileInterceptor('spritesheet', { limits: { fileSize: 10 * 1024 * 1024 } }),
-  )
   async updateCombatCatalog(
     @Param('configId') configId: string,
-    @UploadedFile() file: Express.Multer.File,
     @Body() body: any,
   ) {
     try {
       const patch: Record<string, any> = {};
       if (body.displayName !== undefined) patch.displayName = body.displayName;
-      if (body.type !== undefined) patch.type = body.type;
-      if (body.cellSize !== undefined) patch.cellSize = Number(body.cellSize);
+      if (body.type !== undefined) {
+        const normalizedType = body.type.toString().trim().toLowerCase();
+        if (normalizedType !== 'skill_vfx') {
+          throw new BadRequestException(
+            "Combat catalog now supports only type='skill_vfx'.",
+          );
+        }
+        patch.type = normalizedType;
+      }
       if (body.primaryColorHex !== undefined)
         patch.primaryColorHex = body.primaryColorHex;
       if (body.secondaryColorHex !== undefined)
@@ -2083,14 +2058,6 @@ export class GatewayController {
         patch.colorIntensity = Number(body.colorIntensity);
       if (body.tintAlpha !== undefined)
         patch.tintAlpha = Number(body.tintAlpha);
-
-      if (file) {
-        patch.spritesheetUrl = await this.cloudinaryService.uploadFile(
-          file,
-          'combat-spritesheets',
-          configId,
-        );
-      }
 
       return await firstValueFrom(
         this.adminClient.send('update-combat-catalog', { configId, ...patch }),

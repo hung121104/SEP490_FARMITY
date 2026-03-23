@@ -160,10 +160,6 @@ export class Item {
   @Prop()
   weaponPrefabKey?: string;
 
-  /** SkinCatalogManager configId used by DynamicSpriteSwapper for weapon visuals. */
-  @Prop()
-  weaponVisualConfigId?: string;
-
   // ── itemType: 7 – Fish ─────────────────────────────────────────────────────
 
   @Prop()

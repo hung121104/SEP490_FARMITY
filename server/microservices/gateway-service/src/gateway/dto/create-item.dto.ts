@@ -50,7 +50,6 @@ export class CreateItemDto {
   projectileKnockback?: number;
   linkedSkillId?: string;
   weaponPrefabKey?: string;
-  weaponVisualConfigId?: string;
 
   // Fish
   difficulty?: number;

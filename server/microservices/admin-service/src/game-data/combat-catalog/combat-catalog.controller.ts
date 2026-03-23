@@ -23,8 +23,6 @@ export class CombatCatalogController {
     payload: {
       configId: string;
       type?: string;
-      spritesheetUrl?: string;
-      cellSize?: number;
       displayName?: string;
       primaryColorHex?: string;
       secondaryColorHex?: string;

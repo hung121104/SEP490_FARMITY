@@ -1,6 +1,8 @@
 using UnityEngine;
 using Photon.Pun;
 using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.Networking;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
@@ -30,8 +32,8 @@ namespace CombatManager.Presenter
         [SerializeField] private Vector3 anchorOffset = Vector3.zero;
         [SerializeField] private Vector3 gripLocalOffset = Vector3.zero;
 
-        [Header("Catalog Pivot Compensation (normalized pivot 0..1)")]
-        [SerializeField] private Vector2 catalogBasePivot = new Vector2(0.5f, 0.065f);
+        [Header("Pivot Compensation (normalized pivot 0..1)")]
+        [SerializeField] private Vector2 fallbackSourcePivot = new Vector2(0.5f, 0.5f);
         [SerializeField] private Vector2 swordDesiredPivot = new Vector2(0.81f, 0.19f);
         [SerializeField] private Vector2 staffDesiredPivot = new Vector2(0.83f, 0.14f);
         [SerializeField] private Vector2 spearDesiredPivot = new Vector2(0.71f, 0.28f);
@@ -40,9 +42,16 @@ namespace CombatManager.Presenter
         [Tooltip("If sword sprite points RIGHT at 0°, keep 0. If points UP, set -90.")]
         [SerializeField] private float rotationOffsetDegrees = 0f;
 
+        [Header("Debug")]
+        [SerializeField] private bool enableWeaponVisualDebug = true;
+
         private IWeaponAnimationService service;
 
         private WeaponData currentWeaponData;
+        private Coroutine applyVisualCoroutine;
+        private readonly List<SpriteRenderer> activeWeaponRenderers = new List<SpriteRenderer>();
+        private Sprite activeWeaponSprite;
+        private int spriteOverrideLogCount;
 
         #region Unity Lifecycle
 
@@ -72,6 +81,11 @@ namespace CombatManager.Presenter
             if (Instance == this)
                 Instance = null;
         }
+
+            private void LateUpdate()
+            {
+                ForceWeaponSpriteOverride();
+            }
 
         #endregion
 
@@ -276,12 +290,25 @@ namespace CombatManager.Presenter
             }
 
             service.SpawnWeapon();
-            ApplyWeaponPivotCompensation();
-            ApplyWeaponVisualConfig();
+
+            if (applyVisualCoroutine != null)
+                StopCoroutine(applyVisualCoroutine);
+
+            applyVisualCoroutine = StartCoroutine(ApplyWeaponVisualAndPivotWhenReady());
         }
 
         public void DespawnWeapon()
         {
+            if (applyVisualCoroutine != null)
+            {
+                StopCoroutine(applyVisualCoroutine);
+                applyVisualCoroutine = null;
+            }
+
+            activeWeaponRenderers.Clear();
+            activeWeaponSprite = null;
+            spriteOverrideLogCount = 0;
+
             service?.DespawnWeapon();
         }
 
@@ -305,51 +332,202 @@ namespace CombatManager.Presenter
         // ✅ NEW
         public WeaponData GetCurrentWeaponData() => currentWeaponData;
 
-        private void ApplyWeaponVisualConfig()
+        private IEnumerator ApplyWeaponVisualAndPivotWhenReady()
         {
             if (currentWeaponData == null)
-                return;
-
-            string visualConfigId = currentWeaponData.weaponVisualConfigId;
-            if (string.IsNullOrWhiteSpace(visualConfigId))
-            {
-                // Soft fallback for migration safety while old data is being updated.
-                visualConfigId = currentWeaponData.weaponMaterialId;
-            }
-
-            if (string.IsNullOrWhiteSpace(visualConfigId))
-            {
-                Debug.LogWarning(
-                    $"[WeaponAnimationPresenter] No weaponVisualConfigId on '{currentWeaponData.weaponName}'. " +
-                    "Base prefab sprite will be used.");
-                return;
-            }
+                yield break;
 
             GameObject weaponVisual = service?.GetWeaponVisual();
             if (weaponVisual == null)
-                return;
+                yield break;
 
-            DynamicSpriteSwapper swapper = weaponVisual.GetComponentInChildren<DynamicSpriteSwapper>();
-            if (swapper == null)
+            if (!TryGetWeaponSpriteRenderers(weaponVisual, out List<SpriteRenderer> targetRenderers))
+                yield break;
+
+            const int maxAttempts = 60;
+            const float retryDelay = 0.1f;
+            Sprite resolvedSprite = null;
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                Debug.LogWarning(
-                    $"[WeaponAnimationPresenter] Weapon prefab '{weaponVisual.name}' has no DynamicSpriteSwapper. " +
-                    "Cannot apply weaponVisualConfigId.");
-                return;
+                resolvedSprite = ItemCatalogService.Instance?.GetCachedSprite(currentWeaponData.itemID);
+                if (resolvedSprite != null)
+                    break;
+
+                if (attempt == 1)
+                {
+                    Debug.LogWarning(
+                        $"[WeaponAnimationPresenter] Icon sprite not ready for '{currentWeaponData.weaponName}' " +
+                        $"(itemID='{currentWeaponData.itemID}'). Retrying...");
+                }
+
+                yield return new WaitForSeconds(retryDelay);
             }
 
-            swapper.ConfigId = visualConfigId;
-            Debug.Log(
-                $"[WeaponAnimationPresenter] Applied weapon visual config '{visualConfigId}' to '{weaponVisual.name}'");
+            if (resolvedSprite == null && !string.IsNullOrWhiteSpace(currentWeaponData.iconUrl))
+            {
+                // Fallback path: direct icon download in case catalog cache is late or missing this key.
+                yield return DownloadIconSpriteAt16Ppu(currentWeaponData.iconUrl, sprite => resolvedSprite = sprite);
+            }
+
+            if (resolvedSprite != null)
+            {
+                foreach (SpriteRenderer renderer in targetRenderers)
+                {
+                    renderer.sprite = resolvedSprite;
+                    renderer.enabled = true;
+                }
+
+                activeWeaponRenderers.Clear();
+                activeWeaponRenderers.AddRange(targetRenderers);
+                activeWeaponSprite = resolvedSprite;
+                spriteOverrideLogCount = 0;
+
+                Debug.Log(
+                    $"[WeaponAnimationPresenter] Applied item icon visual to '{weaponVisual.name}' " +
+                    $"from itemID='{currentWeaponData.itemID}'.");
+
+                LogWeaponVisualState("AppliedVisual", weaponVisual, targetRenderers, resolvedSprite);
+            }
+            else
+            {
+                Debug.LogWarning(
+                    $"[WeaponAnimationPresenter] Missing icon sprite for weapon '{currentWeaponData.weaponName}' " +
+                    $"(itemID='{currentWeaponData.itemID}'). Base prefab sprite will be used.");
+            }
+
+            ApplyWeaponPivotCompensation(targetRenderers[0].sprite);
+            applyVisualCoroutine = null;
         }
 
-        private void ApplyWeaponPivotCompensation()
+        private bool TryGetWeaponSpriteRenderers(GameObject weaponVisual, out List<SpriteRenderer> targetRenderers)
+        {
+            targetRenderers = new List<SpriteRenderer>();
+            HashSet<SpriteRenderer> uniqueRenderers = new HashSet<SpriteRenderer>();
+
+            DynamicSpriteSwapper[] swappers = weaponVisual.GetComponentsInChildren<DynamicSpriteSwapper>(true);
+            foreach (DynamicSpriteSwapper swapper in swappers)
+            {
+                // Weapon visuals now come directly from item icons, not from runtime sheet swapping.
+                swapper.enabled = false;
+
+                SpriteRenderer swapperRenderer = swapper.GetComponent<SpriteRenderer>();
+                if (swapperRenderer != null)
+                    uniqueRenderers.Add(swapperRenderer);
+            }
+
+            if (uniqueRenderers.Count == 0)
+            {
+                SpriteRenderer fallbackRenderer = weaponVisual.GetComponentInChildren<SpriteRenderer>(true);
+                if (fallbackRenderer != null)
+                    uniqueRenderers.Add(fallbackRenderer);
+            }
+
+            if (uniqueRenderers.Count == 0)
+            {
+                Debug.LogWarning(
+                    $"[WeaponAnimationPresenter] Weapon prefab '{weaponVisual.name}' has no SpriteRenderer. " +
+                    "Cannot apply item icon visual.");
+                return false;
+            }
+
+            foreach (SpriteRenderer renderer in uniqueRenderers)
+                targetRenderers.Add(renderer);
+
+            return true;
+        }
+
+        private void ForceWeaponSpriteOverride()
+        {
+            if (activeWeaponSprite == null || activeWeaponRenderers.Count == 0)
+                return;
+
+            for (int i = activeWeaponRenderers.Count - 1; i >= 0; i--)
+            {
+                SpriteRenderer renderer = activeWeaponRenderers[i];
+                if (renderer == null)
+                {
+                    activeWeaponRenderers.RemoveAt(i);
+                    continue;
+                }
+
+                if (renderer.sprite != activeWeaponSprite)
+                {
+                    string previous = renderer.sprite != null ? renderer.sprite.name : "<null>";
+                    renderer.sprite = activeWeaponSprite;
+                    renderer.enabled = true;
+
+                    if (enableWeaponVisualDebug && spriteOverrideLogCount < 10)
+                    {
+                        Debug.LogWarning(
+                            $"[WeaponAnimationPresenter] Sprite override reapplied on '{renderer.name}'. " +
+                            $"Previous='{previous}', Forced='{activeWeaponSprite.name}'.");
+                        spriteOverrideLogCount++;
+                    }
+                }
+            }
+        }
+
+        private void LogWeaponVisualState(string phase, GameObject weaponVisual, List<SpriteRenderer> targetRenderers, Sprite resolvedSprite)
+        {
+            if (!enableWeaponVisualDebug || weaponVisual == null)
+                return;
+
+            Animator[] animators = weaponVisual.GetComponentsInChildren<Animator>(true);
+            DynamicSpriteSwapper[] swappers = weaponVisual.GetComponentsInChildren<DynamicSpriteSwapper>(true);
+
+            Debug.Log(
+                $"[WeaponAnimationPresenter][{phase}] weapon='{weaponVisual.name}', itemID='{currentWeaponData?.itemID}', " +
+                $"iconUrl='{currentWeaponData?.iconUrl}', sprite='{resolvedSprite?.name}', " +
+                $"size={resolvedSprite?.rect.width}x{resolvedSprite?.rect.height}, ppu={resolvedSprite?.pixelsPerUnit}, " +
+                $"renderers={targetRenderers.Count}, animators={animators.Length}, swappers={swappers.Length}");
+
+            foreach (SpriteRenderer renderer in targetRenderers)
+            {
+                if (renderer == null) continue;
+                string spriteName = renderer.sprite != null ? renderer.sprite.name : "<null>";
+                Debug.Log(
+                    $"[WeaponAnimationPresenter][{phase}] renderer='{renderer.name}', enabled={renderer.enabled}, " +
+                    $"currentSprite='{spriteName}'");
+            }
+        }
+
+        private IEnumerator DownloadIconSpriteAt16Ppu(string iconUrl, System.Action<Sprite> onCompleted)
+        {
+            onCompleted?.Invoke(null);
+            using UnityWebRequest req = UnityWebRequestTexture.GetTexture(iconUrl);
+            req.timeout = 15;
+            yield return req.SendWebRequest();
+
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning($"[WeaponAnimationPresenter] Direct icon download failed: {req.error}");
+                yield break;
+            }
+
+            Texture2D tex = DownloadHandlerTexture.GetContent(req);
+            if (tex == null)
+                yield break;
+
+            tex.filterMode = FilterMode.Point;
+            Sprite sprite = Sprite.Create(
+                tex,
+                new Rect(0, 0, tex.width, tex.height),
+                new Vector2(0.5f, 0.5f),
+                16f);
+
+            onCompleted?.Invoke(sprite);
+        }
+
+        private void ApplyWeaponPivotCompensation(Sprite sourceSprite)
         {
             GameObject weaponVisual = service?.GetWeaponVisual();
             if (weaponVisual == null)
                 return;
 
-            Vector3 compensatedLocalOffset = gripLocalOffset + GetPivotCompensationOffset(currentWeaponData?.weaponType ?? WeaponType.None);
+            Vector3 compensatedLocalOffset = gripLocalOffset + GetPivotCompensationOffset(
+                currentWeaponData?.weaponType ?? WeaponType.None,
+                sourceSprite);
             weaponVisual.transform.localPosition = compensatedLocalOffset;
 
             Debug.Log(
@@ -357,18 +535,26 @@ namespace CombatManager.Presenter
                 $"for weapon type {currentWeaponData?.weaponType}");
         }
 
-        private Vector3 GetPivotCompensationOffset(WeaponType weaponType)
+        private Vector3 GetPivotCompensationOffset(WeaponType weaponType, Sprite sourceSprite)
         {
             Vector2 desiredPivot = weaponType switch
             {
                 WeaponType.Sword => swordDesiredPivot,
                 WeaponType.Staff => staffDesiredPivot,
                 WeaponType.Spear => spearDesiredPivot,
-                _ => catalogBasePivot,
+                _ => fallbackSourcePivot,
             };
 
-            // To mimic changing sprite pivot at runtime, offset the transform by the inverse pivot delta.
-            Vector2 delta = catalogBasePivot - desiredPivot;
+            Vector2 sourcePivot = fallbackSourcePivot;
+            if (sourceSprite != null && sourceSprite.rect.width > 0.01f && sourceSprite.rect.height > 0.01f)
+            {
+                sourcePivot = new Vector2(
+                    sourceSprite.pivot.x / sourceSprite.rect.width,
+                    sourceSprite.pivot.y / sourceSprite.rect.height);
+            }
+
+            // To mimic changing sprite pivot at runtime, offset by inverse delta between source and desired pivots.
+            Vector2 delta = sourcePivot - desiredPivot;
             return new Vector3(delta.x, delta.y, 0f);
         }
 

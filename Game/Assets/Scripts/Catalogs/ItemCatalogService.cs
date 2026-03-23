@@ -26,9 +26,9 @@ public class ItemCatalogService : MonoBehaviour
         Converters = { new ItemDataConverter() }
     };
 
-    private readonly Dictionary<string, ItemData> _catalog     = new();
-    private readonly Dictionary<string, Sprite>   _spriteCache = new();
-    private readonly Dictionary<string, Sprite>   _structureInteractionSpriteCache = new();
+    private readonly Dictionary<string, ItemData> _catalog     = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Sprite>   _spriteCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Sprite>   _structureInteractionSpriteCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>True once catalog JSON is fully parsed and all icon sprites downloaded.</summary>
     public bool IsReady { get; private set; }

@@ -17,7 +17,13 @@ export class CombatCatalogService {
   ) {}
 
   async getCatalog(type?: string): Promise<CombatCatalog[]> {
-    const filter = type ? { type } : {};
+    const normalizedType = (type || 'skill_vfx').trim().toLowerCase();
+    if (normalizedType !== 'skill_vfx') {
+      throw new BadRequestException(
+        "Combat catalog now supports only type='skill_vfx'.",
+      );
+    }
+    const filter = { type: 'skill_vfx' };
     return this.combatCatalogModel.find(filter).lean().exec();
   }
 
@@ -32,14 +38,12 @@ export class CombatCatalogService {
       );
     }
 
-    const normalizedType = (dto.type || 'weapon').trim().toLowerCase();
-    this.validateCatalogPayload(normalizedType, dto.spritesheetUrl, dto.primaryColorHex);
+    const normalizedType = (dto.type || 'skill_vfx').trim().toLowerCase();
+    this.validateCatalogPayload(normalizedType, dto.primaryColorHex);
 
     const doc = new this.combatCatalogModel({
       configId: dto.configId,
       type: normalizedType,
-      spritesheetUrl: dto.spritesheetUrl || '',
-      cellSize: dto.cellSize ?? 64,
       displayName: dto.displayName,
       primaryColorHex: dto.primaryColorHex || '',
       secondaryColorHex: dto.secondaryColorHex || '',
@@ -56,8 +60,6 @@ export class CombatCatalogService {
       Pick<
         CombatCatalog,
         | 'type'
-        | 'spritesheetUrl'
-        | 'cellSize'
         | 'displayName'
         | 'primaryColorHex'
         | 'secondaryColorHex'
@@ -81,7 +83,6 @@ export class CombatCatalogService {
 
     this.validateCatalogPayload(
       merged.type,
-      merged.spritesheetUrl,
       merged.primaryColorHex,
     );
 
@@ -113,21 +114,17 @@ export class CombatCatalogService {
 
   private validateCatalogPayload(
     type: string,
-    spritesheetUrl?: string,
     primaryColorHex?: string,
   ): void {
-    if (type === 'skill_vfx') {
-      if (!primaryColorHex || !primaryColorHex.trim()) {
-        throw new BadRequestException(
-          "'primaryColorHex' is required for combat catalog entries with type='skill_vfx'.",
-        );
-      }
-      return;
+    if (type !== 'skill_vfx') {
+      throw new BadRequestException(
+        "Combat catalog now supports only type='skill_vfx'.",
+      );
     }
 
-    if (!spritesheetUrl || !spritesheetUrl.trim()) {
+    if (!primaryColorHex || !primaryColorHex.trim()) {
       throw new BadRequestException(
-        "'spritesheetUrl' is required for non-skill_vfx combat catalog entries.",
+        "'primaryColorHex' is required for type='skill_vfx'.",
       );
     }
   }

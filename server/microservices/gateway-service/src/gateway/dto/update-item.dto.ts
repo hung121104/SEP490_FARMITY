@@ -49,7 +49,6 @@ export class UpdateItemDto {
   projectileKnockback?: number;
   linkedSkillId?: string;
   weaponPrefabKey?: string;
-  weaponVisualConfigId?: string;
 
   // Fish
   difficulty?: number;

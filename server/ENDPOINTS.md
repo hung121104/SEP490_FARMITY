@@ -734,7 +734,7 @@ Depending on `itemType`, specific extra fields must be included:
 | `3`        | Pollen     | `sourcePlantId`<br>`pollinationSuccessChance`<br>`viabilityDays`<br>`crossResults` | string: `plantId` of the plant that produced this pollen (e.g., `"plant_corn"`)<br>float: Chance of pollination success (e.g., `0.5`)<br>int: Days the pollen remains viable (e.g., `3`)<br>array: Cross-breeding table — `[{ "targetPlantId": "string", "resultPlantId": "string" }]`. Each entry maps a receiver `plantId` to the hybrid `plantId` that spawns when this pollen is applied to it. Consumed by `PollenData.FindResultPlantId()` in the Unity client. |
 | `4`        | Consumable | `energyRestore`<br>`healthRestore`<br>`bufferDuration`                             | int: Stamina restored<br>int: Health restored<br>float: Buff duration                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `5`        | Material   | _(none)_                                                                           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `6`        | Weapon     | `damage`<br>`critChance`<br>`weaponMaterialId`<br>`weaponType`<br>`tier`<br>`attackCooldown`<br>`knockbackForce`<br>`projectileSpeed`<br>`projectileRange`<br>`projectileKnockback`<br>`weaponVisualConfigId` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).<br>int: WeaponType enum value<br>int: Tier value<br>float: Attack cooldown seconds<br>float: Melee knockback<br>float: Staff projectile speed<br>float: Staff projectile range<br>float: Staff projectile knockback<br>string: CombatCatalog `configId` used by `DynamicSpriteSwapper`. See [Combat Catalog](#combat-catalog). |
+| `6`        | Weapon     | `damage`<br>`critChance`<br>`weaponMaterialId`<br>`weaponType`<br>`tier`<br>`attackCooldown`<br>`knockbackForce`<br>`projectileSpeed`<br>`projectileRange`<br>`projectileKnockback` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).<br>int: WeaponType enum value<br>int: Tier value<br>float: Attack cooldown seconds<br>float: Melee knockback<br>float: Staff projectile speed<br>float: Staff projectile range<br>float: Staff projectile knockback |
 | `7`        | Fish       | `difficulty`<br>`fishingSeasons`<br>`isLegendary`                                  | int: Difficulty level (e.g., 1)<br>int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                 |
 | `8`        | Cooking    | `energyRestore`<br>`healthRestore`<br>`bufferDuration`                             | int: Stamina restored<br>int: Health restored<br>float: Buff duration                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `9`        | Forage     | `foragingSeasons`<br>`energyRestore`                                               | int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>int: (default `5`)                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -772,71 +772,63 @@ Depending on `itemType`, specific extra fields must be included:
 | `projectileSpeed` | number | ✅ for staff weapons | Projectile speed |
 | `projectileRange` | number | ✅ for staff weapons | Projectile range |
 | `projectileKnockback` | number | ✅ for staff weapons | Projectile knockback |
-| `weaponVisualConfigId` | string | ✅ | Combat Catalog `configId` for weapon sprite swap |
 | `linkedSkillId` | string | — | Optional weapon special skill id |
 
 #### Runtime Note
 
 - Weapon prefab selection is by `weaponType` base prefab.
-- Visual sprite comes from `weaponVisualConfigId` via Combat Catalog + runtime sprite swap.
+- Visual sprite comes directly from the item `icon` image (runtime item icon cache, 16 PPU).
 
 ---
 
 ### Combat Catalog
 
-> Dedicated combat visual catalog for runtime combat assets. Supports both spritesheet-based visuals (`weapon`) and color-tint-only configs (`skill_vfx`).
+> Dedicated combat skill VFX tint catalog for runtime skill visuals.
 
 #### HTTP Endpoints
 
 - **GET** `/game-data/combat-catalogs` (public): get combat catalog entries.
-  - Optional query: `type` (for example `?type=weapon` or `?type=skill_vfx`).
+  - Optional query: `type`. Only `skill_vfx` is accepted (or omit it).
 
 - **POST** `/game-data/combat-catalogs` (admin): create combat catalog entry.
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
-  - Content-Type: `multipart/form-data`
+  - Content-Type: `application/json`
   - Fields:
 
     | Field | Type | Required | Notes |
     | --- | --- | --- | --- |
-    | `configId` | text | ✅ | Stable lookup key used by runtime (e.g., `weapon_sword_iron`, `skill_slash_fire`). |
-    | `displayName` | text | ✅ | Display label for admin UI. |
-    | `type` | text | — | Entry group. Default: `weapon`. Supported: `weapon`, `skill_vfx`. |
-    | `spritesheet` | file (PNG) | ✅ for non-`skill_vfx` | Combat spritesheet, max 10 MB. Uploaded to Cloudinary folder `combat-spritesheets`. |
-    | `cellSize` | text (int) | — | Uniform sprite cell width/height in pixels. Default: `64`. |
-    | `primaryColorHex` | text | ✅ for `skill_vfx` | Tint color for runtime (hex, e.g., `#FF7A00`). |
-    | `secondaryColorHex` | text | — | Optional secondary tint (hex). |
-    | `colorIntensity` | text (float) | — | Optional color multiplier. Default: `1`. |
-    | `tintAlpha` | text (float) | — | Optional final alpha [0..1]. Default: `1`. |
+    | `configId` | string | ✅ | Stable lookup key used by runtime (e.g., `skill_slash_fire`). |
+    | `displayName` | string | ✅ | Display label for admin UI. |
+    | `type` | string | — | Must be `skill_vfx` (default: `skill_vfx`). |
+    | `primaryColorHex` | string | ✅ | Tint color for runtime (hex, e.g., `#FF7A00`). |
+    | `secondaryColorHex` | string | — | Optional secondary tint (hex). |
+    | `colorIntensity` | number | — | Optional color multiplier. Range `[0..4]`, default `1`. |
+    | `tintAlpha` | number | — | Optional final alpha. Range `[0..1]`, default `1`. |
 
   - Notes:
-    - `type=weapon` requires a `spritesheet` file.
-    - `type=skill_vfx` allows no `spritesheet` and uses tint fields only.
+    - Any `type` other than `skill_vfx` is rejected.
     - `409 Conflict` if `configId` exists.
 
 - **PUT** `/game-data/combat-catalogs/:configId` (admin): update combat catalog entry.
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
-  - Content-Type: `multipart/form-data`
+  - Content-Type: `application/json`
   - Path param: `configId`
-  - Fields (all optional):
-    - `spritesheet` file to replace the sheet (re-uploads to Cloudinary).
-    - `displayName`, `type`, `cellSize`, `primaryColorHex`, `secondaryColorHex`, `colorIntensity`, `tintAlpha` text fields.
+  - Fields (all optional): `displayName`, `type`, `primaryColorHex`, `secondaryColorHex`, `colorIntensity`, `tintAlpha`
   - Response: Updated combat catalog document.
   - Note: Returns `404` if not found.
 
 - **DELETE** `/game-data/combat-catalogs/:configId` (admin): delete combat catalog entry.
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Path param: `configId`
-  - Response: `204 No Content`
-  - Note: Returns `404` if not found. Does **not** delete Cloudinary asset.
+  - Response: `200 OK` (empty body)
+  - Note: Returns `404` if not found.
 
 #### Combat Catalog Fields
 
 | Field | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |
-| `configId` | string | ✅ | — | Stable runtime lookup key used by `weaponVisualConfigId` and `skillVisualConfigId`. |
-| `type` | string | — | `weapon` | Entry category for filtering (`weapon`, `skill_vfx`). |
-| `spritesheetUrl` | string | ✅ for non-`skill_vfx` | — | Public CDN URL, auto-filled from uploaded `spritesheet` file when provided. |
-| `cellSize` | int | — | `64` | Width = height for each frame cell in pixels. |
+| `configId` | string | ✅ | — | Stable runtime lookup key used by `skillVisualConfigId`. |
+| `type` | string | — | `skill_vfx` | Only supported value is `skill_vfx`. |
 | `displayName` | string | ✅ | — | Human-readable label in web admin. |
 | `primaryColorHex` | string | ✅ for `skill_vfx` | — | Main tint color in hex format. |
 | `secondaryColorHex` | string | — | `""` | Optional extra tint value for future shader use. |
@@ -846,9 +838,8 @@ Depending on `itemType`, specific extra fields must be included:
 #### Unity Integration Notes
 
 - Unity loads combat catalog on startup.
-- Entries with `spritesheetUrl` are used for sprite sheets (weapon visuals).
 - `type=skill_vfx` entries are tint configs for animated skill prefabs.
-- Weapon items use `weaponVisualConfigId`.
+- Weapon visuals do not use Combat Catalog.
 - Combat skills use `skillVisualConfigId`.
 
 ---
@@ -1274,7 +1265,7 @@ Notes for web form behavior:
 - `DynamicSpriteSwapper` on each Paper Doll layer reads `configId` from `EquipmentManager` and calls `SkinCatalogManager.GetSprites(configId)` every `LateUpdate`.
 - To clear the client-side disk cache after updating a spritesheet, call `SkinCatalogManager.Instance.RefreshCatalog()` in play mode or delete `Application.persistentDataPath/SkinCache/`.
 - **Tool layer spritesheets are NOT stored here.** Tool appearance is driven by the Material Catalog (see below). `MaterialCatalogService.cs` registers each material's spritesheet into `SkinCatalogManager` under its `materialId` on startup.
-- **Combat visual sheets (weapon / skill VFX) are NOT stored here.** Use [Combat Catalog](#combat-catalog).
+- **Skill VFX tint configs are NOT stored here.** Use [Combat Catalog](#combat-catalog).
 
 ---
 

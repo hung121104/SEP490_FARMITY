@@ -1,7 +1,6 @@
 import {
   IsString,
   IsNotEmpty,
-  IsInt,
   IsOptional,
   Min,
   Max,
@@ -14,18 +13,9 @@ export class CreateCombatCatalogDto {
   @IsNotEmpty()
   configId: string;
 
-  @IsString()
-  @IsNotEmpty()
-  type: string;
-
   @IsOptional()
   @IsString()
-  spritesheetUrl: string;
-
-  @IsInt()
-  @Min(1)
-  @IsOptional()
-  cellSize?: number;
+  type?: string;
 
   @IsString()
   @IsNotEmpty()
