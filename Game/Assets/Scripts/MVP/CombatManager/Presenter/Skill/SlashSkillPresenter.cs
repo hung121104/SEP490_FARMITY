@@ -165,7 +165,7 @@ namespace CombatManager.Presenter
             if (target == null || string.IsNullOrWhiteSpace(skillVisualConfigId))
                 return;
 
-            CombatCatalogManager catalog = CombatCatalogManager.Instance;
+            SkillVfxCatalogManager catalog = SkillVfxCatalogManager.Instance;
             if (catalog == null)
                 return;
 

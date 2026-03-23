@@ -8,9 +8,9 @@ using Newtonsoft.Json;
 /// Loads skill VFX tint configs from /game-data/combat-catalogs?type=skill_vfx.
 /// Combat catalog no longer stores weapon spritesheets.
 /// </summary>
-public class CombatCatalogManager : MonoBehaviour
+public class SkillVfxCatalogManager : MonoBehaviour
 {
-    public static CombatCatalogManager Instance { get; private set; }
+    public static SkillVfxCatalogManager Instance { get; private set; }
 
     private readonly Dictionary<string, CombatCatalogEntry> _catalog = new();
     private const string CatalogType = "skill_vfx";
@@ -95,7 +95,7 @@ public class CombatCatalogManager : MonoBehaviour
 
             if (req.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogWarning($"[CombatCatalogManager] Attempt {attempt}/{MAX_RETRIES} failed: {req.error}");
+                Debug.LogWarning($"[SkillVfxCatalogManager] Attempt {attempt}/{MAX_RETRIES} failed: {req.error}");
                 if (attempt < MAX_RETRIES) yield return new WaitForSeconds(RETRY_DELAY);
                 continue;
             }
@@ -108,7 +108,7 @@ public class CombatCatalogManager : MonoBehaviour
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[CombatCatalogManager] JSON parse error (attempt {attempt}): {e.Message}");
+                Debug.LogWarning($"[SkillVfxCatalogManager] JSON parse error (attempt {attempt}): {e.Message}");
             }
 
             if (parseOk) break;
@@ -117,14 +117,14 @@ public class CombatCatalogManager : MonoBehaviour
 
         if (entries == null)
         {
-            Debug.LogError($"[CombatCatalogManager] All {MAX_RETRIES} attempts failed for {url}");
+            Debug.LogError($"[SkillVfxCatalogManager] All {MAX_RETRIES} attempts failed for {url}");
             CatalogProgressManager.NotifyFailed("Combat Catalog");
             yield break;
         }
 
         if (entries.Count == 0)
         {
-            Debug.LogWarning("[CombatCatalogManager] Catalog returned 0 entries.");
+            Debug.LogWarning("[SkillVfxCatalogManager] Catalog returned 0 entries.");
             IsReady = true;
             OnReady?.Invoke();
             CatalogProgressManager.NotifyCompleted();
@@ -139,7 +139,7 @@ public class CombatCatalogManager : MonoBehaviour
 
         IsReady = true;
         OnReady?.Invoke();
-        Debug.Log($"[CombatCatalogManager] Ready with {_catalog.Count} entry(ies). type='{CatalogType}'");
+        Debug.Log($"[SkillVfxCatalogManager] Ready with {_catalog.Count} entry(ies). type='{CatalogType}'");
         CatalogProgressManager.NotifyCompleted();
     }
 }
