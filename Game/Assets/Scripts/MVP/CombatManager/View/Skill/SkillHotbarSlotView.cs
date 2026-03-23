@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
-using CombatManager.SO;
+using CombatManager.Model;
 using CombatManager.Model;
 
 namespace CombatManager.View

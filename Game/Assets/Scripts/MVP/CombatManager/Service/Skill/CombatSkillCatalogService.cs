@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using CombatManager.Model;
-using CombatManager.SO;
+using CombatManager.Model;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using UnityEngine;

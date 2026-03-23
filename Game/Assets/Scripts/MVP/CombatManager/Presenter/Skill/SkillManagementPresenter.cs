@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
-using CombatManager.SO;
+using CombatManager.Model;
 
 namespace CombatManager.Presenter
 {

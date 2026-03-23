@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using CombatManager.Model;
-using CombatManager.SO;
+using CombatManager.Model;
 
 namespace CombatManager.Service
 {

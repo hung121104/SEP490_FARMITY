@@ -2,7 +2,7 @@ using UnityEngine;
 using CombatManager.Model;
 using Newtonsoft.Json;
 
-namespace CombatManager.SO
+namespace CombatManager.Model
 {
     /// <summary>
     /// Runtime combat skill model loaded from database catalog.
