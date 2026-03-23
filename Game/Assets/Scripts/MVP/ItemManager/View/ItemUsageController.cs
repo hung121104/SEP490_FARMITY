@@ -69,11 +69,9 @@ public class ItemUsageController : MonoBehaviour
     {
         _currentItem = item;
 
-        if (item is WeaponData weapon)
-        {
-            WeaponEquipPresenter.Instance?.EquipWeapon(weapon);
+        // Weapon equip is explicit via use input (right-click flow), not by slot selection.
+        if (item is WeaponData)
             return;
-        }
 
         if (WeaponEquipPresenter.Instance != null && WeaponEquipPresenter.Instance.IsWeaponEquipped())
         {

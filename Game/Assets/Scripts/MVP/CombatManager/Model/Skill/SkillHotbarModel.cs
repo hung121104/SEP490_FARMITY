@@ -14,10 +14,10 @@ namespace CombatManager.Model
         public int slotCount = 4;
         public KeyCode[] activationKeys = new KeyCode[]
         {
-            KeyCode.Alpha1,
-            KeyCode.Alpha2,
-            KeyCode.Alpha3,
-            KeyCode.Alpha4
+            KeyCode.Z,
+            KeyCode.X,
+            KeyCode.C,
+            KeyCode.V
         };
 
         [Header("Visual")]

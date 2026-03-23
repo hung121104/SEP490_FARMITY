@@ -59,12 +59,18 @@ namespace CombatManager.View
 
             // Set hotkey label
             if (hotkeyLabel != null && index < hotbarModel.activationKeys.Length)
-                hotkeyLabel.text = (index + 1).ToString();
+                hotkeyLabel.text = FormatHotkeyLabel(hotbarModel.activationKeys[index]);
 
             SetEmptyVisual();
         }
 
         #endregion
+
+        private static string FormatHotkeyLabel(KeyCode key)
+        {
+            string raw = key.ToString();
+            return raw.StartsWith("Alpha") ? raw.Substring("Alpha".Length) : raw;
+        }
 
         #region Display
 

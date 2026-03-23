@@ -71,6 +71,7 @@ namespace CombatManager.Presenter
             }
             Instance = this;
             service = new SkillHotbarService(model);
+            EnsureActivationKeys();
 
             SkillLoadoutSyncService syncComponent = GetComponent<SkillLoadoutSyncService>();
             if (syncComponent == null)
@@ -78,6 +79,41 @@ namespace CombatManager.Presenter
                 syncComponent = gameObject.AddComponent<SkillLoadoutSyncService>();
             }
             loadoutSyncService = syncComponent;
+        }
+
+        private void EnsureActivationKeys()
+        {
+            if (model == null)
+                return;
+
+            KeyCode[] desired =
+            {
+                KeyCode.Z,
+                KeyCode.X,
+                KeyCode.C,
+                KeyCode.V,
+            };
+
+            if (model.activationKeys == null || model.activationKeys.Length != desired.Length)
+            {
+                model.activationKeys = desired;
+                return;
+            }
+
+            bool alreadyDesired = true;
+            for (int i = 0; i < desired.Length; i++)
+            {
+                if (model.activationKeys[i] != desired[i])
+                {
+                    alreadyDesired = false;
+                    break;
+                }
+            }
+
+            if (!alreadyDesired)
+            {
+                model.activationKeys = desired;
+            }
         }
 
         private void Start()
