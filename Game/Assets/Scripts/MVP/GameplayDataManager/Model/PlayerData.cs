@@ -16,4 +16,12 @@ public struct PlayerData
     public string outfitConfigId;
     public string hatConfigId;
     public string toolConfigId;
+
+    public float currentStamina;
+    public float viableStamina;
+
+    public float regenBoostMultiplier;
+    public float regenBoostRemaining;
+    public float toolEfficiencyReduction;
+    public float toolEfficiencyRemaining;
 }

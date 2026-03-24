@@ -26,6 +26,13 @@ public class ItemUsageService : IItemUsageService
             return false;
         }
 
+        var stamina = StaminaView.FindLocal();
+        if (stamina != null && !stamina.TryConsumeToolStamina(toolData.staminaCost))
+        {
+            Debug.Log("[ItemUsageService] Blocked tool use due to low stamina.");
+            return false;
+        }
+
         return toolData.toolType switch
         {
             ToolType.Hoe         => useToolService.UseHoe(toolData, pos),
@@ -57,6 +64,36 @@ public class ItemUsageService : IItemUsageService
     public (bool, int) UseConsumable(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsageService] UseConsumable: " + item.itemID + " at: " + pos);
+
+        var stamina = StaminaView.FindLocal();
+        if (stamina == null) return (true, 1);
+
+        if (item is ConsumableData consumable)
+        {
+            stamina.ApplyConsumableEffects(
+                consumable.viableRestore,
+                consumable.regenBoostMultiplier,
+                consumable.toolEfficiencyReductionPercent / 100f,
+                consumable.effectDurationSeconds);
+            return (true, 1);
+        }
+
+        if (item is CookingData cooking)
+        {
+            stamina.ApplyConsumableEffects(
+                cooking.viableRestore,
+                cooking.regenBoostMultiplier,
+                cooking.toolEfficiencyReductionPercent / 100f,
+                cooking.effectDurationSeconds);
+            return (true, 1);
+        }
+
+        if (item is ForageData forage)
+        {
+            stamina.ApplyConsumableEffects(forage.viableRestore, 1f, 0f, 0f);
+            return (true, 1);
+        }
+
         return (true, 1);
     }
 

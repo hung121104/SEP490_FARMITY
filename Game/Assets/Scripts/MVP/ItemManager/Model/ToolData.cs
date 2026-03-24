@@ -5,6 +5,7 @@ public class ToolData : ItemData
     public ToolType toolType     = ToolType.Hoe;
     public int      toolLevel    = 1;
     public int      toolPower    = 1;
+    public float    staminaCost  = 10f;
     /// <summary>
     /// References a Material document by materialId (e.g. "mat_copper").
     /// Resolved at runtime via MaterialCatalogService.GetMaterial().
