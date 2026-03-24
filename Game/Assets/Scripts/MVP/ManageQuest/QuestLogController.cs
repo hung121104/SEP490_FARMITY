@@ -8,11 +8,13 @@ public class QuestLogController : MonoBehaviour
 
     private QuestLogPresenter presenter;
 
-    private void Awake()
+    private void Start()
     {
-        // Initialize in Awake so Subscribe() in OnEnable can safely reference presenter
+        // Start() runs after all Awake() — QuestManager.QuestService is guaranteed non-null here.
         presenter = new QuestLogPresenter(view, QuestManager.QuestService);
         questButton.onClick.AddListener(() => presenter.OpenQuestLog());
+        // OnEnable fired before Start (presenter was null then), so subscribe manually now.
+        presenter.Subscribe();
     }
 
     private void OnEnable()  => presenter?.Subscribe();
