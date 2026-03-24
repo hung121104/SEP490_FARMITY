@@ -75,7 +75,7 @@ public static class FallbackDataFactory
             canBeSold   = false,
             canBeBought = false,
             isFallback  = true,
-            structureInteractionType = 0,
+            structureInteractionType = (int)StructureInteractionType.Decoration,
             structureLevel           = 1,
             structureInteractionSpriteUrl = ""
         };

@@ -1766,7 +1766,7 @@ MonoBehaviour:
   day: 1
   hour: 0
   minute: 0
-  timeSpeed: 4
+  timeSpeed: 0
 --- !u!4 &76351688
 Transform:
   m_ObjectHideFlags: 0
