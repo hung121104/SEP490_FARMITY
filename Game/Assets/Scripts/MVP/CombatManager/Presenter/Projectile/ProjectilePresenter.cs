@@ -83,12 +83,6 @@ namespace CombatManager.Presenter
                 rb.linearVelocity = Vector2.zero;
                 rb.bodyType = RigidbodyType2D.Kinematic;
             }
-
-            Debug.Log($"[ProjectilePresenter] Initialized → " +
-                      $"Dir: {model.direction} | " +
-                      $"Speed: {model.speed} | " +
-                      $"Range: {model.maxRange} | " +
-                      $"Dmg: {model.damage}");
         }
 
         #endregion
@@ -111,8 +105,6 @@ namespace CombatManager.Presenter
                     model.damage,
                     knockbackDir,
                     model.knockbackForce);
-
-                Debug.Log($"[ProjectilePresenter] Hit: {enemy.name} | Damage: {model.damage}");
                 return;
             }
 
@@ -125,7 +117,6 @@ namespace CombatManager.Presenter
             if (model.isDestroyed) return;
             model.isDestroyed = true;
             Destroy(gameObject);
-            Debug.Log("[ProjectilePresenter] Destroyed");
         }
 
         #endregion

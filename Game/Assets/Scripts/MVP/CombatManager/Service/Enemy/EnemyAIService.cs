@@ -339,8 +339,6 @@ namespace CombatManager.Service
             {
                 model.currentState = EnemyState.Chasing;
             }
-
-            Debug.Log("[EnemyAIService] Enemy hit! Now alerted and chasing.");
         }
 
         #endregion

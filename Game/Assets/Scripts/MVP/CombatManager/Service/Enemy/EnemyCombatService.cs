@@ -13,6 +13,8 @@ namespace CombatManager.Service
     {
         private EnemyModel model;
         private GameObject damagePopupPrefab;
+        private PlayerHealthPresenter cachedHealthPresenter;
+        private PlayerKnockbackPresenter cachedKnockbackPresenter;
 
         public EnemyCombatService(EnemyModel model)
         {
@@ -37,14 +39,7 @@ namespace CombatManager.Service
         {
             model.lastDamageTime = Time.time;
 
-            Debug.Log($"[EnemyCombatService] ========== COLLISION DETECTED ==========");
-            Debug.Log($"  - Hit Object: {collision.gameObject.name}");
-            Debug.Log($"  - Hit Tag: {collision.gameObject.tag}");
-            Debug.Log($"  - Hit Layer: {LayerMask.LayerToName(collision.gameObject.layer)}");
-
-            // Find presenters in scene (they're on CombatSystem hierarchy)
-            PlayerHealthPresenter healthPresenter = Object.FindObjectOfType<PlayerHealthPresenter>();
-            
+            PlayerHealthPresenter healthPresenter = ResolveHealthPresenter();
             if (healthPresenter == null)
             {
                 Debug.LogError("[EnemyCombatService] ❌ PlayerHealthPresenter NOT FOUND!");
@@ -52,37 +47,38 @@ namespace CombatManager.Service
                 return;
             }
 
-            Debug.Log($"[EnemyCombatService] ✅ Found PlayerHealthPresenter on: {healthPresenter.gameObject.name}");
-
-            PlayerKnockbackPresenter knockbackPresenter = Object.FindObjectOfType<PlayerKnockbackPresenter>();
-            
-            if (knockbackPresenter == null)
-            {
-                Debug.LogWarning("[EnemyCombatService] ⚠️ PlayerKnockbackPresenter not found");
-            }
-            else
-            {
-                Debug.Log($"[EnemyCombatService] ✅ Found PlayerKnockbackPresenter on: {knockbackPresenter.gameObject.name}");
-            }
+            PlayerKnockbackPresenter knockbackPresenter = ResolveKnockbackPresenter();
 
             // Call presenter's public methods
-            Debug.Log($"[EnemyCombatService] Applying {model.damageAmount} damage...");
             healthPresenter.ChangeHealth(-model.damageAmount);
-            Debug.Log($"[EnemyCombatService] ✅ Damage applied!");
 
             // Apply knockback
             if (knockbackPresenter != null)
             {
                 Transform attackerTransform = collision.otherCollider.transform;
-                Debug.Log($"[EnemyCombatService] Applying knockback from {attackerTransform.name}...");
                 knockbackPresenter.Knockback(attackerTransform, model.knockbackForce);
-                Debug.Log($"[EnemyCombatService] ✅ Knockback applied!");
             }
 
             // Show damage popup
             ShowDamagePopup(collision.transform.position);
+        }
 
-            Debug.Log($"[EnemyCombatService] ========== DAMAGE COMPLETE ==========");
+        private PlayerHealthPresenter ResolveHealthPresenter()
+        {
+            if (cachedHealthPresenter != null)
+                return cachedHealthPresenter;
+
+            cachedHealthPresenter = Object.FindObjectOfType<PlayerHealthPresenter>();
+            return cachedHealthPresenter;
+        }
+
+        private PlayerKnockbackPresenter ResolveKnockbackPresenter()
+        {
+            if (cachedKnockbackPresenter != null)
+                return cachedKnockbackPresenter;
+
+            cachedKnockbackPresenter = Object.FindObjectOfType<PlayerKnockbackPresenter>();
+            return cachedKnockbackPresenter;
         }
 
         public void ShowDamagePopup(Vector3 position)

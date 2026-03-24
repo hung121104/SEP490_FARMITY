@@ -45,8 +45,6 @@ namespace CombatManager.Service
             model.animator = animator;
             model.isActive = true;
             model.alreadyHit.Clear();
-
-            Debug.Log($"[SlashHitboxService] Initialized: Damage={damage}, Knockback={knockbackForce}");
         }
 
         public bool IsInitialized()
@@ -129,8 +127,6 @@ namespace CombatManager.Service
                 model.damage,
                 knockbackDir,
                 model.knockbackForce);
-            
-            Debug.Log($"[SlashHitboxService] Dealt {model.damage} damage to {enemy.name}");
         }
 
         #endregion

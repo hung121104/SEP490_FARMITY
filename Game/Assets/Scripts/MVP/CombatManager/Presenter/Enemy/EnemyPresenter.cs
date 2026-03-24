@@ -57,6 +57,10 @@ namespace CombatManager.Presenter
         private bool remoteIsWalking;
         private bool remoteFlipX;
         private int lastAppliedHitToken = int.MinValue;
+        private Coroutine knockbackEffectRoutine;
+        private Coroutine flashEffectRoutine;
+        private float lastDamagePopupAt = -10f;
+        private const float DAMAGE_POPUP_INTERVAL = 0.1f;
 
         private bool IsAuthoritative => !PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient;
 
@@ -347,13 +351,11 @@ namespace CombatManager.Presenter
             if (!isDead)
             {
                 aiService?.TakeKnockback(knockbackDirection, knockbackForce);
-                StartCoroutine(knockbackService.PlayKnockbackEffect());
-                StartCoroutine(knockbackService.PlayFlashEffect());
+                PlayHitEffects();
                 aiService?.OnHit();
             }
 
-            if (damage > 0)
-                DamagePopupPresenter.Spawn(transform.position, damage);
+            TrySpawnDamagePopup(damage);
         }
 
         [PunRPC]
@@ -373,13 +375,36 @@ namespace CombatManager.Presenter
             healthService.ChangeHealth(-damage);
             aiService.TakeKnockback(knockbackDirection, knockbackForce);
 
-            StartCoroutine(knockbackService.PlayKnockbackEffect());
-            StartCoroutine(knockbackService.PlayFlashEffect());
+            PlayHitEffects();
 
-            DamagePopupPresenter.Spawn(transform.position, damage);
+            TrySpawnDamagePopup(damage);
             aiService.OnHit();
+        }
 
-            Debug.Log($"[EnemyPresenter] {enemyId} took {damage} damage. Health: {healthService.GetCurrentHealth()}/{healthService.GetMaxHealth()}");
+        private void PlayHitEffects()
+        {
+            if (knockbackService == null)
+                return;
+
+            if (knockbackEffectRoutine != null)
+                StopCoroutine(knockbackEffectRoutine);
+            if (flashEffectRoutine != null)
+                StopCoroutine(flashEffectRoutine);
+
+            knockbackEffectRoutine = StartCoroutine(knockbackService.PlayKnockbackEffect());
+            flashEffectRoutine = StartCoroutine(knockbackService.PlayFlashEffect());
+        }
+
+        private void TrySpawnDamagePopup(int damage)
+        {
+            if (damage <= 0)
+                return;
+
+            if (Time.time - lastDamagePopupAt < DAMAGE_POPUP_INTERVAL)
+                return;
+
+            lastDamagePopupAt = Time.time;
+            DamagePopupPresenter.Spawn(transform.position, damage);
         }
 
         // ✅ NEW: Get enemy ID

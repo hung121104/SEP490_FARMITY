@@ -17,9 +17,9 @@ namespace CombatManager.Service
         private const byte ENEMY_HIT_APPLIED_EVENT = 169;
 
         private static EnemySyncManager instance;
+        private static int localHitSequence;
 
         private readonly Dictionary<string, EnemyPresenter> enemiesByRuntimeId = new Dictionary<string, EnemyPresenter>();
-        private readonly HashSet<string> processingHits = new HashSet<string>();
 
         public static EnemySyncManager Instance
         {
@@ -103,7 +103,7 @@ namespace CombatManager.Service
                 ? PhotonNetwork.LocalPlayer?.ActorNumber ?? -1
                 : -1;
 
-            int hitToken = BuildHitToken(attackerActorNumber, runtimeId);
+            int hitToken = BuildHitToken(attackerActorNumber);
 
             if (IsAuthoritative)
             {
@@ -182,44 +182,33 @@ namespace CombatManager.Service
             if (!IsAuthoritative || string.IsNullOrWhiteSpace(runtimeId) || damage <= 0)
                 return;
 
-            if (processingHits.Contains(runtimeId))
-                return;
-
             EnemyPresenter enemy = ResolveEnemy(runtimeId);
             if (enemy == null || !enemy.IsInitialized() || enemy.IsDead())
                 return;
 
-            processingHits.Add(runtimeId);
-            try
+            enemy.ApplyAuthoritativeHit(damage, knockbackDir, knockbackForce, hitToken, attackerActorNumber);
+
+            int newHp = enemy.GetCurrentHealth();
+            int maxHp = enemy.GetMaxHealth();
+            bool isDead = newHp <= 0;
+
+            object[] payload =
             {
-                enemy.ApplyAuthoritativeHit(damage, knockbackDir, knockbackForce, hitToken, attackerActorNumber);
+                runtimeId,
+                newHp,
+                maxHp,
+                knockbackDir.x,
+                knockbackDir.y,
+                knockbackForce,
+                damage,
+                hitToken,
+                isDead,
+            };
 
-                int newHp = enemy.GetCurrentHealth();
-                int maxHp = enemy.GetMaxHealth();
-                bool isDead = newHp <= 0;
-
-                object[] payload =
-                {
-                    runtimeId,
-                    newHp,
-                    maxHp,
-                    knockbackDir.x,
-                    knockbackDir.y,
-                    knockbackForce,
-                    damage,
-                    hitToken,
-                    isDead,
-                };
-
-                if (PhotonNetwork.IsConnected)
-                {
-                    RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
-                    PhotonNetwork.RaiseEvent(ENEMY_HIT_APPLIED_EVENT, payload, options, SendOptions.SendReliable);
-                }
-            }
-            finally
+            if (PhotonNetwork.IsConnected)
             {
-                processingHits.Remove(runtimeId);
+                RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+                PhotonNetwork.RaiseEvent(ENEMY_HIT_APPLIED_EVENT, payload, options, SendOptions.SendReliable);
             }
         }
 
@@ -280,15 +269,22 @@ namespace CombatManager.Service
             return null;
         }
 
-        private static int BuildHitToken(int attackerActorNumber, string runtimeId)
+        private static int BuildHitToken(int attackerActorNumber)
         {
             unchecked
             {
-                int hash = 17;
-                hash = hash * 31 + attackerActorNumber;
-                hash = hash * 31 + (runtimeId?.GetHashCode() ?? 0);
-                hash = hash * 31 + PhotonNetwork.ServerTimestamp;
-                return hash;
+                int normalizedActor = attackerActorNumber > 0
+                    ? attackerActorNumber & 0x00000FFF
+                    : 0;
+
+                int sequence = ++localHitSequence;
+                if (sequence <= 0)
+                {
+                    localHitSequence = 1;
+                    sequence = 1;
+                }
+
+                return (normalizedActor << 20) | (sequence & 0x000FFFFF);
             }
         }
 

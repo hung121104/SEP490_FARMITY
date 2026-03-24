@@ -51,6 +51,8 @@ namespace CombatManager.Presenter
         private IDamageCalculatorService damageCalculator;
 
         private Transform localPlayerTransform;
+        private float attackInputBufferTimer;
+        private const float ATTACK_INPUT_BUFFER_DURATION = 0.18f;
 
         // ✅ Cache current weapon for GetCooldownPercent()
         private WeaponData currentWeaponCache;
@@ -186,9 +188,6 @@ namespace CombatManager.Presenter
             if (SkillManagementPresenter.Instance != null && SkillManagementPresenter.Instance.IsPanelOpen())
                 return;
 
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-                return;
-
             if (CombatModePresenter.Instance == null ||
                 !CombatModePresenter.Instance.IsCombatModeActive())
                 return;
@@ -197,8 +196,17 @@ namespace CombatManager.Presenter
                 !WeaponEquipPresenter.Instance.IsWeaponEquipped())
                 return;
 
-            if (Input.GetMouseButtonDown(0) && service.CanAttack())
+            if (Input.GetMouseButtonDown(0))
+                attackInputBufferTimer = ATTACK_INPUT_BUFFER_DURATION;
+
+            if (attackInputBufferTimer > 0f)
+                attackInputBufferTimer -= Time.deltaTime;
+
+            if (attackInputBufferTimer > 0f && service.CanAttack())
+            {
+                attackInputBufferTimer = 0f;
                 ExecuteAttack();
+            }
         }
 
         #endregion
@@ -269,11 +277,6 @@ namespace CombatManager.Presenter
 
             SpawnSlashVFX(vfxPrefab, vfxDuration, finalDamage, knockback, comboStep);
             BroadcastMeleeAttackVfx(comboStep, vfxDuration);
-
-            Debug.Log($"[PlayerAttackPresenter] Melee | Step={comboStep} | " +
-                      $"Str={statsService.GetAttackDamage()} + WeaponDmg={currentWeapon.damage} " +
-                      $"= Base={baseDamage} → Final={finalDamage} | " +
-                      $"Knockback={knockback} | Weapon={currentWeapon.weaponName}");
         }
 
         private void SpawnSlashVFX(GameObject vfxPrefab, float duration,
@@ -313,8 +316,6 @@ namespace CombatManager.Presenter
                 service.GetDamagePopupPrefab(),
                 duration
             );
-
-            Debug.Log($"[PlayerAttackPresenter] Melee VFX spawned at {spawnPosition}, angle={angle}°");
         }
 
         #endregion
@@ -371,13 +372,6 @@ namespace CombatManager.Presenter
 
             projectilePresenter.Initialize(projectileModel);
             BroadcastStaffProjectileVfx(currentWeapon, direction);
-
-            Debug.Log($"[PlayerAttackPresenter] Staff fired! " +
-                      $"Damage={baseDamage} | Dir={direction} | " +
-                      $"Speed={currentWeapon.projectileSpeed} | " +
-                      $"Range={currentWeapon.projectileRange} | " +
-                      $"Knockback={currentWeapon.projectileKnockback} | " +
-                      $"Weapon={currentWeapon.weaponName}");
         }
 
         #endregion
