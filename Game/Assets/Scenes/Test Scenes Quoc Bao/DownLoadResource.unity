@@ -228,9 +228,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 982f63ff31249374891dccef7d82e129, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseProjectilePrefab: {fileID: 2996777577814843754, guid: cf409b33c4bf1674ebcb5d32c77a3243, type: 3}
-  baseSlashVfxPrefab: {fileID: 5107333870897779412, guid: 1244261c77c709b43a4c449b37ae4157, type: 3}
-  baseDamagePopupPrefab: {fileID: 0}
   autoFetchOnStart: 1
 --- !u!4 &383920721
 Transform:
@@ -1584,7 +1581,7 @@ GameObject:
   - component: {fileID: 1688642606}
   - component: {fileID: 1688642605}
   m_Layer: 0
-  m_Name: WeaponCatalogManager
+  m_Name: SkillVFXCatalog
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1602,8 +1599,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d26967ec12019ff45830562bf6a5cb43, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  catalogType: weapon
-  fetchAllTypes: 1
 --- !u!4 &1688642606
 Transform:
   m_ObjectHideFlags: 0
