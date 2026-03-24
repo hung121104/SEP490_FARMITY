@@ -8,28 +8,13 @@ public class QuestLogController : MonoBehaviour
 
     private QuestLogPresenter presenter;
 
-    private void Start()
+    private void Awake()
     {
+        // Initialize in Awake so Subscribe() in OnEnable can safely reference presenter
         presenter = new QuestLogPresenter(view, QuestManager.QuestService);
-
-        questButton.onClick.AddListener(OpenQuestLog);
+        questButton.onClick.AddListener(() => presenter.OpenQuestLog());
     }
 
-    private void OpenQuestLog()
-    {
-        presenter.OpenQuestLog();
-    }
-    private void Refresh()
-    {
-        presenter.Refresh();
-    }
-    private void OnEnable()
-    {
-        QuestService.OnQuestUpdated += Refresh;
-    }
-
-    private void OnDisable()
-    {
-        QuestService.OnQuestUpdated -= Refresh;
-    }
+    private void OnEnable()  => presenter?.Subscribe();
+    private void OnDisable() => presenter?.Unsubscribe();
 }

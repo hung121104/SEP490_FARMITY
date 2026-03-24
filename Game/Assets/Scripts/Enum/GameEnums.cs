@@ -146,3 +146,25 @@ public enum StructureInteractionType
     Decoration
 }
 
+// ==================== QUEST MANAGEMENT ====================
+
+public enum QuestStatus
+{
+    NotAccepted,
+    Active,
+    Completed,
+    TurnedIn
+}
+
+// ==================== NPC INTERACTION ====================
+
+public enum NPCInteractionState
+{
+    Idle,
+    InteractionMenu,
+    Dialogue,
+    Gift,
+    Quest,
+    SimpleDialogue
+}
+
