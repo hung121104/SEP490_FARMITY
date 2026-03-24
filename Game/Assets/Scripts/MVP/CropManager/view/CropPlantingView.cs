@@ -102,18 +102,7 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
             targetCamera = FindPlayerCamera();
 
         if (playerTransform == null)
-        {
-            foreach (GameObject go in GameObject.FindGameObjectsWithTag(playerTag))
-            {
-                PhotonView pv = go.GetComponent<PhotonView>();
-                if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
-                    continue;
-
-                Transform centerPoint = go.transform.Find("CenterPoint");
-                playerTransform = centerPoint != null ? centerPoint : go.transform;
-                break;
-            }
-        }
+            TryResolvePlayerTransform(out playerTransform);
 
         // Derive current seed from hotbar each frame
         _currentSeed = hotbarView?.GetCurrentItem()?.ItemData as SeedData;
@@ -344,14 +333,7 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
     {
         Transform targetTransform = playerTransform;
         if (targetTransform == null)
-        {
-            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
-            if (playerEntity != null)
-            {
-                Transform cp = playerEntity.transform.Find("CenterPoint");
-                targetTransform = cp != null ? cp : playerEntity.transform;
-            }
-        }
+            TryResolvePlayerTransform(out targetTransform);
 
         if (targetTransform == null || plantingRange <= 0) return;
 
@@ -367,5 +349,36 @@ public class CropPlantingView : MonoBehaviourPunCallbacks
                 Gizmos.DrawWireSphere(targetTransform.position, 0.3f);
                 break;
         }
+    }
+
+    private bool TryResolvePlayerTransform(out Transform resolvedTransform)
+    {
+        resolvedTransform = null;
+
+        GameObject[] players = GameObject.FindGameObjectsWithTag(playerTag);
+        if (players == null || players.Length == 0)
+            return false;
+
+        // Online: always prefer the locally owned Photon entity.
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
+
+            Transform centerPoint = player.transform.Find("CenterPoint");
+            resolvedTransform = centerPoint != null ? centerPoint : player.transform;
+            return true;
+        }
+
+        // Offline fallback: use the first tagged player entity.
+        if (!PhotonNetwork.IsConnected)
+        {
+            Transform centerPoint = players[0].transform.Find("CenterPoint");
+            resolvedTransform = centerPoint != null ? centerPoint : players[0].transform;
+            return true;
+        }
+
+        return false;
     }
 }

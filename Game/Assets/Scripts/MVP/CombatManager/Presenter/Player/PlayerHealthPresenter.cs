@@ -111,6 +111,23 @@ namespace CombatManager.Presenter
             return null;
         }
 
+        /// <summary>Returns the local PlayerHealthPresenter (the one tracking this client's player).</summary>
+        public static PlayerHealthPresenter FindLocal()
+        {
+            // FindObjectsByType avoids the obsolete FindObjectsOfType warning.
+            foreach (var presenter in UnityEngine.Object.FindObjectsByType<PlayerHealthPresenter>(
+                         UnityEngine.FindObjectsSortMode.None))
+            {
+                if (presenter.model?.playerEntity != null &&
+                    presenter.model.playerEntity.GetComponent<PhotonView>() is PhotonView pv &&
+                    pv.IsMine)
+                    return presenter;
+            }
+            // Fallback: if only one presenter exists (single-player / host)
+            var all = UnityEngine.Object.FindObjectsByType<PlayerHealthPresenter>(UnityEngine.FindObjectsSortMode.None);
+            return all.Length == 1 ? all[0] : null;
+        }
+
         #endregion
 
         #region Public API for External Systems

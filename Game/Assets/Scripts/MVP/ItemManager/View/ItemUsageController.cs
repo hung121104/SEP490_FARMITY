@@ -135,6 +135,13 @@ public class ItemUsageController : MonoBehaviour
                     presenter.ConsumeCurrentItem(amount);
                 break;
 
+            case ItemType.Crop:
+            case ItemType.Forage:
+                var (foodConsumed, foodAmount) = itemUsagePresenter.UseConsumable(item, targetPosition);
+                if (foodConsumed && foodAmount > 0)
+                    presenter.ConsumeCurrentItem(foodAmount);
+                break;
+
             case ItemType.Weapon:
                 if (itemUsagePresenter.UseWeapon(item, targetPosition))
                     presenter.ConsumeCurrentItem(1);
