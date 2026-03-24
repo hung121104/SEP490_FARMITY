@@ -15,22 +15,12 @@ namespace CombatManager.Test
     {
         private const byte ENEMY_SPAWN_EVENT = 165;
 
-        [System.Serializable]
-        private class SpawnEntry
-        {
-            public string label = "Enemy";
-            public EnemyDataSO enemyData;
-            public KeyCode spawnKey = KeyCode.None;
-        }
-
-        [Header("Enemy Spawn Entries")]
-        [SerializeField] private SpawnEntry[] spawnEntries =
-        {
-            new SpawnEntry { label = "Skeleton", spawnKey = KeyCode.F5 },
-            new SpawnEntry { label = "Slime", spawnKey = KeyCode.F6 },
-        };
+        [Header("Enemy Templates")]
+        [SerializeField] private EnemyDataSO skeletonData;
+        [SerializeField] private EnemyDataSO[] otherEnemyData;
 
         [Header("Spawn Settings")]
+        [SerializeField] private KeyCode spawnKey = KeyCode.F5;
         [SerializeField] private float spawnDistance = 3f;
         [SerializeField] private int maxEnemies = 5;
 
@@ -44,23 +34,12 @@ namespace CombatManager.Test
 
         private void Update()
         {
-            if (spawnEntries == null || spawnEntries.Length == 0)
-                return;
-
-            for (int i = 0; i < spawnEntries.Length; i++)
+            if (Input.GetKeyDown(spawnKey))
             {
-                SpawnEntry entry = spawnEntries[i];
-                if (entry == null || entry.enemyData == null || entry.spawnKey == KeyCode.None)
-                    continue;
-
-                if (!Input.GetKeyDown(entry.spawnKey))
-                    continue;
-
                 if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient)
                     return;
 
-                TrySpawnEnemy(entry.enemyData);
-                return;
+                TrySpawnEnemy(skeletonData);
             }
         }
 
@@ -209,13 +188,15 @@ namespace CombatManager.Test
         {
             enemyById.Clear();
 
-            if (spawnEntries == null)
+            if (skeletonData != null && !string.IsNullOrWhiteSpace(skeletonData.enemyId))
+                enemyById[skeletonData.enemyId] = skeletonData;
+
+            if (otherEnemyData == null)
                 return;
 
-            for (int i = 0; i < spawnEntries.Length; i++)
+            for (int i = 0; i < otherEnemyData.Length; i++)
             {
-                SpawnEntry entry = spawnEntries[i];
-                EnemyDataSO data = entry != null ? entry.enemyData : null;
+                EnemyDataSO data = otherEnemyData[i];
                 if (data == null || string.IsNullOrWhiteSpace(data.enemyId))
                     continue;
 
