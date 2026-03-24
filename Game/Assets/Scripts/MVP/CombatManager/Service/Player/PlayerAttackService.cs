@@ -54,7 +54,7 @@ namespace CombatManager.Service
 
         public bool CanAttack()
         {
-            return model.attackCooldownTimer <= 0 && model.isInitialized;
+            return model.isInitialized && model.attackCooldownTimer <= 0f;
         }
 
         public void ExecuteAttack()

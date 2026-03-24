@@ -1,5 +1,4 @@
 using UnityEngine;
-using TMPro;
 using CombatManager.Model;
 using CombatManager.Presenter;
 
@@ -12,7 +11,6 @@ namespace CombatManager.Service
     public class EnemyCombatService : IEnemyCombatService
     {
         private EnemyModel model;
-        private GameObject damagePopupPrefab;
         private PlayerHealthPresenter cachedHealthPresenter;
         private PlayerKnockbackPresenter cachedKnockbackPresenter;
 
@@ -23,7 +21,7 @@ namespace CombatManager.Service
 
         public void Initialize(GameObject damagePopupPrefab)
         {
-            this.damagePopupPrefab = damagePopupPrefab;
+            // Kept for interface compatibility; popup spawning is centralized via DamagePopupPresenter.
         }
 
         public bool CanDealDamage()

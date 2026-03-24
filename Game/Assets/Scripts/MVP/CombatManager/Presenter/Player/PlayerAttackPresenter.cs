@@ -6,7 +6,6 @@ using System.Collections;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
-using UnityEngine.EventSystems;
 
 namespace CombatManager.Presenter
 {
@@ -54,9 +53,8 @@ namespace CombatManager.Presenter
         private float attackInputBufferTimer;
         private const float ATTACK_INPUT_BUFFER_DURATION = 0.18f;
 
-        // ✅ Cache current weapon for GetCooldownPercent()
         private WeaponData currentWeaponCache;
-                    // Projectile stats are fully item-driven from WeaponData
+
         #region Unity Lifecycle
 
         private void Start()
@@ -283,7 +281,7 @@ namespace CombatManager.Presenter
                                     int damage, float knockback, int comboStep)
         {
             Transform centerPoint = service.GetCenterPoint();
-            Vector3 pointerDirection = pointerPresenter.GetPointerDirection();
+            Vector3 pointerDirection = ResolveAimDirection(centerPoint);
 
             float spawnOffset = service.GetVFXSpawnOffset();
             Vector3 spawnPosition = centerPoint.position + pointerDirection * spawnOffset;
@@ -339,7 +337,7 @@ namespace CombatManager.Presenter
             // TODO: Staff combo system - currently single shot per click
             // Future: add staffComboSteps[] for multi-projectile patterns
 
-            Vector3 direction = pointerPresenter.GetPointerDirection().normalized;
+            Vector3 direction = ResolveAimDirection(localPlayerTransform).normalized;
 
             GameObject projectileGO = Instantiate(
                 staffProjectilePrefab,
@@ -434,7 +432,7 @@ namespace CombatManager.Presenter
             if (centerPoint == null)
                 return;
 
-            Vector3 pointerDirection = pointerPresenter.GetPointerDirection();
+            Vector3 pointerDirection = ResolveAimDirection(centerPoint);
             float spawnOffset = service.GetVFXSpawnOffset();
             Vector3 spawnPosition = centerPoint.position + pointerDirection * spawnOffset;
 
@@ -460,6 +458,35 @@ namespace CombatManager.Presenter
 
             RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
             PhotonNetwork.RaiseEvent(ATTACK_VFX_EVENT, payload, options, SendOptions.SendUnreliable);
+        }
+
+        private Vector3 ResolveAimDirection(Transform origin)
+        {
+            if (origin == null)
+                return Vector3.right;
+
+            pointerPresenter?.UpdateDirection();
+
+            Vector3 pointerDirection = pointerPresenter != null
+                ? pointerPresenter.GetPointerDirection()
+                : Vector3.zero;
+
+            if (pointerDirection.sqrMagnitude > 0.0001f)
+                return pointerDirection.normalized;
+
+            Camera cam = Camera.main;
+            if (cam != null)
+            {
+                Vector3 mouseWorld = cam.ScreenToWorldPoint(Input.mousePosition);
+                mouseWorld.z = origin.position.z;
+
+                Vector3 fallback = mouseWorld - origin.position;
+                fallback.z = 0f;
+                if (fallback.sqrMagnitude > 0.0001f)
+                    return fallback.normalized;
+            }
+
+            return Vector3.right;
         }
 
         private void BroadcastStaffProjectileVfx(WeaponData weapon, Vector3 direction)
