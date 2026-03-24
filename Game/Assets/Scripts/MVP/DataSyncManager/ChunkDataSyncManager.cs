@@ -459,50 +459,20 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private void HandleWorldSyncComplete()
     {
         // --- Orphaned data handling for late-join player ---
+        // Note: This method is only called by non-MasterClient (see WORLD_SYNC_COMPLETE_EVENT guard).
+        // MasterClient cleanup happens in WorldDataBootstrapper.
         if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
             && WorldDataManager.Instance != null)
         {
-            CleanupReport report;
-
-            if (PhotonNetwork.IsMasterClient)
-            {
-                // MasterClient: remove orphaned data (original behavior).
-                var cleanupService = new OrphanedDataCleanupService(
-                    ItemCatalogService.Instance,
-                    PlantCatalogService.Instance,
-                    ResourceCatalogManager.Instance,
-                    RecipeCatalogService.Instance,
-                    WorldDataManager.Instance);
-
-                // Subscribe chest item drop event so valid items are spawned in the world
-                var dropSyncManager = UnityEngine.Object.FindAnyObjectByType<DroppedItemSyncManager>();
-                if (dropSyncManager != null)
-                {
-                    cleanupService.OnChestItemDrop += (itemId, quantity, worldPos) =>
-                    {
-                        var itemData = ItemCatalogService.Instance.GetItemData(itemId);
-                        if (itemData == null) return;
-                        var itemModel = new ItemModel(itemData, Quality.Normal, quantity);
-                        var dropData = DroppedItemData.FromItemModel(itemModel, worldPos.x, worldPos.y);
-                        if (dropData != null)
-                            dropSyncManager.SendDropRequest(dropData);
-                    };
-                }
-
-                report = cleanupService.RunCleanup();
-            }
-            else
-            {
-                // Late-join player: inject fallback placeholders instead of removing.
-                var fallbackService = new OrphanedFallbackService(
-                    ItemCatalogService.Instance,
-                    PlantCatalogService.Instance,
-                    ResourceCatalogManager.Instance,
-                    RecipeCatalogService.Instance,
-                    WorldDataManager.Instance,
-                    FallbackConfig.Instance?.PlaceholderSprite);
-                report = fallbackService.InjectFallbacks();
-            }
+            // Late-join player: inject fallback placeholders instead of removing.
+            var fallbackService = new OrphanedFallbackService(
+                ItemCatalogService.Instance,
+                PlantCatalogService.Instance,
+                ResourceCatalogManager.Instance,
+                RecipeCatalogService.Instance,
+                WorldDataManager.Instance,
+                FallbackConfig.Instance?.PlaceholderSprite);
+            var report = fallbackService.InjectFallbacks();
 
             if (report.TotalCleaned > 0)
             {
