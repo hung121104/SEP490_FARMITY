@@ -1,5 +1,6 @@
 using UnityEngine;
 using CombatManager.Model;
+using System.Collections.Generic;
 
 namespace CombatManager.Service
 {
@@ -11,6 +12,7 @@ namespace CombatManager.Service
     {
         private EnemyModel model;
         private Transform enemyTransform;
+        private readonly List<Transform> potentialTargets = new List<Transform>();
 
         public EnemyAIService(EnemyModel model)
         {
@@ -26,15 +28,19 @@ namespace CombatManager.Service
             GenerateNewWanderTarget();
             model.currentState = EnemyState.Guard;
             StartGuard();
-            
-            // Verify player is set
-            if (model.playerTransform == null)
+        }
+
+        public void SetPotentialTargets(IReadOnlyList<Transform> players)
+        {
+            potentialTargets.Clear();
+            if (players == null)
+                return;
+
+            for (int i = 0; i < players.Count; i++)
             {
-                Debug.LogWarning("[EnemyAIService] Player transform not found during initialization!");
-            }
-            else
-            {
-                Debug.Log($"[EnemyAIService] Initialized with player: {model.playerTransform.name}");
+                Transform target = players[i];
+                if (target != null)
+                    potentialTargets.Add(target);
             }
         }
 
@@ -42,28 +48,43 @@ namespace CombatManager.Service
 
         #region Behavior Update
 
-        public void UpdateBehavior(float deltaTime, float distanceToPlayer)
+        public void UpdateBehavior(float deltaTime)
         {
-            if (model.playerTransform == null)
+            ResolveCurrentTarget();
+
+            float distanceToTarget = model.currentTarget != null
+                ? Vector2.Distance(enemyTransform.position, model.currentTarget.position)
+                : float.MaxValue;
+
+            if (model.currentTarget == null && !model.isAlerted)
+            {
+                if (model.currentState != EnemyState.Guard && model.currentState != EnemyState.Wandering)
+                {
+                    model.currentState = EnemyState.Guard;
+                    StartGuard();
+                }
+
+                UpdateAnimation();
                 return;
+            }
 
             // State machine
             switch (model.currentState)
             {
                 case EnemyState.Guard:
-                    HandleGuardState(distanceToPlayer);
+                    HandleGuardState(distanceToTarget);
                     break;
 
                 case EnemyState.Wandering:
-                    HandleWanderingState(distanceToPlayer);
+                    HandleWanderingState(distanceToTarget);
                     break;
 
                 case EnemyState.Chasing:
-                    HandleChasingState(distanceToPlayer);
+                    HandleChasingState(distanceToTarget);
                     break;
 
                 case EnemyState.Attacking:
-                    HandleAttackingState(distanceToPlayer);
+                    HandleAttackingState(distanceToTarget);
                     break;
             }
 
@@ -194,6 +215,35 @@ namespace CombatManager.Service
             {
                 model.currentState = EnemyState.Chasing;
             }
+        }
+
+        private void ResolveCurrentTarget()
+        {
+            Transform bestTarget = null;
+            float bestDistance = float.MaxValue;
+
+            for (int i = 0; i < potentialTargets.Count; i++)
+            {
+                Transform candidate = potentialTargets[i];
+                if (candidate == null)
+                    continue;
+
+                float distance = Vector2.Distance(enemyTransform.position, candidate.position);
+                if (distance > model.detectionRange + 2f)
+                    continue;
+
+                if (!CanSeeTarget(candidate) && distance > model.attackRange + 1f)
+                    continue;
+
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestTarget = candidate;
+                }
+            }
+
+            model.currentTarget = bestTarget;
+            model.playerTransform = bestTarget;
         }
 
         #endregion
@@ -334,19 +384,27 @@ namespace CombatManager.Service
 
         public bool CanSeePlayer()
         {
-            if (model.playerTransform == null)
+            if (model.currentTarget == null)
                 return false;
 
-            Vector2 directionToPlayer = (model.playerTransform.position - enemyTransform.position).normalized;
-            float distanceToPlayer = Vector2.Distance(enemyTransform.position, model.playerTransform.position);
+            return CanSeeTarget(model.currentTarget);
+        }
 
-            if (!IsInFieldOfView(directionToPlayer))
+        private bool CanSeeTarget(Transform target)
+        {
+            if (target == null)
+                return false;
+
+            Vector2 directionToTarget = (target.position - enemyTransform.position).normalized;
+            float distanceToTarget = Vector2.Distance(enemyTransform.position, target.position);
+
+            if (!IsInFieldOfView(directionToTarget))
                 return false;
 
             RaycastHit2D hit = Physics2D.Raycast(
                 enemyTransform.position,
-                directionToPlayer,
-                distanceToPlayer,
+                directionToTarget,
+                distanceToTarget,
                 model.obstacleLayer
             );
 
@@ -398,10 +456,10 @@ namespace CombatManager.Service
 
         private void MoveTowardsPlayer()
         {
-            if (model.playerTransform == null || model.rb == null)
+            if (model.currentTarget == null || model.rb == null)
                 return;
 
-            Vector2 direction = (model.playerTransform.position - enemyTransform.position).normalized;
+            Vector2 direction = (model.currentTarget.position - enemyTransform.position).normalized;
             model.rb.linearVelocity = direction * model.chaseSpeed;
 
             model.facingDirection = direction;

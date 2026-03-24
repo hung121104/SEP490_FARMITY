@@ -1,6 +1,9 @@
 using UnityEngine;
 using Photon.Pun;
+using Photon.Realtime;
+using ExitGames.Client.Photon;
 using System.Collections;
+using System.Collections.Generic;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
@@ -14,8 +17,13 @@ namespace CombatManager.Presenter
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(Animator))]
-    public class EnemyPresenter : MonoBehaviour
+    [RequireComponent(typeof(PhotonView))]
+    public class EnemyPresenter : MonoBehaviourPunCallbacks, IOnEventCallback
     {
+        private const byte ENEMY_STATE_EVENT = 166;
+        private const float STATE_BROADCAST_INTERVAL = 0.1f;
+        private const float REMOTE_POSITION_LERP = 12f;
+
         [Header("Model")]
         [SerializeField] private EnemyModel model = new EnemyModel();
 
@@ -38,6 +46,18 @@ namespace CombatManager.Presenter
 
         private Rigidbody2D rb;
         private EnemyView view;
+        private PhotonView enemyPhotonView;
+
+        private readonly List<Transform> playerTargets = new List<Transform>();
+        private float playerScanTimer;
+        private float nextStateBroadcastAt;
+
+        private Vector3 remotePosition;
+        private Vector2 remoteVelocity;
+        private bool remoteIsWalking;
+        private bool remoteFlipX;
+
+        private bool IsAuthoritative => !PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient;
 
         #region Unity Lifecycle
 
@@ -46,25 +66,41 @@ namespace CombatManager.Presenter
             InitializeComponents();
         }
 
+        private void OnEnable()
+        {
+            PhotonNetwork.AddCallbackTarget(this);
+        }
+
+        private void OnDisable()
+        {
+            PhotonNetwork.RemoveCallbackTarget(this);
+        }
+
         private void Update()
         {
             if (!model.isInitialized)
                 return;
 
-            knockbackService.UpdateKnockbackTimer(Time.deltaTime);
-
-            if (knockbackService.IsKnockedBack())
-                return;
-
-            float distanceToPlayer = model.playerTransform != null 
-                ? Vector2.Distance(transform.position, model.playerTransform.position) 
-                : float.MaxValue;
-
-            aiService.UpdateBehavior(Time.deltaTime, distanceToPlayer);
-
-            if (healthService.IsDead())
+            if (IsAuthoritative)
             {
-                HandleDeath();
+                RefreshPotentialTargets();
+                aiService.SetPotentialTargets(playerTargets);
+                knockbackService.UpdateKnockbackTimer(Time.deltaTime);
+
+                if (!knockbackService.IsKnockedBack())
+                    aiService.UpdateBehavior(Time.deltaTime);
+
+                if (healthService.IsDead())
+                    HandleDeath(true);
+
+                BroadcastEnemyStateIfNeeded();
+            }
+            else
+            {
+                ApplyRemoteState();
+
+                if (healthService.IsDead())
+                    HandleDeath(false);
             }
         }
 
@@ -73,12 +109,16 @@ namespace CombatManager.Presenter
             if (!model.isInitialized)
                 return;
 
-            aiService.UpdatePhysics(Time.fixedDeltaTime);
+            if (IsAuthoritative)
+                aiService.UpdatePhysics(Time.fixedDeltaTime);
         }
 
         private void OnCollisionStay2D(Collision2D collision)
         {
             if (!model.isInitialized)
+                return;
+
+            if (!IsAuthoritative)
                 return;
 
             if (((1 << collision.gameObject.layer) & model.playerLayer) != 0)
@@ -115,6 +155,7 @@ namespace CombatManager.Presenter
 
             // Get required components
             rb = GetComponent<Rigidbody2D>();
+            enemyPhotonView = GetComponent<PhotonView>();
             
             if (animator == null)
                 animator = GetComponent<Animator>();
@@ -128,10 +169,8 @@ namespace CombatManager.Presenter
                 view = gameObject.AddComponent<EnemyView>();
             }
 
-            Transform playerTransform = FindLocalPlayerTransform();
-
             // ✅ NEW: Sync from EnemyDataSO instead of inspector
-            SyncFromEnemyData(playerTransform);
+            SyncFromEnemyData();
 
             healthService = new EnemyHealthService(model);
             knockbackService = new EnemyKnockbackService(model);
@@ -142,6 +181,16 @@ namespace CombatManager.Presenter
             knockbackService.Initialize(this);
             combatService.Initialize(damagePopupPrefab);
             aiService.Initialize(transform);
+
+            if (string.IsNullOrWhiteSpace(model.runtimeEnemyId))
+            {
+                model.runtimeEnemyId = BuildDefaultRuntimeEnemyId();
+            }
+
+            remotePosition = transform.position;
+            remoteVelocity = Vector2.zero;
+            remoteIsWalking = false;
+            remoteFlipX = spriteRenderer != null && spriteRenderer.flipX;
 
             model.isInitialized = true;
 
@@ -154,10 +203,11 @@ namespace CombatManager.Presenter
         }
 
         // ✅ NEW: Load all settings from EnemyDataSO
-        private void SyncFromEnemyData(Transform playerTransform)
+        private void SyncFromEnemyData()
         {
             // Runtime references
-            model.playerTransform = playerTransform;
+            model.playerTransform = null;
+            model.currentTarget = null;
             model.rb = rb;
             model.animator = animator;
             model.spriteRenderer = spriteRenderer;
@@ -202,33 +252,28 @@ namespace CombatManager.Presenter
             model.flashCount = enemyData.flashCount;
         }
 
-        private Transform FindLocalPlayerTransform()
+        private void RefreshPotentialTargets()
         {
-            GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
-            foreach (GameObject go in players)
+            playerScanTimer -= Time.deltaTime;
+            if (playerScanTimer > 0f)
+                return;
+
+            playerScanTimer = 0.5f;
+            playerTargets.Clear();
+
+            GameObject[] players = GameObject.FindGameObjectsWithTag("PlayerEntity");
+            for (int i = 0; i < players.Length; i++)
             {
-                PhotonView pv = go.GetComponent<PhotonView>();
-                if (pv != null && pv.IsMine)
-                    return go.transform;
+                if (players[i] != null)
+                    playerTargets.Add(players[i].transform);
             }
 
-            GameObject[] playerEntities = GameObject.FindGameObjectsWithTag("PlayerEntity");
-            foreach (GameObject go in playerEntities)
+            players = GameObject.FindGameObjectsWithTag("Player");
+            for (int i = 0; i < players.Length; i++)
             {
-                PhotonView pv = go.GetComponent<PhotonView>();
-                if (pv != null && pv.IsMine)
-                    return go.transform;
+                if (players[i] != null && !playerTargets.Contains(players[i].transform))
+                    playerTargets.Add(players[i].transform);
             }
-
-            GameObject fallback = GameObject.Find("PlayerEntity");
-            if (fallback != null)
-                return fallback.transform;
-
-            PlayerHealthPresenter healthPresenter = Object.FindObjectOfType<PlayerHealthPresenter>();
-            if (healthPresenter != null)
-                return healthPresenter.transform;
-
-            return null;
         }
 
         #endregion
@@ -236,6 +281,39 @@ namespace CombatManager.Presenter
         #region Public API
 
         public void TakeDamage(int damage, Vector2 knockbackDirection, float knockbackForce)
+        {
+            if (!model.isInitialized)
+                return;
+
+            if (PhotonNetwork.IsConnected && !IsAuthoritative)
+            {
+                if (enemyPhotonView != null)
+                {
+                    enemyPhotonView.RPC(
+                        nameof(RPC_RequestTakeDamage),
+                        RpcTarget.MasterClient,
+                        damage,
+                        knockbackDirection.x,
+                        knockbackDirection.y,
+                        knockbackForce);
+                }
+
+                return;
+            }
+
+            ApplyDamageInternal(damage, knockbackDirection, knockbackForce);
+        }
+
+        [PunRPC]
+        private void RPC_RequestTakeDamage(int damage, float knockbackX, float knockbackY, float knockbackForce)
+        {
+            if (!IsAuthoritative)
+                return;
+
+            ApplyDamageInternal(damage, new Vector2(knockbackX, knockbackY), knockbackForce);
+        }
+
+        private void ApplyDamageInternal(int damage, Vector2 knockbackDirection, float knockbackForce)
         {
             if (!model.isInitialized)
                 return;
@@ -254,7 +332,14 @@ namespace CombatManager.Presenter
 
         // ✅ NEW: Get enemy ID
         public string GetEnemyId() => enemyId;
+        public string GetRuntimeEnemyId() => model.runtimeEnemyId;
         public EnemyDataSO GetEnemyData() => enemyData;
+
+        public void SetRuntimeEnemyId(string runtimeId)
+        {
+            if (!string.IsNullOrWhiteSpace(runtimeId))
+                model.runtimeEnemyId = runtimeId;
+        }
 
         #endregion
 
@@ -263,7 +348,7 @@ namespace CombatManager.Presenter
         // ✅ NEW: Track if death has been handled
         private bool deathHandled = false;
 
-        private void HandleDeath()
+        private void HandleDeath(bool authoritativeDeath)
         {
             // ✅ FIX: Only handle death ONCE
             if (deathHandled)
@@ -273,8 +358,11 @@ namespace CombatManager.Presenter
 
             Debug.Log($"[EnemyPresenter] {enemyId} died");
 
-            // ✅ Fire achievement event with enemy ID - called ONCE
-            GameEventBus.FireEnemyKilled(enemyId, 1);
+            if (authoritativeDeath)
+            {
+                // ✅ Fire achievement event with enemy ID - called ONCE
+                GameEventBus.FireEnemyKilled(enemyId, 1);
+            }
 
             aiService.Stop();
 
@@ -284,6 +372,167 @@ namespace CombatManager.Presenter
             }
 
             Destroy(gameObject, 1f);
+        }
+
+        private string BuildDefaultRuntimeEnemyId()
+        {
+            string sceneName = gameObject.scene.IsValid() ? gameObject.scene.name : "scene";
+            Vector3 pos = transform.position;
+            return $"{enemyId}_{sceneName}_{gameObject.name}_{pos.x:F2}_{pos.y:F2}";
+        }
+
+        private void BroadcastEnemyStateIfNeeded()
+        {
+            if (!PhotonNetwork.IsConnected)
+                return;
+
+            if (Time.unscaledTime < nextStateBroadcastAt)
+                return;
+
+            if (string.IsNullOrWhiteSpace(model.runtimeEnemyId))
+                return;
+
+            bool isWalking = model.animator != null && model.animator.GetBool("isWalking");
+            bool flipX = model.spriteRenderer != null && model.spriteRenderer.flipX;
+
+            object[] payload =
+            {
+                model.runtimeEnemyId,
+                transform.position.x,
+                transform.position.y,
+                transform.position.z,
+                model.rb != null ? model.rb.linearVelocity.x : 0f,
+                model.rb != null ? model.rb.linearVelocity.y : 0f,
+                model.currentHealth,
+                model.maxHealth,
+                (int)model.currentState,
+                model.isAlerted,
+                model.isKnockedBack,
+                isWalking,
+                flipX,
+                model.facingDirection.x,
+                model.facingDirection.y,
+            };
+
+            RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+            PhotonNetwork.RaiseEvent(ENEMY_STATE_EVENT, payload, options, SendOptions.SendUnreliable);
+            nextStateBroadcastAt = Time.unscaledTime + STATE_BROADCAST_INTERVAL;
+        }
+
+        private void ApplyRemoteState()
+        {
+            transform.position = Vector3.Lerp(
+                transform.position,
+                remotePosition,
+                Mathf.Clamp01(Time.deltaTime * REMOTE_POSITION_LERP));
+
+            if (model.rb != null)
+                model.rb.linearVelocity = remoteVelocity;
+
+            if (model.animator != null)
+                model.animator.SetBool("isWalking", remoteIsWalking);
+
+            if (model.spriteRenderer != null)
+                model.spriteRenderer.flipX = remoteFlipX;
+        }
+
+        public void OnEvent(EventData photonEvent)
+        {
+            if (photonEvent.Code != ENEMY_STATE_EVENT)
+                return;
+
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 15)
+                return;
+
+            string runtimeId = payload[0] as string ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(runtimeId) || runtimeId != model.runtimeEnemyId)
+                return;
+
+            if (!TryGetFloat(payload, 1, out float posX) ||
+                !TryGetFloat(payload, 2, out float posY) ||
+                !TryGetFloat(payload, 3, out float posZ) ||
+                !TryGetFloat(payload, 4, out float velX) ||
+                !TryGetFloat(payload, 5, out float velY) ||
+                !TryGetInt(payload, 6, out int hp) ||
+                !TryGetInt(payload, 7, out int maxHp) ||
+                !TryGetInt(payload, 8, out int stateValue) ||
+                !TryGetBool(payload, 9, out bool isAlerted) ||
+                !TryGetBool(payload, 10, out bool isKnockedBack) ||
+                !TryGetBool(payload, 11, out bool isWalking) ||
+                !TryGetBool(payload, 12, out bool flipX) ||
+                !TryGetFloat(payload, 13, out float faceX) ||
+                !TryGetFloat(payload, 14, out float faceY))
+            {
+                return;
+            }
+
+            remotePosition = new Vector3(posX, posY, posZ);
+            remoteVelocity = new Vector2(velX, velY);
+            remoteIsWalking = isWalking;
+            remoteFlipX = flipX;
+            model.currentHealth = hp;
+            model.maxHealth = maxHp;
+            model.currentState = (EnemyState)stateValue;
+            model.isAlerted = isAlerted;
+            model.isKnockedBack = isKnockedBack;
+            model.facingDirection = new Vector2(faceX, faceY);
+        }
+
+        private static bool TryGetFloat(object[] payload, int index, out float value)
+        {
+            value = 0f;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is float f)
+            {
+                value = f;
+                return true;
+            }
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetInt(object[] payload, int index, out int value)
+        {
+            value = 0;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            if (payload[index] is byte b)
+            {
+                value = b;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetBool(object[] payload, int index, out bool value)
+        {
+            value = false;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is bool b)
+            {
+                value = b;
+                return true;
+            }
+
+            return false;
         }
 
         #endregion

@@ -1,15 +1,20 @@
 using UnityEngine;
 using Photon.Pun;
+using Photon.Realtime;
+using ExitGames.Client.Photon;
 using CombatManager.SO;
 using CombatManager.Presenter;
+using System.Collections.Generic;
 
 namespace CombatManager.Test
 {
     /// <summary>
     /// Enemy spawn test - now spawns from EnemyDataSO.
     /// </summary>
-    public class EnemySpawnTest : MonoBehaviour
+    public class EnemySpawnTest : MonoBehaviour, IOnEventCallback
     {
+        private const byte ENEMY_SPAWN_EVENT = 165;
+
         [Header("Enemy Templates")]
         [SerializeField] private EnemyDataSO skeletonData;
         [SerializeField] private EnemyDataSO[] otherEnemyData;
@@ -23,13 +28,30 @@ namespace CombatManager.Test
         [SerializeField] private bool showSpawnLog = true;
 
         private int spawnedCount = 0;
+        private readonly Dictionary<string, EnemyDataSO> enemyById = new Dictionary<string, EnemyDataSO>();
 
         #region Unity Lifecycle
 
         private void Update()
         {
             if (Input.GetKeyDown(spawnKey))
+            {
+                if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient)
+                    return;
+
                 TrySpawnEnemy(skeletonData);
+            }
+        }
+
+        private void OnEnable()
+        {
+            PhotonNetwork.AddCallbackTarget(this);
+            BuildEnemyMap();
+        }
+
+        private void OnDisable()
+        {
+            PhotonNetwork.RemoveCallbackTarget(this);
         }
 
         #endregion
@@ -64,23 +86,20 @@ namespace CombatManager.Test
             }
 
             Vector3 spawnPos = GetSpawnPosition(playerTransform);
-            // ✅ Spawn from prefab in EnemyDataSO
-            GameObject enemy = Instantiate(enemyData.enemyPrefab, spawnPos, Quaternion.identity);
-            enemy.name = $"{enemyData.enemyId}_{spawnedCount + 1}";
+            string runtimeId = $"{enemyData.enemyId}_{PhotonNetwork.ServerTimestamp}_{spawnedCount + 1}";
 
-            // ✅ Assign EnemyDataSO to the presenter
-            EnemyPresenter presenter = enemy.GetComponent<EnemyPresenter>();
-            if (presenter != null)
+            if (PhotonNetwork.IsConnected)
             {
-                // The presenter will read enemyData from inspector
-                // BUT we need a way to set it at runtime...
-                // For now, make sure it's already assigned in prefab
+                object[] payload = { enemyData.enemyId, runtimeId, spawnPos.x, spawnPos.y, spawnPos.z };
+                RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.All };
+                PhotonNetwork.RaiseEvent(ENEMY_SPAWN_EVENT, payload, opts, SendOptions.SendReliable);
+            }
+            else
+            {
+                SpawnEnemyInstance(enemyData, spawnPos, runtimeId);
             }
 
             spawnedCount++;
-
-            if (showSpawnLog)
-                Debug.Log($"[EnemySpawnTest] Spawned '{enemy.name}' ({enemyData.enemyName}) at {spawnPos}");
         }
 
         private Vector3 GetSpawnPosition(Transform playerTransform)
@@ -124,6 +143,87 @@ namespace CombatManager.Test
         }
 
         #endregion
+
+        public void OnEvent(EventData photonEvent)
+        {
+            if (photonEvent.Code != ENEMY_SPAWN_EVENT)
+                return;
+
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 5)
+                return;
+
+            string enemyTypeId = payload[0] as string ?? string.Empty;
+            string runtimeId = payload[1] as string ?? string.Empty;
+
+            if (!TryGetFloat(payload, 2, out float posX) ||
+                !TryGetFloat(payload, 3, out float posY) ||
+                !TryGetFloat(payload, 4, out float posZ))
+            {
+                return;
+            }
+
+            if (!enemyById.TryGetValue(enemyTypeId, out EnemyDataSO enemyData) || enemyData == null)
+            {
+                Debug.LogWarning($"[EnemySpawnTest] Unknown enemyTypeId '{enemyTypeId}' from spawn event.");
+                return;
+            }
+
+            SpawnEnemyInstance(enemyData, new Vector3(posX, posY, posZ), runtimeId);
+        }
+
+        private void SpawnEnemyInstance(EnemyDataSO enemyData, Vector3 spawnPos, string runtimeId)
+        {
+            GameObject enemy = Instantiate(enemyData.enemyPrefab, spawnPos, Quaternion.identity);
+            enemy.name = $"{enemyData.enemyId}_{runtimeId}";
+
+            EnemyPresenter presenter = enemy.GetComponent<EnemyPresenter>();
+            if (presenter != null)
+                presenter.SetRuntimeEnemyId(runtimeId);
+
+            if (showSpawnLog)
+                Debug.Log($"[EnemySpawnTest] Spawned '{enemy.name}' ({enemyData.enemyName}) at {spawnPos}");
+        }
+
+        private void BuildEnemyMap()
+        {
+            enemyById.Clear();
+
+            if (skeletonData != null && !string.IsNullOrWhiteSpace(skeletonData.enemyId))
+                enemyById[skeletonData.enemyId] = skeletonData;
+
+            if (otherEnemyData == null)
+                return;
+
+            for (int i = 0; i < otherEnemyData.Length; i++)
+            {
+                EnemyDataSO data = otherEnemyData[i];
+                if (data == null || string.IsNullOrWhiteSpace(data.enemyId))
+                    continue;
+
+                enemyById[data.enemyId] = data;
+            }
+        }
+
+        private static bool TryGetFloat(object[] payload, int index, out float value)
+        {
+            value = 0f;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is float f)
+            {
+                value = f;
+                return true;
+            }
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            return false;
+        }
 
         #region Debug Gizmos
 
