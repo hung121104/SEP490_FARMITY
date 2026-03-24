@@ -59,6 +59,10 @@ public class CropHarvestingService : ICropHarvestingService
             && !string.IsNullOrEmpty(tileData.PlantId))
         {
             PlantData plantData = cropManagerView.GetPlantData(tileData.PlantId);
+
+            // Block harvest of fallback placeholder crops (late-join orphaned data).
+            if (plantData != null && plantData.isFallback) return false;
+
             if (plantData != null && !string.IsNullOrEmpty(plantData.harvestedItemId))
                 harvestedItem = ItemCatalogService.Instance?.GetItemData(plantData.harvestedItemId);
             else

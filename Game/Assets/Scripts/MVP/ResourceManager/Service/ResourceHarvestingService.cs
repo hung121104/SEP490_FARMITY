@@ -67,6 +67,9 @@ public class ResourceHarvestingService : IResourceHarvestingService
         ResourceConfigData configData = ResourceCatalogManager.Instance?.GetResourceConfig(tileData.ResourceId);
         if (configData == null) return false;
 
+        // Block interaction with fallback placeholder resources (late-join orphaned data).
+        if (configData.isFallback) return false;
+
         // Ensure tool matches the required tool type and has sufficient power.
         if (tool.toolType != configData.requiredToolType || tool.toolPower < configData.minToolPower)
         {

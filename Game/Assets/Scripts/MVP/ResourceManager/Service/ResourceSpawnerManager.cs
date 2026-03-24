@@ -413,7 +413,23 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         ResourceConfigData configData = ResourceCatalogManager.Instance?.GetResourceConfig(resourceId);
         if (configData == null)
         {
-            Debug.LogWarning($"[ResourceSpawnerManager] Missing config data for resource '{resourceId}'.");
+            // No catalog data — spawn placeholder if available (orphaned data from late-join)
+            var fallbackSprite = FallbackConfig.Instance?.PlaceholderSprite;
+            if (fallbackSprite != null)
+            {
+                Vector3 worldPosPlaceholder = TileIndexToWorldPosition(chunkX, chunkY, tileIndex);
+                var placeholderObj = new GameObject($"Resource_Fallback_{resourceId}_{chunkX}_{chunkY}_{tileIndex}");
+                placeholderObj.transform.position = worldPosPlaceholder;
+                var sr = placeholderObj.AddComponent<SpriteRenderer>();
+                sr.sprite = fallbackSprite;
+                sr.sortingLayerName = "WalkInfront";
+                _spawnedVisuals[visualKey] = placeholderObj;
+                _baseVisualScales[visualKey] = placeholderObj.transform.localScale;
+            }
+            else
+            {
+                Debug.LogWarning($"[ResourceSpawnerManager] Missing config data for resource '{resourceId}'.");
+            }
             return;
         }
 

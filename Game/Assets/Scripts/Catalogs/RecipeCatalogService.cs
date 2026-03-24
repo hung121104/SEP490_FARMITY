@@ -54,6 +54,56 @@ public class RecipeCatalogService : MonoBehaviour
     public List<RecipeData> GetAllRecipes()
         => new List<RecipeData>(_catalog.Values);
 
+    /// <summary>
+    /// Removes recipes that reference deleted items (ingredients or result).
+    /// Called by OrphanedDataCleanupService after all catalogs are loaded.
+    /// </summary>
+    /// <param name="removedIds">Optional list to collect removed recipe IDs for notifications.</param>
+    public int RemoveRecipesWithMissingItems(List<string> removedIds = null)
+    {
+        if (ItemCatalogService.Instance == null || !ItemCatalogService.Instance.IsReady) return 0;
+
+        var toRemove = new List<string>();
+        foreach (var kvp in _catalog)
+        {
+            var recipe = kvp.Value;
+
+            // Check result item
+            if (ItemCatalogService.Instance.GetItemData(recipe.resultItemId) == null)
+            {
+                toRemove.Add(kvp.Key);
+                continue;
+            }
+
+            // Check each ingredient
+            if (recipe.ingredients != null)
+            {
+                bool hasOrphan = false;
+                foreach (var ing in recipe.ingredients)
+                {
+                    if (ItemCatalogService.Instance.GetItemData(ing.itemId) == null)
+                    {
+                        hasOrphan = true;
+                        break;
+                    }
+                }
+                if (hasOrphan)
+                {
+                    toRemove.Add(kvp.Key);
+                }
+            }
+        }
+
+        foreach (var id in toRemove)
+        {
+            removedIds?.Add(id);
+            _catalog.Remove(id);
+            Debug.LogWarning($"[RecipeCatalogService] Removed orphaned recipe '{id}'");
+        }
+
+        return toRemove.Count;
+    }
+
     // ── Loading ───────────────────────────────────────────────────────────────
 
     private const int MAX_RETRIES = 3;
