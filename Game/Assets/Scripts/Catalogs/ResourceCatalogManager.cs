@@ -125,4 +125,16 @@ public class ResourceCatalogManager : MonoBehaviour
         _resourceConfigs.TryGetValue(resourceId, out ResourceConfigData config);
         return config;
     }
+
+    // ── Fallback Injection (late-join orphaned data) ────────────────────────
+
+    /// <summary>
+    /// Injects a fallback ResourceConfigData if the ID is not already present.
+    /// Used by OrphanedFallbackService for late-join players.
+    /// </summary>
+    public void InjectFallback(string resourceId, ResourceConfigData data)
+    {
+        if (!_resourceConfigs.ContainsKey(resourceId))
+            _resourceConfigs[resourceId] = data;
+    }
 }

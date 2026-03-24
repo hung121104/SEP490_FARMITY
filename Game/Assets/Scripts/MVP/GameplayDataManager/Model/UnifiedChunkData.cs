@@ -629,6 +629,15 @@ public class UnifiedChunkData : BaseChunkData
         return false;
     }
 
+    /// <summary>Returns a snapshot list of all tiles that contain a resource (safe to iterate while removing).</summary>
+    public List<TileSlot> GetAllResources()
+    {
+        var list = new List<TileSlot>();
+        foreach (var slot in tiles.Values)
+            if (slot.HasResource) list.Add(slot);
+        return list;
+    }
+
     public int GetResourceCount()
     {
         int count = 0;

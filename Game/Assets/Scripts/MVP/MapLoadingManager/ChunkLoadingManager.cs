@@ -482,29 +482,46 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             {
                 // Get plant data for this crop type
                 PlantData plantData = GetPlantData(tile.Crop.PlantId);
+
+                // Determine the sprite: normal catalog lookup or fallback placeholder
+                Sprite stageSprite = null;
+                bool isFallbackCrop = false;
+
                 if (plantData == null)
                 {
-                    if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] No plant data found for plant id '{tile.Crop.PlantId}' at ({tile.WorldX}, {tile.WorldY})");
-                    continue;
+                    // No catalog data — use placeholder sprite if available (orphaned data from late-join)
+                    var fallbackSprite = FallbackConfig.Instance?.PlaceholderSprite;
+                    if (fallbackSprite != null)
+                    {
+                        stageSprite = fallbackSprite;
+                        isFallbackCrop = true;
+                    }
+                    else
+                    {
+                        if (showDebugLogs)
+                            Debug.LogWarning($"[ChunkLoading] No plant data found for plant id '{tile.Crop.PlantId}' at ({tile.WorldX}, {tile.WorldY})");
+                        continue;
+                    }
                 }
-                
-                // Validate stage is within bounds (for normal plants)
-                if (!plantData.isHybrid && tile.Crop.CropStage >= plantData.growthStages.Count)
+                else
                 {
-                    if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] Invalid crop stage {tile.Crop.CropStage} for {plantData.plantName} at ({tile.WorldX}, {tile.WorldY})");
-                    continue;
-                }
-                
-                // Get sprite from catalog (handles hybrid delegation internally)
-                Sprite stageSprite = PlantCatalogService.Instance?.GetStageSprite(tile.Crop.PlantId, tile.Crop.CropStage);
+                    // Validate stage is within bounds (for normal plants)
+                    if (!plantData.isHybrid && tile.Crop.CropStage >= plantData.growthStages.Count)
+                    {
+                        if (showDebugLogs)
+                            Debug.LogWarning($"[ChunkLoading] Invalid crop stage {tile.Crop.CropStage} for {plantData.plantName} at ({tile.WorldX}, {tile.WorldY})");
+                        continue;
+                    }
 
-                if (stageSprite == null)
-                {
-                    if (showDebugLogs)
-                        Debug.LogWarning($"[ChunkLoading] '{plantData.plantName}' stage {tile.Crop.CropStage} has a null sprite in PlantCatalogService.");
-                    continue;
+                    // Get sprite from catalog (handles hybrid delegation internally)
+                    stageSprite = PlantCatalogService.Instance?.GetStageSprite(tile.Crop.PlantId, tile.Crop.CropStage);
+
+                    if (stageSprite == null)
+                    {
+                        if (showDebugLogs)
+                            Debug.LogWarning($"[ChunkLoading] '{plantData.plantName}' stage {tile.Crop.CropStage} has a null sprite in PlantCatalogService.");
+                        continue;
+                    }
                 }
 
                 // Instantiate from prefab if assigned, otherwise fall back to a plain GameObject
@@ -519,7 +536,9 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                     visual.transform.position = new Vector3(tile.WorldX, tile.WorldY, 0f);
                 }
 
-                visual.name = $"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}";
+                visual.name = isFallbackCrop
+                    ? $"Crop_Fallback_{tile.Crop.PlantId}_{tile.WorldX}_{tile.WorldY}"
+                    : $"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}";
 
                 // SpriteRenderer may be on the root or a child object (allowing offset control in prefab).
                 // Skip any shadow child renderers created by SpriteShadowShader during Awake so
@@ -571,10 +590,10 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                     {
                         Vector3Int structPosInt = new Vector3Int(tile.WorldX, tile.WorldY, 0);
                         GameObject structObj = cachedStructurePool.Get(structId, structPosInt);
-                        
+
                         if (showDebugLogs)
                             Debug.Log($"[ChunkLoading] Spawned structure '{structId}' at ({tile.WorldX},{tile.WorldY}) from pool, obj={structObj?.GetInstanceID()}");
-                        
+
                         Vector3 structPos = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.5f, 0f);
                         structObj.transform.position = structPos;
 
@@ -596,16 +615,35 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                         if (!chunkStructureVisuals.ContainsKey(chunkPos))
                             chunkStructureVisuals[chunkPos] = new List<(string, GameObject)>();
                         chunkStructureVisuals[chunkPos].Add((structId, structObj));
-                        
+
                         // Store position for keyed release
                         structObj.name = $"Structure_{structId}_{tile.WorldX}_{tile.WorldY}";
-                        
+
                         if (showDebugLogs)
                             Debug.Log($"[ChunkLoading] chunkStructureVisuals[{chunkPos}] now has {chunkStructureVisuals[chunkPos].Count} structures");
                     }
-                    else if (showDebugLogs)
+                    else
                     {
-                        Debug.LogWarning($"[ChunkLoading] No structure data found for '{tile.Structure.StructureId}' at ({tile.WorldX}, {tile.WorldY})");
+                        // No structure data in pool — spawn placeholder if available (orphaned data from late-join)
+                        var fallbackSprite = FallbackConfig.Instance?.PlaceholderSprite;
+                        if (fallbackSprite != null)
+                        {
+                            Vector3 structPos = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.5f, 0f);
+                            var placeholderObj = new GameObject($"Structure_Fallback_{structId}_{tile.WorldX}_{tile.WorldY}");
+                            placeholderObj.transform.position = structPos;
+
+                            var sr = placeholderObj.AddComponent<SpriteRenderer>();
+                            sr.sprite = fallbackSprite;
+                            sr.sortingLayerName = "WalkInfront";
+
+                            if (!chunkStructureVisuals.ContainsKey(chunkPos))
+                                chunkStructureVisuals[chunkPos] = new List<(string, GameObject)>();
+                            chunkStructureVisuals[chunkPos].Add((structId, placeholderObj));
+                        }
+                        else if (showDebugLogs)
+                        {
+                            Debug.LogWarning($"[ChunkLoading] No structure data found for '{tile.Structure.StructureId}' at ({tile.WorldX}, {tile.WorldY})");
+                        }
                     }
                 }
             }
