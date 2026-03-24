@@ -89,6 +89,7 @@ public class OrphanedDataCleanupService : IOrphanedDataCleanupService
                     if (plantCatalog.GetPlantData(plantId) == null)
                     {
                         chunk.RemoveCrop(slot.WorldX, slot.WorldY);
+                        WorldSaveManager.TryMarkChunkDirty(kvp.Key.x, kvp.Key.y, config.SectionId);
                         if (!removedIds.Contains(plantId))
                             removedIds.Add(plantId);
                         removed++;
@@ -141,6 +142,7 @@ public class OrphanedDataCleanupService : IOrphanedDataCleanupService
                     }
 
                     chunk.RemoveStructure(slot.WorldX, slot.WorldY);
+                    WorldSaveManager.TryMarkChunkDirty(kvp.Key.x, kvp.Key.y, config.SectionId);
                     if (!removedIds.Contains(structId))
                         removedIds.Add(structId);
                     removed++;
@@ -196,6 +198,7 @@ public class OrphanedDataCleanupService : IOrphanedDataCleanupService
                     if (resourceCatalog.GetResourceConfig(resourceId) == null)
                     {
                         chunk.RemoveResource(slot.WorldX, slot.WorldY);
+                        WorldSaveManager.TryMarkChunkDirty(kvp.Key.x, kvp.Key.y, config.SectionId);
                         if (!removedIds.Contains(resourceId))
                             removedIds.Add(resourceId);
                         removed++;
