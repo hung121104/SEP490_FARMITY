@@ -1,13 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
 /// MonoBehaviour view that displays cleanup notification to the player.
-/// Shows a temporary panel listing which orphaned data was removed.
+/// Shows messages one at a time in a queue, auto-advancing after each duration.
 /// Follows the AchievementUnlockPopupView pattern (CanvasGroup + auto-dismiss).
 /// </summary>
 public class CleanupNotificationView : MonoBehaviour, ICleanupNotificationView
@@ -18,15 +17,16 @@ public class CleanupNotificationView : MonoBehaviour, ICleanupNotificationView
     [SerializeField] private Button dismissButton;
 
     [Header("Settings")]
-    [Tooltip("How long the notification stays visible (seconds). Editable in Inspector.")]
-    [SerializeField] private float displayDuration = 8f;
+    [Tooltip("How long each message stays visible (seconds).")]
+    [SerializeField] private float displayDuration = 4f;
 
-    private Coroutine autoHideCoroutine;
+    private readonly Queue<string> messageQueue = new Queue<string>();
+    private Coroutine showCoroutine;
 
     private void Start()
     {
         if (dismissButton != null)
-            dismissButton.onClick.AddListener(Hide);
+            dismissButton.onClick.AddListener(DismissCurrent);
 
         if (canvasGroup != null)
             canvasGroup.Hide();
@@ -36,41 +36,69 @@ public class CleanupNotificationView : MonoBehaviour, ICleanupNotificationView
     {
         if (entries == null || entries.Count == 0) return;
 
-        var sb = new StringBuilder();
-        sb.AppendLine("<b>Data has been cleaned up:</b>");
         foreach (var e in entries)
-            sb.AppendLine($"  {e.Message}");
-
-        if (contentText != null)
-            contentText.text = sb.ToString();
-
-        if (canvasGroup != null)
-            canvasGroup.Show();
+            messageQueue.Enqueue(e.Message);
 
         float effectiveDuration = duration > 0 ? duration : displayDuration;
 
-        if (autoHideCoroutine != null)
-            StopCoroutine(autoHideCoroutine);
-        autoHideCoroutine = StartCoroutine(AutoHide(effectiveDuration));
+        if (showCoroutine == null)
+            showCoroutine = StartCoroutine(ProcessQueue(effectiveDuration));
     }
 
     public void Hide()
     {
-        if (autoHideCoroutine != null)
+        messageQueue.Clear();
+
+        if (showCoroutine != null)
         {
-            StopCoroutine(autoHideCoroutine);
-            autoHideCoroutine = null;
+            StopCoroutine(showCoroutine);
+            showCoroutine = null;
         }
 
         if (canvasGroup != null)
             canvasGroup.Hide();
     }
 
-    private IEnumerator AutoHide(float seconds)
+    /// <summary>
+    /// Dismiss button: skip current message and show next (or hide if queue empty).
+    /// </summary>
+    private void DismissCurrent()
     {
-        yield return new WaitForSeconds(seconds);
+        if (showCoroutine != null)
+        {
+            StopCoroutine(showCoroutine);
+            showCoroutine = null;
+        }
+
+        if (messageQueue.Count > 0)
+            showCoroutine = StartCoroutine(ProcessQueue(displayDuration));
+        else if (canvasGroup != null)
+            canvasGroup.Hide();
+    }
+
+    private IEnumerator ProcessQueue(float secondsPerMessage)
+    {
+        while (messageQueue.Count > 0)
+        {
+            string msg = messageQueue.Dequeue();
+            int remaining = messageQueue.Count;
+
+            string display = remaining > 0
+                ? $"{msg}\n<size=80%>({remaining} more)</color></size>"
+                : msg;
+
+            if (contentText != null)
+                contentText.text = display;
+
+            if (canvasGroup != null)
+                canvasGroup.Show();
+
+            yield return new WaitForSeconds(secondsPerMessage);
+        }
+
         if (canvasGroup != null)
             canvasGroup.Hide();
-        autoHideCoroutine = null;
+
+        showCoroutine = null;
     }
 }

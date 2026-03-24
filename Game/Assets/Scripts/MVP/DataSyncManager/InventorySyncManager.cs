@@ -249,6 +249,11 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
             byte[] payload = EncodeRegisterRequest(charId, maxSlots);
             RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
             PhotonNetwork.RaiseEvent(INV_REGISTER, payload, opts, SendOptions.SendReliable);
+
+            // Fire OnInventoryChanged so the UI can load inventory data that was already
+            // synced via REQUEST_INV_SYNC but couldn't be applied because LocalCharacterId
+            // was still null at the time HandleSyncComplete fired.
+            OnInventoryChanged?.Invoke();
         }
 
         if (showDebugLogs)
