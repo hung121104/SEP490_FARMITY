@@ -1,5 +1,6 @@
 using UnityEngine;
 using CombatManager.Model;
+using Photon.Pun;
 
 namespace CombatManager.Presenter
 {
@@ -31,6 +32,7 @@ namespace CombatManager.Presenter
 
         private WeaponData currentWeapon;
         private bool isWeaponEquipped = false;
+        private PlayerAppearanceSync localAppearanceSync;
 
         #endregion
 
@@ -50,6 +52,11 @@ namespace CombatManager.Presenter
         {
             if (Instance == this)
                 Instance = null;
+        }
+
+        private void Start()
+        {
+            localAppearanceSync = FindLocalAppearanceSync();
         }
 
         #endregion
@@ -87,6 +94,8 @@ namespace CombatManager.Presenter
             // Fire equip event FIRST (so listeners can prepare)
             OnWeaponEquipped?.Invoke(weaponData);
 
+            PublishWeaponProperty(weaponData.itemID);
+
             // Activate combat mode
             CombatModePresenter.Instance?.SetCombatMode(true);
 
@@ -112,6 +121,8 @@ namespace CombatManager.Presenter
             // Fire unequip event FIRST
             OnWeaponUnequipped?.Invoke();
 
+            PublishWeaponProperty(string.Empty);
+
             // Deactivate combat mode
             CombatModePresenter.Instance?.SetCombatMode(false);
 
@@ -125,6 +136,29 @@ namespace CombatManager.Presenter
         public WeaponData GetCurrentWeapon() => currentWeapon;
         public bool IsWeaponEquipped() => isWeaponEquipped;
         public WeaponType GetCurrentWeaponType() => currentWeapon?.weaponType ?? WeaponType.None;
+
+        private void PublishWeaponProperty(string weaponItemId)
+        {
+            if (!PhotonNetwork.IsConnected)
+                return;
+
+            if (localAppearanceSync == null)
+                localAppearanceSync = FindLocalAppearanceSync();
+
+            localAppearanceSync?.SetWeapon(weaponItemId ?? string.Empty);
+        }
+
+        private static PlayerAppearanceSync FindLocalAppearanceSync()
+        {
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine)
+                    return go.GetComponent<PlayerAppearanceSync>();
+            }
+
+            return null;
+        }
 
         #endregion
     }

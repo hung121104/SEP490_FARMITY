@@ -1,5 +1,7 @@
 using UnityEngine;
 using Photon.Pun;
+using Photon.Realtime;
+using ExitGames.Client.Photon;
 using System.Collections;
 using CombatManager.Model;
 using CombatManager.Service;
@@ -8,8 +10,15 @@ using UnityEngine.EventSystems;
 
 namespace CombatManager.Presenter
 {
-    public class PlayerAttackPresenter : MonoBehaviour
+    public class PlayerAttackPresenter : MonoBehaviour, IOnEventCallback
     {
+        private const byte ATTACK_VFX_EVENT = 161;
+        private const byte ATTACK_KIND_MELEE = 1;
+        private const byte ATTACK_KIND_STAFF = 2;
+        private const string KEY_WEAPON = "apWeapon";
+
+        public static event System.Action<int, float> OnRemoteAttackVisual;
+
         [Header("Model")]
         [SerializeField] private PlayerAttackModel model = new PlayerAttackModel();
 
@@ -51,6 +60,16 @@ namespace CombatManager.Presenter
         private void Start()
         {
             StartCoroutine(DelayedInitialize());
+        }
+
+        private void OnEnable()
+        {
+            PhotonNetwork.AddCallbackTarget(this);
+        }
+
+        private void OnDisable()
+        {
+            PhotonNetwork.RemoveCallbackTarget(this);
         }
 
         private void Update()
@@ -245,6 +264,7 @@ namespace CombatManager.Presenter
             float knockback = currentWeapon.knockbackForce;
 
             SpawnSlashVFX(vfxPrefab, vfxDuration, finalDamage, knockback, comboStep);
+            BroadcastMeleeAttackVfx(comboStep, vfxDuration);
 
             Debug.Log($"[PlayerAttackPresenter] Melee | Step={comboStep} | " +
                       $"Str={statsService.GetAttackDamage()} + WeaponDmg={currentWeapon.damage} " +
@@ -346,6 +366,7 @@ namespace CombatManager.Presenter
             }
 
             projectilePresenter.Initialize(projectileModel);
+            BroadcastStaffProjectileVfx(currentWeapon, direction);
 
             Debug.Log($"[PlayerAttackPresenter] Staff fired! " +
                       $"Damage={baseDamage} | Dir={direction} | " +
@@ -376,6 +397,312 @@ namespace CombatManager.Presenter
         }
 
         public IPlayerAttackService GetService() => service;
+
+        public void OnEvent(EventData photonEvent)
+        {
+            if (photonEvent.Code != ATTACK_VFX_EVENT)
+                return;
+
+            if (photonEvent.CustomData is not object[] payload)
+                return;
+
+            if (payload.Length == 0)
+                return;
+
+            if (!TryGetPayloadByte(payload, 0, out byte attackKind))
+                return;
+
+            switch (attackKind)
+            {
+                case ATTACK_KIND_MELEE:
+                    HandleRemoteMeleeAttack(payload);
+                    break;
+                case ATTACK_KIND_STAFF:
+                    HandleRemoteStaffAttack(payload);
+                    break;
+            }
+        }
+
+        private void BroadcastMeleeAttackVfx(int comboStep, float duration)
+        {
+            if (!PhotonNetwork.IsConnected)
+                return;
+
+            int actorNumber = PhotonNetwork.LocalPlayer?.ActorNumber ?? -1;
+            if (actorNumber <= 0)
+                return;
+
+            Transform centerPoint = service?.GetCenterPoint();
+            if (centerPoint == null)
+                return;
+
+            Vector3 pointerDirection = pointerPresenter.GetPointerDirection();
+            float spawnOffset = service.GetVFXSpawnOffset();
+            Vector3 spawnPosition = centerPoint.position + pointerDirection * spawnOffset;
+
+            Vector2 positionOffset = service.GetPositionOffset(comboStep);
+            spawnPosition += (Vector3)positionOffset;
+            spawnPosition.z = centerPoint.position.z;
+
+            float angle = Mathf.Atan2(pointerDirection.y, pointerDirection.x) * Mathf.Rad2Deg;
+            bool flipY = pointerDirection.x < 0f;
+
+            object[] payload =
+            {
+                ATTACK_KIND_MELEE,
+                actorNumber,
+                comboStep,
+                spawnPosition.x,
+                spawnPosition.y,
+                spawnPosition.z,
+                angle,
+                flipY,
+                duration
+            };
+
+            RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+            PhotonNetwork.RaiseEvent(ATTACK_VFX_EVENT, payload, options, SendOptions.SendUnreliable);
+        }
+
+        private void BroadcastStaffProjectileVfx(WeaponData weapon, Vector3 direction)
+        {
+            if (!PhotonNetwork.IsConnected)
+                return;
+
+            int actorNumber = PhotonNetwork.LocalPlayer?.ActorNumber ?? -1;
+            if (actorNumber <= 0)
+                return;
+
+            Vector3 spawnPosition = localPlayerTransform != null ? localPlayerTransform.position : Vector3.zero;
+            object[] payload =
+            {
+                ATTACK_KIND_STAFF,
+                actorNumber,
+                spawnPosition.x,
+                spawnPosition.y,
+                spawnPosition.z,
+                direction.x,
+                direction.y,
+                direction.z,
+                weapon.projectileSpeed,
+                weapon.projectileRange
+            };
+
+            RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+            PhotonNetwork.RaiseEvent(ATTACK_VFX_EVENT, payload, options, SendOptions.SendUnreliable);
+        }
+
+        private void HandleRemoteMeleeAttack(object[] payload)
+        {
+            if (payload.Length < 9)
+                return;
+
+            if (!TryGetPayloadInt(payload, 1, out int sourceActor) ||
+                !TryGetPayloadInt(payload, 2, out int comboStep) ||
+                !TryGetPayloadFloat(payload, 3, out float posX) ||
+                !TryGetPayloadFloat(payload, 4, out float posY) ||
+                !TryGetPayloadFloat(payload, 5, out float posZ) ||
+                !TryGetPayloadFloat(payload, 6, out float angle) ||
+                !TryGetPayloadBool(payload, 7, out bool flipY) ||
+                !TryGetPayloadFloat(payload, 8, out float duration))
+            {
+                return;
+            }
+
+            if (sourceActor == (PhotonNetwork.LocalPlayer?.ActorNumber ?? -1))
+                return;
+
+            string weaponItemId = ResolveWeaponItemId(sourceActor);
+            if (string.IsNullOrWhiteSpace(weaponItemId))
+                return;
+
+            if (!IsStaffWeapon(weaponItemId))
+            {
+                SpawnRemoteMeleeVfx(comboStep, new Vector3(posX, posY, posZ), angle, flipY, duration);
+                OnRemoteAttackVisual?.Invoke(sourceActor, angle);
+            }
+        }
+
+        private void HandleRemoteStaffAttack(object[] payload)
+        {
+            if (payload.Length < 10)
+                return;
+
+            if (!TryGetPayloadInt(payload, 1, out int sourceActor) ||
+                !TryGetPayloadFloat(payload, 2, out float posX) ||
+                !TryGetPayloadFloat(payload, 3, out float posY) ||
+                !TryGetPayloadFloat(payload, 4, out float posZ) ||
+                !TryGetPayloadFloat(payload, 5, out float dirX) ||
+                !TryGetPayloadFloat(payload, 6, out float dirY) ||
+                !TryGetPayloadFloat(payload, 7, out float dirZ) ||
+                !TryGetPayloadFloat(payload, 8, out float speed) ||
+                !TryGetPayloadFloat(payload, 9, out float range))
+            {
+                return;
+            }
+
+            if (sourceActor == (PhotonNetwork.LocalPlayer?.ActorNumber ?? -1))
+                return;
+
+            string weaponItemId = ResolveWeaponItemId(sourceActor);
+            if (string.IsNullOrWhiteSpace(weaponItemId) || !IsStaffWeapon(weaponItemId))
+                return;
+
+            SpawnRemoteStaffProjectile(
+                new Vector3(posX, posY, posZ),
+                new Vector3(dirX, dirY, dirZ).normalized,
+                speed,
+                range);
+
+            float angle = Mathf.Atan2(dirY, dirX) * Mathf.Rad2Deg;
+            OnRemoteAttackVisual?.Invoke(sourceActor, angle);
+        }
+
+        private void SpawnRemoteMeleeVfx(int comboStep, Vector3 spawnPosition, float angle, bool flipY, float duration)
+        {
+            GameObject vfxPrefab = service?.GetVFXPrefab(comboStep);
+            if (vfxPrefab == null)
+                return;
+
+            Quaternion rotation = Quaternion.Euler(0f, 0f, angle);
+            GameObject vfxInstance = Instantiate(vfxPrefab, spawnPosition, rotation);
+
+            if (flipY)
+            {
+                Vector3 scale = vfxInstance.transform.localScale;
+                scale.y *= -1f;
+                vfxInstance.transform.localScale = scale;
+            }
+
+            Destroy(vfxInstance, Mathf.Max(0.05f, duration));
+        }
+
+        private void SpawnRemoteStaffProjectile(Vector3 spawnPosition, Vector3 direction, float speed, float range)
+        {
+            if (staffProjectilePrefab == null)
+                return;
+
+            GameObject projectileGO = Instantiate(staffProjectilePrefab, spawnPosition, Quaternion.identity);
+            ProjectilePresenter projectilePresenter = projectileGO.GetComponent<ProjectilePresenter>();
+            if (projectilePresenter == null)
+            {
+                Destroy(projectileGO);
+                return;
+            }
+
+            ProjectileModel projectileModel = new ProjectileModel
+            {
+                direction = direction,
+                speed = speed,
+                maxRange = range,
+                damage = 0,
+                knockbackForce = 0f,
+                enemyLayers = 0,
+                playerTransform = transform
+            };
+
+            projectilePresenter.Initialize(projectileModel);
+        }
+
+        private static bool TryGetPayloadByte(object[] payload, int index, out byte value)
+        {
+            value = 0;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is byte b)
+            {
+                value = b;
+                return true;
+            }
+
+            if (payload[index] is int i)
+            {
+                value = (byte)i;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetPayloadInt(object[] payload, int index, out int value)
+        {
+            value = 0;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            if (payload[index] is byte b)
+            {
+                value = b;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetPayloadFloat(object[] payload, int index, out float value)
+        {
+            value = 0f;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is float f)
+            {
+                value = f;
+                return true;
+            }
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetPayloadBool(object[] payload, int index, out bool value)
+        {
+            value = false;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is bool b)
+            {
+                value = b;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string ResolveWeaponItemId(int actorNumber)
+        {
+            if (PhotonNetwork.CurrentRoom == null)
+                return string.Empty;
+
+            if (!PhotonNetwork.CurrentRoom.Players.TryGetValue(actorNumber, out Player sourcePlayer))
+                return string.Empty;
+
+            if (sourcePlayer?.CustomProperties == null)
+                return string.Empty;
+
+            return sourcePlayer.CustomProperties.TryGetValue(KEY_WEAPON, out object value)
+                ? value as string ?? string.Empty
+                : string.Empty;
+        }
+
+        private static bool IsStaffWeapon(string itemId)
+        {
+            WeaponData weapon = ItemCatalogService.Instance?.GetItemData<WeaponData>(itemId);
+            return weapon != null && weapon.weaponType == WeaponType.Staff;
+        }
 
         #endregion
     }

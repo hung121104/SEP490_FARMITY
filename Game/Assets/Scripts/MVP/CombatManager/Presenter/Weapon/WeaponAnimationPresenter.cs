@@ -1,5 +1,6 @@
 using UnityEngine;
 using Photon.Pun;
+using Photon.Realtime;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.Networking;
@@ -13,8 +14,34 @@ namespace CombatManager.Presenter
     /// Presenter for Weapon Animation system.
     /// Uses item-catalog WeaponData and resolves one of three base prefabs by weaponType.
     /// </summary>
-    public class WeaponAnimationPresenter : MonoBehaviour
+    public class WeaponAnimationPresenter : MonoBehaviourPunCallbacks, Photon.Realtime.IOnEventCallback
     {
+        private const string KEY_WEAPON = "apWeapon";
+        private const byte WEAPON_AIM_EVENT = 162;
+        private const float AIM_SEND_INTERVAL = 0.05f;
+        private const float REMOTE_ROTATION_SMOOTH_SPEED = 18f;
+        private const string PARAM_IS_WALKING = "isWalking";
+        private const string PARAM_INPUT_X = "InputX";
+        private const string PARAM_INPUT_Y = "InputY";
+        private const string PARAM_LAST_INPUT_X = "LastInputX";
+        private const string PARAM_LAST_INPUT_Y = "LastInputY";
+
+        private sealed class RemoteWeaponState
+        {
+            public int actorNumber;
+            public string weaponItemId = string.Empty;
+            public WeaponData weaponData;
+            public GameObject pivotRoot;
+            public GameObject weaponVisual;
+            public Animator animator;
+            public SpriteRenderer renderer;
+            public Sprite sprite;
+            public Vector2 lastDirection = Vector2.right;
+            public Coroutine spriteApplyCoroutine;
+            public float targetAimAngle;
+            public bool hasNetworkAim;
+        }
+
         public static WeaponAnimationPresenter Instance { get; private set; }
 
         [Header("Model")]
@@ -51,6 +78,8 @@ namespace CombatManager.Presenter
         private Coroutine applyVisualCoroutine;
         private readonly List<SpriteRenderer> activeWeaponRenderers = new List<SpriteRenderer>();
         private Sprite activeWeaponSprite;
+        private readonly Dictionary<int, RemoteWeaponState> remoteWeaponStates = new Dictionary<int, RemoteWeaponState>();
+        private float lastAimSendTime;
 
         #region Unity Lifecycle
 
@@ -69,22 +98,89 @@ namespace CombatManager.Presenter
         private void Start()
         {
             SubscribeToCombatModeEvents();
-            SubscribeToWeaponEquipEvents(); // ✅ NEW
+            SubscribeToWeaponEquipEvents();
+            PlayerAttackPresenter.OnRemoteAttackVisual += HandleRemoteAttackVisual;
+            InitializeRemoteWeaponStatesFromRoom();
+        }
+
+        private void OnEnable()
+        {
+            PhotonNetwork.AddCallbackTarget(this);
+        }
+
+        private void OnDisable()
+        {
+            PhotonNetwork.RemoveCallbackTarget(this);
         }
 
         private void OnDestroy()
         {
             UnsubscribeFromCombatModeEvents();
-            UnsubscribeFromWeaponEquipEvents(); // ✅ NEW
+            UnsubscribeFromWeaponEquipEvents();
+            PlayerAttackPresenter.OnRemoteAttackVisual -= HandleRemoteAttackVisual;
+
+            CleanupAllRemoteWeapons();
 
             if (Instance == this)
                 Instance = null;
         }
 
-            private void LateUpdate()
+        private void LateUpdate()
+        {
+            ForceWeaponSpriteOverride();
+            BroadcastLocalAimAngleIfNeeded();
+            UpdateRemoteWeaponTransforms();
+        }
+
+        public void OnEvent(ExitGames.Client.Photon.EventData photonEvent)
+        {
+            if (photonEvent.Code != WEAPON_AIM_EVENT)
+                return;
+
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 2)
+                return;
+
+            if (!TryGetPayloadInt(payload, 0, out int actorNumber) ||
+                !TryGetPayloadFloat(payload, 1, out float aimAngle))
             {
-                ForceWeaponSpriteOverride();
+                return;
             }
+
+            if (actorNumber == (PhotonNetwork.LocalPlayer?.ActorNumber ?? -1))
+                return;
+
+            if (remoteWeaponStates.TryGetValue(actorNumber, out RemoteWeaponState state) && state != null)
+            {
+                state.targetAimAngle = aimAngle + rotationOffsetDegrees;
+                state.hasNetworkAim = true;
+            }
+        }
+
+        public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
+        {
+            if (targetPlayer == null || targetPlayer.IsLocal || changedProps == null)
+                return;
+
+            if (!changedProps.TryGetValue(KEY_WEAPON, out object value))
+                return;
+
+            string itemId = value as string ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(itemId))
+            {
+                RemoveRemoteWeapon(targetPlayer.ActorNumber);
+                return;
+            }
+
+            TrySpawnRemoteWeapon(targetPlayer.ActorNumber, itemId);
+        }
+
+        public override void OnPlayerLeftRoom(Player otherPlayer)
+        {
+            if (otherPlayer == null)
+                return;
+
+            RemoveRemoteWeapon(otherPlayer.ActorNumber);
+        }
 
         #endregion
 
@@ -158,6 +254,43 @@ namespace CombatManager.Presenter
             currentWeaponData = null;
             DespawnWeapon();
             Debug.Log("[WeaponAnimationPresenter] Weapon unequipped → despawned");
+        }
+
+        private void InitializeRemoteWeaponStatesFromRoom()
+        {
+            if (PhotonNetwork.CurrentRoom == null)
+                return;
+
+            foreach (Player roomPlayer in PhotonNetwork.PlayerList)
+            {
+                if (roomPlayer == null || roomPlayer.IsLocal)
+                    continue;
+
+                string itemId = roomPlayer.CustomProperties != null &&
+                                roomPlayer.CustomProperties.TryGetValue(KEY_WEAPON, out object weaponValue)
+                    ? weaponValue as string ?? string.Empty
+                    : string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(itemId))
+                    TrySpawnRemoteWeapon(roomPlayer.ActorNumber, itemId);
+            }
+        }
+
+        private void CleanupAllRemoteWeapons()
+        {
+            foreach (RemoteWeaponState state in remoteWeaponStates.Values)
+            {
+                if (state?.spriteApplyCoroutine != null)
+                    StopCoroutine(state.spriteApplyCoroutine);
+
+                if (state?.weaponVisual != null)
+                    Destroy(state.weaponVisual);
+
+                if (state?.pivotRoot != null)
+                    Destroy(state.pivotRoot);
+            }
+
+            remoteWeaponStates.Clear();
         }
 
         #endregion
@@ -276,6 +409,25 @@ namespace CombatManager.Presenter
             return null;
         }
 
+        private static GameObject FindRemotePlayerEntity(int actorNumber)
+        {
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && !pv.IsMine && pv.Owner != null && pv.Owner.ActorNumber == actorNumber)
+                    return go;
+            }
+
+            foreach (GameObject go in GameObject.FindGameObjectsWithTag("Player"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && !pv.IsMine && pv.Owner != null && pv.Owner.ActorNumber == actorNumber)
+                    return go;
+            }
+
+            return null;
+        }
+
         #endregion
 
         #region Weapon Management
@@ -308,6 +460,287 @@ namespace CombatManager.Presenter
             activeWeaponSprite = null;
 
             service?.DespawnWeapon();
+        }
+
+        private void TrySpawnRemoteWeapon(int actorNumber, string weaponItemId)
+        {
+            WeaponData weaponData = ItemCatalogService.Instance?.GetItemData<WeaponData>(weaponItemId);
+            if (weaponData == null)
+            {
+                if (enableWeaponVisualDebug)
+                {
+                    Debug.LogWarning(
+                        $"[WeaponAnimationPresenter] Cannot spawn remote weapon for actor {actorNumber}. " +
+                        $"itemID='{weaponItemId}' not found in item catalog.");
+                }
+
+                return;
+            }
+
+            RemoveRemoteWeapon(actorNumber);
+
+            GameObject ownerPlayer = FindRemotePlayerEntity(actorNumber);
+            if (ownerPlayer == null)
+                return;
+
+            Transform centerPoint = ownerPlayer.transform.Find("CenterPoint");
+            if (centerPoint == null)
+                centerPoint = ownerPlayer.transform;
+
+            GameObject basePrefab = ResolveBaseWeaponPrefab(weaponData.weaponType) ?? fallbackWeaponPrefab;
+            if (basePrefab == null)
+                return;
+
+            RemoteWeaponState state = new RemoteWeaponState
+            {
+                actorNumber = actorNumber,
+                weaponItemId = weaponItemId,
+                weaponData = weaponData,
+            };
+
+            state.pivotRoot = new GameObject($"RemoteWeaponPivotRoot_{actorNumber}");
+            state.pivotRoot.transform.SetParent(centerPoint, false);
+            state.pivotRoot.transform.localPosition = anchorOffset;
+
+            state.weaponVisual = Instantiate(basePrefab, state.pivotRoot.transform);
+            state.weaponVisual.name = $"RemoteWeaponVisual_{actorNumber}";
+            state.weaponVisual.transform.localPosition = gripLocalOffset;
+            state.weaponVisual.transform.localRotation = Quaternion.identity;
+
+            state.animator = state.weaponVisual.GetComponent<Animator>()
+                             ?? state.weaponVisual.GetComponentInChildren<Animator>();
+
+            DynamicSpriteSwapper[] swappers = state.weaponVisual.GetComponentsInChildren<DynamicSpriteSwapper>(true);
+            foreach (DynamicSpriteSwapper swapper in swappers)
+                swapper.enabled = false;
+
+            state.renderer = state.weaponVisual.GetComponentInChildren<SpriteRenderer>(true);
+            if (state.renderer != null)
+            {
+                state.spriteApplyCoroutine = StartCoroutine(ApplyRemoteWeaponSprite(state));
+            }
+
+            remoteWeaponStates[actorNumber] = state;
+        }
+
+        private void RemoveRemoteWeapon(int actorNumber)
+        {
+            if (!remoteWeaponStates.TryGetValue(actorNumber, out RemoteWeaponState state))
+                return;
+
+            if (state.spriteApplyCoroutine != null)
+                StopCoroutine(state.spriteApplyCoroutine);
+
+            if (state.weaponVisual != null)
+                Destroy(state.weaponVisual);
+
+            if (state.pivotRoot != null)
+                Destroy(state.pivotRoot);
+
+            remoteWeaponStates.Remove(actorNumber);
+        }
+
+        private IEnumerator ApplyRemoteWeaponSprite(RemoteWeaponState state)
+        {
+            if (state == null || state.renderer == null)
+                yield break;
+
+            const int maxAttempts = 60;
+            const float retryDelay = 0.1f;
+            Sprite resolvedSprite = null;
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                resolvedSprite = ItemCatalogService.Instance?.GetCachedSprite(state.weaponItemId);
+                if (resolvedSprite != null)
+                    break;
+
+                yield return new WaitForSeconds(retryDelay);
+            }
+
+            if (resolvedSprite == null && !string.IsNullOrWhiteSpace(state.weaponData?.iconUrl))
+            {
+                yield return DownloadIconSpriteAt16Ppu(state.weaponData.iconUrl, sprite => resolvedSprite = sprite);
+            }
+
+            if (resolvedSprite == null || state.renderer == null)
+                yield break;
+
+            state.renderer.sprite = resolvedSprite;
+            state.renderer.enabled = true;
+            state.sprite = resolvedSprite;
+
+            Vector3 compensation = GetPivotCompensationOffset(state.weaponData.weaponType, resolvedSprite);
+            if (state.weaponVisual != null)
+                state.weaponVisual.transform.localPosition = gripLocalOffset + compensation;
+
+            state.spriteApplyCoroutine = null;
+        }
+
+        private void UpdateRemoteWeaponTransforms()
+        {
+            if (remoteWeaponStates.Count == 0)
+                return;
+
+            List<int> staleActors = null;
+
+            foreach (KeyValuePair<int, RemoteWeaponState> kvp in remoteWeaponStates)
+            {
+                int actor = kvp.Key;
+                RemoteWeaponState state = kvp.Value;
+
+                if (state == null || state.pivotRoot == null || state.weaponVisual == null)
+                {
+                    staleActors ??= new List<int>();
+                    staleActors.Add(actor);
+                    continue;
+                }
+
+                if (state.renderer != null && state.sprite != null && state.renderer.sprite != state.sprite)
+                {
+                    state.renderer.sprite = state.sprite;
+                    state.renderer.enabled = true;
+                }
+
+                GameObject ownerPlayer = FindRemotePlayerEntity(actor);
+                if (ownerPlayer == null)
+                {
+                    staleActors ??= new List<int>();
+                    staleActors.Add(actor);
+                    continue;
+                }
+
+                Transform centerPoint = ownerPlayer.transform.Find("CenterPoint") ?? ownerPlayer.transform;
+                if (state.pivotRoot.transform.parent != centerPoint)
+                    state.pivotRoot.transform.SetParent(centerPoint, false);
+
+                state.pivotRoot.transform.localPosition = anchorOffset;
+
+                float desiredAngle = state.hasNetworkAim
+                    ? state.targetAimAngle
+                    : GetRemoteAimAngle(ownerPlayer, state);
+
+                float currentAngle = state.pivotRoot.transform.eulerAngles.z;
+                float smoothedAngle = Mathf.LerpAngle(
+                    currentAngle,
+                    desiredAngle,
+                    Mathf.Clamp01(Time.deltaTime * REMOTE_ROTATION_SMOOTH_SPEED));
+
+                state.pivotRoot.transform.rotation = Quaternion.Euler(0f, 0f, smoothedAngle);
+            }
+
+            if (staleActors == null)
+                return;
+
+            foreach (int actor in staleActors)
+                RemoveRemoteWeapon(actor);
+        }
+
+        private float GetRemoteAimAngle(GameObject ownerPlayer, RemoteWeaponState state)
+        {
+            if (ownerPlayer == null)
+                return rotationOffsetDegrees;
+
+            Animator ownerAnimator = ownerPlayer.GetComponentInChildren<Animator>();
+            if (ownerAnimator == null)
+                return Mathf.Atan2(state.lastDirection.y, state.lastDirection.x) * Mathf.Rad2Deg + rotationOffsetDegrees;
+
+            bool isWalking = ownerAnimator.GetBool(PARAM_IS_WALKING);
+            float x = isWalking ? ownerAnimator.GetFloat(PARAM_INPUT_X) : ownerAnimator.GetFloat(PARAM_LAST_INPUT_X);
+            float y = isWalking ? ownerAnimator.GetFloat(PARAM_INPUT_Y) : ownerAnimator.GetFloat(PARAM_LAST_INPUT_Y);
+            Vector2 dir = new Vector2(x, y);
+
+            if (dir.sqrMagnitude > 0.0001f)
+                state.lastDirection = dir.normalized;
+
+            return Mathf.Atan2(state.lastDirection.y, state.lastDirection.x) * Mathf.Rad2Deg + rotationOffsetDegrees;
+        }
+
+        private void HandleRemoteAttackVisual(int actorNumber, float angle)
+        {
+            if (!remoteWeaponStates.TryGetValue(actorNumber, out RemoteWeaponState state) || state == null)
+                return;
+
+            if (state.pivotRoot != null)
+            {
+                state.targetAimAngle = angle + rotationOffsetDegrees;
+                state.hasNetworkAim = true;
+            }
+
+            if (state.animator != null)
+                state.animator.SetTrigger("Attack");
+        }
+
+        private void BroadcastLocalAimAngleIfNeeded()
+        {
+            if (!PhotonNetwork.IsConnected)
+                return;
+
+            if (!IsWeaponActive() || service == null)
+                return;
+
+            if (Time.unscaledTime - lastAimSendTime < AIM_SEND_INTERVAL)
+                return;
+
+            int actorNumber = PhotonNetwork.LocalPlayer?.ActorNumber ?? -1;
+            if (actorNumber <= 0)
+                return;
+
+            Vector3 direction = service.CalculateMouseDirection();
+            if (direction.sqrMagnitude < 0.0001f)
+                return;
+
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            object[] payload = { actorNumber, angle };
+            PhotonNetwork.RaiseEvent(
+                WEAPON_AIM_EVENT,
+                payload,
+                new RaiseEventOptions { Receivers = ReceiverGroup.Others },
+                ExitGames.Client.Photon.SendOptions.SendUnreliable);
+
+            lastAimSendTime = Time.unscaledTime;
+        }
+
+        private static bool TryGetPayloadInt(object[] payload, int index, out int value)
+        {
+            value = 0;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            if (payload[index] is byte b)
+            {
+                value = b;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetPayloadFloat(object[] payload, int index, out float value)
+        {
+            value = 0f;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is float f)
+            {
+                value = f;
+                return true;
+            }
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            return false;
         }
 
         #endregion
