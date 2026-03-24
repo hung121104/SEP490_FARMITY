@@ -473,6 +473,22 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                     ResourceCatalogManager.Instance,
                     RecipeCatalogService.Instance,
                     WorldDataManager.Instance);
+
+                // Subscribe chest item drop event so valid items are spawned in the world
+                var dropSyncManager = UnityEngine.Object.FindAnyObjectByType<DroppedItemSyncManager>();
+                if (dropSyncManager != null)
+                {
+                    cleanupService.OnChestItemDrop += (itemId, quantity, worldPos) =>
+                    {
+                        var itemData = ItemCatalogService.Instance.GetItemData(itemId);
+                        if (itemData == null) return;
+                        var itemModel = new ItemModel(itemData, Quality.Normal, quantity);
+                        var dropData = DroppedItemData.FromItemModel(itemModel, worldPos.x, worldPos.y);
+                        if (dropData != null)
+                            dropSyncManager.SendDropRequest(dropData);
+                    };
+                }
+
                 report = cleanupService.RunCleanup();
             }
             else

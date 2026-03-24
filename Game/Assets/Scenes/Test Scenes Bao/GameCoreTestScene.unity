@@ -91950,6 +91950,7 @@ MonoBehaviour:
   - item_wooden_crafting_table
   - wooden_fence
   - stone_path
+  - gold_chest
   quantityPerItem: 1
   qualityOverride: 0
   addItemKey: 116
