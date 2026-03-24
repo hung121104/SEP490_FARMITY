@@ -488,11 +488,14 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
         if (showDebugLogs)
             Debug.Log($"[InvSync] ✓ Inventory sync complete! {totalInventories} inventories loaded");
 
-        // --- Orphaned inventory cleanup for late-join player ---
+        // --- Orphaned inventory handling for late-join player ---
         if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
             && WorldDataManager.Instance?.InventoryData != null)
         {
-            int cleaned = 0;
+            int handled = 0;
+            var placeholder = FallbackConfig.Instance?.PlaceholderSprite
+                ?? FallbackDataFactory.CreatePlaceholderSprite();
+
             foreach (var charId in WorldDataManager.Instance.InventoryData.GetAllCharacterIds())
             {
                 for (byte i = 0; i < 36; i++)
@@ -501,13 +504,16 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
                         && !slot.IsEmpty
                         && ItemCatalogService.Instance.GetItemData(slot.ItemId) == null)
                     {
-                        WorldDataManager.Instance.InventoryData.ClearSlot(charId, i);
-                        cleaned++;
+                        // Inject fallback instead of clearing — keeps the slot visible with placeholder.
+                        ItemCatalogService.Instance.InjectFallback(
+                            slot.ItemId, FallbackDataFactory.CreateFallbackItemData(slot.ItemId));
+                        ItemCatalogService.Instance.InjectFallbackSprite(slot.ItemId, placeholder);
+                        handled++;
                     }
                 }
             }
-            if (cleaned > 0)
-                Debug.LogWarning($"[InvSync] Late-join cleanup: removed {cleaned} orphaned inventory slot(s)");
+            if (handled > 0)
+                Debug.LogWarning($"[InvSync] Late-join fallback: injected placeholder for {handled} orphaned inventory slot(s)");
         }
 
         OnInventoryChanged?.Invoke();

@@ -20,7 +20,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     
     [Tooltip("Enable debug logging")]
     public bool showDebugLogs = true;
-    
+
     // Cached references
     private ChunkLoadingManager chunkLoadingManager;
 
@@ -458,21 +458,39 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     /// </summary>
     private void HandleWorldSyncComplete()
     {
-        // --- Orphaned data cleanup for late-join player ---
+        // --- Orphaned data handling for late-join player ---
         if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
             && WorldDataManager.Instance != null)
         {
-            var cleanupService = new OrphanedDataCleanupService(
-                ItemCatalogService.Instance,
-                PlantCatalogService.Instance,
-                ResourceCatalogManager.Instance,
-                RecipeCatalogService.Instance,
-                WorldDataManager.Instance);
+            CleanupReport report;
 
-            var report = cleanupService.RunCleanup();
+            if (PhotonNetwork.IsMasterClient)
+            {
+                // MasterClient: remove orphaned data (original behavior).
+                var cleanupService = new OrphanedDataCleanupService(
+                    ItemCatalogService.Instance,
+                    PlantCatalogService.Instance,
+                    ResourceCatalogManager.Instance,
+                    RecipeCatalogService.Instance,
+                    WorldDataManager.Instance);
+                report = cleanupService.RunCleanup();
+            }
+            else
+            {
+                // Late-join player: inject fallback placeholders instead of removing.
+                var fallbackService = new OrphanedFallbackService(
+                    ItemCatalogService.Instance,
+                    PlantCatalogService.Instance,
+                    ResourceCatalogManager.Instance,
+                    RecipeCatalogService.Instance,
+                    WorldDataManager.Instance,
+                    FallbackConfig.Instance?.PlaceholderSprite);
+                report = fallbackService.InjectFallbacks();
+            }
+
             if (report.TotalCleaned > 0)
             {
-                Debug.LogWarning($"[ChunkSync] Late-join orphaned data cleanup: " +
+                Debug.LogWarning($"[ChunkSync] Orphaned data handled: " +
                     $"crops={report.OrphanedCrops}, structures={report.OrphanedStructures}, " +
                     $"resources={report.OrphanedResources}, inventory={report.OrphanedInventorySlots}, " +
                     $"chests={report.OrphanedChestSlots}, recipes={report.OrphanedRecipes}");

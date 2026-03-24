@@ -50,6 +50,10 @@ public class PlantData
 
     /// <summary>When false, harvest never generates seeds (hybrid only).</summary>
     public bool dropSeeds = false;
+
+    /// <summary>True for fallback placeholder plants injected by OrphanedFallbackService (late-join only).</summary>
+    [Newtonsoft.Json.JsonIgnore]
+    public bool isFallback = false;
 }
 
 /// <summary>
