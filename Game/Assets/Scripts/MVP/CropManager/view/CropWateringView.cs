@@ -58,15 +58,27 @@ public class CropWateringView : MonoBehaviour
         // Re-find local player if reference becomes null (e.g. after scene reload).
         if (playerTransform == null)
         {
-            foreach (GameObject go in GameObject.FindGameObjectsWithTag(playerTag))
+            GameObject[] players = GameObject.FindGameObjectsWithTag(playerTag);
+            if (players != null && players.Length > 0)
             {
-                PhotonView pv = go.GetComponent<PhotonView>();
-                if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
-                    continue;
+                // Online: always prefer the locally owned Photon entity.
+                foreach (GameObject player in players)
+                {
+                    PhotonView pv = player.GetComponent<PhotonView>();
+                    if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                        continue;
 
-                Transform centerPoint = go.transform.Find("CenterPoint");
-                playerTransform = centerPoint != null ? centerPoint : go.transform;
-                break;
+                    Transform centerPoint = player.transform.Find("CenterPoint");
+                    playerTransform = centerPoint != null ? centerPoint : player.transform;
+                    break;
+                }
+
+                // Offline fallback: use the first tagged player entity.
+                if (playerTransform == null && !PhotonNetwork.IsConnected)
+                {
+                    Transform centerPoint = players[0].transform.Find("CenterPoint");
+                    playerTransform = centerPoint != null ? centerPoint : players[0].transform;
+                }
             }
         }
 

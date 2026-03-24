@@ -66,31 +66,41 @@ public class ItemUsageService : IItemUsageService
         Debug.Log("[ItemUsageService] UseConsumable: " + item.itemID + " at: " + pos);
 
         var stamina = StaminaView.FindLocal();
-        if (stamina == null) return (true, 1);
+        var health  = CombatManager.Presenter.PlayerHealthPresenter.FindLocal();
 
         if (item is ConsumableData consumable)
         {
-            stamina.ApplyConsumableEffects(
+            stamina?.ApplyConsumableEffects(
                 consumable.viableRestore,
                 consumable.regenBoostMultiplier,
                 consumable.toolEfficiencyReductionPercent / 100f,
                 consumable.effectDurationSeconds);
+            if (consumable.healthRestore > 0) health?.ChangeHealth(consumable.healthRestore);
             return (true, 1);
         }
 
         if (item is CookingData cooking)
         {
-            stamina.ApplyConsumableEffects(
+            stamina?.ApplyConsumableEffects(
                 cooking.viableRestore,
                 cooking.regenBoostMultiplier,
                 cooking.toolEfficiencyReductionPercent / 100f,
                 cooking.effectDurationSeconds);
+            if (cooking.healthRestore > 0) health?.ChangeHealth(cooking.healthRestore);
+            return (true, 1);
+        }
+
+        if (item is CropData crop)
+        {
+            if (crop.viableRestore > 0) stamina?.ApplyConsumableEffects(crop.viableRestore, 1f, 0f, 0f);
+            if (crop.healthRestore  > 0) health?.ChangeHealth(crop.healthRestore);
             return (true, 1);
         }
 
         if (item is ForageData forage)
         {
-            stamina.ApplyConsumableEffects(forage.viableRestore, 1f, 0f, 0f);
+            if (forage.viableRestore > 0) stamina?.ApplyConsumableEffects(forage.viableRestore, 1f, 0f, 0f);
+            if (forage.healthRestore  > 0) health?.ChangeHealth(forage.healthRestore);
             return (true, 1);
         }
 
