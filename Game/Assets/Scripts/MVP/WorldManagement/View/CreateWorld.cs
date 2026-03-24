@@ -79,6 +79,9 @@ public class CreateWorld : MonoBehaviour
         var manager = WorldSelectionManager.EnsureExists();
         string displayName = !string.IsNullOrEmpty(worldName) ? worldName : "Unnamed World";
         manager.SetSelectedWorld(worldId, displayName);
+        // Flag this as a new world so LoadPlayerData keeps the player at the spawn point
+        // instead of teleporting them to the default (0,0) position the server assigns.
+        manager.SetNewWorld(true);
         
         if (string.IsNullOrEmpty(sceneToLoad))
         {

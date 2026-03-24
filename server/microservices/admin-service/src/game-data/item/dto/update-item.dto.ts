@@ -133,7 +133,7 @@ export class UpdateItemDto {
 
   @IsOptional()
   @IsInt()
-  energyRestore?: number;
+  viableRestore?: number;
 
   @IsOptional()
   @IsInt()
@@ -141,7 +141,15 @@ export class UpdateItemDto {
 
   @IsOptional()
   @IsNumber()
-  bufferDuration?: number;
+  regenBoostMultiplier?: number;
+
+  @IsOptional()
+  @IsNumber()
+  toolEfficiencyReductionPercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  effectDurationSeconds?: number;
 
   // ── Weapon (itemType: 6) ───────────────────────────────────────────────────
 

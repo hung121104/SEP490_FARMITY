@@ -25,6 +25,7 @@ public class InputManager : MonoBehaviour
     public InputAction Attack        => _actions.Player.Attack;
     public InputAction UseSkill      => _actions.Player.UseSkill;
     public InputAction OpenChat      => _actions.Player.OpenChat;
+    public InputAction Sprint        => _actions.Player.Sprint;
 
     // ───── Hotbar / Item actions ─────
     public InputAction UseItem       => _actions.Player.UseItem;
