@@ -56,6 +56,7 @@ namespace CombatManager.Presenter
         private Vector2 remoteVelocity;
         private bool remoteIsWalking;
         private bool remoteFlipX;
+        private int lastAppliedHitToken = int.MinValue;
 
         private bool IsAuthoritative => !PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient;
 
@@ -69,11 +70,14 @@ namespace CombatManager.Presenter
         private void OnEnable()
         {
             PhotonNetwork.AddCallbackTarget(this);
+            EnemySyncManager.Instance.RegisterEnemy(this);
         }
 
         private void OnDisable()
         {
             PhotonNetwork.RemoveCallbackTarget(this);
+            if (EnemySyncManager.Instance != null)
+                EnemySyncManager.Instance.UnregisterEnemy(this);
         }
 
         private void Update()
@@ -186,6 +190,8 @@ namespace CombatManager.Presenter
             {
                 model.runtimeEnemyId = BuildDefaultRuntimeEnemyId();
             }
+
+            EnemySyncManager.Instance.RegisterEnemy(this);
 
             remotePosition = transform.position;
             remoteVelocity = Vector2.zero;
@@ -304,6 +310,52 @@ namespace CombatManager.Presenter
             ApplyDamageInternal(damage, knockbackDirection, knockbackForce);
         }
 
+        public bool IsDead() => healthService?.IsDead() ?? false;
+
+        public void ApplyAuthoritativeHit(
+            int damage,
+            Vector2 knockbackDirection,
+            float knockbackForce,
+            int hitToken,
+            int attackerActorNumber)
+        {
+            lastAppliedHitToken = hitToken;
+            ApplyDamageInternal(damage, knockbackDirection, knockbackForce);
+        }
+
+        public void ApplyReplicatedHitState(
+            int newHp,
+            int maxHp,
+            Vector2 knockbackDirection,
+            float knockbackForce,
+            int damage,
+            int hitToken,
+            bool isDead)
+        {
+            if (hitToken == lastAppliedHitToken)
+                return;
+
+            lastAppliedHitToken = hitToken;
+
+            int currentHp = healthService?.GetCurrentHealth() ?? model.currentHealth;
+            int hpDelta = newHp - currentHp;
+            if (hpDelta != 0)
+                healthService?.ChangeHealth(hpDelta);
+
+            model.maxHealth = maxHp;
+
+            if (!isDead)
+            {
+                aiService?.TakeKnockback(knockbackDirection, knockbackForce);
+                StartCoroutine(knockbackService.PlayKnockbackEffect());
+                StartCoroutine(knockbackService.PlayFlashEffect());
+                aiService?.OnHit();
+            }
+
+            if (damage > 0)
+                DamagePopupPresenter.Spawn(transform.position, damage);
+        }
+
         [PunRPC]
         private void RPC_RequestTakeDamage(int damage, float knockbackX, float knockbackY, float knockbackForce)
         {
@@ -338,7 +390,10 @@ namespace CombatManager.Presenter
         public void SetRuntimeEnemyId(string runtimeId)
         {
             if (!string.IsNullOrWhiteSpace(runtimeId))
+            {
                 model.runtimeEnemyId = runtimeId;
+                EnemySyncManager.Instance.RegisterEnemy(this);
+            }
         }
 
         #endregion

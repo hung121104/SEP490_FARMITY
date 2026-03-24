@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using CombatManager.Model;
+using CombatManager.Service;
 using CombatManager.View;
 
 namespace CombatManager.Presenter
@@ -99,14 +100,17 @@ namespace CombatManager.Presenter
             EnemyPresenter enemyPresenter = enemy.GetComponent<EnemyPresenter>();
             if (enemyPresenter != null)
             {
-                Vector2 knockbackDir = (enemy.transform.position
-                                       - model.playerTransform.position).normalized;
+                Vector3 ownerPosition = model.playerTransform != null
+                    ? model.playerTransform.position
+                    : transform.position - model.direction;
 
-                enemyPresenter.TakeDamage(
+                Vector2 knockbackDir = (enemy.transform.position - ownerPosition).normalized;
+
+                EnemySyncManager.Instance.RequestEnemyHit(
+                    enemyPresenter,
                     model.damage,
                     knockbackDir,
-                    model.knockbackForce
-                );
+                    model.knockbackForce);
 
                 Debug.Log($"[ProjectilePresenter] Hit: {enemy.name} | Damage: {model.damage}");
                 return;
