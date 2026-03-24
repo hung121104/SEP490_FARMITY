@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Photon.Pun;
 
 /// <summary>
 /// Abstract base class for all interactable structures (Chest, CraftingTable, CookingTable, …).
@@ -163,7 +164,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         if (_triggerCollider == null) return;
         if (!gameObject.activeInHierarchy) return;
 
-        GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
+        GameObject playerObj = FindLocalPlayer();
         if (playerObj != null)
         {
             var rb = playerObj.GetComponent<Rigidbody2D>();
@@ -189,6 +190,28 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
             EvaluateTargetState();
         }
+    }
+
+    private GameObject FindLocalPlayer()
+    {
+        GameObject[] players = GameObject.FindGameObjectsWithTag("PlayerEntity");
+        if (players == null || players.Length == 0)
+            return null;
+
+        // Online: always prefer the locally owned Photon entity.
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
+            return player;
+        }
+
+        // Offline fallback: use the first tagged player entity.
+        if (!PhotonNetwork.IsConnected)
+            return players[0];
+
+        return null;
     }
 
     // ── Input ────────────────────────────────────────────────────────────

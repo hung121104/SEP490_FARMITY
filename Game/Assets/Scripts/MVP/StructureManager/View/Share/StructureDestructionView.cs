@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Photon.Pun;
 
 public class StructureDestructionView : MonoBehaviour
 {
@@ -69,14 +70,38 @@ public class StructureDestructionView : MonoBehaviour
     private void Update()
     {
         if (playerTransform == null)
+            TryResolvePlayerTransform(out playerTransform);
+    }
+
+    private bool TryResolvePlayerTransform(out Transform resolvedTransform)
+    {
+        resolvedTransform = null;
+
+        GameObject[] players = GameObject.FindGameObjectsWithTag("PlayerEntity");
+        if (players == null || players.Length == 0)
+            return false;
+
+        // Online: always prefer the locally owned Photon entity.
+        foreach (GameObject player in players)
         {
-            GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
-            if (player != null)
-            {
-                Transform center = player.transform.Find("CenterPoint");
-                playerTransform = center != null ? center : player.transform;
-            }
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
+
+            Transform center = player.transform.Find("CenterPoint");
+            resolvedTransform = center != null ? center : player.transform;
+            return true;
         }
+
+        // Offline fallback: use the first tagged player entity.
+        if (!PhotonNetwork.IsConnected)
+        {
+            Transform center = players[0].transform.Find("CenterPoint");
+            resolvedTransform = center != null ? center : players[0].transform;
+            return true;
+        }
+
+        return false;
     }
 
     private void HandleToolUse(ToolData tool, Vector3 mouseWorldPos)

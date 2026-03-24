@@ -298,11 +298,38 @@ public class StructureView : MonoBehaviourPunCallbacks
     private void CachePlayerTransform()
     {
         if (playerTransform != null) return;
-        GameObject player = GameObject.FindGameObjectWithTag(playerTag);
-        if (player == null) return;
+        TryResolvePlayerTransform(out playerTransform);
+    }
 
-        Transform center = player.transform.Find("CenterPoint");
-        playerTransform = center != null ? center : player.transform;
+    private bool TryResolvePlayerTransform(out Transform resolvedTransform)
+    {
+        resolvedTransform = null;
+
+        GameObject[] players = GameObject.FindGameObjectsWithTag(playerTag);
+        if (players == null || players.Length == 0)
+            return false;
+
+        // Online: always prefer the locally owned Photon entity.
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
+
+            Transform center = player.transform.Find("CenterPoint");
+            resolvedTransform = center != null ? center : player.transform;
+            return true;
+        }
+
+        // Offline fallback: use the first tagged player entity.
+        if (!PhotonNetwork.IsConnected)
+        {
+            Transform center = players[0].transform.Find("CenterPoint");
+            resolvedTransform = center != null ? center : players[0].transform;
+            return true;
+        }
+
+        return false;
     }
 
     private Camera FindPlayerCamera()
