@@ -87,11 +87,25 @@ namespace CombatManager.Presenter
 
         private IEnumerator DelayedInitialize()
         {
-            yield return new WaitForSeconds(0.5f);
-            InitializeComponents();
+            const float timeout = 8f;
+            float elapsed = 0f;
+
+            yield return new WaitForSeconds(0.2f);
+
+            while (elapsed < timeout)
+            {
+                if (InitializeComponents())
+                    yield break;
+
+                elapsed += 0.25f;
+                yield return new WaitForSeconds(0.25f);
+            }
+
+            Debug.LogError("[PlayerAttackPresenter] Initialization timeout: local player not found.");
+            enabled = false;
         }
 
-        private void InitializeComponents()
+        private bool InitializeComponents()
         {
             if (statsPresenter == null)
                 statsPresenter = FindObjectOfType<StatsPresenter>();
@@ -102,15 +116,13 @@ namespace CombatManager.Presenter
             if (statsPresenter == null)
             {
                 Debug.LogError("[PlayerAttackPresenter] StatsPresenter not found!");
-                enabled = false;
-                return;
+                return false;
             }
 
             if (pointerPresenter == null)
             {
                 Debug.LogError("[PlayerAttackPresenter] PlayerPointerPresenter not found!");
-                enabled = false;
-                return;
+                return false;
             }
 
             statsService = statsPresenter.GetService();
@@ -119,9 +131,7 @@ namespace CombatManager.Presenter
             GameObject playerObj = FindLocalPlayerEntity();
             if (playerObj == null)
             {
-                Debug.LogError("[PlayerAttackPresenter] Local player not found!");
-                enabled = false;
-                return;
+                return false;
             }
 
             localPlayerTransform = playerObj.transform;
@@ -147,6 +157,7 @@ namespace CombatManager.Presenter
             );
 
             Debug.Log("[PlayerAttackPresenter] Initialized successfully");
+            return true;
         }
 
         private GameObject FindLocalPlayerEntity()
@@ -161,13 +172,6 @@ namespace CombatManager.Presenter
             {
                 PhotonView pv = go.GetComponent<PhotonView>();
                 if (pv != null && pv.IsMine) return go;
-            }
-
-            GameObject fallback = GameObject.Find("PlayerEntity");
-            if (fallback != null)
-            {
-                Debug.LogWarning("[PlayerAttackPresenter] Found PlayerEntity by name");
-                return fallback;
             }
 
             return null;

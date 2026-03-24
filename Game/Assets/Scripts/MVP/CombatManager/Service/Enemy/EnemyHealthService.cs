@@ -25,8 +25,6 @@ namespace CombatManager.Service
         {
             model.currentHealth += amount;
             model.currentHealth = Mathf.Clamp(model.currentHealth, 0, model.maxHealth);
-
-            Debug.Log($"[EnemyHealthService] Health changed by {amount}. Current: {model.currentHealth}/{model.maxHealth}");
         }
 
         public int GetCurrentHealth() => model.currentHealth;
