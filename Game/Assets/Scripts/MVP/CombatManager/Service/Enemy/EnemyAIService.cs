@@ -10,6 +10,8 @@ namespace CombatManager.Service
     /// </summary>
     public class EnemyAIService : IEnemyAIService
     {
+        private const float AlertTargetExtraRange = 4f;
+
         private EnemyModel model;
         private Transform enemyTransform;
         private readonly List<Transform> potentialTargets = new List<Transform>();
@@ -56,16 +58,10 @@ namespace CombatManager.Service
                 ? Vector2.Distance(enemyTransform.position, model.currentTarget.position)
                 : float.MaxValue;
 
-            if (model.currentTarget == null && !model.isAlerted)
+            if (model.currentTarget == null && !model.isAlerted &&
+                (model.currentState == EnemyState.Chasing || model.currentState == EnemyState.Attacking))
             {
-                if (model.currentState != EnemyState.Guard && model.currentState != EnemyState.Wandering)
-                {
-                    model.currentState = EnemyState.Guard;
-                    StartGuard();
-                }
-
-                UpdateAnimation();
-                return;
+                BeginReturnToGuardRange();
             }
 
             // State machine
@@ -187,6 +183,15 @@ namespace CombatManager.Service
 
         private void HandleChasingState(float distanceToPlayer)
         {
+            if (model.currentTarget == null)
+            {
+                if (!model.isAlerted)
+                {
+                    BeginReturnToGuardRange();
+                }
+                return;
+            }
+
             if (distanceToPlayer <= model.attackRange)
             {
                 model.currentState = EnemyState.Attacking;
@@ -195,22 +200,31 @@ namespace CombatManager.Service
 
             if (distanceToPlayer > model.detectionRange + 2f)
             {
-                model.currentState = EnemyState.Guard;
-                StartGuard();
-                model.isAlerted = false;
+                BeginReturnToGuardRange();
                 return;
             }
 
             if (!CanSeePlayer() && distanceToPlayer > model.detectionRange)
             {
-                model.currentState = EnemyState.Guard;
-                StartGuard();
-                model.isAlerted = false;
+                BeginReturnToGuardRange();
             }
         }
 
         private void HandleAttackingState(float distanceToPlayer)
         {
+            if (model.currentTarget == null)
+            {
+                if (model.isAlerted)
+                {
+                    model.currentState = EnemyState.Chasing;
+                }
+                else
+                {
+                    BeginReturnToGuardRange();
+                }
+                return;
+            }
+
             if (distanceToPlayer > model.attackRange + 0.5f)
             {
                 model.currentState = EnemyState.Chasing;
@@ -221,6 +235,7 @@ namespace CombatManager.Service
         {
             Transform bestTarget = null;
             float bestDistance = float.MaxValue;
+            float maxTargetRange = model.detectionRange + (model.isAlerted ? AlertTargetExtraRange : 2f);
 
             for (int i = 0; i < potentialTargets.Count; i++)
             {
@@ -229,10 +244,13 @@ namespace CombatManager.Service
                     continue;
 
                 float distance = Vector2.Distance(enemyTransform.position, candidate.position);
-                if (distance > model.detectionRange + 2f)
+                if (distance > maxTargetRange)
                     continue;
 
-                if (!CanSeeTarget(candidate) && distance > model.attackRange + 1f)
+                bool hasLineOfSight = CanSeeTarget(candidate);
+                bool inCloseCombatRange = distance <= model.attackRange + 1f;
+                bool alertedFallback = model.isAlerted && distance <= model.detectionRange + AlertTargetExtraRange;
+                if (!hasLineOfSight && !inCloseCombatRange && !alertedFallback)
                     continue;
 
                 if (distance < bestDistance)
@@ -244,6 +262,21 @@ namespace CombatManager.Service
 
             model.currentTarget = bestTarget;
             model.playerTransform = bestTarget;
+
+            if (bestTarget != null && model.currentState == EnemyState.Guard)
+            {
+                model.currentState = EnemyState.Chasing;
+            }
+        }
+
+        private void BeginReturnToGuardRange()
+        {
+            model.isAlerted = false;
+            model.currentTarget = null;
+            model.playerTransform = null;
+            model.currentState = EnemyState.Wandering;
+            model.wanderTarget = model.startPosition;
+            model.currentWanderDirection = (model.startPosition - enemyTransform.position).normalized;
         }
 
         #endregion
