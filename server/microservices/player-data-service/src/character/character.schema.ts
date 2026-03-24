@@ -66,6 +66,18 @@ export class Character {
 
   @Prop({ default: 200 })
   viableStamina: number;
+
+  @Prop({ default: 1 })
+  regenBoostMultiplier: number;
+
+  @Prop({ default: 0 })
+  regenBoostRemaining: number;
+
+  @Prop({ default: 0 })
+  toolEfficiencyReduction: number;
+
+  @Prop({ default: 0 })
+  toolEfficiencyRemaining: number;
 }
 
 export const CharacterSchema = SchemaFactory.createForClass(Character);

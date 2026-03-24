@@ -19,4 +19,9 @@ public struct PlayerData
 
     public float currentStamina;
     public float viableStamina;
+
+    public float regenBoostMultiplier;
+    public float regenBoostRemaining;
+    public float toolEfficiencyReduction;
+    public float toolEfficiencyRemaining;
 }

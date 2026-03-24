@@ -73,7 +73,7 @@ public class ItemUsageService : IItemUsageService
             stamina.ApplyConsumableEffects(
                 consumable.viableRestore,
                 consumable.regenBoostMultiplier,
-                consumable.toolEfficiencyReductionPercent,
+                consumable.toolEfficiencyReductionPercent / 100f,
                 consumable.effectDurationSeconds);
             return (true, 1);
         }
@@ -83,7 +83,7 @@ public class ItemUsageService : IItemUsageService
             stamina.ApplyConsumableEffects(
                 cooking.viableRestore,
                 cooking.regenBoostMultiplier,
-                cooking.toolEfficiencyReductionPercent,
+                cooking.toolEfficiencyReductionPercent / 100f,
                 cooking.effectDurationSeconds);
             return (true, 1);
         }

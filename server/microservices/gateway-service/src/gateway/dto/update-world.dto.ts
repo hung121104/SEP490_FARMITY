@@ -49,6 +49,10 @@ export class UpsertCharacterInWorldDto {
   sectionIndex?: number;
   currentStamina?: number;
   viableStamina?: number;
+  regenBoostMultiplier?: number;
+  regenBoostRemaining?: number;
+  toolEfficiencyReduction?: number;
+  toolEfficiencyRemaining?: number;
 }
 
 export class UpdateWorldDto {

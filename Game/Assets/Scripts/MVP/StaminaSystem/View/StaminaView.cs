@@ -33,6 +33,11 @@ public class StaminaView : MonoBehaviourPun
     public float ViableStamina => presenter?.ViableStamina ?? maxStamina;
     public float MaxStamina => presenter?.MaxStamina ?? maxStamina;
 
+    public float RegenBoostRemaining     => presenter?.RegenBoostRemaining     ?? 0f;
+    public float RegenBoostMultiplier    => presenter?.RegenBoostMultiplier    ?? 1f;
+    public float ToolEfficiencyRemaining => presenter?.ToolEfficiencyRemaining ?? 0f;
+    public float ToolEfficiencyReduction => presenter?.ToolEfficiencyReduction ?? 0f;
+
     public bool CanSprintLocally => CurrentStamina > 0.01f;
 
     private void Awake()
@@ -204,14 +209,22 @@ public class StaminaView : MonoBehaviourPun
         var data = list[idx];
         if (data.currentStamina <= 0f && data.viableStamina <= 0f) return;
 
-        float viable = data.viableStamina > 0f ? data.viableStamina : maxStamina;
+        float viable  = data.viableStamina  > 0f ? data.viableStamina  : maxStamina;
         float current = data.currentStamina > 0f ? data.currentStamina : viable;
         presenter.SetState(current, viable);
+
+        if (data.regenBoostRemaining > 0f)
+            presenter.ApplyRegenBoost(data.regenBoostMultiplier > 1f ? data.regenBoostMultiplier : 1.01f, data.regenBoostRemaining);
+        if (data.toolEfficiencyRemaining > 0f)
+            presenter.ApplyToolEfficiency(data.toolEfficiencyReduction, data.toolEfficiencyRemaining);
     }
 
     private void BroadcastState()
     {
-        photonView.RPC(nameof(RPC_ApplyAuthoritativeState), RpcTarget.All, model.currentStamina, model.viableStamina);
+        photonView.RPC(nameof(RPC_ApplyAuthoritativeState), RpcTarget.All,
+            model.currentStamina, model.viableStamina,
+            model.regenBoostMultiplier, model.regenBoostRemaining,
+            model.toolEfficiencyReduction, model.toolEfficiencyRemaining);
     }
 
     [PunRPC]
@@ -263,9 +276,10 @@ public class StaminaView : MonoBehaviourPun
     }
 
     [PunRPC]
-    private void RPC_ApplyAuthoritativeState(float current, float viable)
+    private void RPC_ApplyAuthoritativeState(float current, float viable, float regenMult, float regenRem, float effRed, float effRem)
     {
         presenter.SetState(current, viable);
+        presenter.SyncBoostState(regenMult, regenRem, effRed, effRem);
     }
 
     private bool IsOwnerSender(int senderActorNumber, Player sender)
@@ -275,6 +289,58 @@ public class StaminaView : MonoBehaviourPun
             && sender != null
             && senderActorNumber == sender.ActorNumber
             && senderActorNumber == photonView.Owner.ActorNumber;
+    }
+
+    /// <summary>
+    /// Called by the non-master client just before leaving the room.
+    /// Pushes the client's final position + full stamina state to the master
+    /// so it can be saved even if the player GO is destroyed before BuildPayload runs.
+    /// </summary>
+    public void PushFinalStateToMaster()
+    {
+        if (!photonView.IsMine || PhotonNetwork.IsMasterClient) return;
+
+        photonView.RPC(nameof(RPC_FinalPlayerState), RpcTarget.MasterClient,
+            transform.position.x, transform.position.y,
+            model.currentStamina, model.viableStamina,
+            model.regenBoostMultiplier, model.regenBoostRemaining,
+            model.toolEfficiencyReduction, model.toolEfficiencyRemaining);
+    }
+
+    [PunRPC]
+    private void RPC_FinalPlayerState(
+        float posX, float posY,
+        float current, float viable,
+        float regenMult, float regenRem,
+        float effRed, float effRem,
+        PhotonMessageInfo info)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        // Only accept from the owner of this PhotonView
+        if (photonView?.Owner == null || info.Sender == null
+            || info.Sender.ActorNumber != photonView.Owner.ActorNumber) return;
+        if (PlayerDataManager.Instance == null) return;
+
+        string accountId = GetOwnerAccountId();
+        if (string.IsNullOrEmpty(accountId)) return;
+
+        var list = PlayerDataManager.Instance.players;
+        int idx = list.FindIndex(p => p.accountId == accountId);
+        if (idx < 0) return;
+
+        var pd = list[idx];
+        pd.positionX              = posX;
+        pd.positionY              = posY;
+        pd.currentStamina         = current;
+        pd.viableStamina          = viable;
+        pd.regenBoostMultiplier   = regenMult;
+        pd.regenBoostRemaining    = regenRem;
+        pd.toolEfficiencyReduction = effRed;
+        pd.toolEfficiencyRemaining = effRem;
+        list[idx] = pd;
+
+        Debug.Log($"[StaminaView] FinalState cached for '{accountId}': " +
+                  $"pos=({posX:F1},{posY:F1}) stamina={current:F1}/{viable:F1}");
     }
 
     public static StaminaView FindLocal()

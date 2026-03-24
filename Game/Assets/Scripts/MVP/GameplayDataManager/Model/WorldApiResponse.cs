@@ -52,6 +52,11 @@ public class WorldApiResponse
         public float currentStamina;
         public float viableStamina;
 
+        public float regenBoostMultiplier;
+        public float regenBoostRemaining;
+        public float toolEfficiencyReduction;
+        public float toolEfficiencyRemaining;
+
         /// <summary>
         /// Saved inventory slots — key = slot index as string ("0"–"35").
         /// Null/empty if no inventory was saved.

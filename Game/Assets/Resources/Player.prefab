@@ -511,7 +511,7 @@ MonoBehaviour:
   maxStamina: 200
   passiveDecayFloorPercent: 0.5
   consumableSoftCapPercent: 0.8
-  regenDelaySeconds: 0.5
+  regenDelaySeconds: 1.2
   regenPercentPerSecond: 0.1
   sprintCostPerSecond: 8
   viableDecayPerGameMinute: 0.05

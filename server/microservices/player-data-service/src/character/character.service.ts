@@ -108,6 +108,10 @@ export class CharacterService implements OnModuleInit {
     if (dto.toolConfigId   !== undefined) update.toolConfigId   = dto.toolConfigId;
     if (dto.currentStamina !== undefined) update.currentStamina = dto.currentStamina;
     if (dto.viableStamina  !== undefined) update.viableStamina  = dto.viableStamina;
+    if (dto.regenBoostMultiplier    !== undefined) update.regenBoostMultiplier    = dto.regenBoostMultiplier;
+    if (dto.regenBoostRemaining     !== undefined) update.regenBoostRemaining     = dto.regenBoostRemaining;
+    if (dto.toolEfficiencyReduction !== undefined) update.toolEfficiencyReduction = dto.toolEfficiencyReduction;
+    if (dto.toolEfficiencyRemaining !== undefined) update.toolEfficiencyRemaining = dto.toolEfficiencyRemaining;
 
     const setOnInsert: Record<string, any> = {
       worldId: worldOid,
@@ -119,6 +123,10 @@ export class CharacterService implements OnModuleInit {
     if (dto.sectionIndex === undefined) setOnInsert.sectionIndex = 0;
     if (dto.currentStamina === undefined) setOnInsert.currentStamina = 200;
     if (dto.viableStamina === undefined) setOnInsert.viableStamina = 200;
+    if (dto.regenBoostMultiplier    === undefined) setOnInsert.regenBoostMultiplier    = 1;
+    if (dto.regenBoostRemaining     === undefined) setOnInsert.regenBoostRemaining     = 0;
+    if (dto.toolEfficiencyReduction === undefined) setOnInsert.toolEfficiencyReduction = 0;
+    if (dto.toolEfficiencyRemaining === undefined) setOnInsert.toolEfficiencyRemaining = 0;
 
     const result = await this.characterModel.findOneAndUpdate(
       { worldId: worldOid, accountId: accountOid },

@@ -83,6 +83,23 @@ public class StaminaHUDView : MonoBehaviour
     [SerializeField] private float pulseAlphaMin       = 0.45f;
     [SerializeField] private float pulseAlphaMax       = 1.00f;
 
+    // ─── Boost Effect Visuals ─────────────────────────────────────────────────
+    [Header("Regen Boost Effect")]
+    [Tooltip("GameObject shown (e.g. an icon) while regen boost is active.")]
+    [SerializeField] private GameObject regenBoostIndicator;
+    [Tooltip("Optional TMP label showing remaining regen boost seconds.")]
+    [SerializeField] private TextMeshProUGUI regenBoostTimerText;
+    [Tooltip("Current bar tint while regen boost is active.")]
+    [SerializeField] private Color regenBoostBarColor = new Color(0.20f, 0.85f, 1.00f, 1f);
+
+    [Header("Tool Efficiency Effect")]
+    [Tooltip("GameObject shown (e.g. an icon) while tool efficiency reduction is active.")]
+    [SerializeField] private GameObject toolEfficiencyIndicator;
+    [Tooltip("Optional TMP label showing remaining tool efficiency seconds.")]
+    [SerializeField] private TextMeshProUGUI toolEfficiencyTimerText;
+    [Tooltip("Viable bar tint while tool efficiency reduction is active.")]
+    [SerializeField] private Color toolEfficiencyBarColor = new Color(1.00f, 0.85f, 0.15f, 1f);
+
     // ─── Private state ────────────────────────────────────────────────────────
     private StaminaView _staminaView;
     private float       _retryTimer;
@@ -134,26 +151,44 @@ public class StaminaHUDView : MonoBehaviour
 
         SetSliderValues(_displayCurrent, _displayViable);
 
+        float regenRemaining = _staminaView.RegenBoostRemaining;
+        float effRemaining  = _staminaView.ToolEfficiencyRemaining;
+        bool  regenActive   = regenRemaining > 0f;
+        bool  effActive     = effRemaining   > 0f;
+
         // ── 4. Current fill color ─────────────────────────────────────────────
         if (currentFillImage != null)
         {
             float ratio = current / max;
-            Color targetColor = ratio <= criticalThreshold ? criticalColor
-                              : ratio <= lowThreshold      ? lowColor
-                              :                              normalColor;
 
-            // Pulse alpha when critical
-            if (enableCriticalPulse && ratio <= criticalThreshold)
+            Color targetColor;
+            if (regenActive)
             {
-                float pulse = Mathf.PingPong(Time.time * pulseSpeed, 1f);
-                targetColor.a = Mathf.Lerp(pulseAlphaMin, pulseAlphaMax, pulse);
+                // Cyan tint pulses gently to signal accelerated regen
+                targetColor   = regenBoostBarColor;
+                float pulse   = Mathf.PingPong(Time.time * pulseSpeed, 1f);
+                targetColor.a = Mathf.Lerp(0.70f, 1.00f, pulse);
+            }
+            else
+            {
+                targetColor = ratio <= criticalThreshold ? criticalColor
+                            : ratio <= lowThreshold      ? lowColor
+                            :                              normalColor;
+
+                // Pulse alpha when critical
+                if (enableCriticalPulse && ratio <= criticalThreshold)
+                {
+                    float pulse   = Mathf.PingPong(Time.time * pulseSpeed, 1f);
+                    targetColor.a = Mathf.Lerp(pulseAlphaMin, pulseAlphaMax, pulse);
+                }
             }
 
             currentFillImage.color = Color.Lerp(currentFillImage.color, targetColor, Time.deltaTime * fillSmoothSpeed);
         }
 
+        // Viable bar turns gold while tool efficiency reduction is active
         if (viableFillImage != null)
-            viableFillImage.color = viableColor;
+            viableFillImage.color = effActive ? toolEfficiencyBarColor : viableColor;
 
         // ── 5. Text ───────────────────────────────────────────────────────────
         if (staminaText != null)
@@ -162,6 +197,20 @@ public class StaminaHUDView : MonoBehaviour
         // ── 6. Exhausted indicator ────────────────────────────────────────────
         if (exhaustedIndicator != null)
             exhaustedIndicator.SetActive((current / max) <= exhaustedThreshold);
+
+        // ── 7. Regen boost indicator ──────────────────────────────────────────
+        if (regenBoostIndicator != null)
+            regenBoostIndicator.SetActive(regenActive);
+        if (regenBoostTimerText != null)
+            regenBoostTimerText.text = regenActive ? $"{regenRemaining:F1}s" : string.Empty;
+
+        // ── 8. Tool efficiency indicator ──────────────────────────────────────
+        if (toolEfficiencyIndicator != null)
+            toolEfficiencyIndicator.SetActive(effActive);
+        if (toolEfficiencyTimerText != null)
+            toolEfficiencyTimerText.text = effActive
+                ? $"-{_staminaView.ToolEfficiencyReduction * 100f:F0}% ({effRemaining:F1}s)"
+                : string.Empty;
     }
 
     private void InitSliders(float max)

@@ -164,6 +164,18 @@ public static class WorldApi
 
             [JsonProperty("viableStamina", NullValueHandling = NullValueHandling.Ignore)]
             public float? viableStamina;
+
+            [JsonProperty("regenBoostMultiplier", NullValueHandling = NullValueHandling.Ignore)]
+            public float? regenBoostMultiplier;
+
+            [JsonProperty("regenBoostRemaining", NullValueHandling = NullValueHandling.Ignore)]
+            public float? regenBoostRemaining;
+
+            [JsonProperty("toolEfficiencyReduction", NullValueHandling = NullValueHandling.Ignore)]
+            public float? toolEfficiencyReduction;
+
+            [JsonProperty("toolEfficiencyRemaining", NullValueHandling = NullValueHandling.Ignore)]
+            public float? toolEfficiencyRemaining;
         }
     }
 
