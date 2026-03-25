@@ -1,9 +1,6 @@
-<<<<<<< HEAD
 ﻿using UnityEngine;
 using CombatManager.Presenter;
-=======
 using UnityEngine;
->>>>>>> origin/dev
 
 public class ItemUsageController : MonoBehaviour
 {
