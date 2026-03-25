@@ -53,6 +53,7 @@ import {
 import { CreateQuestDto } from './dto/create-quest.dto';
 import { UpdateQuestDto } from './dto/update-quest.dto';
 import { GetDashboardAnalyticsQueryDto } from './dto/get-dashboard-analytics-query.dto';
+import { PlayerHeartbeatDto } from './dto/player-heartbeat.dto';
 
 const FERTILIZER_ITEM_TYPE = 14;
 
@@ -586,6 +587,26 @@ export class GatewayController {
   @Get('auth/admin-check')
   async adminCheck(@Req() req: Request) {
     return req['user'];
+  }
+
+  @Post('player-data/heartbeat')
+  async playerHeartbeat(@Req() req: Request, @Body() dto: PlayerHeartbeatDto) {
+    const payload = req['user'];
+    if (!payload?.sid || !payload?.sub) {
+      throw new UnauthorizedException('Missing session context');
+    }
+
+    try {
+      return await firstValueFrom(
+        this.authClient.send('player-heartbeat', {
+          sid: String(payload.sid),
+          sub: String(payload.sub),
+          clientUnixMs: dto?.clientUnixMs,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Get('admin/analytics/summary')

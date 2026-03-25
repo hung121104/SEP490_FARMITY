@@ -6,8 +6,9 @@ import Redis from 'ioredis';
 export class AnalyticsPresenceService implements OnModuleDestroy {
   private readonly redisEnabled: boolean;
   private readonly keyPrefix: string;
-  private readonly sessionZsetKey: string;
+  private readonly sessionExpiryZsetKey: string;
   private readonly sidUserHashKey: string;
+  private readonly offlineTimeoutSeconds: number;
   private client: Redis | null = null;
 
   constructor(private readonly configService: ConfigService) {
@@ -16,8 +17,11 @@ export class AnalyticsPresenceService implements OnModuleDestroy {
 
     const prefix = this.configService.get<string>('REDIS_KEY_PREFIX') || 'farmity:analytics';
     this.keyPrefix = prefix;
-    this.sessionZsetKey = `${this.keyPrefix}:presence:sessions`;
+    this.sessionExpiryZsetKey = `${this.keyPrefix}:presence:session-expiry`;
     this.sidUserHashKey = `${this.keyPrefix}:presence:sid-user`;
+    this.offlineTimeoutSeconds = Number(
+      this.configService.get<string>('HEARTBEAT_OFFLINE_TIMEOUT_SECONDS') || 300,
+    );
 
     if (this.redisEnabled) {
       const port = Number(this.configService.get<string>('REDIS_PORT') || 6379);
@@ -62,21 +66,26 @@ export class AnalyticsPresenceService implements OnModuleDestroy {
     }
   }
 
-  async touchSession(sessionId: string, userId: string): Promise<void> {
+  async touchHeartbeat(sessionId: string, userId: string): Promise<void> {
     if (!sessionId || !userId) return;
     const connected = await this.ensureConnected();
     if (!connected || !this.client) return;
 
     const nowMs = Date.now();
+    const expiryMs = nowMs + this.offlineTimeoutSeconds * 1000;
     try {
       await this.client
         .multi()
-        .zadd(this.sessionZsetKey, String(nowMs), sessionId)
+        .zadd(this.sessionExpiryZsetKey, String(expiryMs), sessionId)
         .hset(this.sidUserHashKey, sessionId, userId)
         .exec();
     } catch {
       // Presence tracking is best-effort and must not break auth flows.
     }
+  }
+
+  async touchSession(sessionId: string, userId: string): Promise<void> {
+    await this.touchHeartbeat(sessionId, userId);
   }
 
   async removeSession(sessionId: string): Promise<void> {
@@ -85,26 +94,29 @@ export class AnalyticsPresenceService implements OnModuleDestroy {
     if (!connected || !this.client) return;
 
     try {
-      await this.client.multi().zrem(this.sessionZsetKey, sessionId).hdel(this.sidUserHashKey, sessionId).exec();
+      await this.client
+        .multi()
+        .zrem(this.sessionExpiryZsetKey, sessionId)
+        .hdel(this.sidUserHashKey, sessionId)
+        .exec();
     } catch {
       // Presence tracking is best-effort and must not break auth flows.
     }
   }
 
-  async getActiveUserIds(windowMs: number): Promise<string[] | null> {
+  async getRealtimeActiveUserIds(): Promise<string[] | null> {
     const connected = await this.ensureConnected();
     if (!connected || !this.client) return null;
 
     const nowMs = Date.now();
-    const cutoffMs = nowMs - windowMs;
 
     try {
-      await this.client.zremrangebyscore(this.sessionZsetKey, '-inf', String(cutoffMs - 1));
+      await this.client.zremrangebyscore(this.sessionExpiryZsetKey, '-inf', String(nowMs - 1));
 
       const sessionIds = await this.client.zrangebyscore(
-        this.sessionZsetKey,
-        String(cutoffMs),
+        this.sessionExpiryZsetKey,
         String(nowMs),
+        '+inf',
       );
 
       if (!sessionIds.length) return [];
@@ -123,5 +135,10 @@ export class AnalyticsPresenceService implements OnModuleDestroy {
     } catch {
       return null;
     }
+  }
+
+  async getActiveUserIds(windowMs: number): Promise<string[] | null> {
+    // Legacy compatibility path for old callers.
+    return this.getRealtimeActiveUserIds();
   }
 }

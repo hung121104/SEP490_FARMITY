@@ -144,7 +144,6 @@ export class AccountService implements OnModuleInit {
     const session = await this.sessionService.createSession(account._id.toString(), 60);
     const payload = { username: account.username, sub: account._id, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
-    await this.presenceService.touchSession(session.sessionId, account._id.toString());
     return {
       userId: account._id.toString(),
       username: account.username,
@@ -167,7 +166,6 @@ export class AccountService implements OnModuleInit {
     const session = await this.sessionService.createSession(account._id.toString(), 60);
     const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
-    await this.presenceService.touchSession(session.sessionId, account._id.toString());
     console.log(`[auth-service] Admin logged in: ${account.username}`);
     return {
       userId: account._id.toString(),
@@ -220,9 +218,6 @@ export class AccountService implements OnModuleInit {
       }
 
       await this.sessionService.updateActivity(sid);
-      if (payload?.sub) {
-        await this.presenceService.touchSession(sid, String(payload.sub));
-      }
       console.log(`[auth-service] Token verified: ${payload?.username ?? 'unknown'}`);
       return payload;
     } catch (err) {
@@ -243,10 +238,6 @@ export class AccountService implements OnModuleInit {
       const isActive = await this.sessionService.isSessionActive(sid);
       if (!isActive) {
         throw new RpcException({ status: 401, message: 'Session inactive or revoked' });
-      }
-
-      if (payload?.sub) {
-        await this.presenceService.touchSession(sid, String(payload.sub));
       }
 
       return payload;
@@ -276,6 +267,50 @@ export class AccountService implements OnModuleInit {
     await this.presenceService.removeSession(sid);
     console.log('[auth-service] Admin logged out');
     return { ok: true };
+  }
+
+  async playerHeartbeat(dto: {
+    sid?: string;
+    sub?: string;
+    clientUnixMs?: number;
+  }) {
+    const sid = dto?.sid;
+    const accountId = dto?.sub;
+
+    if (!sid || !accountId) {
+      throw new RpcException({ status: 401, message: 'Invalid token payload' });
+    }
+
+    const isActive = await this.sessionService.isSessionActive(sid);
+    if (!isActive) {
+      throw new RpcException({ status: 401, message: 'Session inactive or revoked' });
+    }
+
+    await this.presenceService.touchHeartbeat(sid, String(accountId));
+
+    const offlineTimeoutSeconds = Number(
+      this.configService.get<string>('HEARTBEAT_OFFLINE_TIMEOUT_SECONDS') || 300,
+    );
+    const legitThresholdMinutes = Number(
+      this.configService.get<string>('HEARTBEAT_LEGIT_MINUTES') || 5,
+    );
+
+    const heartbeatState = await this.sessionService.recordHeartbeat(
+      sid,
+      offlineTimeoutSeconds,
+      legitThresholdMinutes * 60 * 1000,
+    );
+
+    if (!heartbeatState) {
+      throw new RpcException({ status: 404, message: 'Session not found' });
+    }
+
+    return {
+      ok: true,
+      serverUnixMs: Date.now(),
+      isLegit: heartbeatState.isLegit,
+      cumulativeHeartbeatMs: heartbeatState.cumulativeHeartbeatMs,
+    };
   }
 
   async requestPasswordReset(email: string) {

@@ -9,6 +9,7 @@ import { ConfirmResetDto } from './dto/confirm-admin-reset.dto';
 import { VerifyRegistrationDto } from './dto/verify-registration.dto';
 import { GetDashboardAnalyticsDto } from './dto/get-dashboard-analytics.dto';
 import { AnalyticsService } from './analytics.service';
+import { PlayerHeartbeatDto } from './dto/player-heartbeat.dto';
 
 @Controller()
 export class AccountController {
@@ -115,5 +116,13 @@ export class AccountController {
   @MessagePattern('get-dashboard-analytics')
   async getDashboardAnalytics(@Body() dto: GetDashboardAnalyticsDto) {
     return this.analyticsService.getDashboardAnalytics(dto);
+  }
+
+  @MessagePattern('player-heartbeat')
+  async playerHeartbeat(
+    @Body()
+    dto: PlayerHeartbeatDto & { sid?: string; sub?: string },
+  ) {
+    return this.accountService.playerHeartbeat(dto);
   }
 }

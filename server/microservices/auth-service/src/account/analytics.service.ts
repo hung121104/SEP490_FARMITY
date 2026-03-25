@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { RpcException } from '@nestjs/microservices';
 import { Model } from 'mongoose';
@@ -12,7 +13,7 @@ import { AnalyticsPresenceService } from './analytics-presence.service';
 
 @Injectable()
 export class AnalyticsService {
-  private static readonly CONCURRENT_WINDOW_MS = 5 * 60 * 1000;
+  private readonly heartbeatOfflineTimeoutMs: number;
 
   constructor(
     @InjectModel(Account.name)
@@ -20,14 +21,26 @@ export class AnalyticsService {
     @InjectModel(Session.name)
     private readonly sessionModel: Model<SessionDocument>,
     private readonly presenceService: AnalyticsPresenceService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const offlineTimeoutSeconds = Number(
+      this.configService.get<string>('HEARTBEAT_OFFLINE_TIMEOUT_SECONDS') || 300,
+    );
+    this.heartbeatOfflineTimeoutMs = offlineTimeoutSeconds * 1000;
+  }
 
   async getDashboardAnalytics(
     dto: GetDashboardAnalyticsDto,
   ): Promise<DashboardAnalyticsResponse> {
     const { start, end } = this.resolveRange(dto);
 
-    const [totalUsers, newUsers, dailyActiveUsers, returningUsers] =
+    const [
+      totalUsers,
+      newUsers,
+      dailyActiveUsers,
+      returningUsers,
+      legitActiveUsers,
+    ] =
       await Promise.all([
         this.accountModel.countDocuments({ isAdmin: false }).exec(),
         this.accountModel
@@ -38,6 +51,7 @@ export class AnalyticsService {
           .exec(),
         this.getDailyActiveUsers(start, end),
         this.getReturningUsers(start, end),
+        this.getLegitActiveUsers(start, end),
       ]);
 
     const concurrent = await this.getConcurrentPlayers();
@@ -51,6 +65,7 @@ export class AnalyticsService {
       concurrentPlayers: concurrent.value,
       newUsers,
       returningUsers,
+      legitActiveUsers,
       concurrentSource: concurrent.source,
     };
   }
@@ -146,33 +161,48 @@ export class AnalyticsService {
     return returningIds.length;
   }
 
+  private async getLegitActiveUsers(start: Date, end: Date): Promise<number> {
+    const legitUserIdsRaw = await this.sessionModel
+      .distinct('userId', {
+        createdAt: { $gte: start, $lt: end },
+        isLegit: true,
+      })
+      .exec();
+
+    const legitUserIds = legitUserIdsRaw.map((id) => String(id));
+    if (!legitUserIds.length) return 0;
+
+    return this.accountModel
+      .countDocuments({ _id: { $in: legitUserIds }, isAdmin: false } as any)
+      .exec();
+  }
+
   private async getConcurrentPlayers(): Promise<{
     value: number;
-    source: 'redis' | 'mongo-fallback';
+    source: 'redis-realtime' | 'mongo-fallback';
   }> {
     if (this.presenceService.isEnabled()) {
-      const activeRedisUserIds = await this.presenceService.getActiveUserIds(
-        AnalyticsService.CONCURRENT_WINDOW_MS,
-      );
+      const activeRedisUserIds =
+        await this.presenceService.getRealtimeActiveUserIds();
 
       if (activeRedisUserIds !== null) {
         if (!activeRedisUserIds.length) {
-          return { value: 0, source: 'redis' };
+          return { value: 0, source: 'redis-realtime' };
         }
 
         const value = await this.accountModel
           .countDocuments({ _id: { $in: activeRedisUserIds }, isAdmin: false } as any)
           .exec();
 
-        return { value, source: 'redis' };
+        return { value, source: 'redis-realtime' };
       }
     }
 
-    const cutoff = new Date(Date.now() - AnalyticsService.CONCURRENT_WINDOW_MS);
+    const cutoff = new Date(Date.now() - this.heartbeatOfflineTimeoutMs);
     const activeSessionUserIdsRaw = await this.sessionModel
       .distinct('userId', {
         isRevoked: false,
-        lastActivityAt: { $gte: cutoff },
+        lastHeartbeatAt: { $gte: cutoff },
       })
       .exec();
     const activeSessionUserIds = activeSessionUserIdsRaw.map((id) => String(id));

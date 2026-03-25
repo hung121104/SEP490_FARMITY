@@ -42,6 +42,7 @@ export class GatewayModule implements NestModule {
         { path: 'auth/admin-check', method: RequestMethod.GET },
         { path: 'admin/analytics/summary', method: RequestMethod.GET },
         { path: 'auth/logout', method: RequestMethod.POST },
+        { path: 'player-data/heartbeat', method: RequestMethod.POST },
         { path: 'player-data/world', method: RequestMethod.ALL },
         { path: 'player-data/world/blacklist', method: RequestMethod.ALL },
         { path: 'player-data/worlds', method: RequestMethod.ALL },

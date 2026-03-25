@@ -19,5 +19,6 @@ export type DashboardAnalyticsResponse = {
   concurrentPlayers: number;
   newUsers: number;
   returningUsers: number;
-  concurrentSource: 'redis' | 'mongo-fallback';
+  legitActiveUsers: number;
+  concurrentSource: 'redis-realtime' | 'mongo-fallback';
 };

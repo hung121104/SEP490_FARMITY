@@ -78,4 +78,42 @@ export class SessionService {
 
 		return true;
 	}
+
+	async recordHeartbeat(
+		sessionId: string,
+		offlineTimeoutSeconds: number,
+		legitThresholdMs: number,
+	): Promise<{ isLegit: boolean; cumulativeHeartbeatMs: number } | null> {
+		const session = await this.sessionModel
+			.findOne({ sessionId, isRevoked: false })
+			.exec();
+
+		if (!session) return null;
+
+		const nowMs = Date.now();
+		let deltaMs = 0;
+		if (session.lastHeartbeatAt) {
+			const previousMs = new Date(session.lastHeartbeatAt).getTime();
+			const rawDelta = nowMs - previousMs;
+			if (rawDelta > 0 && rawDelta <= offlineTimeoutSeconds * 1000) {
+				deltaMs = rawDelta;
+			}
+		}
+
+		session.cumulativeHeartbeatMs =
+			(session.cumulativeHeartbeatMs || 0) + deltaMs;
+		session.lastHeartbeatAt = new Date(nowMs);
+		session.lastActivityAt = new Date(nowMs);
+
+		if (!session.isLegit && session.cumulativeHeartbeatMs >= legitThresholdMs) {
+			session.isLegit = true;
+		}
+
+		await session.save();
+
+		return {
+			isLegit: !!session.isLegit,
+			cumulativeHeartbeatMs: session.cumulativeHeartbeatMs || 0,
+		};
+	}
 }

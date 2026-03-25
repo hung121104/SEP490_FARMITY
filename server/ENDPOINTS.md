@@ -133,7 +133,8 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
       "concurrentPlayers": 72,
       "newUsers": 41,
       "returningUsers": 299,
-      "concurrentSource": "redis"
+      "legitActiveUsers": 280,
+      "concurrentSource": "redis-realtime"
     }
     ```
 
@@ -152,9 +153,10 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 - `dailyActiveUsers`: Distinct non-admin users with at least one session created in `[startDate, endDate)`.
 - `newUsers`: Non-admin accounts created in `[startDate, endDate)`.
 - `returningUsers`: Non-admin users with at least one session in `[startDate, endDate)` **and** at least one session before `startDate`.
-- `concurrentPlayers`: Non-admin users active in the last 5 minutes.
-  - Primary source: Redis presence index (`concurrentSource = "redis"`).
-  - Fallback source: MongoDB session activity (`concurrentSource = "mongo-fallback"`).
+- `concurrentPlayers`: Realtime online non-admin users based on explicit heartbeat presence.
+  - Primary source: Redis realtime heartbeat presence (`concurrentSource = "redis-realtime"`).
+  - Fallback source: MongoDB heartbeat timestamps (`concurrentSource = "mongo-fallback"`).
+- `legitActiveUsers`: Non-admin users whose session reached cumulative heartbeat-confirmed active time >= 5 minutes.
 
 #### Field Reference
 
@@ -165,10 +167,11 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 | `generatedAtUtc` | string (ISO 8601) | Server-side generation timestamp. |
 | `totalUsers` | number | Total non-admin registered users. |
 | `dailyActiveUsers` | number | Active unique users in selected range. |
-| `concurrentPlayers` | number | Near-real-time online players (5-minute window). |
+| `concurrentPlayers` | number | Realtime online players from heartbeat freshness. |
 | `newUsers` | number | Newly registered users in selected range. |
 | `returningUsers` | number | Users active in range with prior historical activity. |
-| `concurrentSource` | `"redis" \| "mongo-fallback"` | Data source used to compute concurrent players. |
+| `legitActiveUsers` | number | Users with cumulative active heartbeat time >= 5 minutes. |
+| `concurrentSource` | `"redis-realtime" \| "mongo-fallback"` | Data source used to compute concurrent players. |
 
 #### Request Examples
 
@@ -208,7 +211,8 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     "concurrentPlayers": 72,
     "newUsers": 41,
     "returningUsers": 299,
-    "concurrentSource": "redis"
+    "legitActiveUsers": 280,
+    "concurrentSource": "redis-realtime"
   }
   ```
 
@@ -223,9 +227,33 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     "concurrentPlayers": 65,
     "newUsers": 41,
     "returningUsers": 299,
+    "legitActiveUsers": 280,
     "concurrentSource": "mongo-fallback"
   }
   ```
+
+### Player Heartbeat (Game Client)
+
+- **POST** `/player-data/heartbeat`: Confirm player is still online (authenticated player endpoint).
+  - Headers: `Authorization: Bearer <token>`
+  - Body (optional):
+    ```json
+    {
+      "clientUnixMs": 1764001234567
+    }
+    ```
+  - Response (`200 OK`):
+    ```json
+    {
+      "ok": true,
+      "serverUnixMs": 1764001234701,
+      "isLegit": true,
+      "cumulativeHeartbeatMs": 312000
+    }
+    ```
+  - Note: Client sends this every 120 seconds during gameplay while authenticated.
+  - Note: If heartbeat is missing for configured timeout (default 300 seconds), user is removed from realtime concurrent count.
+  - Note: Session becomes legit after cumulative heartbeat-confirmed active time reaches 5 minutes.
 
 #### Error Responses
 
