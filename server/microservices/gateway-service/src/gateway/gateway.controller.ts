@@ -52,6 +52,7 @@ import {
 } from './dto/world-blacklist.dto';
 import { CreateQuestDto } from './dto/create-quest.dto';
 import { UpdateQuestDto } from './dto/update-quest.dto';
+import { GetDashboardAnalyticsQueryDto } from './dto/get-dashboard-analytics-query.dto';
 
 const FERTILIZER_ITEM_TYPE = 14;
 
@@ -585,6 +586,17 @@ export class GatewayController {
   @Get('auth/admin-check')
   async adminCheck(@Req() req: Request) {
     return req['user'];
+  }
+
+  @Get('admin/analytics/summary')
+  async getAdminAnalyticsSummary(@Query() query: GetDashboardAnalyticsQueryDto) {
+    try {
+      return await firstValueFrom(
+        this.authClient.send('get-dashboard-analytics', query),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/logout')

@@ -25,3 +25,5 @@ export class Session {
 }
 
 export const SessionSchema = SchemaFactory.createForClass(Session);
+SessionSchema.index({ createdAt: 1, userId: 1 });
+SessionSchema.index({ lastActivityAt: 1, isRevoked: 1, userId: 1 });

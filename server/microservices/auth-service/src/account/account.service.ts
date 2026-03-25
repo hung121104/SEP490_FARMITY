@@ -16,6 +16,7 @@ import * as crypto from 'crypto';
 import { firstValueFrom } from 'rxjs';
 import { ResetOtpTemplate } from './templates/reset-otp.template';
 import { RegisterOtpTemplate } from './templates/register-otp.template';
+import { AnalyticsPresenceService } from './analytics-presence.service';
 
 type RequirementDefinition = {
   type: string;
@@ -44,6 +45,7 @@ export class AccountService implements OnModuleInit {
     @InjectConnection() private readonly connection: Connection,
     private jwtService: JwtService,
     private sessionService: SessionService,
+    private presenceService: AnalyticsPresenceService,
     private configService: ConfigService,
     @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
   ) {}
@@ -142,6 +144,7 @@ export class AccountService implements OnModuleInit {
     const session = await this.sessionService.createSession(account._id.toString(), 60);
     const payload = { username: account.username, sub: account._id, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
+    await this.presenceService.touchSession(session.sessionId, account._id.toString());
     return {
       userId: account._id.toString(),
       username: account.username,
@@ -164,6 +167,7 @@ export class AccountService implements OnModuleInit {
     const session = await this.sessionService.createSession(account._id.toString(), 60);
     const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
+    await this.presenceService.touchSession(session.sessionId, account._id.toString());
     console.log(`[auth-service] Admin logged in: ${account.username}`);
     return {
       userId: account._id.toString(),
@@ -199,7 +203,11 @@ export class AccountService implements OnModuleInit {
   // Active verification: validates token and refreshes inactivity timer
   async verifyToken(token: string) {
     try {
-      const payload = this.jwtService.verify(token) as { sid?: string; username?: string };
+      const payload = this.jwtService.verify(token) as {
+        sid?: string;
+        sub?: string;
+        username?: string;
+      };
       const sid = payload?.sid;
       if (!sid) {
         throw new RpcException({ status: 401, message: 'Invalid token payload' });
@@ -212,6 +220,9 @@ export class AccountService implements OnModuleInit {
       }
 
       await this.sessionService.updateActivity(sid);
+      if (payload?.sub) {
+        await this.presenceService.touchSession(sid, String(payload.sub));
+      }
       console.log(`[auth-service] Token verified: ${payload?.username ?? 'unknown'}`);
       return payload;
     } catch (err) {
@@ -223,7 +234,7 @@ export class AccountService implements OnModuleInit {
   // Passive verification: validates token WITHOUT refreshing inactivity timer
   async verifyTokenPassive(token: string) {
     try {
-      const payload = this.jwtService.verify(token) as { sid?: string };
+      const payload = this.jwtService.verify(token) as { sid?: string; sub?: string };
       const sid = payload?.sid;
       if (!sid) {
         throw new RpcException({ status: 401, message: 'Invalid token payload' });
@@ -232,6 +243,10 @@ export class AccountService implements OnModuleInit {
       const isActive = await this.sessionService.isSessionActive(sid);
       if (!isActive) {
         throw new RpcException({ status: 401, message: 'Session inactive or revoked' });
+      }
+
+      if (payload?.sub) {
+        await this.presenceService.touchSession(sid, String(payload.sub));
       }
 
       return payload;
@@ -258,6 +273,7 @@ export class AccountService implements OnModuleInit {
     if (!revoked) {
       throw new RpcException({ status: 400, message: 'Session not found' });
     }
+    await this.presenceService.removeSession(sid);
     console.log('[auth-service] Admin logged out');
     return { ok: true };
   }

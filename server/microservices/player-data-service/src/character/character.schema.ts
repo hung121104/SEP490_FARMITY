@@ -61,10 +61,8 @@ export class Character {
   @Prop({ default: '' })
   toolConfigId: string;
 
-<<<<<<< HEAD
   @Prop({ type: [String], default: [] })
   playerSkillSlotIds: string[];
-=======
   @Prop({ default: 200 })
   currentStamina: number;
 
@@ -82,7 +80,6 @@ export class Character {
 
   @Prop({ default: 0 })
   toolEfficiencyRemaining: number;
->>>>>>> origin/dev
 }
 
 export const CharacterSchema = SchemaFactory.createForClass(Character);

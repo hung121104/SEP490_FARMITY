@@ -9,6 +9,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 1. [Authentication & Authorization](#authentication--authorization)
    - [User Authentication](#user-authentication)
    - [Admin Authentication](#admin-authentication)
+  - [Analytics Dashboard (Admin)](#analytics-dashboard-admin)
    - [Admin Password Reset](#admin-password-reset)
 2. [Game Config](#game-config)
    - [Main Menu](#main-menu)
@@ -113,6 +114,149 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 - **POST** `/auth/logout`: Logout admin and revoke session.
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Response: `{ "ok": true }`
+
+### Analytics Dashboard (Admin)
+
+- **GET** `/admin/analytics/summary`: Get analytics cards for admin dashboard (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Query params (optional):
+    - `startDate`: ISO 8601 UTC datetime (inclusive)
+    - `endDate`: ISO 8601 UTC datetime (exclusive)
+  - Response (`200 OK`):
+    ```json
+    {
+      "rangeStartUtc": "2026-03-25T00:00:00.000Z",
+      "rangeEndUtc": "2026-03-26T00:00:00.000Z",
+      "generatedAtUtc": "2026-03-25T08:31:00.000Z",
+      "totalUsers": 1200,
+      "dailyActiveUsers": 340,
+      "concurrentPlayers": 72,
+      "newUsers": 41,
+      "returningUsers": 299,
+      "concurrentSource": "redis"
+    }
+    ```
+
+#### Query Behavior
+
+- If no date range is provided, the API defaults to the current UTC day:
+  - `rangeStartUtc` = today `00:00:00.000Z`
+  - `rangeEndUtc` = tomorrow `00:00:00.000Z`
+- If only `startDate` is provided, `endDate` is auto-set to `startDate + 24h`.
+- If only `endDate` is provided, `startDate` is normalized to the UTC start-of-day of `endDate`.
+- Validation rule: `startDate` must be earlier than `endDate`.
+
+#### Metric Definitions
+
+- `totalUsers`: Total non-admin accounts in the system.
+- `dailyActiveUsers`: Distinct non-admin users with at least one session created in `[startDate, endDate)`.
+- `newUsers`: Non-admin accounts created in `[startDate, endDate)`.
+- `returningUsers`: Non-admin users with at least one session in `[startDate, endDate)` **and** at least one session before `startDate`.
+- `concurrentPlayers`: Non-admin users active in the last 5 minutes.
+  - Primary source: Redis presence index (`concurrentSource = "redis"`).
+  - Fallback source: MongoDB session activity (`concurrentSource = "mongo-fallback"`).
+
+#### Field Reference
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `rangeStartUtc` | string (ISO 8601) | Effective range start used by backend (inclusive). |
+| `rangeEndUtc` | string (ISO 8601) | Effective range end used by backend (exclusive). |
+| `generatedAtUtc` | string (ISO 8601) | Server-side generation timestamp. |
+| `totalUsers` | number | Total non-admin registered users. |
+| `dailyActiveUsers` | number | Active unique users in selected range. |
+| `concurrentPlayers` | number | Near-real-time online players (5-minute window). |
+| `newUsers` | number | Newly registered users in selected range. |
+| `returningUsers` | number | Users active in range with prior historical activity. |
+| `concurrentSource` | `"redis" \| "mongo-fallback"` | Data source used to compute concurrent players. |
+
+#### Request Examples
+
+- Default day (UTC):
+  - `GET /admin/analytics/summary`
+
+- Single custom day (UTC):
+  - `GET /admin/analytics/summary?startDate=2026-03-25T00:00:00.000Z&endDate=2026-03-26T00:00:00.000Z`
+
+- Multi-day range (UTC):
+  - `GET /admin/analytics/summary?startDate=2026-03-20T00:00:00.000Z&endDate=2026-03-27T00:00:00.000Z`
+
+#### cURL Examples
+
+- With Bearer token:
+  ```bash
+  curl -k -X GET "https://0.0.0.0:3000/admin/analytics/summary?startDate=2026-03-25T00:00:00.000Z&endDate=2026-03-26T00:00:00.000Z" \
+    -H "Authorization: Bearer <ADMIN_TOKEN>"
+  ```
+
+- With cookie session:
+  ```bash
+  curl -k -X GET "https://0.0.0.0:3000/admin/analytics/summary" \
+    -H "Cookie: access_token=<ADMIN_TOKEN>"
+  ```
+
+#### Example Responses
+
+- Redis available:
+  ```json
+  {
+    "rangeStartUtc": "2026-03-25T00:00:00.000Z",
+    "rangeEndUtc": "2026-03-26T00:00:00.000Z",
+    "generatedAtUtc": "2026-03-25T08:31:00.000Z",
+    "totalUsers": 1200,
+    "dailyActiveUsers": 340,
+    "concurrentPlayers": 72,
+    "newUsers": 41,
+    "returningUsers": 299,
+    "concurrentSource": "redis"
+  }
+  ```
+
+- Redis unavailable (automatic fallback):
+  ```json
+  {
+    "rangeStartUtc": "2026-03-25T00:00:00.000Z",
+    "rangeEndUtc": "2026-03-26T00:00:00.000Z",
+    "generatedAtUtc": "2026-03-25T08:31:00.000Z",
+    "totalUsers": 1200,
+    "dailyActiveUsers": 340,
+    "concurrentPlayers": 65,
+    "newUsers": 41,
+    "returningUsers": 299,
+    "concurrentSource": "mongo-fallback"
+  }
+  ```
+
+#### Error Responses
+
+- `401 Unauthorized` (missing/invalid token or non-admin user):
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Admin privileges required"
+  }
+  ```
+
+- `400 Bad Request` (invalid query):
+  ```json
+  {
+    "statusCode": 400,
+    "message": "startDate must be earlier than endDate"
+  }
+  ```
+
+#### Frontend/UI Notes (for web AI)
+
+- Recommended dashboard cards:
+  - Total Users
+  - Daily Active Users (DAU)
+  - Concurrent Players (show badge using `concurrentSource`)
+  - New Users
+  - Returning Users
+- Date range picker should send UTC ISO strings.
+- Use `generatedAtUtc` for "Last updated" text.
+- Show fallback state in UI when `concurrentSource = "mongo-fallback"` (for observability/transparency).
+- For number formatting, prefer localized separators (e.g., `1,200`).
 
 ### Password Reset
 

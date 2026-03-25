@@ -40,6 +40,7 @@ export class GatewayModule implements NestModule {
       .apply(AuthorizationMiddleware)
       .forRoutes(
         { path: 'auth/admin-check', method: RequestMethod.GET },
+        { path: 'admin/analytics/summary', method: RequestMethod.GET },
         { path: 'auth/logout', method: RequestMethod.POST },
         { path: 'player-data/world', method: RequestMethod.ALL },
         { path: 'player-data/world/blacklist', method: RequestMethod.ALL },
@@ -101,6 +102,7 @@ export class GatewayModule implements NestModule {
       .apply(AuthenticationMiddleware)
       .forRoutes(
         { path: 'auth/admin-check', method: RequestMethod.GET },
+        { path: 'admin/analytics/summary', method: RequestMethod.GET },
         { path: 'blog/create', method: RequestMethod.POST },
         { path: 'blog/update/:id', method: RequestMethod.POST },
         { path: 'blog/delete/:id', method: RequestMethod.DELETE },
