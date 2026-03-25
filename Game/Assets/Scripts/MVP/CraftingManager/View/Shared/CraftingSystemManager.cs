@@ -93,7 +93,15 @@ public class CraftingSystemManager : MonoBehaviour
         // 8. Connect inventory to sub-UIs (after all systems ready)
         InitializeInventoryForSubUIs();
 
+        // 9. Subscribe to catalog removals to dynamically purge recipes 
+        RecipeCatalogService.OnRecipeRemoved += HandleOrphanedRecipeRemoved;
+
         Debug.Log("[CraftingSystemManager] System initialized successfully");
+    }
+
+    private void HandleOrphanedRecipeRemoved(string recipeId)
+    {
+        craftingService?.RemoveRecipe(recipeId);
     }
 
     /// <summary>
@@ -319,6 +327,8 @@ public class CraftingSystemManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        RecipeCatalogService.OnRecipeRemoved -= HandleOrphanedRecipeRemoved;
+
         // Cleanup presenters
         if (craftingPresenter != null)
         {

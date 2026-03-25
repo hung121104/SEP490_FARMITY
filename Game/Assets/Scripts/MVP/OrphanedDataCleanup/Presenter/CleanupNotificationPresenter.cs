@@ -29,7 +29,7 @@ public class CleanupNotificationPresenter
         AddUniqueEntries(entries, notified, report.RemovedCropIds, "Removed crop");
         AddUniqueEntries(entries, notified, report.RemovedStructureIds, "Removed structure");
         AddUniqueEntries(entries, notified, report.RemovedResourceIds, "Removed resource");
-        AddUniqueEntries(entries, notified, report.RemovedItemIds, "Removed item");
+        AddItemEntriesWithType(entries, notified, report.RemovedItemIds);
         AddUniqueEntries(entries, notified, report.RemovedRecipeIds, "Removed recipe");
 
         if (entries.Count > 0)
@@ -48,6 +48,32 @@ public class CleanupNotificationPresenter
                 entries.Add(new CleanupNotificationData
                 {
                     Message = $"{prefix} '{id}'.",
+                    Type = CleanupNotificationType.Warning
+                });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Adds item entries with their itemType looked up from the catalog.
+    /// Shows "Removed item (Tool) 'id'" instead of generic "Removed item 'id'".
+    /// </summary>
+    private void AddItemEntriesWithType(List<CleanupNotificationData> entries, HashSet<string> notified,
+        List<string> ids)
+    {
+        if (ids == null) return;
+
+        foreach (var id in ids)
+        {
+            if (notified.Add(id))
+            {
+                // Look up itemType from catalog (fallback data is already injected at this point)
+                var itemData = ItemCatalogService.Instance?.GetItemData(id);
+                string typeLabel = itemData != null ? itemData.itemType.ToString() : "Unknown";
+
+                entries.Add(new CleanupNotificationData
+                {
+                    Message = $"Removed item ({typeLabel}) '{id}'.",
                     Type = CleanupNotificationType.Warning
                 });
             }

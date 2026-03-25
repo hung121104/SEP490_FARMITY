@@ -105,6 +105,16 @@ public class StructureView : MonoBehaviourPunCallbacks
             OnConsumeActiveItem = () => hotbarView.GetPresenter()?.ConsumeCurrentItem(1);
     }
 
+    private void OnEnable()
+    {
+        UseStructureService.OnStructureRequested += HandleStructurePlaceAction;
+    }
+
+    private void OnDisable()
+    {
+        UseStructureService.OnStructureRequested -= HandleStructurePlaceAction;
+    }
+
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
@@ -121,7 +131,6 @@ public class StructureView : MonoBehaviourPunCallbacks
         if (activeStructureData == null) return;
 
         UpdateGhostPreview();
-        HandlePlacementInput();
     }
 
     /// <summary>
@@ -148,7 +157,7 @@ public class StructureView : MonoBehaviourPunCallbacks
         var currentItemModel = hotbarView?.GetCurrentItem();
         var currentItem      = currentItemModel?.ItemData;
 
-        if (currentItem != null && currentItem.itemType == ItemType.Structure)
+        if (currentItem != null && currentItem.itemType == ItemType.Structure && !currentItem.isFallback)
         {
             // Delegate data-building to Presenter (business logic, not View's job)
             var data = presenter.GetStructureData(currentItem.itemID, GetDefaultPrefab);
@@ -260,13 +269,12 @@ public class StructureView : MonoBehaviourPunCallbacks
             ghostRenderer.color = currentCanPlace ? validColor : invalidColor;
     }
 
-    // ── Input Handling ────────────────────────────────────────────────────
+    // ── Input Handling & Placement ─────────────────────────────────────────
 
-    private void HandlePlacementInput()
+    private void HandleStructurePlaceAction(string itemId)
     {
-        if (!Input.GetMouseButtonDown(0)) return;
+        if (activeStructureData == null || activeStructureData.StructureId != itemId) return;
         if (!currentCanPlace) return;
-        if (activeStructureData == null) return;
 
         bool placed = presenter.HandlePlaceStructure(currentSnappedPos, activeStructureData);
         if (placed)

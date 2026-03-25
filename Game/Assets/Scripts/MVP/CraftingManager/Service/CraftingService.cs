@@ -147,6 +147,12 @@ public class CraftingService : ICraftingService
         recipe?.Lock();
     }
 
+    public void RemoveRecipe(string recipeID)
+    {
+        model.RemoveRecipe(recipeID);
+        Debug.Log($"[CraftingService] Removed recipe from UI model: {recipeID}");
+    }
+
     public bool IsRecipeUnlocked(string recipeID)
     {
         var recipe = model.GetRecipe(recipeID);

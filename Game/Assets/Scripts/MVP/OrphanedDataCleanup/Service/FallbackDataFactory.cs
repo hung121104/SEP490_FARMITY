@@ -15,7 +15,8 @@ public static class FallbackDataFactory
     /// </summary>
     public static Sprite CreatePlaceholderSprite()
     {
-        if (_cachedPlaceholderSprite != null) return _cachedPlaceholderSprite;
+        if (_cachedPlaceholderSprite != null && _cachedPlaceholderSprite.texture != null)
+            return _cachedPlaceholderSprite;
 
         var tex = new Texture2D(16, 16);
         var pixels = new Color[256];
