@@ -128,7 +128,7 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
             CloseUI();
 
         // Client-side: unregister chest from ChestDataModule
-        // (Master already did this in StructureDestructionService)
+        // (Master already did this in StructureService)
         if (!Photon.Pun.PhotonNetwork.IsMasterClient)
             WorldDataManager.Instance?.UnregisterChest((short)worldX, (short)worldY);
 

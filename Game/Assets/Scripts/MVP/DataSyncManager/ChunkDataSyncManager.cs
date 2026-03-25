@@ -46,7 +46,9 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private const byte RESOURCE_REMOVED_EVENT    = 123;
     private const byte RESOURCE_SPAWNED_EVENT    = 124;
     private const byte TILE_FERTILIZED_EVENT     = 125;
-    
+    private const byte STATION_OPEN_NOTIFY_EVENT  = 126;
+    private const byte STATION_CLOSE_NOTIFY_EVENT = 127;
+
     // Static events for Structure Destruction System
     public static event Action<int, int, int> OnResourceHpUpdated;
     public static event Action<int, int>      OnResourceRemoved;
@@ -54,6 +56,12 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     public static event Action<int, int, int, string> OnStructureHitRequest; // worldX, worldY, damage, playerActorId
     public static event Action<int, int, int> OnStructureHpUpdated;
     public static event Action<int, int, string> OnStructureRemoved; // worldX, worldY, lastHitPlayerId
+
+    // Static events for Station (Crafting/Cooking) open/close badge
+    /// <summary>Fired when a remote player opens a crafting/cooking station. Args: worldX, worldY, actorNumber.</summary>
+    public static event Action<int, int, int> OnStationOpened;
+    /// <summary>Fired when a remote player closes a crafting/cooking station. Args: worldX, worldY, actorNumber.</summary>
+    public static event Action<int, int, int> OnStationClosed;
     
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
@@ -231,6 +239,14 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
             case STRUCTURE_HIT_EFFECT_EVENT:
                 HandleStructureHitEffect(photonEvent.CustomData);
+                break;
+
+            case STATION_OPEN_NOTIFY_EVENT:
+                HandleStationNotify(photonEvent.CustomData, isOpen: true);
+                break;
+
+            case STATION_CLOSE_NOTIFY_EVENT:
+                HandleStationNotify(photonEvent.CustomData, isOpen: false);
                 break;
         }
     }
@@ -966,10 +982,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                       (lastHitPlayerId != null ? $" by player {lastHitPlayerId}" : ""));
 
         // Drop chest contents to last hitter before unregistering chest
-        StructureDestructionService.ProcessChestContentsDrop(worldX, worldY, lastHitPlayerId);
+        StructureService.ProcessChestContentsDrop(worldX, worldY, lastHitPlayerId);
 
         // Handle structure item drop for last hitter
-        StructureDestructionService.ProcessStructureItemDrop(worldX, worldY, structureId, lastHitPlayerId);
+        StructureService.ProcessStructureItemDrop(worldX, worldY, structureId, lastHitPlayerId);
 
         // Refresh chunk visuals - this will properly release structures back to pool
         if (chunkLoadingManager != null)
@@ -1063,7 +1079,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Master only: Handle hit request from client.
-    /// Fires OnStructureHitRequest event for StructureDestructionService to process.
+    /// Fires OnStructureHitRequest event for StructureService to process.
     /// </summary>
     private void HandleStructureHitRequest(object data)
     {
@@ -1075,7 +1091,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         int damage = (int)dataArray[2];
         string playerActorId = (string)dataArray[3];
 
-        // Fire event - StructureDestructionService will handle it
+        // Fire event - StructureService will handle it
         OnStructureHitRequest?.Invoke(worldX, worldY, damage, playerActorId);
 
         if (showDebugLogs)
@@ -1122,6 +1138,54 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] HandleStructureHitEffect at ({worldX},{worldY}) from player {actorNumber}");
+    }
+
+    // ── Station Open/Close Notifications (Crafting/Cooking badge) ────────
+
+    /// <summary>
+    /// Notify other players that the local player opened a crafting/cooking station.
+    /// </summary>
+    public void NotifyStationOpened(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
+
+        object[] data = new object[] { worldX, worldY, PhotonNetwork.LocalPlayer.ActorNumber };
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(STATION_OPEN_NOTIFY_EVENT, data, opts, SendOptions.SendReliable);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] NotifyStationOpened at ({worldX},{worldY})");
+    }
+
+    /// <summary>
+    /// Notify other players that the local player closed a crafting/cooking station.
+    /// </summary>
+    public void NotifyStationClosed(int worldX, int worldY)
+    {
+        if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
+
+        object[] data = new object[] { worldX, worldY, PhotonNetwork.LocalPlayer.ActorNumber };
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(STATION_CLOSE_NOTIFY_EVENT, data, opts, SendOptions.SendReliable);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] NotifyStationClosed at ({worldX},{worldY})");
+    }
+
+    private void HandleStationNotify(object data, bool isOpen)
+    {
+        object[] dataArray = (object[])data;
+        int worldX = System.Convert.ToInt32(dataArray[0]);
+        int worldY = System.Convert.ToInt32(dataArray[1]);
+        int actorNumber = System.Convert.ToInt32(dataArray[2]);
+
+        if (isOpen)
+            OnStationOpened?.Invoke(worldX, worldY, actorNumber);
+        else
+            OnStationClosed?.Invoke(worldX, worldY, actorNumber);
+
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] Station {(isOpen ? "opened" : "closed")} at ({worldX},{worldY}) by player {actorNumber}");
     }
 
     /// <summary>

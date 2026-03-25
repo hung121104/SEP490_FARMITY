@@ -310,7 +310,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         _structureInteractionRenderer = _structureInteractionBadge.AddComponent<SpriteRenderer>();
         _structureInteractionRenderer.sprite = sprite;
         _structureInteractionRenderer.sortingLayerName = "WalkInfront";
-        _structureInteractionRenderer.sortingOrder = 0;
+        _structureInteractionRenderer.sortingOrder = 1;
         _structureInteractionBadge.SetActive(false);
     }
 
