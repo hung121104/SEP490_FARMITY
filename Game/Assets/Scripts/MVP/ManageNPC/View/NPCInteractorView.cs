@@ -7,7 +7,7 @@
 /// All interaction logic lives in NPCInteractionPresenter (pure C#).
 /// Implements INPCInteractorView so the Presenter can call back through an interface.
 /// </summary>
-public class NPCInteractor : MonoBehaviour, INPCInteractorView
+public class NPCInteractorView : MonoBehaviour, INPCInteractorView
 {
     [SerializeField] private NPCDialogueView dialogueView;
     [SerializeField] private NPCDialogueModel dialogueModel;
