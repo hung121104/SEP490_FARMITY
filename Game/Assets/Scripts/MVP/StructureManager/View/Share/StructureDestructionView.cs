@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using Photon.Pun;
 
 public class StructureDestructionView : MonoBehaviour
 {
@@ -17,7 +16,7 @@ public class StructureDestructionView : MonoBehaviour
     public float shakeIntensity = 0.1f;
     public float shakeDuration = 0.2f;
 
-    private StructureDestructionPresenter presenter;
+    private StructurePresenter presenter;
     private ChunkLoadingManager chunkLoadingManager;
     private Transform playerTransform;
 
@@ -27,17 +26,18 @@ public class StructureDestructionView : MonoBehaviour
     private void Start()
     {
         chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
-        
-        // Initialize MVP
+
+        // Initialize MVP — single unified service & presenter
         StructurePool pool = FindAnyObjectByType<StructurePool>();
         ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
-        IStructureDestructionService destService = new StructureDestructionService(pool, syncManager, showDebugLogs);
-        
-        presenter = new StructureDestructionPresenter(this, destService, showDebugLogs);
+        ChunkLoadingManager loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
+
+        IStructureService structureService = new StructureService(syncManager, loadingManager, pool, showDebugLogs);
+        presenter = new StructurePresenter(structureService, this, showDebugLogs);
 
         // Wire static delegate so Service can add items to inventory
         // without depending on InventoryGameView (View class) directly
-        StructureDestructionService.OnAddItemToInventory = (id, qty, quality) =>
+        StructureService.OnAddItemToInventory = (id, qty, quality) =>
         {
             var invView = FindAnyObjectByType<InventoryGameView>();
             return invView != null && invView.AddItem(id, qty, quality);
@@ -58,7 +58,7 @@ public class StructureDestructionView : MonoBehaviour
         activeRegenTimers.Clear();
 
         // Unwire static delegate
-        StructureDestructionService.OnAddItemToInventory = null;
+        StructureService.OnAddItemToInventory = null;
 
         UseToolService.OnAxeImpactRequested -= HandleToolUse;
         UseToolService.OnPickaxeImpactRequested -= HandleToolUse;
@@ -81,11 +81,10 @@ public class StructureDestructionView : MonoBehaviour
         if (players == null || players.Length == 0)
             return false;
 
-        // Online: always prefer the locally owned Photon entity.
         foreach (GameObject player in players)
         {
-            PhotonView pv = player.GetComponent<PhotonView>();
-            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+            Photon.Pun.PhotonView pv = player.GetComponent<Photon.Pun.PhotonView>();
+            if (Photon.Pun.PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
                 continue;
 
             Transform center = player.transform.Find("CenterPoint");
@@ -93,8 +92,7 @@ public class StructureDestructionView : MonoBehaviour
             return true;
         }
 
-        // Offline fallback: use the first tagged player entity.
-        if (!PhotonNetwork.IsConnected)
+        if (!Photon.Pun.PhotonNetwork.IsConnected)
         {
             Transform center = players[0].transform.Find("CenterPoint");
             resolvedTransform = center != null ? center : players[0].transform;

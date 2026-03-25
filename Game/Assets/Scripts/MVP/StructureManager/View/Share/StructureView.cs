@@ -182,8 +182,9 @@ public class StructureView : MonoBehaviourPunCallbacks
     {
         var syncManager    = FindAnyObjectByType<ChunkDataSyncManager>();
         var loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
+        var pool           = FindAnyObjectByType<StructurePool>();
 
-        IStructureService structureService = new StructureService(syncManager, loadingManager, showDebugLogs);
+        IStructureService structureService = new StructureService(syncManager, loadingManager, pool, showDebugLogs);
         presenter = new StructurePresenter(structureService, showDebugLogs);
     }
 
@@ -320,7 +321,6 @@ public class StructureView : MonoBehaviourPunCallbacks
         if (players == null || players.Length == 0)
             return false;
 
-        // Online: always prefer the locally owned Photon entity.
         foreach (GameObject player in players)
         {
             PhotonView pv = player.GetComponent<PhotonView>();
@@ -332,7 +332,6 @@ public class StructureView : MonoBehaviourPunCallbacks
             return true;
         }
 
-        // Offline fallback: use the first tagged player entity.
         if (!PhotonNetwork.IsConnected)
         {
             Transform center = players[0].transform.Find("CenterPoint");

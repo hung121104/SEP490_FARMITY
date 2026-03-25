@@ -966,10 +966,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                       (lastHitPlayerId != null ? $" by player {lastHitPlayerId}" : ""));
 
         // Drop chest contents to last hitter before unregistering chest
-        StructureDestructionService.ProcessChestContentsDrop(worldX, worldY, lastHitPlayerId);
+        StructureService.ProcessChestContentsDrop(worldX, worldY, lastHitPlayerId);
 
         // Handle structure item drop for last hitter
-        StructureDestructionService.ProcessStructureItemDrop(worldX, worldY, structureId, lastHitPlayerId);
+        StructureService.ProcessStructureItemDrop(worldX, worldY, structureId, lastHitPlayerId);
 
         // Refresh chunk visuals - this will properly release structures back to pool
         if (chunkLoadingManager != null)
@@ -1063,7 +1063,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Master only: Handle hit request from client.
-    /// Fires OnStructureHitRequest event for StructureDestructionService to process.
+    /// Fires OnStructureHitRequest event for StructureService to process.
     /// </summary>
     private void HandleStructureHitRequest(object data)
     {
@@ -1075,7 +1075,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         int damage = (int)dataArray[2];
         string playerActorId = (string)dataArray[3];
 
-        // Fire event - StructureDestructionService will handle it
+        // Fire event - StructureService will handle it
         OnStructureHitRequest?.Invoke(worldX, worldY, damage, playerActorId);
 
         if (showDebugLogs)
