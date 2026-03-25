@@ -104,9 +104,13 @@ namespace CombatManager.Model
 
         [Header("Runtime References")]
         public Transform playerTransform = null;
+        public Transform currentTarget = null;
         public Rigidbody2D rb = null;
         public Animator animator = null;
         public SpriteRenderer spriteRenderer = null;
+
+        [Header("Network")]
+        public string runtimeEnemyId = "";
 
         #endregion
 

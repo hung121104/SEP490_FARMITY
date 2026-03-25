@@ -58,7 +58,10 @@ public class AuthenticatePresenter
         catch (Exception ex)
         {
             Debug.LogError($"[AuthenticatePresenter] Login exception: {ex.Message}");
-            authenticateLoginView.ShowError("Unable to login right now. Please try again.");
+            var userMessage = string.IsNullOrWhiteSpace(ex.Message)
+                ? "Unable to login right now. Please try again."
+                : ex.Message;
+            authenticateLoginView.ShowError(userMessage);
         }
         finally
         {

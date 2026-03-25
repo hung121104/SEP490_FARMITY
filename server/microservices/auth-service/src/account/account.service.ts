@@ -16,6 +16,7 @@ import * as crypto from 'crypto';
 import { firstValueFrom } from 'rxjs';
 import { ResetOtpTemplate } from './templates/reset-otp.template';
 import { RegisterOtpTemplate } from './templates/register-otp.template';
+import { AnalyticsPresenceService } from './analytics-presence.service';
 
 type RequirementDefinition = {
   type: string;
@@ -44,6 +45,7 @@ export class AccountService implements OnModuleInit {
     @InjectConnection() private readonly connection: Connection,
     private jwtService: JwtService,
     private sessionService: SessionService,
+    private presenceService: AnalyticsPresenceService,
     private configService: ConfigService,
     @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
   ) {}
@@ -139,6 +141,25 @@ export class AccountService implements OnModuleInit {
     if (!isPasswordValid) {
       throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
+
+    const offlineTimeoutSeconds = Number(
+      this.configService.get<string>('HEARTBEAT_OFFLINE_TIMEOUT_SECONDS') || 300,
+    );
+
+    const alreadyLoggedIn = await this.sessionService.hasActiveSessionForUserWithOptions(
+      account._id.toString(),
+      {
+        useHeartbeatFreshness: true,
+        offlineTimeoutSeconds,
+      },
+    );
+    if (alreadyLoggedIn) {
+      throw new RpcException({
+        status: 409,
+        message: 'This account is already logged in on another device.',
+      });
+    }
+
     const session = await this.sessionService.createSession(account._id.toString(), 60);
     const payload = { username: account.username, sub: account._id, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
@@ -161,6 +182,17 @@ export class AccountService implements OnModuleInit {
     if (!isPasswordValid) {
       throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
+
+    const alreadyLoggedIn = await this.sessionService.hasActiveSessionForUser(
+      account._id.toString(),
+    );
+    if (alreadyLoggedIn) {
+      throw new RpcException({
+        status: 409,
+        message: 'This account is already logged in on another device.',
+      });
+    }
+
     const session = await this.sessionService.createSession(account._id.toString(), 60);
     const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
@@ -199,7 +231,11 @@ export class AccountService implements OnModuleInit {
   // Active verification: validates token and refreshes inactivity timer
   async verifyToken(token: string) {
     try {
-      const payload = this.jwtService.verify(token) as { sid?: string; username?: string };
+      const payload = this.jwtService.verify(token) as {
+        sid?: string;
+        sub?: string;
+        username?: string;
+      };
       const sid = payload?.sid;
       if (!sid) {
         throw new RpcException({ status: 401, message: 'Invalid token payload' });
@@ -223,7 +259,7 @@ export class AccountService implements OnModuleInit {
   // Passive verification: validates token WITHOUT refreshing inactivity timer
   async verifyTokenPassive(token: string) {
     try {
-      const payload = this.jwtService.verify(token) as { sid?: string };
+      const payload = this.jwtService.verify(token) as { sid?: string; sub?: string };
       const sid = payload?.sid;
       if (!sid) {
         throw new RpcException({ status: 401, message: 'Invalid token payload' });
@@ -258,8 +294,53 @@ export class AccountService implements OnModuleInit {
     if (!revoked) {
       throw new RpcException({ status: 400, message: 'Session not found' });
     }
+    await this.presenceService.removeSession(sid);
     console.log('[auth-service] Admin logged out');
     return { ok: true };
+  }
+
+  async playerHeartbeat(dto: {
+    sid?: string;
+    sub?: string;
+    clientUnixMs?: number;
+  }) {
+    const sid = dto?.sid;
+    const accountId = dto?.sub;
+
+    if (!sid || !accountId) {
+      throw new RpcException({ status: 401, message: 'Invalid token payload' });
+    }
+
+    const isActive = await this.sessionService.isSessionActive(sid);
+    if (!isActive) {
+      throw new RpcException({ status: 401, message: 'Session inactive or revoked' });
+    }
+
+    await this.presenceService.touchHeartbeat(sid, String(accountId));
+
+    const offlineTimeoutSeconds = Number(
+      this.configService.get<string>('HEARTBEAT_OFFLINE_TIMEOUT_SECONDS') || 300,
+    );
+    const legitThresholdMinutes = Number(
+      this.configService.get<string>('HEARTBEAT_LEGIT_MINUTES') || 5,
+    );
+
+    const heartbeatState = await this.sessionService.recordHeartbeat(
+      sid,
+      offlineTimeoutSeconds,
+      legitThresholdMinutes * 60 * 1000,
+    );
+
+    if (!heartbeatState) {
+      throw new RpcException({ status: 404, message: 'Session not found' });
+    }
+
+    return {
+      ok: true,
+      serverUnixMs: Date.now(),
+      isLegit: heartbeatState.isLegit,
+      cumulativeHeartbeatMs: heartbeatState.cumulativeHeartbeatMs,
+    };
   }
 
   async requestPasswordReset(email: string) {

@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
-using CombatManager.SO;
+using CombatManager.Model;
 using CombatManager.Model;
 
 namespace CombatManager.View
@@ -59,12 +59,18 @@ namespace CombatManager.View
 
             // Set hotkey label
             if (hotkeyLabel != null && index < hotbarModel.activationKeys.Length)
-                hotkeyLabel.text = (index + 1).ToString();
+                hotkeyLabel.text = FormatHotkeyLabel(hotbarModel.activationKeys[index]);
 
             SetEmptyVisual();
         }
 
         #endregion
+
+        private static string FormatHotkeyLabel(KeyCode key)
+        {
+            string raw = key.ToString();
+            return raw.StartsWith("Alpha") ? raw.Substring("Alpha".Length) : raw;
+        }
 
         #region Display
 
@@ -105,8 +111,9 @@ namespace CombatManager.View
             if (skillIconImage != null)
             {
                 skillIconImage.sprite = skillData.skillIcon;
-                skillIconImage.color = Color.white;
-                skillIconImage.enabled = true;
+                bool hasIcon = skillData.skillIcon != null;
+                skillIconImage.color = hasIcon ? Color.white : Color.clear;
+                skillIconImage.enabled = hasIcon;
             }
 
             // ✅ Don't touch slotBackground color - keep it as designed in prefab

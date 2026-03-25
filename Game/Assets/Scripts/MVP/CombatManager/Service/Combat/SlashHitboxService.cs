@@ -1,8 +1,8 @@
 using UnityEngine;
 using System.Collections.Generic;
-using TMPro;
 using CombatManager.Model;
 using CombatManager.Presenter;
+using CombatManager.Service;
 
 namespace CombatManager.Service
 {
@@ -45,8 +45,6 @@ namespace CombatManager.Service
             model.animator = animator;
             model.isActive = true;
             model.alreadyHit.Clear();
-
-            Debug.Log($"[SlashHitboxService] Initialized: Damage={damage}, Knockback={knockbackForce}");
         }
 
         public bool IsInitialized()
@@ -124,28 +122,11 @@ namespace CombatManager.Service
             // Calculate knockback direction (from player to enemy)
             Vector2 knockbackDir = (enemy.transform.position - model.ownerTransform.position).normalized;
 
-            // Deal damage using new MVP system
-            enemyPresenter.TakeDamage(model.damage, knockbackDir, model.knockbackForce);
-
-            // Show popup
-            ShowDamagePopup(enemy.transform.position);
-            
-            Debug.Log($"[SlashHitboxService] Dealt {model.damage} damage to {enemy.name}");
-        }
-
-        private void ShowDamagePopup(Vector3 position)
-        {
-            if (model.damagePopupPrefab == null)
-                return;
-
-            Vector3 spawnPos = position + Vector3.up * 0.8f;
-            GameObject popup = Object.Instantiate(model.damagePopupPrefab, spawnPos, Quaternion.identity);
-
-            TMP_Text text = popup.GetComponentInChildren<TMP_Text>();
-            if (text != null)
-            {
-                text.text = model.damage.ToString();
-            }
+            EnemySyncManager.Instance.RequestEnemyHit(
+                enemyPresenter,
+                model.damage,
+                knockbackDir,
+                model.knockbackForce);
         }
 
         #endregion

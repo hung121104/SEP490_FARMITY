@@ -45,12 +45,15 @@ import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
+import { UpdateSkillLoadoutDto } from './dto/update-skill-loadout.dto';
 import {
   UpdateWorldBlacklistDto,
   WorldBlacklistQueryDto,
 } from './dto/world-blacklist.dto';
 import { CreateQuestDto } from './dto/create-quest.dto';
 import { UpdateQuestDto } from './dto/update-quest.dto';
+import { GetDashboardAnalyticsQueryDto } from './dto/get-dashboard-analytics-query.dto';
+import { PlayerHeartbeatDto } from './dto/player-heartbeat.dto';
 
 const FERTILIZER_ITEM_TYPE = 14;
 
@@ -159,6 +162,21 @@ export class GatewayController {
     const crossResults = this.parseCrossResults(body.crossResults);
     if (crossResults !== undefined) dto.crossResults = crossResults;
 
+    if (body.damage !== undefined) dto.damage = Number(body.damage);
+    if (body.critChance !== undefined) dto.critChance = Number(body.critChance);
+    if (body.weaponType !== undefined) dto.weaponType = Number(body.weaponType);
+    if (body.tier !== undefined) dto.tier = Number(body.tier);
+    if (body.attackCooldown !== undefined)
+      dto.attackCooldown = Number(body.attackCooldown);
+    if (body.knockbackForce !== undefined)
+      dto.knockbackForce = Number(body.knockbackForce);
+    if (body.projectileSpeed !== undefined)
+      dto.projectileSpeed = Number(body.projectileSpeed);
+    if (body.projectileRange !== undefined)
+      dto.projectileRange = Number(body.projectileRange);
+    if (body.projectileKnockback !== undefined)
+      dto.projectileKnockback = Number(body.projectileKnockback);
+
     return dto;
   }
 
@@ -198,6 +216,89 @@ export class GatewayController {
 
     const crossResults = this.parseCrossResults(body.crossResults);
     if (crossResults !== undefined) dto.crossResults = crossResults;
+
+    if (body.damage !== undefined) dto.damage = Number(body.damage);
+    if (body.critChance !== undefined) dto.critChance = Number(body.critChance);
+    if (body.weaponType !== undefined) dto.weaponType = Number(body.weaponType);
+    if (body.tier !== undefined) dto.tier = Number(body.tier);
+    if (body.attackCooldown !== undefined)
+      dto.attackCooldown = Number(body.attackCooldown);
+    if (body.knockbackForce !== undefined)
+      dto.knockbackForce = Number(body.knockbackForce);
+    if (body.projectileSpeed !== undefined)
+      dto.projectileSpeed = Number(body.projectileSpeed);
+    if (body.projectileRange !== undefined)
+      dto.projectileRange = Number(body.projectileRange);
+    if (body.projectileKnockback !== undefined)
+      dto.projectileKnockback = Number(body.projectileKnockback);
+
+    return dto;
+  }
+
+  private parseNumericField(value: any): number | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) {
+      throw new BadRequestException(`Invalid numeric value: ${value}`);
+    }
+    return parsed;
+  }
+
+  private buildCreateCombatSkillDto(body: any, iconUrl: string): any {
+    const dto: any = {
+      ...body,
+      iconUrl,
+    };
+
+    const numericFields = [
+      'requiredWeaponType',
+      'cooldown',
+      'skillMultiplier',
+      'projectileSpeed',
+      'projectileRange',
+      'projectileKnockback',
+      'slashVfxDuration',
+      'slashVfxSpawnOffset',
+      'slashVfxPositionOffsetX',
+      'slashVfxPositionOffsetY',
+      'slashKnockbackForce',
+    ];
+
+    for (const field of numericFields) {
+      if (body[field] !== undefined) {
+        dto[field] = this.parseNumericField(body[field]);
+      }
+    }
+
+    return dto;
+  }
+
+  private buildUpdateCombatSkillDto(body: any, iconUrl?: string): any {
+    const dto: any = {
+      ...body,
+    };
+
+    if (iconUrl) dto.iconUrl = iconUrl;
+
+    const numericFields = [
+      'requiredWeaponType',
+      'cooldown',
+      'skillMultiplier',
+      'projectileSpeed',
+      'projectileRange',
+      'projectileKnockback',
+      'slashVfxDuration',
+      'slashVfxSpawnOffset',
+      'slashVfxPositionOffsetX',
+      'slashVfxPositionOffsetY',
+      'slashKnockbackForce',
+    ];
+
+    for (const field of numericFields) {
+      if (body[field] !== undefined) {
+        dto[field] = this.parseNumericField(body[field]);
+      }
+    }
 
     return dto;
   }
@@ -486,6 +587,37 @@ export class GatewayController {
   @Get('auth/admin-check')
   async adminCheck(@Req() req: Request) {
     return req['user'];
+  }
+
+  @Post('player-data/heartbeat')
+  async playerHeartbeat(@Req() req: Request, @Body() dto: PlayerHeartbeatDto) {
+    const payload = req['user'];
+    if (!payload?.sid || !payload?.sub) {
+      throw new UnauthorizedException('Missing session context');
+    }
+
+    try {
+      return await firstValueFrom(
+        this.authClient.send('player-heartbeat', {
+          sid: String(payload.sid),
+          sub: String(payload.sub),
+          clientUnixMs: dto?.clientUnixMs,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('admin/analytics/summary')
+  async getAdminAnalyticsSummary(@Query() query: GetDashboardAnalyticsQueryDto) {
+    try {
+      return await firstValueFrom(
+        this.authClient.send('get-dashboard-analytics', query),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/logout')
@@ -902,6 +1034,116 @@ export class GatewayController {
   async deleteItem(@Param('itemID') itemID: string) {
     try {
       return await firstValueFrom(this.adminClient.send('delete-item', itemID));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Combat Skills ───────────────────────────────────────────────
+
+  /** GET /game-data/combat-skills/catalog — full catalog { skills: [...] } for Unity client */
+  @Get('game-data/combat-skills/catalog')
+  async getCombatSkillCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-skill-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/combat-skills/all — flat array of all combat skill documents */
+  @Get('game-data/combat-skills/all')
+  async getAllCombatSkills() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-combat-skills', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/combat-skills/by-skill-id/:skillId — find by game-side skillId string */
+  @Get('game-data/combat-skills/by-skill-id/:skillId')
+  async getCombatSkillById(@Param('skillId') skillId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-skill-by-id', { skillId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** POST /game-data/combat-skills/create — accepts multipart/form-data with required icon file (admin only) */
+  @Post('game-data/combat-skills/create')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createCombatSkill(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'An icon file is required (field name: "icon")',
+      );
+
+    try {
+      const iconUrl = await this.cloudinaryService.uploadFile(
+        file,
+        body.folder || 'skill-icons',
+      );
+      const dto = this.buildCreateCombatSkillDto(body, iconUrl);
+
+      return await firstValueFrom(
+        this.adminClient.send('create-combat-skill', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/combat-skills/:skillId — accepts multipart/form-data; include icon file to replace icon (admin only) */
+  @Put('game-data/combat-skills/:skillId')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateCombatSkill(
+    @Param('skillId') skillId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() patch: any,
+  ) {
+    try {
+      let iconUrl: string | undefined;
+      if (file) {
+        iconUrl = await this.cloudinaryService.uploadFile(
+          file,
+          patch.folder || 'skill-icons',
+        );
+      }
+
+      const dto = this.buildUpdateCombatSkillDto(patch, iconUrl);
+
+      return await firstValueFrom(
+        this.adminClient.send('update-combat-skill', { skillId, ...dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/combat-skills/:skillId — delete by game-side skillId (admin only) */
+  @Delete('game-data/combat-skills/:skillId')
+  async deleteCombatSkill(@Param('skillId') skillId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-combat-skill', { skillId }),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1618,6 +1860,50 @@ export class GatewayController {
     }
   }
 
+  /** GET /player-data/combat/skill-loadout?worldId=... — get this player's persisted skill slots for a world */
+  @Get('player-data/combat/skill-loadout')
+  async getSkillLoadout(@Query('worldId') worldId: string, @Req() req: Request) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    if (!worldId) throw new BadRequestException('worldId is required');
+
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('get-character-skill-loadout', {
+          worldId,
+          accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/combat/skill-loadout — update this player's persisted skill slots */
+  @Put('player-data/combat/skill-loadout')
+  async updateSkillLoadout(
+    @Body() dto: UpdateSkillLoadoutDto,
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    if (!dto?.worldId) throw new BadRequestException('worldId is required');
+
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('update-character-skill-loadout', {
+          worldId: dto.worldId,
+          accountId: String(accountId),
+          playerSkillSlotIds: Array.isArray(dto.playerSkillSlotIds)
+            ? dto.playerSkillSlotIds
+            : [],
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   // ── Skin Catalog (Paper Doll) ──────────────────────────────────────────────
 
   /**
@@ -1722,6 +2008,107 @@ export class GatewayController {
     try {
       return await firstValueFrom(
         this.adminClient.send('delete-skin-config', { configId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Combat Catalog ─────────────────────────────────────────────────────────
+
+  /**
+   * GET /game-data/combat-catalogs — public (no auth required).
+   * Query param `type` is optional (e.g. ?type=weapon).
+   */
+  @Get('game-data/combat-catalogs')
+  async getCombatCatalog(@Query('type') type?: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-catalog', { type }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** POST /game-data/combat-catalogs — admin-only (skill_vfx tint configs only). */
+  @Post('game-data/combat-catalogs')
+  async createCombatCatalog(@Body() body: any) {
+    try {
+      const type = (body.type || 'skill_vfx').toString().trim().toLowerCase();
+      if (type !== 'skill_vfx') {
+        throw new BadRequestException(
+          "Combat catalog now supports only type='skill_vfx'.",
+        );
+      }
+
+      const dto = {
+        configId: body.configId,
+        displayName: body.displayName,
+        type,
+        primaryColorHex: body.primaryColorHex,
+        secondaryColorHex: body.secondaryColorHex,
+        colorIntensity:
+          body.colorIntensity !== undefined
+            ? Number(body.colorIntensity)
+            : undefined,
+        tintAlpha:
+          body.tintAlpha !== undefined ? Number(body.tintAlpha) : undefined,
+      };
+
+      return await firstValueFrom(
+        this.adminClient.send('create-combat-catalog', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/combat-catalogs/:configId — admin-only (skill_vfx tint configs only). */
+  @Put('game-data/combat-catalogs/:configId')
+  async updateCombatCatalog(
+    @Param('configId') configId: string,
+    @Body() body: any,
+  ) {
+    try {
+      const patch: Record<string, any> = {};
+      if (body.displayName !== undefined) patch.displayName = body.displayName;
+      if (body.type !== undefined) {
+        const normalizedType = body.type.toString().trim().toLowerCase();
+        if (normalizedType !== 'skill_vfx') {
+          throw new BadRequestException(
+            "Combat catalog now supports only type='skill_vfx'.",
+          );
+        }
+        patch.type = normalizedType;
+      }
+      if (body.primaryColorHex !== undefined)
+        patch.primaryColorHex = body.primaryColorHex;
+      if (body.secondaryColorHex !== undefined)
+        patch.secondaryColorHex = body.secondaryColorHex;
+      if (body.colorIntensity !== undefined)
+        patch.colorIntensity = Number(body.colorIntensity);
+      if (body.tintAlpha !== undefined)
+        patch.tintAlpha = Number(body.tintAlpha);
+
+      return await firstValueFrom(
+        this.adminClient.send('update-combat-catalog', { configId, ...patch }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * DELETE /game-data/combat-catalogs/:configId — admin-only.
+   */
+  @Delete('game-data/combat-catalogs/:configId')
+  async deleteCombatCatalog(@Param('configId') configId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-combat-catalog', { configId }),
       );
     } catch (err) {
       throw this.rpcError(err);
