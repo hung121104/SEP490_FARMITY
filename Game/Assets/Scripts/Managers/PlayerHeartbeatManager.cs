@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class PlayerHeartbeatManager : MonoBehaviour
 {
-    private const float HeartbeatIntervalSeconds = 120f;
+    private const float HeartbeatIntervalSeconds = 15f;
     private const float IdlePollSeconds = 1f;
 
     private static PlayerHeartbeatManager _instance;
