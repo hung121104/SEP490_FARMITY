@@ -84,7 +84,7 @@ public class CleanupNotificationView : MonoBehaviour, ICleanupNotificationView
             int remaining = messageQueue.Count;
 
             string display = remaining > 0
-                ? $"{msg}\n<size=80%>({remaining} more)</color></size>"
+                ? $"{msg}\n<size=80%><color=#888>({remaining} more)</color></size>"
                 : msg;
 
             if (contentText != null)

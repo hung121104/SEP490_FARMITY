@@ -1,13 +1,9 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class ItemUsageController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private HotbarView hotbarView;
-
-    [Header("Settings")]
-    [SerializeField] private LayerMask farmableGroundLayer;
-    [SerializeField] private LayerMask targetLayer;
 
     private HotbarPresenter presenter;
     private ItemUsagePresenter itemUsagePresenter;
@@ -94,6 +90,13 @@ public class ItemUsageController : MonoBehaviour
 
     private void HandleItemUsed(ItemData item, Vector3 targetPosition, int inventorySlotIndex)
     {
+        // Block usage of fallback placeholder items (orphaned data from deleted catalog entries)
+        if (item.isFallback)
+        {
+            Debug.LogWarning($"[ItemUsageController] Blocked use of fallback item '{item.itemID}'. This item is no longer available.");
+            return;
+        }
+
         Debug.Log("ItemUsageController: Using " + item.itemName + " at " + targetPosition);
 
         // Update tool layer sprite before the action plays

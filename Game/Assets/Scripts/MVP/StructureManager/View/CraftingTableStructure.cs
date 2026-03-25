@@ -51,6 +51,9 @@ public class CraftingTableStructure : InteractableStructureBase, IWorldStructure
     /// </summary>
     public void InitializeFromWorld(int worldX, int worldY, StructureData structureData)
     {
+        var itemData = ItemCatalogService.Instance?.GetItemData(structureData.StructureId);
+        _isFallbackStructure = itemData != null && itemData.isFallback;
+
         craftingLevel = structureData.StructureLevel;
     }
 }
