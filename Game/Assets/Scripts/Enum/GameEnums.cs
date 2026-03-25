@@ -146,6 +146,7 @@ public enum StructureInteractionType
     Decoration
 }
 
+
 // ==================== QUEST MANAGEMENT ====================
 
 public enum QuestStatus
@@ -166,5 +167,11 @@ public enum NPCInteractionState
     Gift,
     Quest,
     SimpleDialogue
+}
+public enum CleanupNotificationType
+{
+    Info,
+    Warning
+
 }
 

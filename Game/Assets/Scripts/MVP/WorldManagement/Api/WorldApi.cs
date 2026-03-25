@@ -158,6 +158,24 @@ public static class WorldApi
             [JsonProperty("outfitConfigId")] public string outfitConfigId;
             [JsonProperty("hatConfigId")]    public string hatConfigId;
             [JsonProperty("toolConfigId")]   public string toolConfigId;
+
+            [JsonProperty("currentStamina", NullValueHandling = NullValueHandling.Ignore)]
+            public float? currentStamina;
+
+            [JsonProperty("viableStamina", NullValueHandling = NullValueHandling.Ignore)]
+            public float? viableStamina;
+
+            [JsonProperty("regenBoostMultiplier", NullValueHandling = NullValueHandling.Ignore)]
+            public float? regenBoostMultiplier;
+
+            [JsonProperty("regenBoostRemaining", NullValueHandling = NullValueHandling.Ignore)]
+            public float? regenBoostRemaining;
+
+            [JsonProperty("toolEfficiencyReduction", NullValueHandling = NullValueHandling.Ignore)]
+            public float? toolEfficiencyReduction;
+
+            [JsonProperty("toolEfficiencyRemaining", NullValueHandling = NullValueHandling.Ignore)]
+            public float? toolEfficiencyRemaining;
         }
     }
 

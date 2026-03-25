@@ -52,6 +52,13 @@ public class RainManager : MonoBehaviour
             return;
         }
 
+        // Player may be destroyed during scene/room transition — reset so we re-find next frame.
+        if (player == null)
+        {
+            initialized = false;
+            return;
+        }
+
         Vector2 playerPos = player.position;
         float distance = Vector2.Distance(playerPos, currentCenter);
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Photon.Pun;
 using UnityEngine;
@@ -56,6 +57,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
     private float _timer     = 0f;
     private bool  _isSaving  = false;
+    private bool  _pendingPlayerLeftSave = false;
 
     /// <summary>True while a save coroutine is running.</summary>
     public bool IsSaving => _isSaving;
@@ -73,6 +75,31 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
     private void OnEnable()  => Application.wantsToQuit += OnWantsToQuit;
     private void OnDisable() => Application.wantsToQuit -= OnWantsToQuit;
+
+    // OnPlayerLeftRoom fires on the master BEFORE Photon destroys the leaving player's
+    // owns objects, so BuildPayload() can still read their StaminaView / position.
+    // This ensures a non-master's final stamina (and position) are persisted even when
+    // the auto-save timer has not yet elapsed.
+    public override void OnPlayerLeftRoom(Photon.Realtime.Player otherPlayer)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (WorldDataBootstrapper.Instance == null || !WorldDataBootstrapper.Instance.IsReady) return;
+
+        if (_isSaving)
+        {
+            // A save is already in flight — queue a follow-up so the leaving
+            // player's final position/stamina are persisted once it completes.
+            _pendingPlayerLeftSave = true;
+            if (ShowDebugLogs)
+                Debug.Log($"[WorldSave] Player '{otherPlayer.NickName}' left during active save — queued follow-up save.");
+            return;
+        }
+
+        if (ShowDebugLogs)
+            Debug.Log($"[WorldSave] Player '{otherPlayer.NickName}' left — triggering immediate save.");
+
+        StartCoroutine(AutoSaveCoroutine());
+    }
 
     private void Update()
     {
@@ -156,6 +183,34 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
         if (saved)
         {
+            // Sync saved stamina values back into PlayerDataManager so that if a joined
+            // client re-enters mid-session, TryRestoreFromSavedCharacterData() reads the
+            // current in-session values instead of the stale initial API-load values.
+            if (payload.characters != null && PlayerDataManager.Instance != null)
+            {
+                foreach (var charUpdate in payload.characters)
+                {
+                    if (string.IsNullOrEmpty(charUpdate.accountId)) continue;
+                    int idx = PlayerDataManager.Instance.players
+                        .FindIndex(p => p.accountId == charUpdate.accountId);
+                    if (idx < 0) continue;
+                    var pd = PlayerDataManager.Instance.players[idx];
+                    if (charUpdate.currentStamina.HasValue)
+                        pd.currentStamina = charUpdate.currentStamina.Value;
+                    if (charUpdate.viableStamina.HasValue)
+                        pd.viableStamina = charUpdate.viableStamina.Value;
+                    if (charUpdate.regenBoostMultiplier.HasValue)
+                        pd.regenBoostMultiplier = charUpdate.regenBoostMultiplier.Value;
+                    if (charUpdate.regenBoostRemaining.HasValue)
+                        pd.regenBoostRemaining = charUpdate.regenBoostRemaining.Value;
+                    if (charUpdate.toolEfficiencyReduction.HasValue)
+                        pd.toolEfficiencyReduction = charUpdate.toolEfficiencyReduction.Value;
+                    if (charUpdate.toolEfficiencyRemaining.HasValue)
+                        pd.toolEfficiencyRemaining = charUpdate.toolEfficiencyRemaining.Value;
+                    PlayerDataManager.Instance.players[idx] = pd;
+                }
+            }
+
             ClearPendingUntilledForDirtyChunks();
             _dirtyChunks.Clear();
             WorldDataManager.Instance?.InventoryData?.ClearAllDirtyFlags();
@@ -170,6 +225,15 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
         }
 
         _isSaving = false;
+
+        // A player left while this save was in-flight — run one more save now
+        // so their final position/stamina are captured (their GO may be gone by
+        // this point, but PlayerDataManager still has their last-synced values).
+        if (_pendingPlayerLeftSave)
+        {
+            _pendingPlayerLeftSave = false;
+            StartCoroutine(AutoSaveCoroutine());
+        }
     }
 
     // ──────────────────────────────────────────────────── Quit-flush
@@ -304,8 +368,64 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                 charUpdate.toolConfigId   = tool   ?? string.Empty;
             }
 
+            var stamina = go.GetComponent<StaminaView>();
+            if (stamina != null)
+            {
+                charUpdate.currentStamina = stamina.CurrentStamina;
+                charUpdate.viableStamina  = stamina.ViableStamina;
+                if (stamina.RegenBoostRemaining > 0f)
+                {
+                    charUpdate.regenBoostMultiplier = stamina.RegenBoostMultiplier;
+                    charUpdate.regenBoostRemaining  = stamina.RegenBoostRemaining;
+                }
+                if (stamina.ToolEfficiencyRemaining > 0f)
+                {
+                    charUpdate.toolEfficiencyReduction = stamina.ToolEfficiencyReduction;
+                    charUpdate.toolEfficiencyRemaining = stamina.ToolEfficiencyRemaining;
+                }
+            }
+
             characters.Add(charUpdate);
         }
+
+        // ── Fallback: include players whose GOs are already destroyed ──────────
+        // When a joined client leaves, their GO may be gone before BuildPayload
+        // runs (e.g. during a pending follow-up save). RPC_FinalPlayerState on
+        // StaminaView writes the client's last-known state into PlayerDataManager
+        // so it's available here as a fallback.
+        if (PlayerDataManager.Instance != null)
+        {
+            var coveredIds = new HashSet<string>(characters.Select(c => c.accountId));
+            foreach (var pd in PlayerDataManager.Instance.players)
+            {
+                if (string.IsNullOrEmpty(pd.accountId) || coveredIds.Contains(pd.accountId)) continue;
+
+                var fallback = new WorldApi.UpdateWorldRequest.CharacterUpdate
+                {
+                    accountId     = pd.accountId,
+                    positionX     = pd.positionX,
+                    positionY     = pd.positionY,
+                    hairConfigId   = pd.hairConfigId   ?? string.Empty,
+                    outfitConfigId = pd.outfitConfigId ?? string.Empty,
+                    hatConfigId    = pd.hatConfigId    ?? string.Empty,
+                    toolConfigId   = pd.toolConfigId   ?? string.Empty,
+                    currentStamina = pd.currentStamina,
+                    viableStamina  = pd.viableStamina,
+                };
+                if (pd.regenBoostRemaining > 0f)
+                {
+                    fallback.regenBoostMultiplier = pd.regenBoostMultiplier;
+                    fallback.regenBoostRemaining  = pd.regenBoostRemaining;
+                }
+                if (pd.toolEfficiencyRemaining > 0f)
+                {
+                    fallback.toolEfficiencyReduction = pd.toolEfficiencyReduction;
+                    fallback.toolEfficiencyRemaining = pd.toolEfficiencyRemaining;
+                }
+                characters.Add(fallback);
+            }
+        }
+
         if (characters.Count > 0) request.characters = characters;
 
         // ── Tile deltas — only dirty chunks ──

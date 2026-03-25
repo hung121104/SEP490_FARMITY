@@ -18,8 +18,18 @@ public class WorldSelectionManager : MonoBehaviour
     [Tooltip("Runtime selected world name (session-only). Visible in Inspector during Play.")]
     private string worldName;
 
+    /// <summary>
+    /// True only when the player just created a brand-new world and has never saved a position.
+    /// LoadPlayerData skips position-restore when this is set, keeping the player at the spawn point.
+    /// Automatically cleared after the first load so re-entering the world behaves normally.
+    /// </summary>
+    [SerializeField]
+    [Tooltip("Set true when entering a brand-new world so LoadPlayerData skips position restore.")]
+    private bool isNewWorld;
+
     public string SelectedWorldId => selectedWorldId;
     public string WorldName => worldName;
+    public bool IsNewWorld => isNewWorld;
 
     private void Awake()
     {
@@ -57,6 +67,12 @@ public class WorldSelectionManager : MonoBehaviour
     {
         selectedWorldId = id;
         worldName = name;
+    }
+
+    /// <summary>Mark that we are about to enter a freshly-created world.</summary>
+    public void SetNewWorld(bool value)
+    {
+        isNewWorld = value;
     }
 
     public void ClearSelectedWorldId()

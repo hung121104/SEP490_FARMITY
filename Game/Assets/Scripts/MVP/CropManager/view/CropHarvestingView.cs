@@ -178,15 +178,29 @@ public class CropHarvestingView : MonoBehaviourPun
 
     private void FindLocalPlayer()
     {
-        foreach (GameObject player in GameObject.FindGameObjectsWithTag(playerTag))
+        playerTransform = null;
+
+        GameObject[] players = GameObject.FindGameObjectsWithTag(playerTag);
+        if (players == null || players.Length == 0)
+            return;
+
+        // Online: always prefer the locally owned Photon entity.
+        foreach (GameObject player in players)
         {
             PhotonView pv = player.GetComponent<PhotonView>();
-            if (pv != null && pv.IsMine)
-            {
-                Transform center = player.transform.Find("CenterPoint");
-                playerTransform = center != null ? center : player.transform;
-                return;
-            }
+            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
+
+            Transform center = player.transform.Find("CenterPoint");
+            playerTransform = center != null ? center : player.transform;
+            return;
+        }
+
+        // Offline fallback: use the first tagged player entity.
+        if (!PhotonNetwork.IsConnected)
+        {
+            Transform center = players[0].transform.Find("CenterPoint");
+            playerTransform = center != null ? center : players[0].transform;
         }
     }
 

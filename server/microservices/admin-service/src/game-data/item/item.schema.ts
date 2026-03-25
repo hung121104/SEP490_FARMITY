@@ -112,14 +112,24 @@ export class Item {
 
   // ── itemType: 4 – Consumable / 8 – Cooking ────────────────────────────────
 
+  /** Restores viableStamina (soft-cap recovery). Maps to ConsumableData.viableRestore on the client. */
   @Prop()
-  energyRestore?: number;
+  viableRestore?: number;
 
   @Prop()
   healthRestore?: number;
 
+  /** Multiplier applied to stamina regen rate for effectDurationSeconds (e.g. 2.0 = double regen). Must be > 1 to take effect. */
   @Prop()
-  bufferDuration?: number;
+  regenBoostMultiplier?: number;
+
+  /** Reduces tool stamina cost by this fraction for effectDurationSeconds (0–0.95). */
+  @Prop()
+  toolEfficiencyReductionPercent?: number;
+
+  /** Duration in seconds for regenBoostMultiplier and toolEfficiencyReductionPercent. */
+  @Prop()
+  effectDurationSeconds?: number;
 
   // ── itemType: 6 – Weapon ───────────────────────────────────────────────────
 
@@ -181,10 +191,10 @@ export class Item {
 
   // ── itemType: 13 – Structure ──────────────────────────────────────────────
 
-  @Prop()
+  @Prop({ default: 5 })
   structureInteractionType?: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   structureLevel?: number;
 
   /** Sprite URL/path used when interacting with this structure (e.g. chest open sprite) */

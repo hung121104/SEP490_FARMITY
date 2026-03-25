@@ -25,6 +25,8 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Bao/AuthMenu/AuthScene.unity
   - m_enabled: 1
+    m_path: Assets/Scenes/Test Scenes Bao/MainMenu/MainMenuScene.unity
+  - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Bao/GameCoreTestScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Bao/LoadGameScene.unity
@@ -32,14 +34,6 @@ MonoBehaviour:
     m_path: Assets/Scenes/Test Scenes Bao/LobbyScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Bao/MapLoaderTestScene.unity
-  - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/MainMenu/CreateWorldScene.unity
-  - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/MainMenu/MainMenuScene.unity
-  - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/MainMenu/OnlineWorldListScene.unity
-  - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Bao/MainMenu/PlayerWorldListScene.unity
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []

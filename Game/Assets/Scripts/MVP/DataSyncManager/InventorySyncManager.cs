@@ -249,6 +249,11 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
             byte[] payload = EncodeRegisterRequest(charId, maxSlots);
             RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
             PhotonNetwork.RaiseEvent(INV_REGISTER, payload, opts, SendOptions.SendReliable);
+
+            // Fire OnInventoryChanged so the UI can load inventory data that was already
+            // synced via REQUEST_INV_SYNC but couldn't be applied because LocalCharacterId
+            // was still null at the time HandleSyncComplete fired.
+            OnInventoryChanged?.Invoke();
         }
 
         if (showDebugLogs)
@@ -487,6 +492,34 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
 
         if (showDebugLogs)
             Debug.Log($"[InvSync] ✓ Inventory sync complete! {totalInventories} inventories loaded");
+
+        // --- Orphaned inventory handling for late-join player ---
+        if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
+            && WorldDataManager.Instance?.InventoryData != null)
+        {
+            int handled = 0;
+            var placeholder = FallbackConfig.Instance?.PlaceholderSprite
+                ?? FallbackDataFactory.CreatePlaceholderSprite();
+
+            foreach (var charId in WorldDataManager.Instance.InventoryData.GetAllCharacterIds())
+            {
+                for (byte i = 0; i < 36; i++)
+                {
+                    if (WorldDataManager.Instance.InventoryData.TryGetSlot(charId, i, out var slot)
+                        && !slot.IsEmpty
+                        && ItemCatalogService.Instance.GetItemData(slot.ItemId) == null)
+                    {
+                        // Inject fallback instead of clearing — keeps the slot visible with placeholder.
+                        ItemCatalogService.Instance.InjectFallback(
+                            slot.ItemId, FallbackDataFactory.CreateFallbackItemData(slot.ItemId));
+                        ItemCatalogService.Instance.InjectFallbackSprite(slot.ItemId, placeholder);
+                        handled++;
+                    }
+                }
+            }
+            if (handled > 0)
+                Debug.LogWarning($"[InvSync] Late-join fallback: injected placeholder for {handled} orphaned inventory slot(s)");
+        }
 
         OnInventoryChanged?.Invoke();
     }

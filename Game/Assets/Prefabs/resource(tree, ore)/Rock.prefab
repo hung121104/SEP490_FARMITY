@@ -91,7 +91,7 @@ MonoBehaviour:
   shadowSortingOrder: 0
   shadowLengthScale: 1
   shadowFlattenY: 0.5
-  showDebugLogs: 1
+  showDebugLogs: 0
 --- !u!1 &4567895926997998078
 GameObject:
   m_ObjectHideFlags: 0

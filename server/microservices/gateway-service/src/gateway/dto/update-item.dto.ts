@@ -32,9 +32,11 @@ export class UpdateItemDto {
   crossResults?: { targetPlantId: string; resultPlantId: string }[];
 
   // Consumable / Cooking
-  energyRestore?: number;
+  viableRestore?: number;
   healthRestore?: number;
-  bufferDuration?: number;
+  regenBoostMultiplier?: number;
+  toolEfficiencyReductionPercent?: number;
+  effectDurationSeconds?: number;
 
   // Weapon
   damage?: number;

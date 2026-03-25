@@ -214,4 +214,25 @@ public class ItemCatalogService : MonoBehaviour
         targetCache[itemId] = sprite;
         Debug.Log($"[ItemCatalogService] Sprite ready for '{itemId}'.");
     }
+
+    // ── Fallback Injection (late-join orphaned data) ────────────────────────
+
+    /// <summary>
+    /// Injects a fallback ItemData into the catalog if the ID is not already present.
+    /// Used by OrphanedFallbackService for late-join players.
+    /// </summary>
+    public void InjectFallback(string itemId, ItemData data)
+    {
+        if (!_catalog.ContainsKey(itemId))
+            _catalog[itemId] = data;
+    }
+
+    /// <summary>
+    /// Injects a fallback sprite into the icon cache if the ID is not already present.
+    /// </summary>
+    public void InjectFallbackSprite(string itemId, Sprite sprite)
+    {
+        if (!_spriteCache.ContainsKey(itemId))
+            _spriteCache[itemId] = sprite;
+    }
 }

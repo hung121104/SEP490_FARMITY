@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Photon.Pun;
 
 /// <summary>
 /// Abstract base class for all interactable structures (Chest, CraftingTable, CookingTable, …).
@@ -36,6 +37,9 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private bool _isTargeted = false;
     private bool _inputSubscribed = false;
     private bool _isBeingPooled = false;
+
+    /// <summary>True if this structure's catalog data is a fallback placeholder (orphaned/deleted).</summary>
+    protected bool _isFallbackStructure = false;
 
     // ── Structure Interaction Badge ───────────────────────────────────────
     private GameObject _structureInteractionBadge;
@@ -163,7 +167,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         if (_triggerCollider == null) return;
         if (!gameObject.activeInHierarchy) return;
 
-        GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
+        GameObject playerObj = FindLocalPlayer();
         if (playerObj != null)
         {
             var rb = playerObj.GetComponent<Rigidbody2D>();
@@ -191,6 +195,28 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         }
     }
 
+    private GameObject FindLocalPlayer()
+    {
+        GameObject[] players = GameObject.FindGameObjectsWithTag("PlayerEntity");
+        if (players == null || players.Length == 0)
+            return null;
+
+        // Online: always prefer the locally owned Photon entity.
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
+            return player;
+        }
+
+        // Offline fallback: use the first tagged player entity.
+        if (!PhotonNetwork.IsConnected)
+            return players[0];
+
+        return null;
+    }
+
     // ── Input ────────────────────────────────────────────────────────────
 
     private void SubscribeInput()
@@ -211,6 +237,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     private void OnInteract(InputAction.CallbackContext ctx)
     {
+        if (_isFallbackStructure) return;
         if (!CanInteract()) return;
 
         if (IsUIOpen())
@@ -228,7 +255,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     private void EvaluateTargetState()
     {
-        bool shouldBeTargeted = _playerInRange && _isMouseHovering;
+        bool shouldBeTargeted = _playerInRange && _isMouseHovering && !_isFallbackStructure;
 
         if (shouldBeTargeted && !_isTargeted)
         {
@@ -266,6 +293,14 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     protected void SetupStructureInteractionBadge(string structureId)
     {
+        // Destroy previous badge to prevent duplicates when reused from pool
+        if (_structureInteractionBadge != null)
+        {
+            Destroy(_structureInteractionBadge);
+            _structureInteractionBadge = null;
+            _structureInteractionRenderer = null;
+        }
+
         var sprite = ItemCatalogService.Instance?.GetCachedStructureInteractionSprite(structureId);
         if (sprite == null) return;
 

@@ -1,6 +1,6 @@
-using Photon.Pun;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Photon.Pun;
 
 public class CropPlowingView : MonoBehaviour
 {
@@ -74,18 +74,7 @@ public class CropPlowingView : MonoBehaviour
     {
         // Re-check player if it becomes null
         if (playerTransform == null)
-        {
-            foreach (GameObject go in GameObject.FindGameObjectsWithTag(playerTag))
-            {
-                PhotonView pv = go.GetComponent<PhotonView>();
-                if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
-                    continue;
-
-                Transform centerPoint = go.transform.Find("CenterPoint");
-                playerTransform = centerPoint != null ? centerPoint : go.transform;
-                break;
-            }
-        }
+            TryResolvePlayerTransform(out playerTransform);
         
         // Update preview and mouse-hold every frame
         UpdatePlowPreview();
@@ -231,15 +220,7 @@ public class CropPlowingView : MonoBehaviour
         Transform targetTransform = playerTransform;
         
         if (targetTransform == null)
-        {
-            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
-            if (playerEntity != null)
-            {
-                // Try to find CenterPoint child first
-                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
-                targetTransform = centerPoint != null ? centerPoint : playerEntity.transform;
-            }
-        }
+            TryResolvePlayerTransform(out targetTransform);
         
         // Draw the plowing range gizmo if we have a target transform
         if (targetTransform != null)
@@ -257,6 +238,37 @@ public class CropPlowingView : MonoBehaviour
             // Draw grid overlay to show tile boundaries
             DrawTileGrid(targetTransform.position, plowingRange);
         }
+    }
+
+    private bool TryResolvePlayerTransform(out Transform resolvedTransform)
+    {
+        resolvedTransform = null;
+
+        GameObject[] players = GameObject.FindGameObjectsWithTag(playerTag);
+        if (players == null || players.Length == 0)
+            return false;
+
+        // Online: always prefer the locally owned Photon entity.
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
+
+            Transform centerPoint = player.transform.Find("CenterPoint");
+            resolvedTransform = centerPoint != null ? centerPoint : player.transform;
+            return true;
+        }
+
+        // Offline fallback: use the first tagged player entity.
+        if (!PhotonNetwork.IsConnected)
+        {
+            Transform centerPoint = players[0].transform.Find("CenterPoint");
+            resolvedTransform = centerPoint != null ? centerPoint : players[0].transform;
+            return true;
+        }
+
+        return false;
     }
     
     private void DrawDiscGizmo(Vector3 center, float radius)
