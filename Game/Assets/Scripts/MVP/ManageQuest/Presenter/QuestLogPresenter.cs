@@ -22,4 +22,10 @@ public class QuestLogPresenter
         List<QuestModel> quests = service.GetActiveQuests();
         view.ShowQuestList(quests);
     }
+
+    /// <summary>Subscribe to service events. Call from View's OnEnable.</summary>
+    public void Subscribe() => service.OnQuestUpdated += Refresh;
+
+    /// <summary>Unsubscribe from service events. Call from View's OnDisable.</summary>
+    public void Unsubscribe() => service.OnQuestUpdated -= Refresh;
 }

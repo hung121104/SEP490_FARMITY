@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 
 public interface IQuestService
 {
+    event Action OnQuestUpdated;
     void AcceptQuest(QuestModel quest, IInventoryService inventory);
     bool SubmitQuestItems(string questId, IInventoryService inventory);
     QuestModel GetQuest(string questId);

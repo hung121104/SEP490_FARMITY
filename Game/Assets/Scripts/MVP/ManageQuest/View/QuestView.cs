@@ -12,7 +12,8 @@ public class QuestView : MonoBehaviour
     public Action OnAccept;
     public Action OnBack;
 
-    public void ShowQuest(QuestModel quest, string npcName, Sprite avatar)
+    /// <param name="rewardIcon">Pre-resolved reward sprite (resolved by Presenter, not View)</param>
+    public void ShowQuest(QuestModel quest, string npcName, Sprite avatar, Sprite rewardIcon)
     {
         DialogueNode node = new DialogueNode();
 
@@ -28,16 +29,9 @@ public class QuestView : MonoBehaviour
 
         dialogueView.ShowNode(npcName, node, avatar);
 
-        if (quest.reward != null)
+        if (quest.reward != null && rewardIcon != null)
         {
-            Sprite icon = ItemCatalogService.Instance.GetCachedSprite(quest.reward.itemId);
-            ItemData itemData = ItemCatalogService.Instance.GetItemData(quest.reward.itemId);
-           
-
-            if (icon != null)
-            {
-                dialogueView.ShowReward(icon, quest.reward.quantity);
-            }
+            dialogueView.ShowReward(rewardIcon, quest.reward.quantity);
         }
     }
 

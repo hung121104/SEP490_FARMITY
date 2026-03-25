@@ -10,26 +10,13 @@ public class QuestLogController : MonoBehaviour
 
     private void Start()
     {
+        // Start() runs after all Awake() — QuestManager.QuestService is guaranteed non-null here.
         presenter = new QuestLogPresenter(view, QuestManager.QuestService);
-
-        questButton.onClick.AddListener(OpenQuestLog);
+        questButton.onClick.AddListener(() => presenter.OpenQuestLog());
+        // OnEnable fired before Start (presenter was null then), so subscribe manually now.
+        presenter.Subscribe();
     }
 
-    private void OpenQuestLog()
-    {
-        presenter.OpenQuestLog();
-    }
-    private void Refresh()
-    {
-        presenter.Refresh();
-    }
-    private void OnEnable()
-    {
-        QuestService.OnQuestUpdated += Refresh;
-    }
-
-    private void OnDisable()
-    {
-        QuestService.OnQuestUpdated -= Refresh;
-    }
+    private void OnEnable()  => presenter?.Subscribe();
+    private void OnDisable() => presenter?.Unsubscribe();
 }
