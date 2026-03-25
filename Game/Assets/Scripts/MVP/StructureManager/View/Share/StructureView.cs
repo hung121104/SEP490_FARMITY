@@ -253,10 +253,10 @@ public class StructureView : MonoBehaviourPunCallbacks
         if (ghostInstance == null || targetCamera == null || playerTransform == null)
             return;
 
-        Vector3 tile = GetTargetTile();
-        if (tile == Vector3.zero)
+        if (!TryGetTargetTile(out Vector3 tile))
         {
             ghostInstance.SetActive(false);
+            currentCanPlace = false;
             return;
         }
 
@@ -289,18 +289,21 @@ public class StructureView : MonoBehaviourPunCallbacks
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
-    private Vector3 GetTargetTile()
+    private bool TryGetTargetTile(out Vector3 tileCenter)
     {
+        tileCenter = Vector3.zero;
         if (playerTransform == null)
-            return Vector3.zero;
+            return false;
 
         Vector3 mouseWorld = ScreenToWorld(Input.mousePosition);
-        Vector2Int dummy = new Vector2Int(int.MinValue, int.MinValue);
-        return CropTileSelector.GetDirectionalTile(
-            playerTransform.position,
-            mouseWorld,
-            placementRange,
-            ref dummy);
+        mouseWorld.z = 0f;
+        
+        int targetX = Mathf.FloorToInt(mouseWorld.x);
+        int targetY = Mathf.FloorToInt(mouseWorld.y);
+        tileCenter = new Vector3(targetX, targetY, 0f);
+        
+        float distance = Vector3.Distance(playerTransform.position, tileCenter);
+        return distance <= placementRange;
     }
 
     private void CachePlayerTransform()

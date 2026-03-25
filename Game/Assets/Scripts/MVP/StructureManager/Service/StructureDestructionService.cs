@@ -130,10 +130,6 @@ public class StructureDestructionService : IStructureDestructionService
 
             string structureId = structureData.StructureId;
 
-            // Block interaction with fallback placeholder structures (late-join orphaned data).
-            var itemData = ItemCatalogService.Instance?.GetItemData(structureId);
-            if (itemData != null && itemData.isFallback) return false;
-
             StructureData so = structureDataProvider.GetStructureData(structureId);
             if (so == null) return false;
 
