@@ -252,7 +252,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     }
     ```
   - Note: Client sends this every 15 seconds during gameplay while authenticated.
-  - Note: If heartbeat is missing for configured timeout (default 300 seconds), user is removed from realtime concurrent count.
+  - Note: If heartbeat is missing for configured timeout (default 45 seconds), user is removed from realtime concurrent count.
   - Note: Session becomes legit after cumulative heartbeat-confirmed active time reaches 5 minutes.
 
 #### Error Responses
