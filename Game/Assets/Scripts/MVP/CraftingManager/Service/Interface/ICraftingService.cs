@@ -17,6 +17,7 @@ public interface ICraftingService
     void UnlockRecipe(string recipeID);
     void LockRecipe(string recipeID);
     bool IsRecipeUnlocked(string recipeID);
+    void RemoveRecipe(string recipeID);
 
     // Query Operations
     RecipeModel GetRecipe(string recipeID);

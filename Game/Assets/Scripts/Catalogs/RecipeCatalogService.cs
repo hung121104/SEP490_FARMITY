@@ -22,6 +22,8 @@ public class RecipeCatalogService : MonoBehaviour
 
     // ── Internal State ────────────────────────────────────────────────────────
     private readonly Dictionary<string, RecipeData> _catalog = new();
+    
+    public static event Action<string> OnRecipeRemoved;
 
     /// <summary>True once the catalog JSON is fully parsed and ready to query.</summary>
     public bool IsReady { get; private set; }
@@ -69,7 +71,8 @@ public class RecipeCatalogService : MonoBehaviour
             var recipe = kvp.Value;
 
             // Check result item
-            if (ItemCatalogService.Instance.GetItemData(recipe.resultItemId) == null)
+            var resultItem = ItemCatalogService.Instance.GetItemData(recipe.resultItemId);
+            if (resultItem == null || resultItem.isFallback)
             {
                 toRemove.Add(kvp.Key);
                 continue;
@@ -81,7 +84,8 @@ public class RecipeCatalogService : MonoBehaviour
                 bool hasOrphan = false;
                 foreach (var ing in recipe.ingredients)
                 {
-                    if (ItemCatalogService.Instance.GetItemData(ing.itemId) == null)
+                    var ingItem = ItemCatalogService.Instance.GetItemData(ing.itemId);
+                    if (ingItem == null || ingItem.isFallback)
                     {
                         hasOrphan = true;
                         break;
@@ -98,6 +102,7 @@ public class RecipeCatalogService : MonoBehaviour
         {
             removedIds?.Add(id);
             _catalog.Remove(id);
+            OnRecipeRemoved?.Invoke(id);
             Debug.LogWarning($"[RecipeCatalogService] Removed orphaned recipe '{id}'");
         }
 
