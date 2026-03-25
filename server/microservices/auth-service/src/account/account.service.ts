@@ -141,6 +141,25 @@ export class AccountService implements OnModuleInit {
     if (!isPasswordValid) {
       throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
+
+    const offlineTimeoutSeconds = Number(
+      this.configService.get<string>('HEARTBEAT_OFFLINE_TIMEOUT_SECONDS') || 300,
+    );
+
+    const alreadyLoggedIn = await this.sessionService.hasActiveSessionForUserWithOptions(
+      account._id.toString(),
+      {
+        useHeartbeatFreshness: true,
+        offlineTimeoutSeconds,
+      },
+    );
+    if (alreadyLoggedIn) {
+      throw new RpcException({
+        status: 409,
+        message: 'This account is already logged in on another device.',
+      });
+    }
+
     const session = await this.sessionService.createSession(account._id.toString(), 60);
     const payload = { username: account.username, sub: account._id, sid: session.sessionId };
     const token = this.jwtService.sign(payload);
@@ -163,6 +182,17 @@ export class AccountService implements OnModuleInit {
     if (!isPasswordValid) {
       throw new RpcException({ status: 401, message: 'Invalid credentials' });
     }
+
+    const alreadyLoggedIn = await this.sessionService.hasActiveSessionForUser(
+      account._id.toString(),
+    );
+    if (alreadyLoggedIn) {
+      throw new RpcException({
+        status: 409,
+        message: 'This account is already logged in on another device.',
+      });
+    }
+
     const session = await this.sessionService.createSession(account._id.toString(), 60);
     const payload = { username: account.username, sub: account._id, isAdmin: account.isAdmin, sid: session.sessionId };
     const token = this.jwtService.sign(payload);

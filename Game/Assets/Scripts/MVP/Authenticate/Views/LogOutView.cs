@@ -1,5 +1,7 @@
 using UnityEngine;
 using Photon.Pun;
+using UnityEngine.Networking;
+using System.Collections;
 
 public class LogOutView : MonoBehaviourPunCallbacks
 {
@@ -13,6 +15,13 @@ public class LogOutView : MonoBehaviourPunCallbacks
     private void OnLogOutClicked()
     {
         Debug.Log("[LogOutView] Log out button clicked.");
+
+        string token = SessionManager.Instance?.JwtToken;
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            StartCoroutine(SendServerLogout(token));
+        }
+
         // If connected, request a clean disconnect and clear session in OnDisconnected callback.
         if (PhotonNetwork.IsConnected)
         {
@@ -44,6 +53,44 @@ public class LogOutView : MonoBehaviourPunCallbacks
     private void ClearToken()
     {
         SessionManager.Instance.ClearSession();
+    }
+
+    private IEnumerator SendServerLogout(string jwtToken)
+    {
+        string url = $"{AppConfig.ApiBaseUrl.TrimEnd('/')}/auth/logout";
+        using (UnityWebRequest req = new UnityWebRequest(url, "POST"))
+        {
+            req.uploadHandler = new UploadHandlerRaw(new byte[0]);
+            req.downloadHandler = new DownloadHandlerBuffer();
+            req.SetRequestHeader("Authorization", "Bearer " + jwtToken);
+            req.certificateHandler = new AcceptAllCertificatesHandler();
+            req.timeout = 10;
+
+            yield return req.SendWebRequest();
+
+#if UNITY_2020_1_OR_NEWER
+            bool isError = req.result != UnityWebRequest.Result.Success;
+#else
+            bool isError = req.isNetworkError || req.isHttpError;
+#endif
+
+            if (isError)
+            {
+                Debug.LogWarning($"[LogOutView] Server logout failed ({req.responseCode}): {req.downloadHandler?.text}");
+            }
+            else
+            {
+                Debug.Log("[LogOutView] Server logout succeeded.");
+            }
+        }
+    }
+
+    private class AcceptAllCertificatesHandler : CertificateHandler
+    {
+        protected override bool ValidateCertificate(byte[] certificateData)
+        {
+            return true;
+        }
     }
 
 }

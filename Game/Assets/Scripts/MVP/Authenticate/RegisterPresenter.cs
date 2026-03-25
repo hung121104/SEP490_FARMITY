@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 using System.Threading.Tasks;
 using UnityEngine.SceneManagement;
 using Photon.Pun;
@@ -108,25 +109,37 @@ public class RegisterPresenter
             password = pendingPassword
         };
 
-        LoginResponse loginResponse = await authenticateService.Login(loginRequest);
-
-        view.SetInteractable(true);
-
-        if (loginResponse != null)
+        try
         {
-            PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues
+            LoginResponse loginResponse = await authenticateService.Login(loginRequest);
+
+            view.SetInteractable(true);
+
+            if (loginResponse != null)
             {
-                UserId = loginResponse.userId ?? pendingUsername
-            };
-            PhotonNetwork.NickName = loginResponse.username ?? pendingUsername;
+                PhotonNetwork.AuthValues = new Photon.Realtime.AuthenticationValues
+                {
+                    UserId = loginResponse.userId ?? pendingUsername
+                };
+                PhotonNetwork.NickName = loginResponse.username ?? pendingUsername;
 
-            Debug.Log("[RegisterPresenter] Auto-login successful, loading main scene.");
-            SceneManager.LoadScene("MainMenuScene");
+                Debug.Log("[RegisterPresenter] Auto-login successful, loading main scene.");
+                SceneManager.LoadScene("MainMenuScene");
+            }
+            else
+            {
+                Debug.LogWarning("[RegisterPresenter] Auto-login failed after registration.");
+                view.OnRegisterSuccess(); // fall back: let view handle navigation
+            }
         }
-        else
+        catch (Exception ex)
         {
-            Debug.LogWarning("[RegisterPresenter] Auto-login failed after registration.");
-            view.OnRegisterSuccess(); // fall back: let view handle navigation
+            view.SetInteractable(true);
+            Debug.LogWarning($"[RegisterPresenter] Auto-login failed: {ex.Message}");
+            view.ShowError(string.IsNullOrWhiteSpace(ex.Message)
+                ? "Auto-login failed. Please login manually."
+                : ex.Message);
+            view.OnRegisterSuccess();
         }
     }
 }
