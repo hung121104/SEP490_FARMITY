@@ -750,7 +750,6 @@ Transform:
   - {fileID: 655649700}
   - {fileID: 1389353836}
   - {fileID: 553587180}
-  - {fileID: 1987828110}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &36946696
@@ -1080,7 +1079,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   prefab: {fileID: 372591978817517267, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
-  zOffset: {x: 0, y: 0, z: 0}
+  setActiveOnStart: 1
 --- !u!1 &53558782
 GameObject:
   m_ObjectHideFlags: 0
@@ -90666,11 +90665,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rainPrefab: {fileID: 1854443877689547427, guid: 348feeeb673e4d0449bc6cc04825bff7, type: 3}
-  zoneSize: 30
-  spawnEdgeDistance: 15
   heightOffset: 10
-  baseEmissionRate: 1000
-  fadeDuration: 3
 --- !u!1 &1597935080
 GameObject:
   m_ObjectHideFlags: 0
@@ -98270,55 +98265,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   miniGameView: {fileID: 1949205807}
---- !u!1 &1987828109
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1987828110}
-  - component: {fileID: 1987828111}
-  m_Layer: 0
-  m_Name: 'EnemySyncManager '
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1987828110
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1987828109}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 33179362}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1987828111
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1987828109}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a4da2a2b5708e5c46b04e633c2e281eb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  enemyDataCatalog:
-  - {fileID: 11400000, guid: 366d7b32c890fd843a53af4f5b229b91, type: 2}
-  enemyPrefabOverrides: []
-  stateBroadcastInterval: 0.1
-  showDebugLogs: 1
 --- !u!1 &1989672785
 GameObject:
   m_ObjectHideFlags: 0
@@ -99320,6 +99266,7 @@ MonoBehaviour:
   showDebugLogs: 0
   showLoadedChunksGizmos: 0
   enableDailyReload: 1
+  tilesPerFrame: 50
 --- !u!4 &2021699365
 Transform:
   m_ObjectHideFlags: 0
