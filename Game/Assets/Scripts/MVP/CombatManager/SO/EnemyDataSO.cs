@@ -39,6 +39,10 @@ namespace CombatManager.SO
 
         [Header("Combat")]
         public float damageThrottleTime = 0.5f;
+        public bool useActiveAttack = true;
+        public float attackCooldown = 1.2f;
+        public float attackRecovery = 0.1f;
+        [Range(-1f, 1f)] public float attackFrontDotThreshold = 0.25f;
 
         [Header("Knockback")]
         public float knockbackDuration = 0.3f;

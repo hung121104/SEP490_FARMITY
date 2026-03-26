@@ -214,6 +214,7 @@ namespace CombatManager.Service
         {
             if (model.currentTarget == null)
             {
+                model.isAttackAnimating = false;
                 if (model.isAlerted)
                 {
                     model.currentState = EnemyState.Chasing;
@@ -226,6 +227,81 @@ namespace CombatManager.Service
             }
 
             if (distanceToPlayer > model.attackRange + 0.5f)
+            {
+                model.isAttackAnimating = false;
+                model.currentState = EnemyState.Chasing;
+                return;
+            }
+
+            if (!model.useActiveAttack)
+                return;
+
+            if (model.isAttackAnimating)
+                return;
+
+            if (Time.time < model.nextAttackTime)
+                return;
+
+            if (!IsTargetInFront(model.currentTarget))
+                return;
+
+            StartAttackAnimation();
+        }
+
+        private bool IsTargetInFront(Transform target)
+        {
+            if (target == null)
+                return false;
+
+            Vector2 toTarget = ((Vector2)(target.position - enemyTransform.position)).normalized;
+            Vector2 forward = model.facingDirection.sqrMagnitude > 0.0001f
+                ? model.facingDirection.normalized
+                : Vector2.right;
+
+            float dot = Vector2.Dot(forward, toTarget);
+            return dot >= model.attackFrontDotThreshold;
+        }
+
+        private void StartAttackAnimation()
+        {
+            model.isAttackAnimating = true;
+            model.hasAppliedImpactThisAttack = false;
+            model.pendingAttackTrigger = true;
+            model.nextAttackTime = Time.time + Mathf.Max(0.05f, model.attackCooldown + model.attackRecovery);
+            model.attackSequence++;
+
+            if (model.rb != null)
+                model.rb.linearVelocity = Vector2.zero;
+        }
+
+        public bool ConsumePendingAttackTrigger()
+        {
+            if (!model.pendingAttackTrigger)
+                return false;
+
+            model.pendingAttackTrigger = false;
+            return true;
+        }
+
+        public bool TryConsumeAttackImpact()
+        {
+            if (!model.useActiveAttack || !model.isAttackAnimating || model.hasAppliedImpactThisAttack)
+                return false;
+
+            model.hasAppliedImpactThisAttack = true;
+            return true;
+        }
+
+        public void CompleteAttackAnimation()
+        {
+            model.isAttackAnimating = false;
+            model.hasAppliedImpactThisAttack = false;
+
+            if (model.currentTarget == null)
+            {
+                BeginReturnToGuardRange();
+            }
+            else if (model.currentState == EnemyState.Attacking)
             {
                 model.currentState = EnemyState.Chasing;
             }
@@ -334,6 +410,9 @@ namespace CombatManager.Service
             model.alertTimer = model.hitAlertDuration;
             model.isKnockedBack = true;
             model.knockbackTimer = model.knockbackDuration;
+            model.isAttackAnimating = false;
+            model.pendingAttackTrigger = false;
+            model.hasAppliedImpactThisAttack = false;
 
             if (model.currentState != EnemyState.Chasing && model.currentState != EnemyState.Attacking)
             {
@@ -525,6 +604,8 @@ namespace CombatManager.Service
         public EnemyState GetCurrentState() => model.currentState;
         public bool IsAlerted() => model.isAlerted;
         public bool IsKnockedBack() => model.isKnockedBack;
+        public bool IsAttackAnimating() => model.isAttackAnimating;
+        public int GetAttackSequence() => model.attackSequence;
 
         #endregion
     }

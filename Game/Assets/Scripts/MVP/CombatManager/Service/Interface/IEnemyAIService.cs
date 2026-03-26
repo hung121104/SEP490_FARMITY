@@ -27,5 +27,12 @@ namespace CombatManager.Service
         
         // Detection
         bool CanSeePlayer();
+
+        // Active attack animation lifecycle
+        bool ConsumePendingAttackTrigger();
+        bool TryConsumeAttackImpact();
+        void CompleteAttackAnimation();
+        bool IsAttackAnimating();
+        int GetAttackSequence();
     }
 }

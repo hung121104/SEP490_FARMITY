@@ -30,6 +30,10 @@ MonoBehaviour:
   guardDuration: 2
   guardLookDuration: 1
   damageThrottleTime: 0.5
+  useActiveAttack: 1
+  attackCooldown: 1.5
+  attackRecovery: 0.25
+  attackFrontDotThreshold: 0.25
   knockbackDuration: 0.3
   squashPixels: 0.05
   stretchPixels: 0.05

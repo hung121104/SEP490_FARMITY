@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using CombatManager.Model;
 using CombatManager.Presenter;
 
@@ -13,6 +14,7 @@ namespace CombatManager.Service
         private EnemyModel model;
         private PlayerHealthPresenter cachedHealthPresenter;
         private PlayerKnockbackPresenter cachedKnockbackPresenter;
+        private readonly HashSet<int> processedActors = new HashSet<int>();
 
         public EnemyCombatService(EnemyModel model)
         {
@@ -43,6 +45,45 @@ namespace CombatManager.Service
                 return;
 
             Photon.Pun.PhotonView targetView = ResolvePlayerPhotonView(playerCollider, playerRoot);
+            ApplyDamageToResolvedTarget(playerRoot, targetView, enemyTransform, ignoreLocalThrottle: false);
+        }
+
+        public void DealDamageToPlayers(IReadOnlyList<Collider2D> playerColliders, Transform enemyTransform)
+        {
+            if (playerColliders == null || enemyTransform == null)
+                return;
+
+            processedActors.Clear();
+
+            for (int i = 0; i < playerColliders.Count; i++)
+            {
+                Collider2D playerCollider = playerColliders[i];
+                if (playerCollider == null)
+                    continue;
+
+                Transform playerRoot = ResolvePlayerRoot(playerCollider);
+                if (playerRoot == null)
+                    continue;
+
+                Photon.Pun.PhotonView targetView = ResolvePlayerPhotonView(playerCollider, playerRoot);
+                int actorNumber = targetView != null ? targetView.OwnerActorNr : -1;
+
+                if (actorNumber > 0 && !processedActors.Add(actorNumber))
+                    continue;
+
+                ApplyDamageToResolvedTarget(playerRoot, targetView, enemyTransform, ignoreLocalThrottle: true);
+            }
+        }
+
+        private void ApplyDamageToResolvedTarget(
+            Transform playerRoot,
+            Photon.Pun.PhotonView targetView,
+            Transform enemyTransform,
+            bool ignoreLocalThrottle)
+        {
+            if (playerRoot == null || enemyTransform == null)
+                return;
+
             int targetActorNumber = targetView != null ? targetView.OwnerActorNr : -1;
 
             EnemyPresenter enemyPresenter = enemyTransform.GetComponent<EnemyPresenter>();
@@ -67,7 +108,7 @@ namespace CombatManager.Service
                 return;
             }
 
-            if (!CanDealDamage())
+            if (!ignoreLocalThrottle && !CanDealDamage())
                 return;
 
             if (targetView != null && !targetView.IsMine)

@@ -97,6 +97,15 @@ namespace CombatManager.Model
         public float knockbackForce = 30f;
         public float damageThrottleTime = 0.5f;
         public float lastDamageTime = -999f;
+        public bool useActiveAttack = true;
+        public float attackCooldown = 1.2f;
+        public float attackRecovery = 0.1f;
+        public float attackFrontDotThreshold = 0.25f;
+        public float nextAttackTime = 0f;
+        public bool isAttackAnimating = false;
+        public bool hasAppliedImpactThisAttack = false;
+        public bool pendingAttackTrigger = false;
+        public int attackSequence = 0;
 
         #endregion
 

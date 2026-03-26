@@ -35,6 +35,7 @@ namespace CombatManager.Presenter
         [SerializeField] private Animator animator;
         [SerializeField] private SpriteRenderer spriteRenderer;
         [SerializeField] private GameObject damagePopupPrefab;
+        [SerializeField] private EnemyAttackHitbox attackHitbox;
 
         // ✅ NEW: Runtime enemy ID
         private string enemyId;
@@ -56,11 +57,16 @@ namespace CombatManager.Presenter
         private Vector2 remoteVelocity;
         private bool remoteIsWalking;
         private bool remoteFlipX;
+        private int remoteAttackSequence;
+        private int lastAppliedRemoteAttackSequence = -1;
         private int lastAppliedHitToken = int.MinValue;
         private Coroutine knockbackEffectRoutine;
         private Coroutine flashEffectRoutine;
         private float lastDamagePopupAt = -10f;
         private const float DAMAGE_POPUP_INTERVAL = 0.1f;
+        private const string ATTACK_TRIGGER = "Attack";
+
+        private readonly List<Collider2D> activeAttackTargets = new List<Collider2D>();
 
         private bool IsAuthoritative => !PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient;
 
@@ -98,6 +104,8 @@ namespace CombatManager.Presenter
                 if (!knockbackService.IsKnockedBack())
                     aiService.UpdateBehavior(Time.deltaTime);
 
+                TryTriggerAttackAnimation();
+
                 if (healthService.IsDead())
                     HandleDeath(true);
 
@@ -127,6 +135,9 @@ namespace CombatManager.Presenter
                 return;
 
             if (!IsAuthoritative)
+                return;
+
+            if (model.useActiveAttack)
                 return;
 
             if (IsPlayerContact(other))
@@ -229,6 +240,7 @@ namespace CombatManager.Presenter
             remoteVelocity = Vector2.zero;
             remoteIsWalking = false;
             remoteFlipX = spriteRenderer != null && spriteRenderer.flipX;
+            remoteAttackSequence = 0;
 
             model.isInitialized = true;
 
@@ -275,6 +287,10 @@ namespace CombatManager.Presenter
             model.damageAmount = enemyData.damageAmount;
             model.knockbackForce = enemyData.knockbackForce;
             model.damageThrottleTime = enemyData.damageThrottleTime;
+            model.useActiveAttack = enemyData.useActiveAttack;
+            model.attackCooldown = enemyData.attackCooldown;
+            model.attackRecovery = enemyData.attackRecovery;
+            model.attackFrontDotThreshold = enemyData.attackFrontDotThreshold;
 
             // Physics (keep defaults or add to SO)
             model.friction = 3f;
@@ -435,6 +451,48 @@ namespace CombatManager.Presenter
             DamagePopupPresenter.Spawn(transform.position, damage);
         }
 
+        private void TryTriggerAttackAnimation()
+        {
+            if (aiService == null || model.animator == null || !model.useActiveAttack)
+                return;
+
+            if (!aiService.ConsumePendingAttackTrigger())
+                return;
+
+            model.animator.SetTrigger(ATTACK_TRIGGER);
+        }
+
+        // Called by enemy attack animation event at impact frame.
+        public void OnAttackImpactAnimationEvent()
+        {
+            if (!model.isInitialized || !model.useActiveAttack)
+                return;
+
+            if (!IsAuthoritative || aiService == null || combatService == null)
+                return;
+
+            if (!aiService.TryConsumeAttackImpact())
+                return;
+
+            if (attackHitbox == null)
+                return;
+
+            attackHitbox.CollectOverlappingPlayers(activeAttackTargets);
+            combatService.DealDamageToPlayers(activeAttackTargets, transform);
+        }
+
+        // Called by enemy attack animation event at end frame.
+        public void OnAttackAnimationEndEvent()
+        {
+            if (!model.isInitialized || !model.useActiveAttack)
+                return;
+
+            if (!IsAuthoritative || aiService == null)
+                return;
+
+            aiService.CompleteAttackAnimation();
+        }
+
         // ✅ NEW: Get enemy ID
         public string GetEnemyId() => enemyId;
         public string GetRuntimeEnemyId() => model.runtimeEnemyId;
@@ -520,6 +578,7 @@ namespace CombatManager.Presenter
                 flipX,
                 model.facingDirection.x,
                 model.facingDirection.y,
+                aiService != null ? aiService.GetAttackSequence() : 0,
             };
 
             RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
@@ -540,6 +599,8 @@ namespace CombatManager.Presenter
             if (model.animator != null)
                 model.animator.SetBool("isWalking", remoteIsWalking);
 
+            TryApplyRemoteAttackAnimation();
+
             if (model.spriteRenderer != null)
                 model.spriteRenderer.flipX = remoteFlipX;
         }
@@ -549,7 +610,7 @@ namespace CombatManager.Presenter
             if (photonEvent.Code != ENEMY_STATE_EVENT)
                 return;
 
-            if (photonEvent.CustomData is not object[] payload || payload.Length < 15)
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 16)
                 return;
 
             string runtimeId = payload[0] as string ?? string.Empty;
@@ -569,7 +630,8 @@ namespace CombatManager.Presenter
                 !TryGetBool(payload, 11, out bool isWalking) ||
                 !TryGetBool(payload, 12, out bool flipX) ||
                 !TryGetFloat(payload, 13, out float faceX) ||
-                !TryGetFloat(payload, 14, out float faceY))
+                !TryGetFloat(payload, 14, out float faceY) ||
+                !TryGetInt(payload, 15, out int attackSequence))
             {
                 return;
             }
@@ -584,6 +646,19 @@ namespace CombatManager.Presenter
             model.isAlerted = isAlerted;
             model.isKnockedBack = isKnockedBack;
             model.facingDirection = new Vector2(faceX, faceY);
+            remoteAttackSequence = attackSequence;
+        }
+
+        private void TryApplyRemoteAttackAnimation()
+        {
+            if (model.animator == null || !model.useActiveAttack)
+                return;
+
+            if (remoteAttackSequence <= 0 || remoteAttackSequence == lastAppliedRemoteAttackSequence)
+                return;
+
+            lastAppliedRemoteAttackSequence = remoteAttackSequence;
+            model.animator.SetTrigger(ATTACK_TRIGGER);
         }
 
         private static bool TryGetFloat(object[] payload, int index, out float value)
