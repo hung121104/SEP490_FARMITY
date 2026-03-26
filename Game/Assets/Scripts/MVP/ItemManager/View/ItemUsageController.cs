@@ -185,9 +185,10 @@ public class ItemUsageController : MonoBehaviour
                 break;
 
             case ItemType.Structure:
-                // Toggle and placement handled entirely by StructureView via UseStructureService.OnStructureRequested
-                // (mirrors the CropPlantingView / UseSeedService pattern)
-                itemUsagePresenter.UseStructure(item, targetPosition);
+                // Placement delegated via ItemUsagePresenter → StructurePresenter → StructureService
+                // Item consumed here on success (same pattern as Consumable, Fertilizer, etc.)
+                if (itemUsagePresenter.UseStructure(item.itemID))
+                    presenter.ConsumeCurrentItem(1);
                 break;
 
             default:
