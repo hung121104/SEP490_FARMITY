@@ -172,6 +172,22 @@ public class StructureView : MonoBehaviourPunCallbacks
 
     // ── Public API ───────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Called by ItemUsageController when player clicks to use a structure item.
+    /// Returns true if placement was successful (caller handles item consumption).
+    /// </summary>
+    public bool TryPlaceActiveStructure(string itemId)
+    {
+        if (activeStructureData == null || activeStructureData.StructureId != itemId) return false;
+        if (!currentCanPlace) return false;
+
+        bool placed = presenter.HandlePlaceStructure(currentSnappedPos, activeStructureData);
+        if (placed && showDebugLogs)
+            Debug.Log($"[StructureView] Structure placed at {currentSnappedPos}");
+
+        return placed;
+    }
+
     public void EnterPlacementMode(StructureData data)
     {
         if (data == null) return;
@@ -257,9 +273,6 @@ public class StructureView : MonoBehaviourPunCallbacks
         currentCanPlace = presenter.CanPlace(currentSnappedPos, activeStructureData);
         if (ghostRenderer != null)
             ghostRenderer.color = currentCanPlace ? validColor : invalidColor;
-
-        // Push placement state to Presenter so it can respond to placement requests
-        presenter.UpdatePlacementState(currentSnappedPos, currentCanPlace, activeStructureData);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

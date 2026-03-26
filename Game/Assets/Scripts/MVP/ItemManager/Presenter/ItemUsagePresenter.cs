@@ -46,15 +46,5 @@ public class ItemUsagePresenter
         return service.UsePollen(item, pos);
     }
 
-    public bool UseStructure(string itemId)
-    {
-        if (StructurePresenter.OnTryPlaceStructure == null)
-        {
-            Debug.LogWarning("[ItemUsagePresenter] No structure placement handler registered.");
-            return false;
-        }
-
-        return StructurePresenter.OnTryPlaceStructure.Invoke(itemId);
-    }
 }
 

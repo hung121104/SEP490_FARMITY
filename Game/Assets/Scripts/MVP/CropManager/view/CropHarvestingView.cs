@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using Photon.Pun;
 using System.Reflection;
 public class CropHarvestingView : MonoBehaviourPun
@@ -6,7 +7,6 @@ public class CropHarvestingView : MonoBehaviourPun
     // ── Settings ──────────────────────────────────────────────────────────
     [Header("Harvest Settings")]
     public float checkRadius = 2f;
-    public KeyCode harvestKey = KeyCode.Mouse0;
     public bool allowHoldToHarvest = true;
     [Tooltip("How often (seconds) to attempt harvesting while holding the harvest key.")]
     public float harvestRepeatInterval = 0.15f;
@@ -19,6 +19,7 @@ public class CropHarvestingView : MonoBehaviourPun
     // ── Runtime state ─────────────────────────────────────────────────────
     private float nextScanTime = 0f;
     private float holdTimer    = 0f;
+    private bool  _isHoldingHarvest = false;
     private Vector2Int lastHarvestTile = new Vector2Int(int.MinValue, int.MinValue);
 
     // ── MVP ───────────────────────────────────────────────────────────────
@@ -67,43 +68,52 @@ public class CropHarvestingView : MonoBehaviourPun
         FindLocalPlayer();
     }
 
+    void OnEnable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.Interact.performed += OnHarvestPerformed;
+        InputManager.Instance.Interact.canceled  += OnHarvestCanceled;
+    }
+
+    void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.Interact.performed -= OnHarvestPerformed;
+        InputManager.Instance.Interact.canceled  -= OnHarvestCanceled;
+    }
+
+    private void OnHarvestPerformed(InputAction.CallbackContext ctx)
+    {
+        if (playerTransform == null) return;
+        HandleHarvestInput();
+        if (allowHoldToHarvest)
+        {
+            _isHoldingHarvest = true;
+            holdTimer = harvestRepeatInterval;
+        }
+    }
+
+    private void OnHarvestCanceled(InputAction.CallbackContext ctx)
+    {
+        _isHoldingHarvest = false;
+        holdTimer = 0f;
+        lastHarvestTile = new Vector2Int(int.MinValue, int.MinValue);
+    }
+
     // ── Update ────────────────────────────────────────────────────────────
     void Update()
     {
         if (playerTransform == null) FindLocalPlayer();
         if (playerTransform == null) return;
 
-        if (allowHoldToHarvest)
+        if (allowHoldToHarvest && _isHoldingHarvest)
         {
-            if (Input.GetKeyDown(harvestKey))
+            holdTimer -= Time.deltaTime;
+            if (holdTimer <= 0f)
             {
                 HandleHarvestInput();
                 holdTimer = harvestRepeatInterval;
             }
-
-            if (Input.GetKey(harvestKey))
-            {
-                holdTimer -= Time.deltaTime;
-                if (holdTimer <= 0f)
-                {
-                    HandleHarvestInput();
-                    holdTimer = harvestRepeatInterval;
-                }
-            }
-
-            if (Input.GetKeyUp(harvestKey))
-            {
-                holdTimer = 0f;
-                lastHarvestTile = new Vector2Int(int.MinValue, int.MinValue);
-            }
-        }
-        else
-        {
-            if (Input.GetKeyDown(harvestKey))
-                HandleHarvestInput();
-
-            if (Input.GetKeyUp(harvestKey))
-                lastHarvestTile = new Vector2Int(int.MinValue, int.MinValue);
         }
 
         ManageHotbarInterception();
@@ -153,7 +163,7 @@ public class CropHarvestingView : MonoBehaviourPun
 
         bool targetingReadyCrop = false;
 
-        if (harvestKey == KeyCode.Mouse0 && Camera.main != null && playerTransform != null)
+        if (Camera.main != null && playerTransform != null)
         {
             // If the player has pollen selected, never suppress the hotbar click —
             // they intend to APPLY pollen, not collect it or harvest.
@@ -164,7 +174,7 @@ public class CropHarvestingView : MonoBehaviourPun
             }
 
             Vector3 playerPos     = playerTransform.position;
-            Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            Vector3 mouseWorldPos = GetMouseWorldPosition();
             Vector2Int dummyTile  = new Vector2Int(int.MinValue, int.MinValue);
 
             Vector3 target = CropTileSelector.GetDirectionalTile(playerPos, mouseWorldPos, checkRadius, ref dummyTile);
@@ -210,8 +220,18 @@ public class CropHarvestingView : MonoBehaviourPun
 
         return CropTileSelector.GetDirectionalTile(
             playerTransform.position,
-            Camera.main.ScreenToWorldPoint(Input.mousePosition),
+            GetMouseWorldPosition(),
             checkRadius,
             ref lastHarvestTile);
+    }
+
+    private Vector3 GetMouseWorldPosition()
+    {
+        Vector2 screenPos = Mouse.current != null
+            ? Mouse.current.position.ReadValue()
+            : Vector2.zero;
+        Vector3 worldPos = Camera.main.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
+        worldPos.z = 0f;
+        return worldPos;
     }
 }

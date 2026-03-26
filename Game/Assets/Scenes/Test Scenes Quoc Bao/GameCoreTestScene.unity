@@ -2726,7 +2726,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
-  sceneViewId: 4
+  sceneViewId: 15
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!114 &138164243
@@ -11735,7 +11735,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   checkRadius: 2
-  harvestKey: 323
   allowHoldToHarvest: 1
   harvestRepeatInterval: 0.15
   playerTag: PlayerEntity
@@ -86332,7 +86331,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58f355cadd58c0446923f7f9123d8265, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnZoneMap: {fileID: 695224742}
+  resourceTypeMappings: []
   maxResourcesPerChunk: 40
   dailySpawnRate: 5
   interactionRange: 2

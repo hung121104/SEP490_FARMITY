@@ -1,6 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
+public class MapZoneEntry
+{
+    public string zoneName;
+    public GameObject mapObject;
+    public Collider2D zoneCollider;
+}
+
 public class MapZoneManager : MonoBehaviour
 {
     [SerializeField] private List<MapZoneEntry> zones = new List<MapZoneEntry>();

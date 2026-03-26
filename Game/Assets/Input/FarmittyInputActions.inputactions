@@ -1,4 +1,5 @@
 {
+    "version": 1,
     "name": "FarmittyInputActions",
     "maps": [
         {
@@ -18,15 +19,6 @@
                     "name": "Interact",
                     "type": "Button",
                     "id": "22222222-2222-2222-2222-222222222222",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "Harvest",
-                    "type": "Button",
-                    "id": "33333333-3333-3333-3333-333333333333",
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": "",
@@ -63,7 +55,7 @@
                     "name": "OpenChat",
                     "type": "Button",
                     "id": "77777777-7777-7777-7777-777777777777",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -72,7 +64,7 @@
                     "name": "UseItem",
                     "type": "Button",
                     "id": "aaaa0001-0001-0001-0001-000000000001",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -84,7 +76,7 @@
                     "expectedControlType": "Axis",
                     "processors": "",
                     "interactions": "",
-                    "initialStateCheck": false
+                    "initialStateCheck": true
                 },
                 {
                     "name": "HotbarSlot1",
@@ -287,17 +279,6 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Interact",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "b0000004-0001-0001-0001-000000000001",
-                    "path": "<Keyboard>/f",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "Harvest",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -533,11 +514,13 @@
             "devices": [
                 {
                     "devicePath": "<Keyboard>",
-                    "isOptional": false
+                    "isOptional": false,
+                    "isOR": false
                 },
                 {
                     "devicePath": "<Mouse>",
-                    "isOptional": false
+                    "isOptional": false,
+                    "isOR": false
                 }
             ]
         }
