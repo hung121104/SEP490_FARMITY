@@ -38,16 +38,40 @@ namespace CombatManager.Service
             if (playerCollider == null || enemyTransform == null)
                 return;
 
-            if (!CanDealDamage())
-                return;
-
             Transform playerRoot = ResolvePlayerRoot(playerCollider);
             if (playerRoot == null)
                 return;
 
-            Photon.Pun.PhotonView targetView = playerRoot.GetComponent<Photon.Pun.PhotonView>();
-            if (targetView != null && Photon.Pun.PhotonNetwork.IsConnected && !targetView.IsMine)
-                return; // Phase 1: host-local-only damage application.
+            Photon.Pun.PhotonView targetView = ResolvePlayerPhotonView(playerCollider, playerRoot);
+            int targetActorNumber = targetView != null ? targetView.OwnerActorNr : -1;
+
+            EnemyPresenter enemyPresenter = enemyTransform.GetComponent<EnemyPresenter>();
+            if (enemyPresenter == null)
+                enemyPresenter = enemyTransform.GetComponentInParent<EnemyPresenter>();
+
+            if (Photon.Pun.PhotonNetwork.IsConnected)
+            {
+                if (enemyPresenter == null)
+                    return;
+
+                if (targetActorNumber <= 0)
+                    return;
+
+                EnemySyncManager.Instance.RequestEnemyPlayerTouchDamage(
+                    enemyPresenter,
+                    targetActorNumber,
+                    model.damageAmount,
+                    model.knockbackForce,
+                    enemyTransform.position);
+
+                return;
+            }
+
+            if (!CanDealDamage())
+                return;
+
+            if (targetView != null && !targetView.IsMine)
+                return;
 
             PlayerHealthPresenter healthPresenter = ResolveHealthPresenter();
             if (healthPresenter == null)
@@ -98,6 +122,33 @@ namespace CombatManager.Service
                 if (taggedParent.CompareTag("Player") || taggedParent.CompareTag("PlayerEntity"))
                     return taggedParent;
                 taggedParent = taggedParent.parent;
+            }
+
+            return null;
+        }
+
+        private static Photon.Pun.PhotonView ResolvePlayerPhotonView(Collider2D playerCollider, Transform playerRoot)
+        {
+            if (playerCollider != null)
+            {
+                Photon.Pun.PhotonView colliderView = playerCollider.GetComponent<Photon.Pun.PhotonView>();
+                if (colliderView != null)
+                    return colliderView;
+
+                Photon.Pun.PhotonView parentView = playerCollider.GetComponentInParent<Photon.Pun.PhotonView>();
+                if (parentView != null)
+                    return parentView;
+            }
+
+            if (playerRoot != null)
+            {
+                Photon.Pun.PhotonView rootView = playerRoot.GetComponent<Photon.Pun.PhotonView>();
+                if (rootView != null)
+                    return rootView;
+
+                Photon.Pun.PhotonView childView = playerRoot.GetComponentInChildren<Photon.Pun.PhotonView>(true);
+                if (childView != null)
+                    return childView;
             }
 
             return null;

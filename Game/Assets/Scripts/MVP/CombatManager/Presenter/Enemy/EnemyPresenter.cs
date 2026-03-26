@@ -653,6 +653,9 @@ namespace CombatManager.Presenter
         public bool IsKnockedBack() => knockbackService?.IsKnockedBack() ?? false;
         public int GetCurrentHealth() => healthService?.GetCurrentHealth() ?? 0;
         public int GetMaxHealth() => healthService?.GetMaxHealth() ?? 1;
+        public int GetContactDamageAmount() => model.damageAmount;
+        public float GetContactKnockbackForce() => model.knockbackForce;
+        public float GetContactDamageThrottleTime() => model.damageThrottleTime;
         public Vector2 GetFacingDirection() => model.facingDirection;
         public Animator GetAnimator() => model.animator;
         public SpriteRenderer GetSpriteRenderer() => model.spriteRenderer;
