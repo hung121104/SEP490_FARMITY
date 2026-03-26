@@ -1,38 +1,18 @@
 ﻿using UnityEngine;
-using System.Collections;
-using System.Collections.Generic;
+using Photon.Pun;
 
 public class RainManager : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private GameObject rainPrefab;
 
-    [Header("Zone Settings")]
-    [SerializeField] private float zoneSize = 40f;
-    [SerializeField] private float spawnEdgeDistance = 15f;
+    [Header("Settings")]
     [SerializeField] private float heightOffset = 20f;
 
-    [Header("Density Settings")]
-    [SerializeField] private float baseEmissionRate = 800f;
-
-    [Header("Fade Settings")]
-    [SerializeField] private float fadeDuration = 3f;
-
     private Transform player;
-    private List<GameObject> activeZones = new List<GameObject>();
-    private Vector2 currentCenter;
-
+    private GameObject rainInstance;
     private bool initialized = false;
-    private float baseCameraArea;
     private bool isRaining = false;
-
-    private void Start()
-    {
-        
-        float h = Camera.main.orthographicSize * 2f;
-        float w = h * Camera.main.aspect;
-        baseCameraArea = w * h;
-    }
 
     private void Update()
     {
@@ -41,13 +21,16 @@ public class RainManager : MonoBehaviour
 
         if (!initialized)
         {
-            GameObject p = GameObject.FindWithTag("PlayerEntity");
-            if (p != null)
+            foreach (GameObject p in GameObject.FindGameObjectsWithTag("PlayerEntity"))
             {
-                player = p.transform;
-                currentCenter = player.position;
-                SpawnZone(currentCenter);   
-                initialized = true;
+                PhotonView pv = p.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine)
+                {
+                    player = p.transform;
+                    SpawnRain();
+                    initialized = true;
+                    break;
+                }
             }
             return;
         }
@@ -55,107 +38,37 @@ public class RainManager : MonoBehaviour
         // Player may be destroyed during scene/room transition — reset so we re-find next frame.
         if (player == null)
         {
+            DestroyRain();
             initialized = false;
+        }
+    }
+
+    private void SpawnRain()
+    {
+        if (rainInstance != null)
             return;
-        }
 
-        Vector2 playerPos = player.position;
-        float distance = Vector2.Distance(playerPos, currentCenter);
-
-        if (distance > spawnEdgeDistance)
-        {
-            Vector2 direction = (playerPos - currentCenter).normalized;
-            Vector2 newCenter = currentCenter + direction * zoneSize;
-
-            SpawnZone(newCenter);
-            currentCenter = newCenter;
-        }
+        rainInstance = Instantiate(rainPrefab, player);
+        rainInstance.transform.localPosition = new Vector3(0f, heightOffset, 0f);
     }
 
-    private void SpawnZone(Vector2 center)
+    private void DestroyRain()
     {
-        GameObject zone = Instantiate(rainPrefab);
-
-        zone.transform.position = new Vector3(
-            center.x,
-            center.y + heightOffset,
-            rainPrefab.transform.position.z
-        );
-
-        ParticleSystem ps = zone.GetComponent<ParticleSystem>();
-
-        AdjustShapeToCamera(ps);
-        AdjustEmissionToCamera(ps);
-
-        activeZones.Add(zone);
-
-        if (activeZones.Count > 2)
+        if (rainInstance != null)
         {
-            StartCoroutine(FadeAndDestroy(activeZones[0]));
-            activeZones.RemoveAt(0);
+            Destroy(rainInstance);
+            rainInstance = null;
         }
     }
 
-    private void AdjustShapeToCamera(ParticleSystem ps)
-    {
-        var shape = ps.shape;
-
-        float camHeight = Camera.main.orthographicSize * 2f;
-        float camWidth = camHeight * Camera.main.aspect;
-
-        shape.scale = new Vector3(
-            camWidth * 1.5f,
-            shape.scale.y,
-            camHeight * 1.5f
-        );
-    }
     public void SetRainState(bool state)
     {
         isRaining = state;
 
         if (!isRaining)
         {
-            foreach (var zone in activeZones)
-                Destroy(zone);
-
-            activeZones.Clear();
-
-            initialized = false;   
+            DestroyRain();
+            initialized = false;
         }
     }
-
-    private void AdjustEmissionToCamera(ParticleSystem ps)
-    {
-        var emission = ps.emission;
-
-        float h = Camera.main.orthographicSize * 2f;
-        float w = h * Camera.main.aspect;
-        float currentArea = w * h;
-
-        float densityFactor = currentArea / baseCameraArea;
-
-        emission.rateOverTime = baseEmissionRate * densityFactor;
-    }
-
-    private IEnumerator FadeAndDestroy(GameObject zone)
-    {
-        ParticleSystem ps = zone.GetComponent<ParticleSystem>();
-        var emission = ps.emission;
-
-        float startRate = emission.rateOverTime.constant;
-        float time = 0f;
-
-        while (time < fadeDuration)
-        {
-            float t = time / fadeDuration;
-            emission.rateOverTime = Mathf.Lerp(startRate, 0, t);
-            time += Time.deltaTime;
-            yield return null;
-        }
-
-        emission.rateOverTime = 0;
-
-        Destroy(zone, 2f);
-    }
-
 }

@@ -129,8 +129,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca9928f9e2f5e154d838b67a7decc8c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  unloadTriggerCollider: {fileID: 3882025535754408441}
+  loadTriggerCollider: {fileID: 0}
   prefab: {fileID: 372591978817517267, guid: c3d1ade4963a1bf43bb3fecf474913d9, type: 3}
+  activeStateOnTrigger: 0
 --- !u!1 &3591933350169114800
 GameObject:
   m_ObjectHideFlags: 0
@@ -39814,8 +39815,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   loadTriggerCollider: {fileID: 2178243278951986782}
-  zOffset: {x: 0, y: 0, z: 1}
   prefab: {fileID: 372591978817517267, guid: c3d1ade4963a1bf43bb3fecf474913d9, type: 3}
+  activeStateOnTrigger: 0
 --- !u!1 &7557967889925135683
 GameObject:
   m_ObjectHideFlags: 0
