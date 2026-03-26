@@ -226,6 +226,13 @@ namespace CombatManager.Service
                 return;
             }
 
+            UpdateFacingToTarget(model.currentTarget);
+
+            if (model.isAttackAnimating && Time.time >= model.attackTimeoutAt)
+            {
+                CompleteAttackAnimation();
+            }
+
             if (distanceToPlayer > model.attackRange + 0.5f)
             {
                 model.isAttackAnimating = false;
@@ -268,6 +275,7 @@ namespace CombatManager.Service
             model.hasAppliedImpactThisAttack = false;
             model.pendingAttackTrigger = true;
             model.nextAttackTime = Time.time + Mathf.Max(0.05f, model.attackCooldown + model.attackRecovery);
+            model.attackTimeoutAt = Time.time + Mathf.Max(0.35f, model.attackCooldown + 0.5f);
             model.attackSequence++;
 
             if (model.rb != null)
@@ -296,6 +304,8 @@ namespace CombatManager.Service
         {
             model.isAttackAnimating = false;
             model.hasAppliedImpactThisAttack = false;
+            model.pendingAttackTrigger = false;
+            model.attackTimeoutAt = 0f;
 
             if (model.currentTarget == null)
             {
@@ -577,6 +587,22 @@ namespace CombatManager.Service
             {
                 model.spriteRenderer.flipX = direction.x > 0;
             }
+        }
+
+        private void UpdateFacingToTarget(Transform target)
+        {
+            if (target == null)
+                return;
+
+            Vector2 direction = (target.position - enemyTransform.position);
+            if (direction.sqrMagnitude <= 0.0001f)
+                return;
+
+            direction.Normalize();
+            model.facingDirection = direction;
+
+            if (model.spriteRenderer != null)
+                model.spriteRenderer.flipX = direction.x > 0f;
         }
 
         #endregion

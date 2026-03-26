@@ -106,6 +106,7 @@ namespace CombatManager.Model
         public bool hasAppliedImpactThisAttack = false;
         public bool pendingAttackTrigger = false;
         public int attackSequence = 0;
+        public float attackTimeoutAt = 0f;
 
         #endregion
 
