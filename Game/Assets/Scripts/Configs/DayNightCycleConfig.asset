@@ -437,7 +437,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   cloudScale: 65.9
-  cloudSpeed: 0.01
+  cloudSpeed: 0.005
   cloudContrast: -10.5
   cloudThreshold: 0.6
   cloudDirection: {x: 1, y: 0.5}

@@ -326,6 +326,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 };
 
                 allChunkData.Add(syncData);
+                yield return null; // yield one frame per chunk so the host stays responsive during collection
             }
         }
         

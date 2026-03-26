@@ -61,7 +61,9 @@ public class WorldDataBootstrapper : MonoBehaviour
             if (!string.IsNullOrEmpty(_authToken))
                 req.SetRequestHeader("Authorization", "Bearer " + _authToken);
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             req.certificateHandler = new AcceptAllCertificates();
+#endif
             yield return req.SendWebRequest();
 
 #if UNITY_2020_1_OR_NEWER
@@ -219,8 +221,10 @@ public class WorldDataBootstrapper : MonoBehaviour
         }
     }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
     private class AcceptAllCertificates : CertificateHandler
     {
         protected override bool ValidateCertificate(byte[] certificateData) => true;
     }
+#endif
 }

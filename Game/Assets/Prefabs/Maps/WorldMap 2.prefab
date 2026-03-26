@@ -102,7 +102,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2049091631077726381
 Transform:
   m_ObjectHideFlags: 0
@@ -217,8 +217,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca9928f9e2f5e154d838b67a7decc8c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  unloadTriggerCollider: {fileID: 3882025535754408441}
+  loadTriggerCollider: {fileID: 0}
   prefab: {fileID: 372591978817517267, guid: 4e770e77f30049a4fb07a0c1b471097a, type: 3}
+  activeStateOnTrigger: 0
 --- !u!1 &1479085940046202337
 GameObject:
   m_ObjectHideFlags: 0
@@ -315,8 +316,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca9928f9e2f5e154d838b67a7decc8c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  unloadTriggerCollider: {fileID: 1706877552561292941}
+  loadTriggerCollider: {fileID: 0}
   prefab: {fileID: 372591978817517267, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
+  activeStateOnTrigger: 0
 --- !u!1 &3320098669166969633
 GameObject:
   m_ObjectHideFlags: 0
@@ -43650,8 +43652,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   loadTriggerCollider: {fileID: 6970320892681372457}
-  zOffset: {x: 0, y: 0, z: 1}
   prefab: {fileID: 372591978817517267, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
+  activeStateOnTrigger: 0
 --- !u!1 &4809306911391137292
 GameObject:
   m_ObjectHideFlags: 0
@@ -70040,8 +70042,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   loadTriggerCollider: {fileID: 2178243278951986782}
-  zOffset: {x: 0, y: 0, z: 1}
   prefab: {fileID: 372591978817517267, guid: 4e770e77f30049a4fb07a0c1b471097a, type: 3}
+  activeStateOnTrigger: 0
 --- !u!1 &7722470777793964249
 GameObject:
   m_ObjectHideFlags: 0
