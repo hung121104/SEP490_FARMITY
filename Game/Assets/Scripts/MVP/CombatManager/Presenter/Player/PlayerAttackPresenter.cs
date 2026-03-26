@@ -65,11 +65,13 @@ namespace CombatManager.Presenter
         private void OnEnable()
         {
             PhotonNetwork.AddCallbackTarget(this);
+            PlayerRegistry.OnLocalPlayerSpawned += HandleLocalPlayerSpawned;
         }
 
         private void OnDisable()
         {
             PhotonNetwork.RemoveCallbackTarget(this);
+            PlayerRegistry.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
         }
 
         private void Update()
@@ -136,18 +138,41 @@ namespace CombatManager.Presenter
 
             localPlayerTransform = playerObj.transform;
 
-            Transform centerPoint = playerObj.transform.Find("CenterPoint");
+            RebindToPlayer(playerObj.transform);
+
+            Debug.Log("[PlayerAttackPresenter] Initialized successfully");
+            return true;
+        }
+
+        private void HandleLocalPlayerSpawned(Transform playerTransform)
+        {
+            if (playerTransform == null)
+                return;
+
+            RebindToPlayer(playerTransform);
+        }
+
+        private void RebindToPlayer(Transform playerTransform)
+        {
+            if (playerTransform == null)
+                return;
+
+            localPlayerTransform = playerTransform;
+
+            Transform centerPoint = playerTransform.Find("CenterPoint");
             if (centerPoint == null)
-                centerPoint = playerObj.transform;
+                centerPoint = playerTransform;
 
             model.stabPositionOffset = stabPositionOffset;
             model.horizontalPositionOffset = horizontalPositionOffset;
             model.verticalPositionOffset = verticalPositionOffset;
             model.vfxSpawnOffset = vfxSpawnOffset;
 
-            service = new PlayerAttackService(model);
+            if (service == null)
+                service = new PlayerAttackService(model);
+
             service.Initialize(
-                playerObj.transform,
+                playerTransform,
                 centerPoint,
                 stabVFXPrefab,
                 horizontalVFXPrefab,
@@ -155,9 +180,6 @@ namespace CombatManager.Presenter
                 damagePopupPrefab,
                 enemyLayers
             );
-
-            Debug.Log("[PlayerAttackPresenter] Initialized successfully");
-            return true;
         }
 
         private GameObject FindLocalPlayerEntity()

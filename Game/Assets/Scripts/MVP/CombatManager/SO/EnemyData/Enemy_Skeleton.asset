@@ -17,7 +17,7 @@ MonoBehaviour:
   enemyDescription: 
   enemyIcon: {fileID: 2753929369098120370, guid: 67988ffd729503c4d8b9bf2cc7590f4a, type: 3}
   enemyPrefab: {fileID: 7112447425611430327, guid: 6a5f774100a7d9e4a9b412b637dfa288, type: 3}
-  maxHealth: 10
+  maxHealth: 500
   damageAmount: 5
   knockbackForce: 10
   moveSpeed: 2

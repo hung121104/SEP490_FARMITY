@@ -106,11 +106,13 @@ namespace CombatManager.Presenter
         private void OnEnable()
         {
             PhotonNetwork.AddCallbackTarget(this);
+            PlayerRegistry.OnLocalPlayerSpawned += HandleLocalPlayerSpawned;
         }
 
         private void OnDisable()
         {
             PhotonNetwork.RemoveCallbackTarget(this);
+            PlayerRegistry.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
         }
 
         private void OnDestroy()
@@ -254,6 +256,25 @@ namespace CombatManager.Presenter
             currentWeaponData = null;
             DespawnWeapon();
             Debug.Log("[WeaponAnimationPresenter] Weapon unequipped → despawned");
+        }
+
+        private void HandleLocalPlayerSpawned(Transform playerTransform)
+        {
+            if (playerTransform == null)
+                return;
+
+            WeaponData equipped = WeaponEquipPresenter.Instance?.GetCurrentWeapon();
+            if (equipped == null)
+            {
+                DespawnWeapon();
+                return;
+            }
+
+            currentWeaponData = equipped;
+            DespawnWeapon();
+            service = null;
+            model.isInitialized = false;
+            StartCoroutine(SpawnWhenPlayerReady());
         }
 
         private void InitializeRemoteWeaponStatesFromRoom()
