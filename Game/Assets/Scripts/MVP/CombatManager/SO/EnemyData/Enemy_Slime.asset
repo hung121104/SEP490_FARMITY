@@ -19,7 +19,7 @@ MonoBehaviour:
   enemyPrefab: {fileID: 7112447425611430327, guid: 6edb4661a74bb254196935fc2a73d48d, type: 3}
   maxHealth: 500
   damageAmount: 5
-  knockbackForce: 30
+  knockbackForce: 10
   moveSpeed: 2
   chaseSpeed: 3
   wanderSpeed: 1
