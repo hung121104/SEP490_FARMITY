@@ -65,7 +65,13 @@ public class QuestPresenter
 
     public void ShowQuest()
     {
-        if (quest != null) view.ShowQuest(quest, npcName, avatar);
+        if (quest == null) return;
+
+        Sprite rewardIcon = null;
+        if (quest.reward != null)
+            rewardIcon = ItemCatalogService.Instance.GetCachedSprite(quest.reward.itemId);
+
+        view.ShowQuest(quest, npcName, avatar, rewardIcon);
     }
 
     public void AcceptQuest()

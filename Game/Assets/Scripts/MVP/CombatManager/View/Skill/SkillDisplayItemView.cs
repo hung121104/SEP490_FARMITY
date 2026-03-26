@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
-using CombatManager.SO;
+using CombatManager.Model;
 
 namespace CombatManager.View
 {
@@ -12,7 +12,7 @@ namespace CombatManager.View
     /// Drag behavior: item itself moves with mouse (mirrors old SkillDisplayItem).
     /// </summary>
     public class SkillDisplayItemView : MonoBehaviour,
-        IBeginDragHandler, IDragHandler, IEndDragHandler
+        IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
     {
         [Header("UI References - Assign in Inspector")]
         [SerializeField] private Image skillIcon;
@@ -56,8 +56,13 @@ namespace CombatManager.View
 
             RefreshDisplay();
 
-            selectButton?.onClick.RemoveAllListeners();
-            selectButton?.onClick.AddListener(OnSelectClicked);
+            if (selectButton != null)
+            {
+                // Root view handles click/drag. Make child button non-blocking for pointer events.
+                selectButton.onClick.RemoveAllListeners();
+                if (selectButton.targetGraphic != null)
+                    selectButton.targetGraphic.raycastTarget = false;
+            }
         }
 
         private void RefreshDisplay()
@@ -65,7 +70,13 @@ namespace CombatManager.View
             if (skillData == null) return;
 
             if (skillIcon != null)
+            {
+                // No fallback icon: keep slot visibly empty when icon is missing.
                 skillIcon.sprite = skillData.skillIcon;
+                bool hasIcon = skillData.skillIcon != null;
+                skillIcon.enabled = hasIcon;
+                skillIcon.color = hasIcon ? Color.white : Color.clear;
+            }
 
             if (skillNameText != null)
                 skillNameText.text = skillData.skillName;
@@ -81,6 +92,7 @@ namespace CombatManager.View
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (skillData == null) return;
+            if (eventData.button != PointerEventData.InputButton.Left) return;
 
             isDragging = true;
 
@@ -145,6 +157,13 @@ namespace CombatManager.View
         #endregion
 
         #region Button
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (eventData.button != PointerEventData.InputButton.Left) return;
+            if (isDragging) return;
+            OnSelectClicked();
+        }
 
         private void OnSelectClicked()
         {

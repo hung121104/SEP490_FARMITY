@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using CombatManager.Presenter;
+using UnityEngine.UI;
 
 namespace CombatManager.View
 {
@@ -33,6 +34,12 @@ namespace CombatManager.View
         private void Awake()
         {
             tmpText = GetComponentInChildren<TMP_Text>();
+
+            Graphic[] graphics = GetComponentsInChildren<Graphic>(true);
+            for (int i = 0; i < graphics.Length; i++)
+            {
+                graphics[i].raycastTarget = false;
+            }
             
             if (presenter == null)
             {

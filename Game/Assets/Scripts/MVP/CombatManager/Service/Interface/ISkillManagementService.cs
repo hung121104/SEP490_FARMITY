@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using CombatManager.SO;
+using CombatManager.Model;
 
 namespace CombatManager.Service
 {
