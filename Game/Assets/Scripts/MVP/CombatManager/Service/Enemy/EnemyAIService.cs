@@ -1,6 +1,7 @@
 using UnityEngine;
 using CombatManager.Model;
 using System.Collections.Generic;
+using CombatManager.Presenter;
 
 namespace CombatManager.Service
 {
@@ -132,6 +133,8 @@ namespace CombatManager.Service
                     break;
             }
 
+                    ApplyEnemySeparation();
+
             ClampVelocity();
         }
 
@@ -214,6 +217,7 @@ namespace CombatManager.Service
         {
             if (model.currentTarget == null)
             {
+                model.isAttackAnimating = false;
                 if (model.isAlerted)
                 {
                     model.currentState = EnemyState.Chasing;
@@ -225,7 +229,92 @@ namespace CombatManager.Service
                 return;
             }
 
+            UpdateFacingToTarget(model.currentTarget);
+
+            if (model.isAttackAnimating && Time.time >= model.attackTimeoutAt)
+            {
+                CompleteAttackAnimation();
+            }
+
             if (distanceToPlayer > model.attackRange + 0.5f)
+            {
+                model.isAttackAnimating = false;
+                model.currentState = EnemyState.Chasing;
+                return;
+            }
+
+            if (!model.useActiveAttack)
+                return;
+
+            if (model.isAttackAnimating)
+                return;
+
+            if (Time.time < model.nextAttackTime)
+                return;
+
+            if (!IsTargetInFront(model.currentTarget))
+                return;
+
+            StartAttackAnimation();
+        }
+
+        private bool IsTargetInFront(Transform target)
+        {
+            if (target == null)
+                return false;
+
+            Vector2 toTarget = ((Vector2)(target.position - enemyTransform.position)).normalized;
+            Vector2 forward = model.facingDirection.sqrMagnitude > 0.0001f
+                ? model.facingDirection.normalized
+                : Vector2.right;
+
+            float dot = Vector2.Dot(forward, toTarget);
+            return dot >= model.attackFrontDotThreshold;
+        }
+
+        private void StartAttackAnimation()
+        {
+            model.isAttackAnimating = true;
+            model.hasAppliedImpactThisAttack = false;
+            model.pendingAttackTrigger = true;
+            model.nextAttackTime = Time.time + Mathf.Max(0.05f, model.attackCooldown + model.attackRecovery);
+            model.attackTimeoutAt = Time.time + Mathf.Max(0.35f, model.attackCooldown + 0.5f);
+            model.attackSequence++;
+
+            if (model.rb != null)
+                model.rb.linearVelocity = Vector2.zero;
+        }
+
+        public bool ConsumePendingAttackTrigger()
+        {
+            if (!model.pendingAttackTrigger)
+                return false;
+
+            model.pendingAttackTrigger = false;
+            return true;
+        }
+
+        public bool TryConsumeAttackImpact()
+        {
+            if (!model.useActiveAttack || !model.isAttackAnimating || model.hasAppliedImpactThisAttack)
+                return false;
+
+            model.hasAppliedImpactThisAttack = true;
+            return true;
+        }
+
+        public void CompleteAttackAnimation()
+        {
+            model.isAttackAnimating = false;
+            model.hasAppliedImpactThisAttack = false;
+            model.pendingAttackTrigger = false;
+            model.attackTimeoutAt = 0f;
+
+            if (model.currentTarget == null)
+            {
+                BeginReturnToGuardRange();
+            }
+            else if (model.currentState == EnemyState.Attacking)
             {
                 model.currentState = EnemyState.Chasing;
             }
@@ -334,6 +423,9 @@ namespace CombatManager.Service
             model.alertTimer = model.hitAlertDuration;
             model.isKnockedBack = true;
             model.knockbackTimer = model.knockbackDuration;
+            model.isAttackAnimating = false;
+            model.pendingAttackTrigger = false;
+            model.hasAppliedImpactThisAttack = false;
 
             if (model.currentState != EnemyState.Chasing && model.currentState != EnemyState.Attacking)
             {
@@ -500,6 +592,62 @@ namespace CombatManager.Service
             }
         }
 
+        private void ApplyEnemySeparation()
+        {
+            if (model.rb == null || !model.enableSeparation || model.separationRadius <= 0.01f || model.separationForce <= 0f)
+                return;
+
+            Collider2D[] overlaps = Physics2D.OverlapCircleAll(enemyTransform.position, model.separationRadius);
+            if (overlaps == null || overlaps.Length == 0)
+                return;
+
+            Vector2 separation = Vector2.zero;
+
+            for (int i = 0; i < overlaps.Length; i++)
+            {
+                Collider2D col = overlaps[i];
+                if (col == null)
+                    continue;
+
+                EnemyPresenter otherEnemy = col.GetComponentInParent<EnemyPresenter>();
+                if (otherEnemy == null)
+                    continue;
+
+                Transform otherTransform = otherEnemy.transform;
+                if (otherTransform == enemyTransform)
+                    continue;
+
+                Vector2 away = (Vector2)(enemyTransform.position - otherTransform.position);
+                float distance = away.magnitude;
+                if (distance < 0.001f)
+                    continue;
+
+                float weight = 1f - Mathf.Clamp01(distance / model.separationRadius);
+                separation += away.normalized * weight;
+            }
+
+            if (separation.sqrMagnitude < 0.0001f)
+                return;
+
+            model.rb.linearVelocity += separation.normalized * model.separationForce;
+        }
+
+        private void UpdateFacingToTarget(Transform target)
+        {
+            if (target == null)
+                return;
+
+            Vector2 direction = (target.position - enemyTransform.position);
+            if (direction.sqrMagnitude <= 0.0001f)
+                return;
+
+            direction.Normalize();
+            model.facingDirection = direction;
+
+            if (model.spriteRenderer != null)
+                model.spriteRenderer.flipX = direction.x > 0f;
+        }
+
         #endregion
 
         #region Animation
@@ -525,6 +673,8 @@ namespace CombatManager.Service
         public EnemyState GetCurrentState() => model.currentState;
         public bool IsAlerted() => model.isAlerted;
         public bool IsKnockedBack() => model.isKnockedBack;
+        public bool IsAttackAnimating() => model.isAttackAnimating;
+        public int GetAttackSequence() => model.attackSequence;
 
         #endregion
     }
