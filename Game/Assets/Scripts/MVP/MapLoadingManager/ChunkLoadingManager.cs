@@ -594,14 +594,23 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
                         if (showDebugLogs)
                             Debug.Log($"[ChunkLoading] Spawned structure '{structId}' at ({tile.WorldX},{tile.WorldY}) from pool, obj={structObj?.GetInstanceID()}");
 
-                        Vector3 structPos = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.5f, 0f);
+                        Vector3 structPos = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.25f, 0f);
                         structObj.transform.position = structPos;
 
+                        // Apply sprite with bottom-center pivot for all structures
                         SpriteRenderer sr = structObj.GetComponentInChildren<SpriteRenderer>(true)
                             ?? structObj.AddComponent<SpriteRenderer>();
                         Sprite itemSprite = ItemCatalogService.Instance?.GetCachedSprite(structId);
                         if (itemSprite != null)
-                            sr.sprite = itemSprite;
+                        {
+                            sr.sprite = Sprite.Create(
+                                itemSprite.texture,
+                                itemSprite.rect,
+                                new Vector2(0.5f, 0f),
+                                itemSprite.pixelsPerUnit,
+                                0,
+                                SpriteMeshType.FullRect);
+                        }
                         sr.sortingLayerName = "WalkInfront";
 
                         structObj.SetActive(true);
@@ -915,7 +924,6 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Returns the visual GameObject for a structure at a specific world position, if loaded.
-    /// Accounts for the +0.5f offset used when spawning structures.
     /// </summary>
     public GameObject GetStructureVisualAt(Vector3Int worldPos)
     {
@@ -925,20 +933,13 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks
             foreach (var tuple in list)
             {
                 if (tuple.go == null) continue;
-                
-                // Structure positions have +0.5f offset, so check both integer and offset positions
+
+                // Structure position is (worldX + 0.5f, worldY + 0.25f) with bottom-center pivot
                 float visualX = tuple.go.transform.position.x;
                 float visualY = tuple.go.transform.position.y;
-                
-                // Check if matches integer position (worldPos)
-                bool matchesIntegerPos = Mathf.Approximately(visualX, worldPos.x) && 
-                                         Mathf.Approximately(visualY, worldPos.y);
-                
-                // Check if matches offset position (worldPos + 0.5f)
-                bool matchesOffsetPos = Mathf.Approximately(visualX, worldPos.x + 0.5f) && 
-                                      Mathf.Approximately(visualY, worldPos.y + 0.5f);
-                
-                if (matchesIntegerPos || matchesOffsetPos)
+
+                if (Mathf.Approximately(visualX, worldPos.x + 0.5f) &&
+                    Mathf.Approximately(visualY, worldPos.y + 0.25f))
                 {
                     return tuple.go;
                 }

@@ -159,7 +159,7 @@ public class StructureView : MonoBehaviourPunCallbacks
 
         if (currentItem != null && currentItem.itemType == ItemType.Structure && !currentItem.isFallback)
         {
-            // Delegate data-building to Presenter (business logic, not View's job)
+            // Delegate data-building to Presenter
             var data = presenter.GetStructureData(currentItem.itemID, GetDefaultPrefab);
             if (data != null)
             {
@@ -210,10 +210,18 @@ public class StructureView : MonoBehaviourPunCallbacks
         ghostRenderer = ghostInstance.GetComponentInChildren<SpriteRenderer>(true)
             ?? ghostInstance.AddComponent<SpriteRenderer>();
 
-        Sprite itemSprite = activeItemModel?.Icon
+        Sprite original = activeItemModel?.Icon
             ?? ItemCatalogService.Instance?.GetCachedSprite(data.StructureId);
-        if (itemSprite != null)
-            ghostRenderer.sprite = itemSprite;
+        if (original != null)
+        {
+            ghostRenderer.sprite = Sprite.Create(
+                original.texture,
+                original.rect,
+                new Vector2(0.5f, 0f),
+                original.pixelsPerUnit,
+                0,
+                SpriteMeshType.FullRect);
+        }
 
         foreach (var col in ghostInstance.GetComponentsInChildren<Collider2D>())
             col.enabled = false;
@@ -261,7 +269,7 @@ public class StructureView : MonoBehaviourPunCallbacks
             return;
         }
 
-        currentSnappedPos = new Vector3(Mathf.Floor(tile.x) + 0.5f, Mathf.Floor(tile.y) + 0.5f, 0f);
+        currentSnappedPos = new Vector3(Mathf.Floor(tile.x) + 0.5f, Mathf.Floor(tile.y) + 0.25f, 0f);
         ghostInstance.transform.position = currentSnappedPos;
         ghostInstance.SetActive(true);
 
