@@ -121,7 +121,7 @@ namespace CombatManager.Presenter
                 aiService.UpdatePhysics(Time.fixedDeltaTime);
         }
 
-        private void OnCollisionStay2D(Collision2D collision)
+        private void OnTriggerStay2D(Collider2D other)
         {
             if (!model.isInitialized)
                 return;
@@ -129,13 +129,41 @@ namespace CombatManager.Presenter
             if (!IsAuthoritative)
                 return;
 
-            if (((1 << collision.gameObject.layer) & model.playerLayer) != 0)
+            if (IsPlayerContact(other))
             {
-                if (combatService.CanDealDamage())
-                {
-                    combatService.DealDamageToPlayer(collision);
-                }
+                combatService.DealDamageToPlayer(other, transform);
             }
+        }
+
+        private void OnCollisionStay2D(Collision2D collision)
+        {
+            if (collision == null)
+                return;
+
+            // Backward-compatible fallback while prefabs migrate to trigger hitbox.
+            OnTriggerStay2D(collision.otherCollider);
+        }
+
+        private bool IsPlayerContact(Collider2D other)
+        {
+            if (other == null)
+                return false;
+
+            if (((1 << other.gameObject.layer) & model.playerLayer) != 0)
+                return true;
+
+            if (other.CompareTag("Player") || other.CompareTag("PlayerEntity"))
+                return true;
+
+            Transform parent = other.transform;
+            while (parent != null)
+            {
+                if (parent.CompareTag("Player") || parent.CompareTag("PlayerEntity"))
+                    return true;
+                parent = parent.parent;
+            }
+
+            return false;
         }
 
         #endregion

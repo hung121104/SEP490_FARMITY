@@ -9,7 +9,7 @@ namespace CombatManager.Service
     {
         void Initialize(GameObject damagePopupPrefab);
         bool CanDealDamage();
-        void DealDamageToPlayer(UnityEngine.Collision2D collision);
+        void DealDamageToPlayer(Collider2D playerCollider, Transform enemyTransform);
         void ShowDamagePopup(Vector3 position);
     }
 }

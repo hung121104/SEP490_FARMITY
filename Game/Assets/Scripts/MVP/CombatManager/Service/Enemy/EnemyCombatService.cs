@@ -33,9 +33,21 @@ namespace CombatManager.Service
             return true;
         }
 
-        public void DealDamageToPlayer(Collision2D collision)
+        public void DealDamageToPlayer(Collider2D playerCollider, Transform enemyTransform)
         {
-            model.lastDamageTime = Time.time;
+            if (playerCollider == null || enemyTransform == null)
+                return;
+
+            if (!CanDealDamage())
+                return;
+
+            Transform playerRoot = ResolvePlayerRoot(playerCollider);
+            if (playerRoot == null)
+                return;
+
+            Photon.Pun.PhotonView targetView = playerRoot.GetComponent<Photon.Pun.PhotonView>();
+            if (targetView != null && Photon.Pun.PhotonNetwork.IsConnected && !targetView.IsMine)
+                return; // Phase 1: host-local-only damage application.
 
             PlayerHealthPresenter healthPresenter = ResolveHealthPresenter();
             if (healthPresenter == null)
@@ -45,20 +57,50 @@ namespace CombatManager.Service
                 return;
             }
 
+            Transform localPlayerRoot = healthPresenter.GetService()?.GetPlayerEntity();
+            if (localPlayerRoot == null || localPlayerRoot != playerRoot)
+                return;
+
             PlayerKnockbackPresenter knockbackPresenter = ResolveKnockbackPresenter();
 
             // Call presenter's public methods
             healthPresenter.ChangeHealth(-model.damageAmount);
+            model.lastDamageTime = Time.time;
 
             // Apply knockback
             if (knockbackPresenter != null)
             {
-                Transform attackerTransform = collision.otherCollider.transform;
-                knockbackPresenter.Knockback(attackerTransform, model.knockbackForce);
+                knockbackPresenter.Knockback(enemyTransform, model.knockbackForce);
             }
 
             // Show damage popup
-            ShowDamagePopup(collision.transform.position);
+            ShowDamagePopup(playerRoot.position);
+        }
+
+        private static Transform ResolvePlayerRoot(Collider2D playerCollider)
+        {
+            if (playerCollider == null)
+                return null;
+
+            if (playerCollider.GetComponent<Photon.Pun.PhotonView>() != null)
+                return playerCollider.transform;
+
+            Photon.Pun.PhotonView parentView = playerCollider.GetComponentInParent<Photon.Pun.PhotonView>();
+            if (parentView != null)
+                return parentView.transform;
+
+            if (playerCollider.CompareTag("Player") || playerCollider.CompareTag("PlayerEntity"))
+                return playerCollider.transform;
+
+            Transform taggedParent = playerCollider.transform;
+            while (taggedParent != null)
+            {
+                if (taggedParent.CompareTag("Player") || taggedParent.CompareTag("PlayerEntity"))
+                    return taggedParent;
+                taggedParent = taggedParent.parent;
+            }
+
+            return null;
         }
 
         private PlayerHealthPresenter ResolveHealthPresenter()
