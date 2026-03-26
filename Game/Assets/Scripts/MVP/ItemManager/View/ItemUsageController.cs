@@ -185,9 +185,9 @@ public class ItemUsageController : MonoBehaviour
                 break;
 
             case ItemType.Structure:
-                // Placement delegated via ItemUsagePresenter → StructurePresenter → StructureService
+                // Placement delegated to StructureView → StructurePresenter → StructureService
                 // Item consumed here on success (same pattern as Consumable, Fertilizer, etc.)
-                if (itemUsagePresenter.UseStructure(item.itemID))
+                if (StructureView.Instance != null && StructureView.Instance.TryPlaceActiveStructure(item.itemID))
                     presenter.ConsumeCurrentItem(1);
                 break;
 
