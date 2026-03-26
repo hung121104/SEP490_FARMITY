@@ -44,6 +44,9 @@ namespace CombatManager.Service
             if (playerRoot == null)
                 return;
 
+            if (!IsPreferredDamageCollider(playerCollider, playerRoot))
+                return;
+
             Photon.Pun.PhotonView targetView = ResolvePlayerPhotonView(playerCollider, playerRoot);
             ApplyDamageToResolvedTarget(playerRoot, targetView, enemyTransform, ignoreLocalThrottle: false);
         }
@@ -63,6 +66,9 @@ namespace CombatManager.Service
 
                 Transform playerRoot = ResolvePlayerRoot(playerCollider);
                 if (playerRoot == null)
+                    continue;
+
+                if (!IsPreferredDamageCollider(playerCollider, playerRoot))
                     continue;
 
                 Photon.Pun.PhotonView targetView = ResolvePlayerPhotonView(playerCollider, playerRoot);
@@ -193,6 +199,30 @@ namespace CombatManager.Service
             }
 
             return null;
+        }
+
+        private static bool IsPreferredDamageCollider(Collider2D candidate, Transform playerRoot)
+        {
+            if (candidate == null)
+                return false;
+
+            // Prefer explicit body hitbox when present.
+            if (candidate is PolygonCollider2D)
+                return true;
+
+            if (playerRoot == null)
+                return true;
+
+            PolygonCollider2D[] bodyPolygons = playerRoot.GetComponentsInChildren<PolygonCollider2D>(true);
+            for (int i = 0; i < bodyPolygons.Length; i++)
+            {
+                PolygonCollider2D poly = bodyPolygons[i];
+                if (poly != null && poly.enabled)
+                    return false;
+            }
+
+            // Backward compatibility: if no polygon body hitbox exists, keep old collider behavior.
+            return true;
         }
 
         private PlayerHealthPresenter ResolveHealthPresenter()

@@ -337,16 +337,36 @@ namespace CombatManager.Presenter
             GameObject[] players = GameObject.FindGameObjectsWithTag("PlayerEntity");
             for (int i = 0; i < players.Length; i++)
             {
-                if (players[i] != null)
-                    playerTargets.Add(players[i].transform);
+                TryAddPotentialTarget(players[i]);
             }
 
             players = GameObject.FindGameObjectsWithTag("Player");
             for (int i = 0; i < players.Length; i++)
             {
-                if (players[i] != null && !playerTargets.Contains(players[i].transform))
-                    playerTargets.Add(players[i].transform);
+                TryAddPotentialTarget(players[i]);
             }
+        }
+
+        private void TryAddPotentialTarget(GameObject candidate)
+        {
+            if (candidate == null || !candidate.activeInHierarchy)
+                return;
+
+            PlayerMovement movement = candidate.GetComponent<PlayerMovement>() ?? candidate.GetComponentInParent<PlayerMovement>();
+            if (movement == null)
+                return;
+
+            Transform targetRoot = movement.transform;
+
+            if (PhotonNetwork.IsConnected)
+            {
+                PhotonView pv = targetRoot.GetComponent<PhotonView>() ?? targetRoot.GetComponentInChildren<PhotonView>(true);
+                if (pv == null || pv.Owner == null)
+                    return;
+            }
+
+            if (!playerTargets.Contains(targetRoot))
+                playerTargets.Add(targetRoot);
         }
 
         #endregion
