@@ -5,6 +5,10 @@ using Photon.Pun;
 /// <summary>
 /// Unified presenter for structure placement, removal, and destruction.
 /// Mediates between StructureView / StructureDestructionView and StructureService.
+///
+/// Cross-presenter communication:
+/// ItemUsagePresenter calls TryPlaceStructure via the static delegate OnTryPlaceStructure.
+/// This avoids View-to-View coupling while keeping Presenter-to-Presenter coordination.
 /// </summary>
 public class StructurePresenter
 {
@@ -14,20 +18,39 @@ public class StructurePresenter
     // View callback for destruction visual effects (optional — only wired by DestructionView)
     private readonly StructureDestructionView destructionView;
 
+    // ── Placement State (pushed by View each frame) ──────────────────────
+    private Vector3 cachedSnappedPos;
+    private bool cachedCanPlace;
+    private StructureData cachedActiveData;
+
+    /// <summary>
+    /// Static delegate for cross-presenter communication.
+    /// Set by StructurePresenter (placement constructor), called by ItemUsagePresenter.
+    /// Returns true if placement succeeded.
+    /// </summary>
+    public static Func<string, bool> OnTryPlaceStructure;
+
+    // ── Constructors ─────────────────────────────────────────────────────
+
     public StructurePresenter(IStructureService structureService, bool showDebugLogs = true)
     {
         this.structureService = structureService;
         this.showDebugLogs = showDebugLogs;
+
+        // Register this presenter as the placement handler
+        OnTryPlaceStructure = TryPlaceActiveStructure;
     }
 
     /// <summary>
-    /// Constructor that also wires destruction event subscriptions (used by DestructionView).
+    /// Constructor for destruction (used by DestructionView).
+    /// Does NOT register OnTryPlaceStructure — only the placement presenter does that.
     /// </summary>
     public StructurePresenter(IStructureService structureService,
                               StructureDestructionView destructionView,
                               bool showDebugLogs = true)
-        : this(structureService, showDebugLogs)
     {
+        this.structureService = structureService;
+        this.showDebugLogs = showDebugLogs;
         this.destructionView = destructionView;
 
         // Subscribe to HP update events for visual feedback
@@ -44,6 +67,23 @@ public class StructurePresenter
 
         if (PhotonNetwork.IsMasterClient)
             ChunkDataSyncManager.OnStructureHitRequest -= OnStructureHitRequest;
+
+        // Clean up static delegate if this presenter registered it
+        if (OnTryPlaceStructure?.Target == this)
+            OnTryPlaceStructure = null;
+    }
+
+    // ── Placement State Update (called by View each frame) ───────────────
+
+    /// <summary>
+    /// View pushes current placement state to Presenter each frame.
+    /// Presenter holds the state so it can respond to placement requests.
+    /// </summary>
+    public void UpdatePlacementState(Vector3 snappedPos, bool canPlace, StructureData activeData)
+    {
+        cachedSnappedPos = snappedPos;
+        cachedCanPlace = canPlace;
+        cachedActiveData = activeData;
     }
 
     // ── Data Building (Placement) ─────────────────────────────────────────
@@ -73,6 +113,23 @@ public class StructurePresenter
     }
 
     // ── Placement ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called via OnTryPlaceStructure delegate from ItemUsagePresenter.
+    /// Uses cached placement state from View to attempt placement.
+    /// </summary>
+    public bool TryPlaceActiveStructure(string itemId)
+    {
+        if (cachedActiveData == null || cachedActiveData.StructureId != itemId) return false;
+        if (!cachedCanPlace) return false;
+
+        bool placed = HandlePlaceStructure(cachedSnappedPos, cachedActiveData);
+
+        if (placed && showDebugLogs)
+            Debug.Log($"[StructurePresenter] Structure placed at {cachedSnappedPos}");
+
+        return placed;
+    }
 
     public bool CanPlace(Vector3 anchorWorldPos, StructureData data)
     {
