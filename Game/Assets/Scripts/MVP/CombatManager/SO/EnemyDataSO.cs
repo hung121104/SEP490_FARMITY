@@ -28,6 +28,11 @@ namespace CombatManager.SO
         public float wanderSpeed = 1f;
         public float wanderRange = 5f;
 
+        [Header("Separation")]
+        public bool enableSeparation = true;
+        public float separationRadius = 0.8f;
+        public float separationForce = 2.5f;
+
         [Header("Detection")]
         public float detectionRange = 8f;
         public float attackRange = 1.5f;

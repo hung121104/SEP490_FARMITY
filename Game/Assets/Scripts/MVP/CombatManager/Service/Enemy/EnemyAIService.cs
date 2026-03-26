@@ -1,6 +1,7 @@
 using UnityEngine;
 using CombatManager.Model;
 using System.Collections.Generic;
+using CombatManager.Presenter;
 
 namespace CombatManager.Service
 {
@@ -131,6 +132,8 @@ namespace CombatManager.Service
                     ApplyFriction();
                     break;
             }
+
+                    ApplyEnemySeparation();
 
             ClampVelocity();
         }
@@ -587,6 +590,46 @@ namespace CombatManager.Service
             {
                 model.spriteRenderer.flipX = direction.x > 0;
             }
+        }
+
+        private void ApplyEnemySeparation()
+        {
+            if (model.rb == null || !model.enableSeparation || model.separationRadius <= 0.01f || model.separationForce <= 0f)
+                return;
+
+            Collider2D[] overlaps = Physics2D.OverlapCircleAll(enemyTransform.position, model.separationRadius);
+            if (overlaps == null || overlaps.Length == 0)
+                return;
+
+            Vector2 separation = Vector2.zero;
+
+            for (int i = 0; i < overlaps.Length; i++)
+            {
+                Collider2D col = overlaps[i];
+                if (col == null)
+                    continue;
+
+                EnemyPresenter otherEnemy = col.GetComponentInParent<EnemyPresenter>();
+                if (otherEnemy == null)
+                    continue;
+
+                Transform otherTransform = otherEnemy.transform;
+                if (otherTransform == enemyTransform)
+                    continue;
+
+                Vector2 away = (Vector2)(enemyTransform.position - otherTransform.position);
+                float distance = away.magnitude;
+                if (distance < 0.001f)
+                    continue;
+
+                float weight = 1f - Mathf.Clamp01(distance / model.separationRadius);
+                separation += away.normalized * weight;
+            }
+
+            if (separation.sqrMagnitude < 0.0001f)
+                return;
+
+            model.rb.linearVelocity += separation.normalized * model.separationForce;
         }
 
         private void UpdateFacingToTarget(Transform target)

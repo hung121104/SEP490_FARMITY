@@ -214,6 +214,12 @@ namespace CombatManager.Presenter
             if (spriteRenderer == null)
                 spriteRenderer = GetComponent<SpriteRenderer>();
 
+            Collider2D mainCollider = GetComponent<Collider2D>();
+            if (mainCollider != null && mainCollider.isTrigger)
+            {
+                Debug.LogWarning($"[EnemyPresenter] {gameObject.name} main collider is Trigger. Enemies will not physically block each other.");
+            }
+
             view = GetComponent<EnemyView>();
             if (view == null)
             {
@@ -288,6 +294,9 @@ namespace CombatManager.Presenter
             model.chaseSpeed = enemyData.chaseSpeed;
             model.wanderSpeed = enemyData.wanderSpeed;
             model.wanderRange = enemyData.wanderRange;
+            model.enableSeparation = enemyData.enableSeparation;
+            model.separationRadius = enemyData.separationRadius;
+            model.separationForce = enemyData.separationForce;
 
             // Guard
             model.guardDuration = enemyData.guardDuration;

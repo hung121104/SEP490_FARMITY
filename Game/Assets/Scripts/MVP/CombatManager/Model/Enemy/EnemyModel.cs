@@ -45,6 +45,9 @@ namespace CombatManager.Model
         public float chaseSpeed = 3f;
         public float wanderSpeed = 1f;
         public float wanderRange = 5f;
+        public bool enableSeparation = true;
+        public float separationRadius = 0.8f;
+        public float separationForce = 2.5f;
         public Vector3 startPosition = Vector3.zero;
         public Vector3 wanderTarget = Vector3.zero;
         public Vector2 currentWanderDirection = Vector2.right;
