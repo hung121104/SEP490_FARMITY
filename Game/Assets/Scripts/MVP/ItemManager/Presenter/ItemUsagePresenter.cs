@@ -46,10 +46,15 @@ public class ItemUsagePresenter
         return service.UsePollen(item, pos);
     }
 
-    public bool UseStructure(ItemData item, Vector3 pos)
+    public bool UseStructure(string itemId)
     {
-        Debug.Log("[ItemUsage] UseStructure");
-        return service.UseStructure(item, pos);
+        if (StructurePresenter.OnTryPlaceStructure == null)
+        {
+            Debug.LogWarning("[ItemUsagePresenter] No structure placement handler registered.");
+            return false;
+        }
+
+        return StructurePresenter.OnTryPlaceStructure.Invoke(itemId);
     }
 }
 

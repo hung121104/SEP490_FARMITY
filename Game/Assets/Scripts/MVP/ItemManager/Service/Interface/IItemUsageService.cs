@@ -9,5 +9,4 @@ public interface IItemUsageService
     (bool,int) UseConsumable(ItemData item, Vector3 pos);
     bool       UseWeapon(ItemData item, Vector3 pos);
     bool       UsePollen(ItemData item, Vector3 pos);
-    bool       UseStructure(ItemData item, Vector3 pos);
 }

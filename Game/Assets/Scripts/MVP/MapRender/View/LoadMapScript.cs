@@ -1,31 +1,37 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 public class LoadMapScript : MonoBehaviour
 {
-    private PrefabLoaderPresenter _prefabLoaderPresenter = new PrefabLoaderPresenter();
-
     [SerializeField] private PolygonCollider2D loadTriggerCollider;
 
-    [SerializeField] private Vector3 zOffset = new Vector3(0, 0, 1);
-
-    [Tooltip("Single prefab to load when player triggers.")]
+    [Tooltip("Scene object to toggle when a player enters this trigger.")]
     [SerializeField] private GameObject prefab;
 
-    // Single instance for the prefab
-    private GameObject instance;
+    [Tooltip("Active state to apply when a player enters this trigger.")]
+    [SerializeField] protected bool activeStateOnTrigger = true;
+
+    protected virtual bool TargetActiveState => activeStateOnTrigger;
+
+    private void Reset()
+    {
+        loadTriggerCollider = GetComponent<PolygonCollider2D>();
+    }
 
     private void Awake()
     {
+        if (loadTriggerCollider == null)
+        {
+            loadTriggerCollider = GetComponent<PolygonCollider2D>();
+        }
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.gameObject.CompareTag("PlayerEntity"))
+        if (collision == null || !collision.gameObject.CompareTag("PlayerEntity") || prefab == null)
         {
-            if (prefab == null) return;
-
-            _prefabLoaderPresenter.LoadPrefab(prefab, zOffset);
+            return;
         }
+
+        prefab.SetActive(TargetActiveState);
     }
 }
