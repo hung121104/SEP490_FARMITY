@@ -20,6 +20,8 @@ namespace CombatManager.Presenter
         private const byte WEAPON_AIM_EVENT = 162;
         private const float AIM_SEND_INTERVAL = 0.05f;
         private const float REMOTE_ROTATION_SMOOTH_SPEED = 18f;
+        private const float AUTO_ANCHOR_X = 0.3f;
+        private const float AUTO_ANCHOR_Y = 0f;
         private const string PARAM_IS_WALKING = "isWalking";
         private const string PARAM_INPUT_X = "InputX";
         private const string PARAM_INPUT_Y = "InputY";
@@ -80,6 +82,7 @@ namespace CombatManager.Presenter
         private Sprite activeWeaponSprite;
         private readonly Dictionary<int, RemoteWeaponState> remoteWeaponStates = new Dictionary<int, RemoteWeaponState>();
         private float lastAimSendTime;
+        private Vector2 localLastFacingDirection = Vector2.right;
 
         #region Unity Lifecycle
 
@@ -130,6 +133,7 @@ namespace CombatManager.Presenter
         private void LateUpdate()
         {
             ForceWeaponSpriteOverride();
+            UpdateLocalWeaponAnchorSide();
             BroadcastLocalAimAngleIfNeeded();
             UpdateRemoteWeaponTransforms();
         }
@@ -521,7 +525,8 @@ namespace CombatManager.Presenter
 
             state.pivotRoot = new GameObject($"RemoteWeaponPivotRoot_{actorNumber}");
             state.pivotRoot.transform.SetParent(centerPoint, false);
-            state.pivotRoot.transform.localPosition = anchorOffset;
+            bool facingLeft = IsFacingLeft(ownerPlayer, ref state.lastDirection);
+            state.pivotRoot.transform.localPosition = BuildSignedAnchorOffset(facingLeft);
 
             state.weaponVisual = Instantiate(basePrefab, state.pivotRoot.transform);
             state.weaponVisual.name = $"RemoteWeaponVisual_{actorNumber}";
@@ -635,7 +640,8 @@ namespace CombatManager.Presenter
                 if (state.pivotRoot.transform.parent != centerPoint)
                     state.pivotRoot.transform.SetParent(centerPoint, false);
 
-                state.pivotRoot.transform.localPosition = anchorOffset;
+                bool facingLeft = IsFacingLeft(ownerPlayer, ref state.lastDirection);
+                state.pivotRoot.transform.localPosition = BuildSignedAnchorOffset(facingLeft);
 
                 float desiredAngle = state.hasNetworkAim
                     ? state.targetAimAngle
@@ -662,9 +668,42 @@ namespace CombatManager.Presenter
             if (ownerPlayer == null)
                 return rotationOffsetDegrees;
 
+            Vector2 facingDirection = ResolveFacingDirection(ownerPlayer, ref state.lastDirection);
+            return Mathf.Atan2(facingDirection.y, facingDirection.x) * Mathf.Rad2Deg + rotationOffsetDegrees;
+        }
+
+        private void UpdateLocalWeaponAnchorSide()
+        {
+            if (!IsWeaponActive() || service == null)
+                return;
+
+            GameObject pivotRoot = service.GetPivotRoot();
+            Transform centerPoint = service.GetCenterPoint();
+            if (pivotRoot == null || centerPoint == null)
+                return;
+
+            GameObject ownerPlayer = centerPoint.GetComponentInParent<PlayerMovement>()?.gameObject ?? centerPoint.gameObject;
+            bool facingLeft = IsFacingLeft(ownerPlayer, ref localLastFacingDirection);
+
+            Vector3 desired = BuildSignedAnchorOffset(facingLeft);
+            if ((pivotRoot.transform.localPosition - desired).sqrMagnitude > 0.000001f)
+                pivotRoot.transform.localPosition = desired;
+        }
+
+        private static bool IsFacingLeft(GameObject ownerPlayer, ref Vector2 lastDirection)
+        {
+            Vector2 direction = ResolveFacingDirection(ownerPlayer, ref lastDirection);
+            return direction.x < 0f;
+        }
+
+        private static Vector2 ResolveFacingDirection(GameObject ownerPlayer, ref Vector2 lastDirection)
+        {
+            if (ownerPlayer == null)
+                return lastDirection.sqrMagnitude > 0.0001f ? lastDirection.normalized : Vector2.right;
+
             Animator ownerAnimator = ownerPlayer.GetComponentInChildren<Animator>();
             if (ownerAnimator == null)
-                return Mathf.Atan2(state.lastDirection.y, state.lastDirection.x) * Mathf.Rad2Deg + rotationOffsetDegrees;
+                return lastDirection.sqrMagnitude > 0.0001f ? lastDirection.normalized : Vector2.right;
 
             bool isWalking = ownerAnimator.GetBool(PARAM_IS_WALKING);
             float x = isWalking ? ownerAnimator.GetFloat(PARAM_INPUT_X) : ownerAnimator.GetFloat(PARAM_LAST_INPUT_X);
@@ -672,9 +711,15 @@ namespace CombatManager.Presenter
             Vector2 dir = new Vector2(x, y);
 
             if (dir.sqrMagnitude > 0.0001f)
-                state.lastDirection = dir.normalized;
+                lastDirection = dir.normalized;
 
-            return Mathf.Atan2(state.lastDirection.y, state.lastDirection.x) * Mathf.Rad2Deg + rotationOffsetDegrees;
+            return lastDirection.sqrMagnitude > 0.0001f ? lastDirection.normalized : Vector2.right;
+        }
+
+        private static Vector3 BuildSignedAnchorOffset(bool facingLeft)
+        {
+            float signedX = facingLeft ? -Mathf.Abs(AUTO_ANCHOR_X) : Mathf.Abs(AUTO_ANCHOR_X);
+            return new Vector3(signedX, AUTO_ANCHOR_Y, 0f);
         }
 
         private void HandleRemoteAttackVisual(int actorNumber, float angle)
