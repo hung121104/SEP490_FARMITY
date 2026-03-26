@@ -1080,7 +1080,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   prefab: {fileID: 372591978817517267, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
-  zOffset: {x: 0, y: 0, z: 0}
+  setActiveOnStart: 1
 --- !u!1 &53558782
 GameObject:
   m_ObjectHideFlags: 0
@@ -2727,7 +2727,7 @@ MonoBehaviour:
   OwnershipTransfer: 0
   observableSearch: 2
   ObservedComponents: []
-  sceneViewId: 4
+  sceneViewId: 15
   InstantiationId: 0
   isRuntimeInstantiated: 0
 --- !u!114 &138164243
@@ -11736,7 +11736,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   checkRadius: 2
-  harvestKey: 323
   allowHoldToHarvest: 1
   harvestRepeatInterval: 0.15
   playerTag: PlayerEntity
@@ -86333,7 +86332,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58f355cadd58c0446923f7f9123d8265, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnZoneMap: {fileID: 695224742}
+  resourceTypeMappings: []
   maxResourcesPerChunk: 40
   dailySpawnRate: 5
   interactionRange: 2
@@ -90666,11 +90665,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rainPrefab: {fileID: 1854443877689547427, guid: 348feeeb673e4d0449bc6cc04825bff7, type: 3}
-  zoneSize: 30
-  spawnEdgeDistance: 15
   heightOffset: 10
-  baseEmissionRate: 1000
-  fadeDuration: 3
 --- !u!1 &1597935080
 GameObject:
   m_ObjectHideFlags: 0
@@ -99320,6 +99315,7 @@ MonoBehaviour:
   showDebugLogs: 0
   showLoadedChunksGizmos: 0
   enableDailyReload: 1
+  tilesPerFrame: 50
 --- !u!4 &2021699365
 Transform:
   m_ObjectHideFlags: 0
