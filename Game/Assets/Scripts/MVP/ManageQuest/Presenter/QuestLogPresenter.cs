@@ -1,31 +1,38 @@
 using System.Collections.Generic;
+using System.Linq;
 
 public class QuestLogPresenter
 {
-    private QuestLogView view;
-    private IQuestService service;
+    private readonly IQuestService service;
 
-    public QuestLogPresenter(QuestLogView view, IQuestService service)
+    /// <summary>View subscribes to this event and calls ShowQuestList itself — Presenter never calls View directly.</summary>
+    public event System.Action<System.Collections.Generic.List<QuestLogItemData>> OnItemsRefreshed;
+
+    public QuestLogPresenter(IQuestService service)
     {
-        this.view = view;
         this.service = service;
     }
 
-    public void OpenQuestLog()
-    {
-        view.TogglePanel();
-        Refresh();
-    }
+    // ── Called by View (button click via QuestLogController) ──
+    public void OpenQuestLog() => Refresh();
 
     public void Refresh()
     {
-        List<QuestModel> quests = service.GetActiveQuests();
-        view.ShowQuestList(quests);
+        var items = service.GetActiveQuests()
+            .Select(q => new QuestLogItemData
+            {
+                questName      = q.questName,
+                objectiveTexts = q.objectives
+                    .Select(o => $"{o.description} {o.currentAmount}/{o.requiredAmount}")
+                    .ToList()
+            })
+            .ToList();
+
+        // Fire event — View handles its own rendering.
+        OnItemsRefreshed?.Invoke(items);
     }
 
-    /// <summary>Subscribe to service events. Call from View's OnEnable.</summary>
-    public void Subscribe() => service.OnQuestUpdated += Refresh;
-
-    /// <summary>Unsubscribe from service events. Call from View's OnDisable.</summary>
+    // De-dup safe: remove before add to prevent double-subscribe on OnEnable cycles.
+    public void Subscribe()   { service.OnQuestUpdated -= Refresh; service.OnQuestUpdated += Refresh; }
     public void Unsubscribe() => service.OnQuestUpdated -= Refresh;
 }

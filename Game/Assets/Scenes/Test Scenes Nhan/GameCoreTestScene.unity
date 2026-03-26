@@ -1153,7 +1153,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   prefab: {fileID: 372591978817517267, guid: a0baf700472968b4cb5bdf8cac7fad5c, type: 3}
-  zOffset: {x: 0, y: 0, z: 0}
+  setActiveOnStart: 1
 --- !u!1 &53558782
 GameObject:
   m_ObjectHideFlags: 0
@@ -4045,11 +4045,11 @@ MonoBehaviour:
   weaponSkillSection: {fileID: 1121630180}
   weaponSkillSlotPrefab: {fileID: 1850482316954284577, guid: f2388b8580bd65e46afc277316a68afe, type: 3}
   weaponSkillKey: 114
-  initialSkills:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  defaultSkillIds:
+  - 
+  - 
+  - 
+  - 
 --- !u!1 &184895266
 GameObject:
   m_ObjectHideFlags: 0
@@ -7426,9 +7426,17 @@ MonoBehaviour:
     isWeaponActive: 0
     isInitialized: 0
   fallbackWeaponPrefab: {fileID: 0}
+  swordBasePrefab: {fileID: 0}
+  staffBasePrefab: {fileID: 0}
+  spearBasePrefab: {fileID: 0}
   anchorOffset: {x: 0, y: -0.3, z: 0}
   gripLocalOffset: {x: 0, y: 0, z: 0}
+  fallbackSourcePivot: {x: 0.5, y: 0.5}
+  swordDesiredPivot: {x: 0.81, y: 0.19}
+  staffDesiredPivot: {x: 0.83, y: 0.14}
+  spearDesiredPivot: {x: 0.71, y: 0.28}
   rotationOffsetDegrees: -133
+  enableWeaponVisualDebug: 0
 --- !u!1 &332649194
 GameObject:
   m_ObjectHideFlags: 0
@@ -33173,6 +33181,7 @@ MonoBehaviour:
     m_Bits: 128
   confirmKey: 101
   cancelKey: 113
+  baseProjectilePrefab: {fileID: 0}
 --- !u!1 &760354427
 GameObject:
   m_ObjectHideFlags: 0
@@ -88080,8 +88089,6 @@ MonoBehaviour:
   skillGridContainer: {fileID: 1965848516}
   skillDisplayItemPrefab: {fileID: 3951854400017865695, guid: 4b0a848b0782d0b4e870917a0f22f29a, type: 3}
   closeButton: {fileID: 540604931}
-  playerSkills:
-  - {fileID: 11400000, guid: 3f69bfaa32fb31f48a94e19bfbbeb93b, type: 2}
 --- !u!1 &1303826872
 GameObject:
   m_ObjectHideFlags: 0
@@ -93541,12 +93548,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef7a0a773a6e8aa49aadf423f1e02c30, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rainPrefab: {fileID: 1854443877689547427, guid: 348feeeb673e4d0449bc6cc04825bff7, type: 3}
-  zoneSize: 30
-  spawnEdgeDistance: 15
+  rainPrefab: {fileID: 4102948714560808411, guid: 850bb24605a787e4d9984181c899f177, type: 3}
   heightOffset: 10
-  baseEmissionRate: 1000
-  fadeDuration: 3
 --- !u!1 &1597935080
 GameObject:
   m_ObjectHideFlags: 0
@@ -102715,6 +102718,7 @@ MonoBehaviour:
   showDebugLogs: 0
   showLoadedChunksGizmos: 0
   enableDailyReload: 1
+  tilesPerFrame: 50
 --- !u!4 &2021699365
 Transform:
   m_ObjectHideFlags: 0
@@ -107165,6 +107169,8 @@ MonoBehaviour:
     m_Bits: 128
   confirmKey: 101
   cancelKey: 113
+  baseSlashVfxPrefab: {fileID: 0}
+  baseDamagePopupPrefab: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
