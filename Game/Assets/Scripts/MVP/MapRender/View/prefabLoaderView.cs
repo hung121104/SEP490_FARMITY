@@ -2,35 +2,36 @@ using UnityEngine;
 
 public class prefabLoaderView : MonoBehaviour
 {
-    private PrefabLoaderPresenter presenter = new PrefabLoaderPresenter();
+    [Tooltip("Scene object to toggle.")]
+    [SerializeField] private GameObject prefab;
 
-    [Tooltip("Prefab to load.")]
-    [SerializeField]
-    private GameObject prefab;
-
-    // Single instance for the single prefab
-    private GameObject instance;
-
-    // Position where prefab should be spawned (kept from old zOffset usage)
-    [SerializeField]
-    private Vector3 zOffset = new Vector3(0, 0, 1);
+    [SerializeField] private bool setActiveOnStart = true;
 
     void Start()
     {
-        // Optionally auto-load at start: uncomment if desired
-        // presenter.LoadPrefab(prefab, ref instance, zOffset);
-        ContextLoadPrefab();
+        ApplyActiveState(setActiveOnStart);
     }
 
-    [ContextMenu("Load Prefab")]
-    public void ContextLoadPrefab()
+    [ContextMenu("Set Active")]
+    public void ContextSetActive()
     {
-        presenter.LoadPrefab(prefab, zOffset);
+        ApplyActiveState(true);
     }
 
-    [ContextMenu("Unload Prefab")]
-    public void ContextUnloadPrefab()
+    [ContextMenu("Set Inactive")]
+    public void ContextSetInactive()
     {
-        presenter.UnloadPrefab(instance);
+        ApplyActiveState(false);
+    }
+
+    private void ApplyActiveState(bool isActive)
+    {
+        if (prefab == null)
+        {
+            Debug.LogWarning("prefabLoaderView: No target object assigned.");
+            return;
+        }
+
+        prefab.SetActive(isActive);
     }
 }

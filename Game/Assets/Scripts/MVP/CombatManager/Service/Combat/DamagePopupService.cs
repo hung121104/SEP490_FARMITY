@@ -71,8 +71,6 @@ namespace CombatManager.Service
                 textComponent.text = text;
                 ApplyPopupStyle(textComponent, type);
             }
-
-            Debug.Log($"[DamagePopupService] Spawned popup: {text} at {spawnPos}");
         }
 
         #endregion

@@ -12,7 +12,7 @@ export class AccountAchievementProgress {
 }
 
 
-@Schema()
+@Schema({ timestamps: true })
 export class Account {
   @Prop({ required: true, unique: true })
   username: string;
@@ -51,3 +51,4 @@ export class Account {
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);
+AccountSchema.index({ isAdmin: 1, createdAt: 1 });

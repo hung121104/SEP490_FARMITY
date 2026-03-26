@@ -105,6 +105,16 @@ public class SpawnPlayer : MonoBehaviour
         GameObject spawned = PhotonNetwork.Instantiate(playerPrefab.name, spawnPoint.position, spawnRot);
 
         hasSpawnedLocalNetworkPlayer = spawned != null;
+        if (hasSpawnedLocalNetworkPlayer)
+        {
+            // The prefab root ("Player") is a container; PlayerMovement + PhotonView live on
+            // the "PlayerEntity" child. Pass that child's transform so ChunkLoadingManager
+            // tracks the actual character position, not the root wrapper.
+            PlayerMovement pm = spawned.GetComponentInChildren<PlayerMovement>(true);
+            Transform tracked = (pm != null && pm.photonView.IsMine) ? pm.transform : spawned.transform;
+            PlayerRegistry.NotifyLocalPlayerSpawned(tracked);
+        }
+
         if (logSpawnDiagnostics)
         {
             string actor = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.ActorNumber.ToString() : "n/a";
@@ -126,5 +136,11 @@ public class SpawnPlayer : MonoBehaviour
         }
 
         return false;
+    }
+
+    private void OnDestroy()
+    {
+        // Clear the registry when the spawner is torn down (room leave / scene change)
+        PlayerRegistry.Clear();
     }
 }

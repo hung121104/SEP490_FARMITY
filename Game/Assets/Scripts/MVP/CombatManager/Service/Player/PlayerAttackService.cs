@@ -54,15 +54,13 @@ namespace CombatManager.Service
 
         public bool CanAttack()
         {
-            return model.attackCooldownTimer <= 0 && model.isInitialized;
+            return model.isInitialized && model.attackCooldownTimer <= 0f;
         }
 
         public void ExecuteAttack()
         {
             model.comboResetTimer = model.comboResetTime;
             model.currentComboStep = (model.currentComboStep + 1) % PlayerAttackModel.TOTAL_COMBO_STEPS;
-
-            Debug.Log($"[PlayerAttackService] Attack executed. Combo step: {model.currentComboStep}");
         }
 
         #endregion
@@ -72,7 +70,11 @@ namespace CombatManager.Service
         public void UpdateTimers(float deltaTime)
         {
             if (model.attackCooldownTimer > 0)
+            {
                 model.attackCooldownTimer -= deltaTime;
+                if (model.attackCooldownTimer < 0f)
+                    model.attackCooldownTimer = 0f;
+            }
 
             if (model.comboResetTimer > 0)
             {
@@ -99,7 +101,6 @@ namespace CombatManager.Service
         public void ResetCombo()
         {
             model.currentComboStep = 0;
-            Debug.Log("[PlayerAttackService] Combo reset");
         }
 
         public float GetCooldownPercent(float cooldownTime)

@@ -9,6 +9,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 1. [Authentication & Authorization](#authentication--authorization)
    - [User Authentication](#user-authentication)
    - [Admin Authentication](#admin-authentication)
+  - [Analytics Dashboard (Admin)](#analytics-dashboard-admin)
    - [Admin Password Reset](#admin-password-reset)
 2. [Game Config](#game-config)
    - [Main Menu](#main-menu)
@@ -18,15 +19,16 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
    - [Media Gallery](#media-gallery)
 4. [Game Data Management](#game-data-management)
    - [Items Catalog](#items-catalog)
-
-- [Fertilizer Catalog](#fertilizer-catalog)
-- [Plants Catalog](#plants-catalog)
-- [Crafting Recipes](#crafting-recipes)
-- [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
-
-- [Resource Config Catalog](#resource-config-catalog)
-- [Material Catalog](#material-catalog)
-- [Quest Catalog](#quest-catalog)
+  - [Weapon Items (Extended Fields)](#weapon-items-extended-fields)
+  - [Combat Catalog](#combat-catalog)
+  - [Combat Skills Catalog](#combat-skills-catalog)
+  - [Fertilizer Catalog](#fertilizer-catalog)
+  - [Plants Catalog](#plants-catalog)
+  - [Crafting Recipes](#crafting-recipes)
+  - [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
+  - [Resource Config Catalog](#resource-config-catalog)
+  - [Material Catalog](#material-catalog)
+  - [Quest Catalog](#quest-catalog)
 
 7. [Real-Time Sync (Photon PUN Events)](#real-time-sync-photon-pun-events)
    - [Resource Interaction](#resource-interaction-photon-pun-rpc)
@@ -112,6 +114,177 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 - **POST** `/auth/logout`: Logout admin and revoke session.
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Response: `{ "ok": true }`
+
+### Analytics Dashboard (Admin)
+
+- **GET** `/admin/analytics/summary`: Get analytics cards for admin dashboard (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Query params (optional):
+    - `startDate`: ISO 8601 UTC datetime (inclusive)
+    - `endDate`: ISO 8601 UTC datetime (exclusive)
+  - Response (`200 OK`):
+    ```json
+    {
+      "rangeStartUtc": "2026-03-25T00:00:00.000Z",
+      "rangeEndUtc": "2026-03-26T00:00:00.000Z",
+      "generatedAtUtc": "2026-03-25T08:31:00.000Z",
+      "totalUsers": 1200,
+      "dailyActiveUsers": 340,
+      "concurrentPlayers": 72,
+      "newUsers": 41,
+      "returningUsers": 299,
+      "legitActiveUsers": 280,
+      "concurrentSource": "redis-realtime"
+    }
+    ```
+
+#### Query Behavior
+
+- If no date range is provided, the API defaults to the current UTC day:
+  - `rangeStartUtc` = today `00:00:00.000Z`
+  - `rangeEndUtc` = tomorrow `00:00:00.000Z`
+- If only `startDate` is provided, `endDate` is auto-set to `startDate + 24h`.
+- If only `endDate` is provided, `startDate` is normalized to the UTC start-of-day of `endDate`.
+- Validation rule: `startDate` must be earlier than `endDate`.
+
+#### Metric Definitions
+
+- `totalUsers`: Total non-admin accounts in the system.
+- `dailyActiveUsers`: Distinct non-admin users with at least one session created in `[startDate, endDate)`.
+- `newUsers`: Non-admin accounts created in `[startDate, endDate)`.
+- `returningUsers`: Non-admin users with at least one session in `[startDate, endDate)` **and** at least one session before `startDate`.
+- `concurrentPlayers`: Realtime online non-admin users based on explicit heartbeat presence.
+  - Primary source: Redis realtime heartbeat presence (`concurrentSource = "redis-realtime"`).
+  - Fallback source: MongoDB heartbeat timestamps (`concurrentSource = "mongo-fallback"`).
+- `legitActiveUsers`: Non-admin users whose session reached cumulative heartbeat-confirmed active time >= 5 minutes.
+
+#### Field Reference
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `rangeStartUtc` | string (ISO 8601) | Effective range start used by backend (inclusive). |
+| `rangeEndUtc` | string (ISO 8601) | Effective range end used by backend (exclusive). |
+| `generatedAtUtc` | string (ISO 8601) | Server-side generation timestamp. |
+| `totalUsers` | number | Total non-admin registered users. |
+| `dailyActiveUsers` | number | Active unique users in selected range. |
+| `concurrentPlayers` | number | Realtime online players from heartbeat freshness. |
+| `newUsers` | number | Newly registered users in selected range. |
+| `returningUsers` | number | Users active in range with prior historical activity. |
+| `legitActiveUsers` | number | Users with cumulative active heartbeat time >= 5 minutes. |
+| `concurrentSource` | `"redis-realtime" \| "mongo-fallback"` | Data source used to compute concurrent players. |
+
+#### Request Examples
+
+- Default day (UTC):
+  - `GET /admin/analytics/summary`
+
+- Single custom day (UTC):
+  - `GET /admin/analytics/summary?startDate=2026-03-25T00:00:00.000Z&endDate=2026-03-26T00:00:00.000Z`
+
+- Multi-day range (UTC):
+  - `GET /admin/analytics/summary?startDate=2026-03-20T00:00:00.000Z&endDate=2026-03-27T00:00:00.000Z`
+
+#### cURL Examples
+
+- With Bearer token:
+  ```bash
+  curl -k -X GET "https://0.0.0.0:3000/admin/analytics/summary?startDate=2026-03-25T00:00:00.000Z&endDate=2026-03-26T00:00:00.000Z" \
+    -H "Authorization: Bearer <ADMIN_TOKEN>"
+  ```
+
+- With cookie session:
+  ```bash
+  curl -k -X GET "https://0.0.0.0:3000/admin/analytics/summary" \
+    -H "Cookie: access_token=<ADMIN_TOKEN>"
+  ```
+
+#### Example Responses
+
+- Redis available:
+  ```json
+  {
+    "rangeStartUtc": "2026-03-25T00:00:00.000Z",
+    "rangeEndUtc": "2026-03-26T00:00:00.000Z",
+    "generatedAtUtc": "2026-03-25T08:31:00.000Z",
+    "totalUsers": 1200,
+    "dailyActiveUsers": 340,
+    "concurrentPlayers": 72,
+    "newUsers": 41,
+    "returningUsers": 299,
+    "legitActiveUsers": 280,
+    "concurrentSource": "redis-realtime"
+  }
+  ```
+
+- Redis unavailable (automatic fallback):
+  ```json
+  {
+    "rangeStartUtc": "2026-03-25T00:00:00.000Z",
+    "rangeEndUtc": "2026-03-26T00:00:00.000Z",
+    "generatedAtUtc": "2026-03-25T08:31:00.000Z",
+    "totalUsers": 1200,
+    "dailyActiveUsers": 340,
+    "concurrentPlayers": 65,
+    "newUsers": 41,
+    "returningUsers": 299,
+    "legitActiveUsers": 280,
+    "concurrentSource": "mongo-fallback"
+  }
+  ```
+
+### Player Heartbeat (Game Client)
+
+- **POST** `/player-data/heartbeat`: Confirm player is still online (authenticated player endpoint).
+  - Headers: `Authorization: Bearer <token>`
+  - Body (optional):
+    ```json
+    {
+      "clientUnixMs": 1764001234567
+    }
+    ```
+  - Response (`200 OK`):
+    ```json
+    {
+      "ok": true,
+      "serverUnixMs": 1764001234701,
+      "isLegit": true,
+      "cumulativeHeartbeatMs": 312000
+    }
+    ```
+  - Note: Client sends this every 15 seconds during gameplay while authenticated.
+  - Note: If heartbeat is missing for configured timeout (default 45 seconds), user is removed from realtime concurrent count.
+  - Note: Session becomes legit after cumulative heartbeat-confirmed active time reaches 5 minutes.
+
+#### Error Responses
+
+- `401 Unauthorized` (missing/invalid token or non-admin user):
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Admin privileges required"
+  }
+  ```
+
+- `400 Bad Request` (invalid query):
+  ```json
+  {
+    "statusCode": 400,
+    "message": "startDate must be earlier than endDate"
+  }
+  ```
+
+#### Frontend/UI Notes (for web AI)
+
+- Recommended dashboard cards:
+  - Total Users
+  - Daily Active Users (DAU)
+  - Concurrent Players (show badge using `concurrentSource`)
+  - New Users
+  - Returning Users
+- Date range picker should send UTC ISO strings.
+- Use `generatedAtUtc` for "Last updated" text.
+- Show fallback state in UI when `concurrentSource = "mongo-fallback"` (for observability/transparency).
+- For number formatting, prefer localized separators (e.g., `1,200`).
 
 ### Password Reset
 
@@ -733,7 +906,7 @@ Depending on `itemType`, specific extra fields must be included:
 | `3`        | Pollen     | `sourcePlantId`<br>`pollinationSuccessChance`<br>`viabilityDays`<br>`crossResults` | string: `plantId` of the plant that produced this pollen (e.g., `"plant_corn"`)<br>float: Chance of pollination success (e.g., `0.5`)<br>int: Days the pollen remains viable (e.g., `3`)<br>array: Cross-breeding table — `[{ "targetPlantId": "string", "resultPlantId": "string" }]`. Each entry maps a receiver `plantId` to the hybrid `plantId` that spawns when this pollen is applied to it. Consumed by `PollenData.FindResultPlantId()` in the Unity client. |
 | `4`        | Consumable | `viableRestore`<br>`healthRestore`<br>`regenBoostMultiplier`<br>`toolEfficiencyReductionPercent`<br>`effectDurationSeconds` | int: Restores `viableStamina` (soft-cap pool) on consumption<br>int: Health restored<br>float: Regen speed multiplier for `effectDurationSeconds` (e.g. `2.0` = double regen; must be > 1 to apply)<br>float: Reduces tool stamina cost by this fraction for `effectDurationSeconds` (0–0.95)<br>float: Duration in seconds for `regenBoostMultiplier` and `toolEfficiencyReductionPercent` effects |
 | `5`        | Material   | _(none)_                                                                           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `6`        | Weapon     | `damage`<br>`critChance`<br>`attackSpeed`<br>`weaponMaterialId`                    | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>float: Attack speed (e.g., 1.0)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).                                                                                                                                                                                                                                                       |
+| `6`        | Weapon     | `damage`<br>`critChance`<br>`weaponMaterialId`<br>`weaponType`<br>`tier`<br>`attackCooldown`<br>`knockbackForce`<br>`projectileSpeed`<br>`projectileRange`<br>`projectileKnockback` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).<br>int: WeaponType enum value<br>int: Tier value<br>float: Attack cooldown seconds<br>float: Melee knockback<br>float: Staff projectile speed<br>float: Staff projectile range<br>float: Staff projectile knockback |
 | `7`        | Fish       | `difficulty`<br>`fishingSeasons`<br>`isLegendary`                                  | int: Difficulty level (e.g., 1)<br>int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                 |
 | `8`        | Cooking    | `viableRestore`<br>`healthRestore`<br>`regenBoostMultiplier`<br>`toolEfficiencyReductionPercent`<br>`effectDurationSeconds` | int: Restores `viableStamina` (soft-cap pool) on consumption<br>int: Health restored<br>float: Regen speed multiplier for `effectDurationSeconds` (e.g. `2.0` = double regen; must be > 1 to apply)<br>float: Reduces tool stamina cost by this fraction for `effectDurationSeconds` (0–0.95)<br>float: Duration in seconds for `regenBoostMultiplier` and `toolEfficiencyReductionPercent` effects |
 | `9`        | Forage     | `foragingSeasons`<br>`viableRestore`                                               | int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>int: Restores `viableStamina` on consumption (default `5`)                                                                                                                                                                                                                                                                                                                                                                 |
@@ -742,6 +915,104 @@ Depending on `itemType`, specific extra fields must be included:
 | `12`       | Quest      | `relatedQuestID`<br>`autoConsume`                                                  | string: Related quest ID (e.g., `"quest_goblins_01"`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                                      |
 | `13`       | Structure  | `structureInteractionType`<br>`structureLevel`<br>`structureInteractionSprite`     | int: 0=Storage, 1=Crafting, 2=Smelting, 3=Fence, 4=Decoration<br>int: Level/tier of the structure (0=Wood, 1=Bronze, 2=Iron, 3=Gold)<br>file (PNG): Interaction sprite (e.g., chest open icon). Uploaded to Cloudinary; sets `structureInteractionSpriteUrl` automatically.                                                                                                                                                                                           |
 | `14`       | Fertilizer | _(none)_                                                                           | Stackable fertilizer item consumed on successful crop fertilization                                                                                                                                                                                                                                                                                                                                                                                                   |
+
+---
+
+### Weapon Items (Extended Fields)
+
+> There is no separate weapon endpoint group. Weapon entries use the standard Item endpoints with `itemType = 6`.
+
+#### HTTP Endpoints (same routes as Items)
+
+- **POST** `/game-data/items/create` (admin): create weapon item (`itemType = 6`).
+- **PUT** `/game-data/items/:itemID` (admin): update weapon item.
+- **GET** `/game-data/items/by-item-id/:itemID`: get one weapon item.
+- **GET** `/game-data/items/catalog`: get full item catalog (includes weapons).
+- **DELETE** `/game-data/items/:itemID` (admin): delete weapon item.
+
+#### Required Weapon Runtime Fields
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `damage` | int | ✅ | Base damage |
+| `critChance` | int | ✅ | Critical chance percentage |
+| `weaponMaterialId` | string | ✅ | Material `materialId` from Material Catalog |
+| `weaponType` | int | ✅ | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` |
+| `tier` | int | ✅ | Weapon tier |
+| `attackCooldown` | number | ✅ | Attack cooldown seconds |
+| `knockbackForce` | number | ✅ | Melee knockback |
+| `projectileSpeed` | number | ✅ for staff weapons | Projectile speed |
+| `projectileRange` | number | ✅ for staff weapons | Projectile range |
+| `projectileKnockback` | number | ✅ for staff weapons | Projectile knockback |
+| `linkedSkillId` | string | — | Optional weapon special skill id |
+
+#### Runtime Note
+
+- Weapon prefab selection is by `weaponType` base prefab.
+- Visual sprite comes directly from the item `icon` image (runtime item icon cache, 16 PPU).
+
+---
+
+### Combat Catalog
+
+> Dedicated combat skill VFX tint catalog for runtime skill visuals.
+
+#### HTTP Endpoints
+
+- **GET** `/game-data/combat-catalogs` (public): get combat catalog entries.
+  - Optional query: `type`. Only `skill_vfx` is accepted (or omit it).
+
+- **POST** `/game-data/combat-catalogs` (admin): create combat catalog entry.
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `application/json`
+  - Fields:
+
+    | Field | Type | Required | Notes |
+    | --- | --- | --- | --- |
+    | `configId` | string | ✅ | Stable lookup key used by runtime (e.g., `skill_slash_fire`). |
+    | `displayName` | string | ✅ | Display label for admin UI. |
+    | `type` | string | — | Must be `skill_vfx` (default: `skill_vfx`). |
+    | `primaryColorHex` | string | ✅ | Tint color for runtime (hex, e.g., `#FF7A00`). |
+    | `secondaryColorHex` | string | — | Optional secondary tint (hex). |
+    | `colorIntensity` | number | — | Optional color multiplier. Range `[0..4]`, default `1`. |
+    | `tintAlpha` | number | — | Optional final alpha. Range `[0..1]`, default `1`. |
+
+  - Notes:
+    - Any `type` other than `skill_vfx` is rejected.
+    - `409 Conflict` if `configId` exists.
+
+- **PUT** `/game-data/combat-catalogs/:configId` (admin): update combat catalog entry.
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `application/json`
+  - Path param: `configId`
+  - Fields (all optional): `displayName`, `type`, `primaryColorHex`, `secondaryColorHex`, `colorIntensity`, `tintAlpha`
+  - Response: Updated combat catalog document.
+  - Note: Returns `404` if not found.
+
+- **DELETE** `/game-data/combat-catalogs/:configId` (admin): delete combat catalog entry.
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `configId`
+  - Response: `200 OK` (empty body)
+  - Note: Returns `404` if not found.
+
+#### Combat Catalog Fields
+
+| Field | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `configId` | string | ✅ | — | Stable runtime lookup key used by `skillVisualConfigId`. |
+| `type` | string | — | `skill_vfx` | Only supported value is `skill_vfx`. |
+| `displayName` | string | ✅ | — | Human-readable label in web admin. |
+| `primaryColorHex` | string | ✅ for `skill_vfx` | — | Main tint color in hex format. |
+| `secondaryColorHex` | string | — | `""` | Optional extra tint value for future shader use. |
+| `colorIntensity` | float | — | `1` | Color multiplier applied at runtime. |
+| `tintAlpha` | float | — | `1` | Final alpha applied at runtime. |
+
+#### Unity Integration Notes
+
+- Unity loads combat catalog on startup.
+- `type=skill_vfx` entries are tint configs for animated skill prefabs.
+- Weapon visuals do not use Combat Catalog.
+- Combat skills use `skillVisualConfigId`.
 
 ---
 
@@ -810,6 +1081,87 @@ Depending on `itemType`, specific extra fields must be included:
 | `npcPreferenceReactions` | int[]    | —            | Optional NPC reaction values                            |
 
 `itemType` is forced to `14` by the gateway and does not need to be supplied.
+
+---
+
+### Combat Skills Catalog
+
+> DB-driven combat-skill definitions consumed by the Unity combat system. Skills are independent catalog entities and not item documents.
+
+#### HTTP Endpoints
+
+- **POST** `/game-data/combat-skills/create`: Create a new combat skill (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Fields:
+    - `icon` _(file, required)_ — Skill icon image (max 5 MB). Uploaded to Cloudinary internally; `iconUrl` set automatically.
+    - Other combat skill fields as form-data text fields (see fields table below)
+  - Response: Saved combat skill document
+  - Note: Returns `409 Conflict` if `skillId` already exists
+
+- **GET** `/game-data/combat-skills/catalog`: Get combat skill catalog in Unity format.
+  - Response: `{ "skills": [ ...combatSkillObjects ] }`
+  - Note: Consumed by Game-side combat skill catalog service
+
+- **GET** `/game-data/combat-skills/all`: Get flat array of all combat skill documents.
+  - Response: `[ ...combatSkillObjects ]`
+
+- **GET** `/game-data/combat-skills/by-skill-id/:skillId`: Find combat skill by game-side ID.
+  - Path param: `skillId` - string ID (e.g., `skill_weapon_staff_special`)
+  - Response: Combat skill document
+
+- **PUT** `/game-data/combat-skills/:skillId`: Update combat skill by `skillId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Body: Any subset of skill fields as form-data text fields. Include `icon` file to replace icon.
+  - Response: Updated combat skill document
+  - Note: Returns `404` if skill not found
+
+- **DELETE** `/game-data/combat-skills/:skillId`: Delete combat skill by `skillId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `skillId`
+  - Response: Deleted combat skill document
+  - Note: Returns `404` if skill not found
+
+#### Combat Skill Fields
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `skillId` | string | ✅ | Unique game-side skill ID |
+| `skillName` | string | ✅ | Display name |
+| `skillDescription` | string | — | Tooltip/description |
+| `icon` | file | ✅ on create | Uploaded icon image; gateway stores resulting `iconUrl` |
+| `iconUrl` | string | — | Auto-filled from uploaded icon; keep read-only in admin form |
+| `ownership` | enum | — | `PlayerSkill` or `WeaponSkill` |
+| `category` | enum | — | `None`, `Projectile`, `Slash`, `AoE`, `Buff`, `Summon` |
+| `requiredWeaponType` | number | — | Numeric weapon type gate for weapon skills |
+| `cooldown` | number | — | Seconds |
+| `diceTier` | enum | — | `D6`, `D8`, `D10`, `D12`, `D20` |
+| `skillMultiplier` | number | — | Damage multiplier |
+| `projectileSpeed` | number | — | Projectile speed |
+| `projectileRange` | number | — | Projectile max range |
+| `projectileKnockback` | number | — | Projectile knockback force |
+| `skillVisualConfigId` | string | — | CombatCatalog `configId` (type `skill_vfx`) used to tint spawned skill VFX |
+| `slashVfxDuration` | number | — | Slash VFX lifetime |
+| `slashVfxSpawnOffset` | number | — | Forward spawn offset |
+| `slashVfxPositionOffsetX` | number | — | Additional X offset |
+| `slashVfxPositionOffsetY` | number | — | Additional Y offset |
+| `slashKnockbackForce` | number | — | Slash hit knockback force |
+
+#### Combat Skill Dropdown / Select Guide
+
+| Field | UI Type | Allowed Values |
+| --- | --- | --- |
+| `ownership` | Dropdown | `PlayerSkill`, `WeaponSkill` |
+| `category` | Dropdown | `None`, `Projectile`, `Slash`, `AoE`, `Buff`, `Summon` |
+| `diceTier` | Dropdown | `D6`, `D8`, `D10`, `D12`, `D20` |
+| `requiredWeaponType` | Dropdown | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` |
+
+Notes for web form behavior:
+
+- If `ownership = PlayerSkill`, set `requiredWeaponType = 0`.
+- If `ownership = WeaponSkill`, require `requiredWeaponType` > 0.
+- For new skills, create a Combat Catalog `type=skill_vfx` entry and set `skillVisualConfigId`.
 
 ---
 
@@ -1085,6 +1437,7 @@ Depending on `itemType`, specific extra fields must be included:
 - `DynamicSpriteSwapper` on each Paper Doll layer reads `configId` from `EquipmentManager` and calls `SkinCatalogManager.GetSprites(configId)` every `LateUpdate`.
 - To clear the client-side disk cache after updating a spritesheet, call `SkinCatalogManager.Instance.RefreshCatalog()` in play mode or delete `Application.persistentDataPath/SkinCache/`.
 - **Tool layer spritesheets are NOT stored here.** Tool appearance is driven by the Material Catalog (see below). `MaterialCatalogService.cs` registers each material's spritesheet into `SkinCatalogManager` under its `materialId` on startup.
+- **Skill VFX tint configs are NOT stored here.** Use [Combat Catalog](#combat-catalog).
 
 ---
 
