@@ -416,7 +416,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
                         if (fallback != null)
                         {
                             var ph = new GameObject($"Structure_Fallback_{tile.Structure.StructureId}_{tile.WorldX}_{tile.WorldY}");
-                            ph.transform.position = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.5f, 0f);
+                            ph.transform.position = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.25f, 0f);
                             var sr = ph.AddComponent<SpriteRenderer>();
                             sr.sprite = fallback;
                             sr.sortingLayerName = "WalkInfront";

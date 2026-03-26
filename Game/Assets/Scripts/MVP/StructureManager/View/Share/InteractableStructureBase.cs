@@ -308,7 +308,13 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         _structureInteractionBadge.transform.SetParent(transform);
         _structureInteractionBadge.transform.localPosition = Vector3.zero;
         _structureInteractionRenderer = _structureInteractionBadge.AddComponent<SpriteRenderer>();
-        _structureInteractionRenderer.sprite = sprite;
+        _structureInteractionRenderer.sprite = Sprite.Create(
+            sprite.texture,
+            sprite.rect,
+            new Vector2(0.5f, 0f),
+            sprite.pixelsPerUnit,
+            0,
+            SpriteMeshType.FullRect);
         _structureInteractionRenderer.sortingLayerName = "WalkInfront";
         _structureInteractionRenderer.sortingOrder = 1;
         _structureInteractionBadge.SetActive(false);
