@@ -59,6 +59,8 @@ namespace CombatManager.Presenter
         private bool remoteFlipX;
         private int remoteAttackSequence;
         private int lastAppliedRemoteAttackSequence = -1;
+        private Vector3 attackHitboxBaseLocalPosition;
+        private bool attackHitboxPositionCaptured;
         private int lastAppliedHitToken = int.MinValue;
         private Coroutine knockbackEffectRoutine;
         private Coroutine flashEffectRoutine;
@@ -94,6 +96,8 @@ namespace CombatManager.Presenter
         {
             if (!model.isInitialized)
                 return;
+
+            UpdateAttackHitboxFacing();
 
             if (IsAuthoritative)
             {
@@ -241,6 +245,12 @@ namespace CombatManager.Presenter
             remoteIsWalking = false;
             remoteFlipX = spriteRenderer != null && spriteRenderer.flipX;
             remoteAttackSequence = 0;
+
+            if (attackHitbox != null)
+            {
+                attackHitboxBaseLocalPosition = attackHitbox.transform.localPosition;
+                attackHitboxPositionCaptured = true;
+            }
 
             model.isInitialized = true;
 
@@ -659,6 +669,27 @@ namespace CombatManager.Presenter
 
             lastAppliedRemoteAttackSequence = remoteAttackSequence;
             model.animator.SetTrigger(ATTACK_TRIGGER);
+        }
+
+        private void UpdateAttackHitboxFacing()
+        {
+            if (attackHitbox == null)
+                return;
+
+            if (!attackHitboxPositionCaptured)
+            {
+                attackHitboxBaseLocalPosition = attackHitbox.transform.localPosition;
+                attackHitboxPositionCaptured = true;
+            }
+
+            float facingX = model.facingDirection.x;
+            if (Mathf.Abs(facingX) < 0.001f)
+                return;
+
+            float directionSign = facingX >= 0f ? 1f : -1f;
+            Vector3 local = attackHitbox.transform.localPosition;
+            local.x = Mathf.Abs(attackHitboxBaseLocalPosition.x) * directionSign;
+            attackHitbox.transform.localPosition = local;
         }
 
         private static bool TryGetFloat(object[] payload, int index, out float value)
