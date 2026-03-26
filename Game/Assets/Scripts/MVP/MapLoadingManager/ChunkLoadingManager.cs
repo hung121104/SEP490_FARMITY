@@ -376,12 +376,22 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
                     if (structData != null)
                     {
                         var structObj = _cachedStructurePool.Get(structId, new Vector3Int(tile.WorldX, tile.WorldY, 0));
-                        structObj.transform.position = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.5f, 0f);
+                        structObj.transform.position = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.25f, 0f);
 
+                        // Apply sprite with bottom-center pivot for all structures
                         SpriteRenderer sr = structObj.GetComponentInChildren<SpriteRenderer>(true)
                                          ?? structObj.AddComponent<SpriteRenderer>();
                         Sprite itemSprite = ItemCatalogService.Instance?.GetCachedSprite(structId);
-                        if (itemSprite != null) sr.sprite = itemSprite;
+                        if (itemSprite != null)
+                        {
+                            sr.sprite = Sprite.Create(
+                                itemSprite.texture,
+                                itemSprite.rect,
+                                new Vector2(0.5f, 0f),
+                                itemSprite.pixelsPerUnit,
+                                0,
+                                SpriteMeshType.FullRect);
+                        }
                         sr.sortingLayerName = "WalkInfront";
 
                         structObj.SetActive(true);
@@ -711,7 +721,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
             if (go == null) continue;
             float vx = go.transform.position.x, vy = go.transform.position.y;
             if ((Mathf.Approximately(vx, worldPos.x)       && Mathf.Approximately(vy, worldPos.y)) ||
-                (Mathf.Approximately(vx, worldPos.x + 0.5f) && Mathf.Approximately(vy, worldPos.y + 0.5f)))
+                (Mathf.Approximately(vx, worldPos.x + 0.5f) && Mathf.Approximately(vy, worldPos.y + 0.25f)))
                 return go;
         }
         return null;
