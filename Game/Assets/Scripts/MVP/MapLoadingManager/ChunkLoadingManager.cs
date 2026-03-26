@@ -351,6 +351,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
 
                 SpriteRenderer sr = CropPool.GetSourceRenderer(visual) ?? visual.AddComponent<SpriteRenderer>();
                 if (_cachedCropPool == null) sr.sortingLayerName = "WalkInfront";
+                ApplyCropSortingOrder(sr, tile.Crop.CropStage);
                 sr.sprite = stageSprite;
                 cropVisuals.Add(visual);
             }
@@ -662,6 +663,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
                 visual.name = $"Crop_{slot.Crop.PlantId}_{worldX}_{worldY}";
                 SpriteRenderer sr = CropPool.GetSourceRenderer(visual) ?? visual.AddComponent<SpriteRenderer>();
                 sr.sprite = sp;
+                ApplyCropSortingOrder(sr, slot.Crop.CropStage);
                 if (!_model.CropVisuals.ContainsKey(chunkPos)) _model.CropVisuals[chunkPos] = new List<GameObject>();
                 _model.CropVisuals[chunkPos].Add(visual);
             }
@@ -788,6 +790,21 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
         var plant = PlantCatalogService.Instance?.GetPlantData(plantId);
         if (plant == null && showDebugLogs) Debug.LogWarning($"[ChunkLoading] PlantId '{plantId}' not found.");
         return plant;
+    }
+
+    /// <summary>Stage 0 (seed/just-planted) renders on Ground layer order 5; all other stages use WalkInfront order 0.</summary>
+    private static void ApplyCropSortingOrder(SpriteRenderer sr, int stage)
+    {
+        if (stage == 0)
+        {
+            sr.sortingLayerName = "Ground";
+            sr.sortingOrder     = 5;
+        }
+        else
+        {
+            sr.sortingLayerName = "WalkInfront";
+            sr.sortingOrder     = 0;
+        }
     }
 
     private Tilemap FindTilemap(string tilemapName)
