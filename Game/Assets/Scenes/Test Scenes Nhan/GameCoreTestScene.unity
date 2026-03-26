@@ -5302,7 +5302,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &249396358
 RectTransform:
   m_ObjectHideFlags: 0
@@ -40803,12 +40803,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hotbarView: {fileID: 1780333230}
-  farmableGroundLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  targetLayer:
-    serializedVersion: 2
-    m_Bits: 0
 --- !u!1 &1110562044
 GameObject:
   m_ObjectHideFlags: 0
@@ -87146,8 +87140,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.40049982, y: -95.178}
-  m_SizeDelta: {x: 764.89, y: 385.18}
+  m_AnchoredPosition: {x: 1.9005038, y: -92.92802}
+  m_SizeDelta: {x: 764.89, y: 392.6801}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1239511321
 MonoBehaviour:
@@ -87912,7 +87906,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 34
+  m_PixelsPerUnitMultiplier: 38
 --- !u!222 &1267017540
 CanvasRenderer:
   m_ObjectHideFlags: 0

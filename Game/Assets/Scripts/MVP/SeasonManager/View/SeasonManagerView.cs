@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using TMPro;
+using Photon.Pun;
 
 public class SeasonManagerView : MonoBehaviour
 {
@@ -47,10 +48,38 @@ public class SeasonManagerView : MonoBehaviour
     {
         ApplyFarmingTextStyle(seasonText);
 
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // MasterClient: defer evaluation until Bootstrapper has finished restoring
+            // saved data into TimeManager. Without this, timeManager.month is still 1
+            // (default) even though the save may have month = 2 (Rainy).
+            StartCoroutine(WaitForBootstrapperAndEvaluate());
+        }
+        else
+        {
+            // Non-MasterClient: time is synced via OnRoomPropertiesUpdate → OnMonthChanged.
+            // Read whatever month is currently in TimeManager (may already be correct
+            // if room props arrived before Start ran).
+            if (timeManager != null)
+                presenter.EvaluateSeason(timeManager.month);
+
+            UpdateSeasonUI(presenter.CurrentSeason);
+        }
+    }
+
+    private System.Collections.IEnumerator WaitForBootstrapperAndEvaluate()
+    {
+        // Wait for WorldDataBootstrapper to finish populating all managers.
+        while (WorldDataBootstrapper.Instance != null && !WorldDataBootstrapper.Instance.IsReady)
+            yield return null;
+
+        // One extra frame ensures TimeManagerView's own bootstrapper coroutine
+        // (which unblocks in the same frame) has already restored the saved month.
+        yield return null;
+
         if (timeManager != null)
             presenter.EvaluateSeason(timeManager.month);
 
-        // Render initial season UI even if season hasn't changed from default.
         UpdateSeasonUI(presenter.CurrentSeason);
     }
 
