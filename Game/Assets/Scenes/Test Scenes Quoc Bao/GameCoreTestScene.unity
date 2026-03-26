@@ -38799,12 +38799,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hotbarView: {fileID: 1780333230}
-  farmableGroundLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  targetLayer:
-    serializedVersion: 2
-    m_Bits: 0
 --- !u!1 &1110562044
 GameObject:
   m_ObjectHideFlags: 0
@@ -40062,8 +40056,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dialogueView: {fileID: 2064028054}
   dialogueModel: {fileID: 11400000, guid: f77b7c26c66e138428823a07da54d037, type: 2}
-  interactKey: 101
-  optionKeys: 310000003200000033000000
   hotbarScript: {fileID: 1780333230}
   relationshipModel:
     affection: 0
@@ -40073,7 +40065,6 @@ MonoBehaviour:
   inventoryMenuRoot: {fileID: 1992598973}
   spriteRenderer: {fileID: 1146011600}
   questView: {fileID: 429389107}
-  questLogController: {fileID: 2111404908}
 --- !u!95 &1146011599
 Animator:
   serializedVersion: 7
@@ -94217,13 +94208,13 @@ MonoBehaviour:
     squashPixels: 0.05
     stretchPixels: 0.05
     waveDuration: 0.3
-    flashDuration: 0.2
+    flashDuration: 1
     flashCount: 2
     playerEntity: {fileID: 0}
     rigidbody: {fileID: 0}
     spriteRenderer: {fileID: 0}
     playerMovement: {fileID: 0}
-    originalColor: {r: 1, g: 1, b: 1, a: 1}
+    originalColor: {r: 0.8941177, g: 0.1764706, b: 0.21960786, a: 1}
     originalScale: {x: 1, y: 1, z: 1}
     isInitialized: 0
     isKnockbackActive: 0
