@@ -15,11 +15,17 @@ namespace CombatManager.Service
     {
         private const byte ENEMY_HIT_REQUEST_EVENT = 168;
         private const byte ENEMY_HIT_APPLIED_EVENT = 169;
+        private const byte ENEMY_PLAYER_DAMAGE_REQUEST_EVENT = 170;
+        private const byte ENEMY_PLAYER_DAMAGE_APPLIED_EVENT = 171;
+        private const int DAMAGE_TOKEN_HISTORY_LIMIT = 128;
 
         private static EnemySyncManager instance;
         private static int localHitSequence;
 
         private readonly Dictionary<string, EnemyPresenter> enemiesByRuntimeId = new Dictionary<string, EnemyPresenter>();
+        private readonly Dictionary<string, float> lastEnemyDamageByTarget = new Dictionary<string, float>();
+        private readonly HashSet<int> consumedEnemyDamageTokens = new HashSet<int>();
+        private readonly Queue<int> enemyDamageTokenOrder = new Queue<int>();
 
         public static EnemySyncManager Instance
         {
@@ -126,6 +132,42 @@ namespace CombatManager.Service
             PhotonNetwork.RaiseEvent(ENEMY_HIT_REQUEST_EVENT, payload, options, SendOptions.SendReliable);
         }
 
+        public void RequestEnemyPlayerTouchDamage(
+            EnemyPresenter enemy,
+            int targetActorNumber,
+            int damage,
+            float knockbackForce,
+            Vector2 enemyWorldPosition)
+        {
+            if (enemy == null || damage <= 0)
+                return;
+
+            string runtimeId = enemy.GetRuntimeEnemyId();
+            if (string.IsNullOrWhiteSpace(runtimeId))
+                return;
+
+            RegisterEnemy(enemy);
+
+            if (IsAuthoritative)
+            {
+                ProcessEnemyPlayerDamageRequest(runtimeId, targetActorNumber, damage, knockbackForce, enemyWorldPosition);
+                return;
+            }
+
+            object[] payload =
+            {
+                runtimeId,
+                targetActorNumber,
+                damage,
+                knockbackForce,
+                enemyWorldPosition.x,
+                enemyWorldPosition.y,
+            };
+
+            RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
+            PhotonNetwork.RaiseEvent(ENEMY_PLAYER_DAMAGE_REQUEST_EVENT, payload, options, SendOptions.SendReliable);
+        }
+
         public void OnEvent(EventData photonEvent)
         {
             switch (photonEvent.Code)
@@ -136,6 +178,14 @@ namespace CombatManager.Service
 
                 case ENEMY_HIT_APPLIED_EVENT:
                     HandleHitAppliedEvent(photonEvent);
+                    break;
+
+                case ENEMY_PLAYER_DAMAGE_REQUEST_EVENT:
+                    HandleEnemyPlayerDamageRequestEvent(photonEvent);
+                    break;
+
+                case ENEMY_PLAYER_DAMAGE_APPLIED_EVENT:
+                    HandleEnemyPlayerDamageAppliedEvent(photonEvent);
                     break;
             }
         }
@@ -247,6 +297,171 @@ namespace CombatManager.Service
                 isDead);
         }
 
+        private void HandleEnemyPlayerDamageRequestEvent(EventData photonEvent)
+        {
+            if (!IsAuthoritative)
+                return;
+
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 6)
+                return;
+
+            string runtimeId = payload[0] as string ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(runtimeId))
+                return;
+
+            if (!TryGetInt(payload, 1, out int targetActorNumber) ||
+                !TryGetInt(payload, 2, out int damage) ||
+                !TryGetFloat(payload, 3, out float knockbackForce) ||
+                !TryGetFloat(payload, 4, out float enemyPosX) ||
+                !TryGetFloat(payload, 5, out float enemyPosY))
+            {
+                return;
+            }
+
+            ProcessEnemyPlayerDamageRequest(
+                runtimeId,
+                targetActorNumber,
+                damage,
+                knockbackForce,
+                new Vector2(enemyPosX, enemyPosY));
+        }
+
+        private void ProcessEnemyPlayerDamageRequest(
+            string runtimeId,
+            int targetActorNumber,
+            int damage,
+            float knockbackForce,
+            Vector2 enemyWorldPosition)
+        {
+            if (!IsAuthoritative || string.IsNullOrWhiteSpace(runtimeId) || damage <= 0)
+                return;
+
+            EnemyPresenter enemy = ResolveEnemy(runtimeId);
+            if (enemy == null || !enemy.IsInitialized() || enemy.IsDead())
+                return;
+
+            if (PhotonNetwork.IsConnected && targetActorNumber <= 0)
+                return;
+
+            if (PhotonNetwork.IsConnected && PhotonNetwork.CurrentRoom != null)
+            {
+                Player targetPlayer = PhotonNetwork.CurrentRoom.GetPlayer(targetActorNumber);
+                if (targetPlayer == null)
+                    return;
+            }
+
+            int appliedDamage = Mathf.Max(0, enemy.GetContactDamageAmount());
+            if (appliedDamage <= 0)
+                return;
+
+            float appliedKnockbackForce = Mathf.Max(0f, enemy.GetContactKnockbackForce());
+            float throttleWindow = Mathf.Max(0.05f, enemy.GetContactDamageThrottleTime());
+            if (!CanApplyEnemyDamage(runtimeId, targetActorNumber, throttleWindow))
+                return;
+
+            int damageToken = BuildEnemyPlayerDamageToken(targetActorNumber);
+
+            ApplyEnemyPlayerDamageToLocalTarget(
+                targetActorNumber,
+                appliedDamage,
+                appliedKnockbackForce,
+                enemyWorldPosition);
+
+            if (!PhotonNetwork.IsConnected)
+                return;
+
+            object[] payload =
+            {
+                runtimeId,
+                targetActorNumber,
+                appliedDamage,
+                appliedKnockbackForce,
+                enemyWorldPosition.x,
+                enemyWorldPosition.y,
+                damageToken,
+            };
+
+            RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+            PhotonNetwork.RaiseEvent(ENEMY_PLAYER_DAMAGE_APPLIED_EVENT, payload, options, SendOptions.SendReliable);
+        }
+
+        private void HandleEnemyPlayerDamageAppliedEvent(EventData photonEvent)
+        {
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 7)
+                return;
+
+            if (!TryGetInt(payload, 1, out int targetActorNumber) ||
+                !TryGetInt(payload, 2, out int damage) ||
+                !TryGetFloat(payload, 3, out float knockbackForce) ||
+                !TryGetFloat(payload, 4, out float enemyPosX) ||
+                !TryGetFloat(payload, 5, out float enemyPosY) ||
+                !TryGetInt(payload, 6, out int damageToken))
+            {
+                return;
+            }
+
+            if (!TryConsumeEnemyDamageToken(damageToken))
+                return;
+
+            ApplyEnemyPlayerDamageToLocalTarget(
+                targetActorNumber,
+                damage,
+                knockbackForce,
+                new Vector2(enemyPosX, enemyPosY));
+        }
+
+        private void ApplyEnemyPlayerDamageToLocalTarget(
+            int targetActorNumber,
+            int damage,
+            float knockbackForce,
+            Vector2 enemyWorldPosition)
+        {
+            if (damage <= 0)
+                return;
+
+            if (PhotonNetwork.IsConnected)
+            {
+                int localActorNumber = PhotonNetwork.LocalPlayer?.ActorNumber ?? -1;
+                if (localActorNumber <= 0 || localActorNumber != targetActorNumber)
+                    return;
+            }
+
+            if (!PlayerHealthPresenter.TryApplyDamageForActor(targetActorNumber, damage))
+                return;
+
+            PlayerKnockbackPresenter.TryApplyKnockbackForActor(targetActorNumber, enemyWorldPosition, knockbackForce);
+        }
+
+        private bool CanApplyEnemyDamage(string runtimeId, int targetActorNumber, float throttleWindow)
+        {
+            string key = runtimeId + ":" + targetActorNumber;
+            float now = Time.time;
+
+            if (lastEnemyDamageByTarget.TryGetValue(key, out float lastTime) && now - lastTime < throttleWindow)
+                return false;
+
+            lastEnemyDamageByTarget[key] = now;
+            return true;
+        }
+
+        private bool TryConsumeEnemyDamageToken(int token)
+        {
+            if (token == 0)
+                return false;
+
+            if (!consumedEnemyDamageTokens.Add(token))
+                return false;
+
+            enemyDamageTokenOrder.Enqueue(token);
+            while (enemyDamageTokenOrder.Count > DAMAGE_TOKEN_HISTORY_LIMIT)
+            {
+                int old = enemyDamageTokenOrder.Dequeue();
+                consumedEnemyDamageTokens.Remove(old);
+            }
+
+            return true;
+        }
+
         private EnemyPresenter ResolveEnemy(string runtimeId)
         {
             if (enemiesByRuntimeId.TryGetValue(runtimeId, out EnemyPresenter cached) && cached != null)
@@ -285,6 +500,25 @@ namespace CombatManager.Service
                 }
 
                 return (normalizedActor << 20) | (sequence & 0x000FFFFF);
+            }
+        }
+
+        private static int BuildEnemyPlayerDamageToken(int targetActorNumber)
+        {
+            unchecked
+            {
+                int normalizedTarget = targetActorNumber > 0
+                    ? targetActorNumber & 0x00000FFF
+                    : 0;
+
+                int sequence = ++localHitSequence;
+                if (sequence <= 0)
+                {
+                    localHitSequence = 1;
+                    sequence = 1;
+                }
+
+                return (normalizedTarget << 20) | (sequence & 0x000FFFFF);
             }
         }
 

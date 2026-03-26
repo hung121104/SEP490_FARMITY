@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using Photon.Pun;
 using CombatManager.Model;
 using CombatManager.Service;
@@ -19,12 +20,19 @@ namespace CombatManager.Presenter
 
         private IPlayerKnockbackService service;
         private Coroutine knockbackRoutine;
+        private static readonly Dictionary<int, PlayerKnockbackPresenter> PresentersByActor = new Dictionary<int, PlayerKnockbackPresenter>();
+        private int registeredActorNumber = -1;
 
         #region Unity Lifecycle
 
         private void Start()
         {
             StartCoroutine(DelayedInitialize());
+        }
+
+        private void OnDisable()
+        {
+            UnregisterActorBinding();
         }
 
         #endregion
@@ -50,6 +58,7 @@ namespace CombatManager.Presenter
             // Initialize service
             service = new PlayerKnockbackService(model);
             service.Initialize(playerObj.transform);
+            RegisterActorBinding(playerObj);
 
             Debug.Log("[PlayerKnockbackPresenter] Initialized successfully");
         }
@@ -89,6 +98,55 @@ namespace CombatManager.Presenter
 
         public void Knockback(Transform enemyTransform, float knockbackForce)
         {
+            if (enemyTransform == null)
+                return;
+
+            ApplyKnockbackInternal(enemyTransform.position, knockbackForce);
+        }
+
+        public void KnockbackFromPosition(Vector2 sourcePosition, float knockbackForce)
+        {
+            ApplyKnockbackInternal(sourcePosition, knockbackForce);
+        }
+
+        public static bool TryApplyKnockbackForActor(int actorNumber, Vector2 sourcePosition, float knockbackForce)
+        {
+            if (knockbackForce <= 0f)
+                return false;
+
+            PlayerKnockbackPresenter presenter = null;
+
+            if (PhotonNetwork.IsConnected)
+            {
+                if (actorNumber <= 0)
+                    return false;
+
+                PresentersByActor.TryGetValue(actorNumber, out presenter);
+
+                if (presenter == null || !presenter.IsInitialized())
+                    return false;
+            }
+            else
+            {
+                if (actorNumber > 0)
+                    PresentersByActor.TryGetValue(actorNumber, out presenter);
+
+                if (presenter == null)
+                {
+                    PlayerKnockbackPresenter[] all = Object.FindObjectsByType<PlayerKnockbackPresenter>(FindObjectsSortMode.None);
+                    presenter = all.Length == 1 ? all[0] : null;
+                }
+
+                if (presenter == null || !presenter.IsInitialized())
+                    return false;
+            }
+
+            presenter.KnockbackFromPosition(sourcePosition, knockbackForce);
+            return true;
+        }
+
+        private void ApplyKnockbackInternal(Vector2 sourcePosition, float knockbackForce)
+        {
             if (service == null || !service.IsInitialized())
             {
                 Debug.LogWarning("[PlayerKnockbackPresenter] Cannot apply knockback - not initialized");
@@ -102,7 +160,7 @@ namespace CombatManager.Presenter
             }
 
             // Apply knockback through service
-            service.ApplyKnockback(enemyTransform, knockbackForce);
+            service.ApplyKnockbackFromPosition(sourcePosition, knockbackForce);
 
             // Start visual effects via View
             PlayerKnockbackView view = GetComponent<PlayerKnockbackView>();
@@ -117,6 +175,30 @@ namespace CombatManager.Presenter
                 StartCoroutine(WaveEffect());
                 StartCoroutine(FlashRed());
             }
+        }
+
+        private void RegisterActorBinding(GameObject playerObj)
+        {
+            if (playerObj == null)
+                return;
+
+            PhotonView pv = playerObj.GetComponent<PhotonView>();
+            if (pv == null || pv.OwnerActorNr <= 0)
+                return;
+
+            registeredActorNumber = pv.OwnerActorNr;
+            PresentersByActor[registeredActorNumber] = this;
+        }
+
+        private void UnregisterActorBinding()
+        {
+            if (registeredActorNumber <= 0)
+                return;
+
+            if (PresentersByActor.TryGetValue(registeredActorNumber, out PlayerKnockbackPresenter existing) && existing == this)
+                PresentersByActor.Remove(registeredActorNumber);
+
+            registeredActorNumber = -1;
         }
 
         #endregion

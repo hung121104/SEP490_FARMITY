@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using Photon.Pun;
 using CombatManager.Model;
 using CombatManager.Service;
@@ -23,11 +24,19 @@ namespace CombatManager.Presenter
         private IPlayerHealthService service;
         private IStatsService statsService;
 
+        private static readonly Dictionary<int, PlayerHealthPresenter> PresentersByActor = new Dictionary<int, PlayerHealthPresenter>();
+        private int registeredActorNumber = -1;
+
         #region Unity Lifecycle
 
         private void Start()
         {
             StartCoroutine(DelayedInitialize());
+        }
+
+        private void OnDisable()
+        {
+            UnregisterActorBinding();
         }
 
         #endregion
@@ -75,6 +84,7 @@ namespace CombatManager.Presenter
             // Initialize service
             service = new PlayerHealthService(model);
             service.Initialize(playerObj.transform, statsService);
+            RegisterActorBinding(playerObj);
 
             // Notify view
             NotifyViewUpdate();
@@ -126,6 +136,63 @@ namespace CombatManager.Presenter
             // Fallback: if only one presenter exists (single-player / host)
             var all = UnityEngine.Object.FindObjectsByType<PlayerHealthPresenter>(UnityEngine.FindObjectsSortMode.None);
             return all.Length == 1 ? all[0] : null;
+        }
+
+        public static bool TryApplyDamageForActor(int actorNumber, int damageAmount)
+        {
+            if (damageAmount <= 0)
+                return false;
+
+            PlayerHealthPresenter presenter = null;
+
+            if (PhotonNetwork.IsConnected)
+            {
+                if (actorNumber <= 0)
+                    return false;
+
+                PresentersByActor.TryGetValue(actorNumber, out presenter);
+
+                if (presenter == null || !presenter.IsInitialized())
+                    return false;
+            }
+            else
+            {
+                if (actorNumber > 0)
+                    PresentersByActor.TryGetValue(actorNumber, out presenter);
+
+                if (presenter == null)
+                    presenter = FindLocal();
+
+                if (presenter == null || !presenter.IsInitialized())
+                    return false;
+            }
+
+            presenter.ChangeHealth(-Mathf.Abs(damageAmount));
+            return true;
+        }
+
+        private void RegisterActorBinding(GameObject playerObj)
+        {
+            if (playerObj == null)
+                return;
+
+            PhotonView pv = playerObj.GetComponent<PhotonView>();
+            if (pv == null || pv.OwnerActorNr <= 0)
+                return;
+
+            registeredActorNumber = pv.OwnerActorNr;
+            PresentersByActor[registeredActorNumber] = this;
+        }
+
+        private void UnregisterActorBinding()
+        {
+            if (registeredActorNumber <= 0)
+                return;
+
+            if (PresentersByActor.TryGetValue(registeredActorNumber, out PlayerHealthPresenter existing) && existing == this)
+                PresentersByActor.Remove(registeredActorNumber);
+
+            registeredActorNumber = -1;
         }
 
         #endregion

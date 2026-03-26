@@ -35,6 +35,7 @@ namespace CombatManager.Presenter
         [SerializeField] private Animator animator;
         [SerializeField] private SpriteRenderer spriteRenderer;
         [SerializeField] private GameObject damagePopupPrefab;
+        [SerializeField] private EnemyAttackHitbox attackHitbox;
 
         // ✅ NEW: Runtime enemy ID
         private string enemyId;
@@ -56,11 +57,18 @@ namespace CombatManager.Presenter
         private Vector2 remoteVelocity;
         private bool remoteIsWalking;
         private bool remoteFlipX;
+        private int remoteAttackSequence;
+        private int lastAppliedRemoteAttackSequence = -1;
+        private Vector3 attackHitboxBaseLocalPosition;
+        private bool attackHitboxPositionCaptured;
         private int lastAppliedHitToken = int.MinValue;
         private Coroutine knockbackEffectRoutine;
         private Coroutine flashEffectRoutine;
         private float lastDamagePopupAt = -10f;
         private const float DAMAGE_POPUP_INTERVAL = 0.1f;
+        private const string ATTACK_TRIGGER = "Attack";
+
+        private readonly List<Collider2D> activeAttackTargets = new List<Collider2D>();
 
         private bool IsAuthoritative => !PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient;
 
@@ -89,6 +97,8 @@ namespace CombatManager.Presenter
             if (!model.isInitialized)
                 return;
 
+            UpdateAttackHitboxFacing();
+
             if (IsAuthoritative)
             {
                 RefreshPotentialTargets();
@@ -97,6 +107,8 @@ namespace CombatManager.Presenter
 
                 if (!knockbackService.IsKnockedBack())
                     aiService.UpdateBehavior(Time.deltaTime);
+
+                TryTriggerAttackAnimation();
 
                 if (healthService.IsDead())
                     HandleDeath(true);
@@ -121,7 +133,7 @@ namespace CombatManager.Presenter
                 aiService.UpdatePhysics(Time.fixedDeltaTime);
         }
 
-        private void OnCollisionStay2D(Collision2D collision)
+        private void OnTriggerStay2D(Collider2D other)
         {
             if (!model.isInitialized)
                 return;
@@ -129,13 +141,44 @@ namespace CombatManager.Presenter
             if (!IsAuthoritative)
                 return;
 
-            if (((1 << collision.gameObject.layer) & model.playerLayer) != 0)
+            if (model.useActiveAttack)
+                return;
+
+            if (IsPlayerContact(other))
             {
-                if (combatService.CanDealDamage())
-                {
-                    combatService.DealDamageToPlayer(collision);
-                }
+                combatService.DealDamageToPlayer(other, transform);
             }
+        }
+
+        private void OnCollisionStay2D(Collision2D collision)
+        {
+            if (collision == null)
+                return;
+
+            // Backward-compatible fallback while prefabs migrate to trigger hitbox.
+            OnTriggerStay2D(collision.otherCollider);
+        }
+
+        private bool IsPlayerContact(Collider2D other)
+        {
+            if (other == null)
+                return false;
+
+            if (((1 << other.gameObject.layer) & model.playerLayer) != 0)
+                return true;
+
+            if (other.CompareTag("Player") || other.CompareTag("PlayerEntity"))
+                return true;
+
+            Transform parent = other.transform;
+            while (parent != null)
+            {
+                if (parent.CompareTag("Player") || parent.CompareTag("PlayerEntity"))
+                    return true;
+                parent = parent.parent;
+            }
+
+            return false;
         }
 
         #endregion
@@ -171,6 +214,12 @@ namespace CombatManager.Presenter
             if (spriteRenderer == null)
                 spriteRenderer = GetComponent<SpriteRenderer>();
 
+            Collider2D mainCollider = GetComponent<Collider2D>();
+            if (mainCollider != null && mainCollider.isTrigger)
+            {
+                Debug.LogWarning($"[EnemyPresenter] {gameObject.name} main collider is Trigger. Enemies will not physically block each other.");
+            }
+
             view = GetComponent<EnemyView>();
             if (view == null)
             {
@@ -201,6 +250,13 @@ namespace CombatManager.Presenter
             remoteVelocity = Vector2.zero;
             remoteIsWalking = false;
             remoteFlipX = spriteRenderer != null && spriteRenderer.flipX;
+            remoteAttackSequence = 0;
+
+            if (attackHitbox != null)
+            {
+                attackHitboxBaseLocalPosition = attackHitbox.transform.localPosition;
+                attackHitboxPositionCaptured = true;
+            }
 
             model.isInitialized = true;
 
@@ -238,6 +294,9 @@ namespace CombatManager.Presenter
             model.chaseSpeed = enemyData.chaseSpeed;
             model.wanderSpeed = enemyData.wanderSpeed;
             model.wanderRange = enemyData.wanderRange;
+            model.enableSeparation = enemyData.enableSeparation;
+            model.separationRadius = enemyData.separationRadius;
+            model.separationForce = enemyData.separationForce;
 
             // Guard
             model.guardDuration = enemyData.guardDuration;
@@ -247,6 +306,10 @@ namespace CombatManager.Presenter
             model.damageAmount = enemyData.damageAmount;
             model.knockbackForce = enemyData.knockbackForce;
             model.damageThrottleTime = enemyData.damageThrottleTime;
+            model.useActiveAttack = enemyData.useActiveAttack;
+            model.attackCooldown = enemyData.attackCooldown;
+            model.attackRecovery = enemyData.attackRecovery;
+            model.attackFrontDotThreshold = enemyData.attackFrontDotThreshold;
 
             // Physics (keep defaults or add to SO)
             model.friction = 3f;
@@ -407,6 +470,48 @@ namespace CombatManager.Presenter
             DamagePopupPresenter.Spawn(transform.position, damage);
         }
 
+        private void TryTriggerAttackAnimation()
+        {
+            if (aiService == null || model.animator == null || !model.useActiveAttack)
+                return;
+
+            if (!aiService.ConsumePendingAttackTrigger())
+                return;
+
+            model.animator.SetTrigger(ATTACK_TRIGGER);
+        }
+
+        // Called by enemy attack animation event at impact frame.
+        public void OnAttackImpactAnimationEvent()
+        {
+            if (!model.isInitialized || !model.useActiveAttack)
+                return;
+
+            if (!IsAuthoritative || aiService == null || combatService == null)
+                return;
+
+            if (!aiService.TryConsumeAttackImpact())
+                return;
+
+            if (attackHitbox == null)
+                return;
+
+            attackHitbox.CollectOverlappingPlayers(activeAttackTargets);
+            combatService.DealDamageToPlayers(activeAttackTargets, transform);
+        }
+
+        // Called by enemy attack animation event at end frame.
+        public void OnAttackAnimationEndEvent()
+        {
+            if (!model.isInitialized || !model.useActiveAttack)
+                return;
+
+            if (!IsAuthoritative || aiService == null)
+                return;
+
+            aiService.CompleteAttackAnimation();
+        }
+
         // ✅ NEW: Get enemy ID
         public string GetEnemyId() => enemyId;
         public string GetRuntimeEnemyId() => model.runtimeEnemyId;
@@ -492,6 +597,7 @@ namespace CombatManager.Presenter
                 flipX,
                 model.facingDirection.x,
                 model.facingDirection.y,
+                aiService != null ? aiService.GetAttackSequence() : 0,
             };
 
             RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
@@ -512,6 +618,8 @@ namespace CombatManager.Presenter
             if (model.animator != null)
                 model.animator.SetBool("isWalking", remoteIsWalking);
 
+            TryApplyRemoteAttackAnimation();
+
             if (model.spriteRenderer != null)
                 model.spriteRenderer.flipX = remoteFlipX;
         }
@@ -521,7 +629,7 @@ namespace CombatManager.Presenter
             if (photonEvent.Code != ENEMY_STATE_EVENT)
                 return;
 
-            if (photonEvent.CustomData is not object[] payload || payload.Length < 15)
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 16)
                 return;
 
             string runtimeId = payload[0] as string ?? string.Empty;
@@ -541,7 +649,8 @@ namespace CombatManager.Presenter
                 !TryGetBool(payload, 11, out bool isWalking) ||
                 !TryGetBool(payload, 12, out bool flipX) ||
                 !TryGetFloat(payload, 13, out float faceX) ||
-                !TryGetFloat(payload, 14, out float faceY))
+                !TryGetFloat(payload, 14, out float faceY) ||
+                !TryGetInt(payload, 15, out int attackSequence))
             {
                 return;
             }
@@ -556,6 +665,40 @@ namespace CombatManager.Presenter
             model.isAlerted = isAlerted;
             model.isKnockedBack = isKnockedBack;
             model.facingDirection = new Vector2(faceX, faceY);
+            remoteAttackSequence = attackSequence;
+        }
+
+        private void TryApplyRemoteAttackAnimation()
+        {
+            if (model.animator == null || !model.useActiveAttack)
+                return;
+
+            if (remoteAttackSequence <= 0 || remoteAttackSequence == lastAppliedRemoteAttackSequence)
+                return;
+
+            lastAppliedRemoteAttackSequence = remoteAttackSequence;
+            model.animator.SetTrigger(ATTACK_TRIGGER);
+        }
+
+        private void UpdateAttackHitboxFacing()
+        {
+            if (attackHitbox == null)
+                return;
+
+            if (!attackHitboxPositionCaptured)
+            {
+                attackHitboxBaseLocalPosition = attackHitbox.transform.localPosition;
+                attackHitboxPositionCaptured = true;
+            }
+
+            float facingX = model.facingDirection.x;
+            if (Mathf.Abs(facingX) < 0.001f)
+                return;
+
+            float directionSign = facingX >= 0f ? 1f : -1f;
+            Vector3 local = attackHitbox.transform.localPosition;
+            local.x = Mathf.Abs(attackHitboxBaseLocalPosition.x) * directionSign;
+            attackHitbox.transform.localPosition = local;
         }
 
         private static bool TryGetFloat(object[] payload, int index, out float value)
@@ -625,6 +768,9 @@ namespace CombatManager.Presenter
         public bool IsKnockedBack() => knockbackService?.IsKnockedBack() ?? false;
         public int GetCurrentHealth() => healthService?.GetCurrentHealth() ?? 0;
         public int GetMaxHealth() => healthService?.GetMaxHealth() ?? 1;
+        public int GetContactDamageAmount() => model.damageAmount;
+        public float GetContactKnockbackForce() => model.knockbackForce;
+        public float GetContactDamageThrottleTime() => model.damageThrottleTime;
         public Vector2 GetFacingDirection() => model.facingDirection;
         public Animator GetAnimator() => model.animator;
         public SpriteRenderer GetSpriteRenderer() => model.spriteRenderer;
