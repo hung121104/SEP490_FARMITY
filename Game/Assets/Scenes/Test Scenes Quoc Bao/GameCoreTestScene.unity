@@ -744,12 +744,13 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1076388131}
-  - {fileID: 1774166230}
   - {fileID: 845571269}
+  - {fileID: 1774166230}
   - {fileID: 69725220}
   - {fileID: 655649700}
   - {fileID: 1389353836}
   - {fileID: 553587180}
+  - {fileID: 1987828110}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &36946696
@@ -3756,11 +3757,11 @@ MonoBehaviour:
   weaponSkillSection: {fileID: 1121630180}
   weaponSkillSlotPrefab: {fileID: 1850482316954284577, guid: f2388b8580bd65e46afc277316a68afe, type: 3}
   weaponSkillKey: 114
-  initialSkills:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  defaultSkillIds:
+  - 
+  - 
+  - 
+  - 
 --- !u!1 &185352914
 GameObject:
   m_ObjectHideFlags: 0
@@ -6401,9 +6402,17 @@ MonoBehaviour:
     isWeaponActive: 0
     isInitialized: 0
   fallbackWeaponPrefab: {fileID: 0}
+  swordBasePrefab: {fileID: 8171461803801935278, guid: 0dc3195a5b158b944842525bad010852, type: 3}
+  staffBasePrefab: {fileID: 8171461803801935278, guid: 183fbf716ee7fb4408520214138a1ba1, type: 3}
+  spearBasePrefab: {fileID: 8171461803801935278, guid: 2349b768c2985ff419154dd4c82109e7, type: 3}
   anchorOffset: {x: 0, y: -0.3, z: 0}
   gripLocalOffset: {x: 0, y: 0, z: 0}
+  fallbackSourcePivot: {x: 0.5, y: 0.5}
+  swordDesiredPivot: {x: 0.81, y: 0.19}
+  staffDesiredPivot: {x: 0.83, y: 0.14}
+  spearDesiredPivot: {x: 0.71, y: 0.28}
   rotationOffsetDegrees: -133
+  enableWeaponVisualDebug: 0
 --- !u!1 &332649194
 GameObject:
   m_ObjectHideFlags: 0
@@ -31758,6 +31767,7 @@ MonoBehaviour:
     m_Bits: 128
   confirmKey: 101
   cancelKey: 113
+  baseProjectilePrefab: {fileID: 2996777577814843754, guid: cf409b33c4bf1674ebcb5d32c77a3243, type: 3}
 --- !u!1 &760354427
 GameObject:
   m_ObjectHideFlags: 0
@@ -38596,14 +38606,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 257846ef22fcd5a4a9dcd082e0b9ebfe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  testSwordBronze: {fileID: 11400000, guid: 1718d2e70ac3ebd4ca199f24317af178, type: 2}
-  testSwordIron: {fileID: 11400000, guid: dc66ee77ad37f92479254d4030021530, type: 2}
-  testSpear: {fileID: 11400000, guid: d72050c572a97da4baecdc93fcfc121b, type: 2}
-  testStaff: {fileID: 11400000, guid: f49c64c3bc1bd064ebb2a54aa7b518cb, type: 2}
-  equipSwordBronzeKey: 52
-  equipSwordIronKey: 53
-  equipSpearKey: 54
-  equipStaffKey: 55
   unequipKey: 56
 --- !u!1 &1102945952
 GameObject:
@@ -38797,12 +38799,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hotbarView: {fileID: 1780333230}
-  farmableGroundLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  targetLayer:
-    serializedVersion: 2
-    m_Bits: 0
 --- !u!1 &1110562044
 GameObject:
   m_ObjectHideFlags: 0
@@ -40060,8 +40056,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dialogueView: {fileID: 2064028054}
   dialogueModel: {fileID: 11400000, guid: f77b7c26c66e138428823a07da54d037, type: 2}
-  interactKey: 101
-  optionKeys: 310000003200000033000000
   hotbarScript: {fileID: 1780333230}
   relationshipModel:
     affection: 0
@@ -40071,9 +40065,6 @@ MonoBehaviour:
   inventoryMenuRoot: {fileID: 1992598973}
   spriteRenderer: {fileID: 1146011600}
   questView: {fileID: 429389107}
-  questDatabase: {fileID: 11400000, guid: 8a944947f2eb2e041bc3f7f4b3e3e180, type: 2}
-  questIndex: 1
-  questLogController: {fileID: 2111404908}
 --- !u!95 &1146011599
 Animator:
   serializedVersion: 7
@@ -86014,8 +86005,6 @@ MonoBehaviour:
   skillGridContainer: {fileID: 1965848516}
   skillDisplayItemPrefab: {fileID: 3951854400017865695, guid: 4b0a848b0782d0b4e870917a0f22f29a, type: 3}
   closeButton: {fileID: 540604931}
-  playerSkills:
-  - {fileID: 11400000, guid: 3f69bfaa32fb31f48a94e19bfbbeb93b, type: 2}
 --- !u!1 &1303826872
 GameObject:
   m_ObjectHideFlags: 0
@@ -89400,6 +89389,7 @@ MonoBehaviour:
   inventoryView: {fileID: 1890603475}
   itemDetailView: {fileID: 126345319}
   itemDeleteView: {fileID: 1647983342}
+  showDebugLogs: 0
   deleteZoneDefaultPos: {x: 658.2, y: 180}
   deleteZoneCraftingAndCookingPos: {x: 658.2, y: 413}
   deleteZoneCraftingInInventoryPos: {x: 387, y: 411}
@@ -94218,13 +94208,13 @@ MonoBehaviour:
     squashPixels: 0.05
     stretchPixels: 0.05
     waveDuration: 0.3
-    flashDuration: 0.2
+    flashDuration: 1
     flashCount: 2
     playerEntity: {fileID: 0}
     rigidbody: {fileID: 0}
     spriteRenderer: {fileID: 0}
     playerMovement: {fileID: 0}
-    originalColor: {r: 1, g: 1, b: 1, a: 1}
+    originalColor: {r: 0.8941177, g: 0.1764706, b: 0.21960786, a: 1}
     originalScale: {x: 1, y: 1, z: 1}
     isInitialized: 0
     isKnockbackActive: 0
@@ -95389,7 +95379,7 @@ MonoBehaviour:
   vitalityText: {fileID: 1375210402}
   pointsText: {fileID: 1057451772}
   statsPanel: {fileID: 1339050174}
-  toggleStatsKey: 99
+  toggleStatsKey: 98
   increaseStrengthButton: {fileID: 1273646181}
   decreaseStrengthButton: {fileID: 1256838467}
   increaseVitalityButton: {fileID: 2055105933}
@@ -98280,6 +98270,55 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   miniGameView: {fileID: 1949205807}
+--- !u!1 &1987828109
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1987828110}
+  - component: {fileID: 1987828111}
+  m_Layer: 0
+  m_Name: 'EnemySyncManager '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1987828110
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1987828109}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 33179362}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1987828111
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1987828109}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4da2a2b5708e5c46b04e633c2e281eb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enemyDataCatalog:
+  - {fileID: 11400000, guid: 366d7b32c890fd843a53af4f5b229b91, type: 2}
+  enemyPrefabOverrides: []
+  stateBroadcastInterval: 0.1
+  showDebugLogs: 1
 --- !u!1 &1989672785
 GameObject:
   m_ObjectHideFlags: 0
@@ -99696,7 +99735,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73e5654965828c944bd6b7e22164840e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skeletonData: {fileID: 11400000, guid: 366d7b32c890fd843a53af4f5b229b91, type: 2}
+  skeletonData: {fileID: 11400000, guid: 09f167a53b9186a499990b3bd664f9e3, type: 2}
   otherEnemyData: []
   spawnKey: 286
   spawnDistance: 3
@@ -103086,6 +103125,8 @@ MonoBehaviour:
     m_Bits: 128
   confirmKey: 101
   cancelKey: 113
+  baseSlashVfxPrefab: {fileID: 5107333870897779412, guid: 1244261c77c709b43a4c449b37ae4157, type: 3}
+  baseDamagePopupPrefab: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -103107,7 +103148,6 @@ SceneRoots:
   - {fileID: 708829891}
   - {fileID: 761236216}
   - {fileID: 1401049882}
-  - {fileID: 33179362}
   - {fileID: 2141272501}
   - {fileID: 1896112670}
   - {fileID: 1624391444}
@@ -103120,5 +103160,6 @@ SceneRoots:
   - {fileID: 367195155}
   - {fileID: 138164247}
   - {fileID: 1947332106}
+  - {fileID: 33179362}
   - {fileID: 542471485}
   - {fileID: 1195380351}

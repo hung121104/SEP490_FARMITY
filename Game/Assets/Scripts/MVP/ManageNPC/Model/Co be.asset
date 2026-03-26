@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e204212c97d2e7e4d8a3deae1cc3f1fe, type: 3}
   m_Name: Co be
   m_EditorClassIdentifier: 
-  npcName: "C\xF4 b\xE9"
+  npcName: cobe
   avatar: {fileID: -996944172213880842, guid: f57493b21de412141b014a356ef2dd7b, type: 3}
   nodes:
   - dialogueText: "Ta \u0111\xE3 \u0111i qua r\u1EA5t nhi\u1EC1u v\xF9ng \u0111\u1EA5t...\r\n"

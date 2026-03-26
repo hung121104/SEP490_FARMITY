@@ -66,6 +66,7 @@ MonoBehaviour:
   - RPC_RequestToolConsume
   - RPC_SetSprintIntent
   - RPC_FinalPlayerState
+  - RPC_RequestTakeDamage
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

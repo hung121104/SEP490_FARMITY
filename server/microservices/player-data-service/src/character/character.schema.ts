@@ -61,6 +61,8 @@ export class Character {
   @Prop({ default: '' })
   toolConfigId: string;
 
+  @Prop({ type: [String], default: [] })
+  playerSkillSlotIds: string[];
   @Prop({ default: 200 })
   currentStamina: number;
 

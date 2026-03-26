@@ -9,12 +9,13 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4046723159657654008}
-  - component: {fileID: -7219682121151889440}
   - component: {fileID: 9107845147142514731}
   - component: {fileID: 1634215716028221634}
-  - component: {fileID: 6523819796232800320}
   - component: {fileID: 7705436625211187722}
+  - component: {fileID: -7219682121151889440}
   - component: {fileID: -4485954057296799238}
+  - component: {fileID: 4179564027414510852}
+  - component: {fileID: 8301662227961707412}
   m_Layer: 7
   m_Name: Skeleton
   m_TagString: Enemy
@@ -37,75 +38,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &-7219682121151889440
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7205149268433935669}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e404ce90efee52f478cdaf0d98e75c48, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  model:
-    currentHealth: 10
-    maxHealth: 10
-    currentState: 0
-    isAlerted: 0
-    alertTimer: 0
-    hitAlertDuration: 5
-    detectionRange: 8
-    attackRange: 1.5
-    fieldOfViewAngle: 120
-    playerLayer:
-      serializedVersion: 2
-      m_Bits: 0
-    obstacleLayer:
-      serializedVersion: 2
-      m_Bits: 0
-    moveSpeed: 2
-    chaseSpeed: 3
-    wanderSpeed: 1
-    wanderRange: 5
-    startPosition: {x: 0, y: 0, z: 0}
-    wanderTarget: {x: 0, y: 0, z: 0}
-    currentWanderDirection: {x: 1, y: 0}
-    facingDirection: {x: 1, y: 0}
-    guardDuration: 2
-    guardLookDuration: 1
-    guardTimer: 0
-    guardBehavior: 0
-    guardDirection: 1
-    guardLookTimer: 0
-    isLookingLeft: 0
-    friction: 3
-    maxVelocity: 10
-    isKnockedBack: 0
-    knockbackTimer: 0
-    knockbackDuration: 0.3
-    knockbackPushDistance: 3
-    squashPixels: 0.05
-    stretchPixels: 0.05
-    waveDuration: 0.3
-    flashDuration: 0.2
-    flashCount: 2
-    originalColor: {r: 1, g: 1, b: 1, a: 1}
-    originalScale: {x: 1, y: 1, z: 1}
-    damageAmount: 1
-    knockbackForce: 20
-    damageThrottleTime: 0.5
-    lastDamageTime: -999
-    playerTransform: {fileID: 0}
-    rb: {fileID: 0}
-    animator: {fileID: 0}
-    spriteRenderer: {fileID: 0}
-    isInitialized: 0
-  enemyData: {fileID: 11400000, guid: 366d7b32c890fd843a53af4f5b229b91, type: 2}
-  animator: {fileID: 7705436625211187722}
-  spriteRenderer: {fileID: 9107845147142514731}
-  damagePopupPrefab: {fileID: 0}
 --- !u!212 &9107845147142514731
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -188,8 +120,135 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 4
---- !u!70 &6523819796232800320
-CapsuleCollider2D:
+--- !u!95 &7705436625211187722
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7205149268433935669}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 5a8d7c3de16de274ab4dca527c2c3b82, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &-7219682121151889440
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7205149268433935669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e404ce90efee52f478cdaf0d98e75c48, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model:
+    currentHealth: 10
+    maxHealth: 10
+    currentState: 0
+    isAlerted: 0
+    alertTimer: 0
+    hitAlertDuration: 5
+    detectionRange: 8
+    attackRange: 1.5
+    fieldOfViewAngle: 120
+    playerLayer:
+      serializedVersion: 2
+      m_Bits: 0
+    obstacleLayer:
+      serializedVersion: 2
+      m_Bits: 0
+    moveSpeed: 2
+    chaseSpeed: 3
+    wanderSpeed: 1
+    wanderRange: 5
+    startPosition: {x: 0, y: 0, z: 0}
+    wanderTarget: {x: 0, y: 0, z: 0}
+    currentWanderDirection: {x: 1, y: 0}
+    facingDirection: {x: 1, y: 0}
+    guardDuration: 2
+    guardLookDuration: 1
+    guardTimer: 0
+    guardBehavior: 0
+    guardDirection: 1
+    guardLookTimer: 0
+    isLookingLeft: 0
+    friction: 3
+    maxVelocity: 10
+    isKnockedBack: 0
+    knockbackTimer: 0
+    knockbackDuration: 0.3
+    knockbackPushDistance: 3
+    squashPixels: 0.05
+    stretchPixels: 0.05
+    waveDuration: 0.3
+    flashDuration: 0.2
+    flashCount: 2
+    originalColor: {r: 1, g: 1, b: 1, a: 1}
+    originalScale: {x: 1, y: 1, z: 1}
+    damageAmount: 1
+    knockbackForce: 20
+    damageThrottleTime: 0.5
+    lastDamageTime: -999
+    playerTransform: {fileID: 0}
+    currentTarget: {fileID: 0}
+    rb: {fileID: 0}
+    animator: {fileID: 0}
+    spriteRenderer: {fileID: 0}
+    runtimeEnemyId: 
+    isInitialized: 0
+  enemyData: {fileID: 11400000, guid: 366d7b32c890fd843a53af4f5b229b91, type: 2}
+  animator: {fileID: 7705436625211187722}
+  spriteRenderer: {fileID: 9107845147142514731}
+  damagePopupPrefab: {fileID: 0}
+--- !u!114 &-4485954057296799238
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7205149268433935669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ae614099336fec49be1460306b0411e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &4179564027414510852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7205149268433935669}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 3
+  OwnershipTransfer: 0
+  observableSearch: 2
+  ObservedComponents: []
+  sceneViewId: 0
+  InstantiationId: 0
+  isRuntimeInstantiated: 0
+--- !u!60 &8301662227961707412
+PolygonCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -222,40 +281,23 @@ CapsuleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.0064468384, y: -0.0017261505}
-  m_Size: {x: 1.4721527, y: 2.173046}
-  m_Direction: 0
---- !u!95 &7705436625211187722
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7205149268433935669}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 5a8d7c3de16de274ab4dca527c2c3b82, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
---- !u!114 &-4485954057296799238
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7205149268433935669}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6ae614099336fec49be1460306b0411e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 1.375, y: 2}
+    newSize: {x: 0.875, y: 1.375}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: 0.375, y: 1}
+      - {x: -0.6875, y: 1}
+      - {x: -0.6875, y: -1}
+      - {x: 0.625, y: -1}
+      - {x: 0.6875, y: -0.5}
+      - {x: 0.6875, y: 0.25}
+      - {x: 0.5, y: 0.6875}
+  m_UseDelaunayMesh: 0

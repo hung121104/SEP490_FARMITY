@@ -139,12 +139,36 @@ export class Item {
   @Prop()
   critChance?: number;
 
-  @Prop()
-  attackSpeed?: number;
-
   /** References a Material document by materialId (e.g. 'mat_steel'). */
   @Prop()
   weaponMaterialId?: string;
+
+  @Prop()
+  weaponType?: number;
+
+  @Prop()
+  tier?: number;
+
+  @Prop()
+  attackCooldown?: number;
+
+  @Prop()
+  knockbackForce?: number;
+
+  @Prop()
+  projectileSpeed?: number;
+
+  @Prop()
+  projectileRange?: number;
+
+  @Prop()
+  projectileKnockback?: number;
+
+  @Prop()
+  linkedSkillId?: string;
+
+  @Prop()
+  weaponPrefabKey?: string;
 
   // ── itemType: 7 – Fish ─────────────────────────────────────────────────────
 

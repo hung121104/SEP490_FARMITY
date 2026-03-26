@@ -18,6 +18,12 @@ public class LoginResponse
     public string access_token;
 }
 
+[Serializable]
+public class LoginErrorResponse
+{
+    public string message;
+}
+
 public class AuthenticateService : IAuthenticateService
 {
     public async Task<LoginResponse> Login(LoginRequest request)
@@ -50,9 +56,32 @@ public class AuthenticateService : IAuthenticateService
             }
             else
             {
-                Debug.LogError("Login request failed: " + webRequest.error);
-                return null;
+                string errorMessage = ParseErrorMessage(
+                    webRequest.downloadHandler?.text,
+                    "Login failed. Please check your username or password.");
+                Debug.LogError($"Login request failed ({webRequest.responseCode}): {errorMessage}");
+                throw new Exception(errorMessage);
             }
         }
+    }
+
+    private static string ParseErrorMessage(string responseText, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(responseText)) return fallback;
+
+        try
+        {
+            var parsed = JsonUtility.FromJson<LoginErrorResponse>(responseText);
+            if (parsed != null && !string.IsNullOrWhiteSpace(parsed.message))
+            {
+                return parsed.message;
+            }
+        }
+        catch
+        {
+            // Ignore parse errors and use fallback.
+        }
+
+        return fallback;
     }
 }

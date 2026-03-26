@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace CombatManager.Service
 {
@@ -8,7 +9,8 @@ namespace CombatManager.Service
     public interface IEnemyAIService
     {
         void Initialize(Transform enemyTransform);
-        void UpdateBehavior(float deltaTime, float distanceToPlayer);
+        void SetPotentialTargets(IReadOnlyList<Transform> players);
+        void UpdateBehavior(float deltaTime);
         void UpdatePhysics(float fixedDeltaTime);
         void OnHit();
         
@@ -25,5 +27,12 @@ namespace CombatManager.Service
         
         // Detection
         bool CanSeePlayer();
+
+        // Active attack animation lifecycle
+        bool ConsumePendingAttackTrigger();
+        bool TryConsumeAttackImpact();
+        void CompleteAttackAnimation();
+        bool IsAttackAnimating();
+        int GetAttackSequence();
     }
 }

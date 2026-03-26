@@ -4,7 +4,11 @@ using Photon.Pun;
 /// <summary>
 /// View component for structure placement following MVP pattern.
 /// Manages ghost preview, player input, and holds prefab references.
-/// Merged functionality from StructureCatalogController.
+///
+/// MVP layer: View
+/// - Renders ghost preview based on Presenter decisions
+/// - Forwards placement requests to Presenter
+/// - Does NOT handle item consumption (ItemUsageController handles that)
 /// </summary>
 public class StructureView : MonoBehaviourPunCallbacks
 {
@@ -69,20 +73,12 @@ public class StructureView : MonoBehaviourPunCallbacks
     // Pool reference
     private StructurePool structurePool;
 
-    // HotbarView reference — used only in Start() to wire up the consume callback
+    // HotbarView reference
     private HotbarView hotbarView;
 
     // Snapped grid position for the current frame
     private Vector3 currentSnappedPos;
     private bool    currentCanPlace;
-
-    /// <summary>Fired after a structure is successfully placed.</summary>
-    public System.Action OnStructurePlaced;
-
-    /// <summary>
-    /// Callback to consume the active hotbar item after a successful placement.
-    /// </summary>
-    public System.Action OnConsumeActiveItem;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -99,20 +95,6 @@ public class StructureView : MonoBehaviourPunCallbacks
     {
         structurePool = FindAnyObjectByType<StructurePool>();
         hotbarView    = FindAnyObjectByType<HotbarView>();
-
-        // Wire item-consumption through a callback.
-        if (hotbarView != null)
-            OnConsumeActiveItem = () => hotbarView.GetPresenter()?.ConsumeCurrentItem(1);
-    }
-
-    private void OnEnable()
-    {
-        UseStructureService.OnStructureRequested += HandleStructurePlaceAction;
-    }
-
-    private void OnDisable()
-    {
-        UseStructureService.OnStructureRequested -= HandleStructurePlaceAction;
     }
 
     private void OnDestroy()
@@ -159,7 +141,7 @@ public class StructureView : MonoBehaviourPunCallbacks
 
         if (currentItem != null && currentItem.itemType == ItemType.Structure && !currentItem.isFallback)
         {
-            // Delegate data-building to Presenter (business logic, not View's job)
+            // Delegate data-building to Presenter
             var data = presenter.GetStructureData(currentItem.itemID, GetDefaultPrefab);
             if (data != null)
             {
@@ -210,10 +192,18 @@ public class StructureView : MonoBehaviourPunCallbacks
         ghostRenderer = ghostInstance.GetComponentInChildren<SpriteRenderer>(true)
             ?? ghostInstance.AddComponent<SpriteRenderer>();
 
-        Sprite itemSprite = activeItemModel?.Icon
+        Sprite original = activeItemModel?.Icon
             ?? ItemCatalogService.Instance?.GetCachedSprite(data.StructureId);
-        if (itemSprite != null)
-            ghostRenderer.sprite = itemSprite;
+        if (original != null)
+        {
+            ghostRenderer.sprite = Sprite.Create(
+                original.texture,
+                original.rect,
+                new Vector2(0.5f, 0f),
+                original.pixelsPerUnit,
+                0,
+                SpriteMeshType.FullRect);
+        }
 
         foreach (var col in ghostInstance.GetComponentsInChildren<Collider2D>())
             col.enabled = false;
@@ -242,7 +232,6 @@ public class StructureView : MonoBehaviourPunCallbacks
 
         activeStructureData = null;
         activeItemModel    = null;
-        OnStructurePlaced  = null;
     }
 
     public bool IsInPlacementMode => activeStructureData != null;
@@ -261,31 +250,16 @@ public class StructureView : MonoBehaviourPunCallbacks
             return;
         }
 
-        currentSnappedPos = new Vector3(Mathf.Floor(tile.x) + 0.5f, Mathf.Floor(tile.y) + 0.5f, 0f);
+        currentSnappedPos = new Vector3(Mathf.Floor(tile.x) + 0.5f, Mathf.Floor(tile.y) + 0.25f, 0f);
         ghostInstance.transform.position = currentSnappedPos;
         ghostInstance.SetActive(true);
 
         currentCanPlace = presenter.CanPlace(currentSnappedPos, activeStructureData);
         if (ghostRenderer != null)
             ghostRenderer.color = currentCanPlace ? validColor : invalidColor;
-    }
 
-    // ── Input Handling & Placement ─────────────────────────────────────────
-
-    private void HandleStructurePlaceAction(string itemId)
-    {
-        if (activeStructureData == null || activeStructureData.StructureId != itemId) return;
-        if (!currentCanPlace) return;
-
-        bool placed = presenter.HandlePlaceStructure(currentSnappedPos, activeStructureData);
-        if (placed)
-        {
-            if (showDebugLogs)
-                Debug.Log($"[StructureView] Structure placed at {currentSnappedPos}");
-
-            OnConsumeActiveItem?.Invoke();
-            OnStructurePlaced?.Invoke();
-        }
+        // Push placement state to Presenter so it can respond to placement requests
+        presenter.UpdatePlacementState(currentSnappedPos, currentCanPlace, activeStructureData);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -298,11 +272,11 @@ public class StructureView : MonoBehaviourPunCallbacks
 
         Vector3 mouseWorld = ScreenToWorld(Input.mousePosition);
         mouseWorld.z = 0f;
-        
+
         int targetX = Mathf.FloorToInt(mouseWorld.x);
         int targetY = Mathf.FloorToInt(mouseWorld.y);
         tileCenter = new Vector3(targetX, targetY, 0f);
-        
+
         float distance = Vector3.Distance(playerTransform.position, tileCenter);
         return distance <= placementRange;
     }

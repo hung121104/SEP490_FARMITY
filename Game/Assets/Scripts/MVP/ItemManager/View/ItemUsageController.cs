@@ -1,3 +1,5 @@
+﻿using UnityEngine;
+using CombatManager.Presenter;
 using UnityEngine;
 
 public class ItemUsageController : MonoBehaviour
@@ -63,6 +65,15 @@ public class ItemUsageController : MonoBehaviour
     private void HandleSelectedItemChanged(ItemData item)
     {
         _currentItem = item;
+
+        // Weapon equip is explicit via use input (right-click flow), not by slot selection.
+        if (item is WeaponData)
+            return;
+
+        if (WeaponEquipPresenter.Instance != null && WeaponEquipPresenter.Instance.IsWeaponEquipped())
+        {
+            WeaponEquipPresenter.Instance.UnequipWeapon();
+        }
 
         if (item is ToolData tool)
         {
@@ -146,8 +157,7 @@ public class ItemUsageController : MonoBehaviour
                 break;
 
             case ItemType.Weapon:
-                if (itemUsagePresenter.UseWeapon(item, targetPosition))
-                    presenter.ConsumeCurrentItem(1);
+                itemUsagePresenter.UseWeapon(item, targetPosition);
                 break;
 
             case ItemType.Pollen:
@@ -175,9 +185,10 @@ public class ItemUsageController : MonoBehaviour
                 break;
 
             case ItemType.Structure:
-                // Toggle and placement handled entirely by StructureView via UseStructureService.OnStructureRequested
-                // (mirrors the CropPlantingView / UseSeedService pattern)
-                itemUsagePresenter.UseStructure(item, targetPosition);
+                // Placement delegated via ItemUsagePresenter → StructurePresenter → StructureService
+                // Item consumed here on success (same pattern as Consumable, Fertilizer, etc.)
+                if (itemUsagePresenter.UseStructure(item.itemID))
+                    presenter.ConsumeCurrentItem(1);
                 break;
 
             default:

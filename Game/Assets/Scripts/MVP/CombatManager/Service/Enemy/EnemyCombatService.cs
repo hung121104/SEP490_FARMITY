@@ -1,5 +1,5 @@
 using UnityEngine;
-using TMPro;
+using System.Collections.Generic;
 using CombatManager.Model;
 using CombatManager.Presenter;
 
@@ -12,7 +12,9 @@ namespace CombatManager.Service
     public class EnemyCombatService : IEnemyCombatService
     {
         private EnemyModel model;
-        private GameObject damagePopupPrefab;
+        private PlayerHealthPresenter cachedHealthPresenter;
+        private PlayerKnockbackPresenter cachedKnockbackPresenter;
+        private readonly HashSet<int> processedActors = new HashSet<int>();
 
         public EnemyCombatService(EnemyModel model)
         {
@@ -21,7 +23,7 @@ namespace CombatManager.Service
 
         public void Initialize(GameObject damagePopupPrefab)
         {
-            this.damagePopupPrefab = damagePopupPrefab;
+            // Kept for interface compatibility; popup spawning is centralized via DamagePopupPresenter.
         }
 
         public bool CanDealDamage()
@@ -33,18 +35,86 @@ namespace CombatManager.Service
             return true;
         }
 
-        public void DealDamageToPlayer(Collision2D collision)
+        public void DealDamageToPlayer(Collider2D playerCollider, Transform enemyTransform)
         {
-            model.lastDamageTime = Time.time;
+            if (playerCollider == null || enemyTransform == null)
+                return;
 
-            Debug.Log($"[EnemyCombatService] ========== COLLISION DETECTED ==========");
-            Debug.Log($"  - Hit Object: {collision.gameObject.name}");
-            Debug.Log($"  - Hit Tag: {collision.gameObject.tag}");
-            Debug.Log($"  - Hit Layer: {LayerMask.LayerToName(collision.gameObject.layer)}");
+            Transform playerRoot = ResolvePlayerRoot(playerCollider);
+            if (playerRoot == null)
+                return;
 
-            // Find presenters in scene (they're on CombatSystem hierarchy)
-            PlayerHealthPresenter healthPresenter = Object.FindObjectOfType<PlayerHealthPresenter>();
-            
+            Photon.Pun.PhotonView targetView = ResolvePlayerPhotonView(playerCollider, playerRoot);
+            ApplyDamageToResolvedTarget(playerRoot, targetView, enemyTransform, ignoreLocalThrottle: false);
+        }
+
+        public void DealDamageToPlayers(IReadOnlyList<Collider2D> playerColliders, Transform enemyTransform)
+        {
+            if (playerColliders == null || enemyTransform == null)
+                return;
+
+            processedActors.Clear();
+
+            for (int i = 0; i < playerColliders.Count; i++)
+            {
+                Collider2D playerCollider = playerColliders[i];
+                if (playerCollider == null)
+                    continue;
+
+                Transform playerRoot = ResolvePlayerRoot(playerCollider);
+                if (playerRoot == null)
+                    continue;
+
+                Photon.Pun.PhotonView targetView = ResolvePlayerPhotonView(playerCollider, playerRoot);
+                int actorNumber = targetView != null ? targetView.OwnerActorNr : -1;
+
+                if (actorNumber > 0 && !processedActors.Add(actorNumber))
+                    continue;
+
+                ApplyDamageToResolvedTarget(playerRoot, targetView, enemyTransform, ignoreLocalThrottle: true);
+            }
+        }
+
+        private void ApplyDamageToResolvedTarget(
+            Transform playerRoot,
+            Photon.Pun.PhotonView targetView,
+            Transform enemyTransform,
+            bool ignoreLocalThrottle)
+        {
+            if (playerRoot == null || enemyTransform == null)
+                return;
+
+            int targetActorNumber = targetView != null ? targetView.OwnerActorNr : -1;
+
+            EnemyPresenter enemyPresenter = enemyTransform.GetComponent<EnemyPresenter>();
+            if (enemyPresenter == null)
+                enemyPresenter = enemyTransform.GetComponentInParent<EnemyPresenter>();
+
+            if (Photon.Pun.PhotonNetwork.IsConnected)
+            {
+                if (enemyPresenter == null)
+                    return;
+
+                if (targetActorNumber <= 0)
+                    return;
+
+                EnemySyncManager.Instance.RequestEnemyPlayerTouchDamage(
+                    enemyPresenter,
+                    targetActorNumber,
+                    model.damageAmount,
+                    model.knockbackForce,
+                    enemyTransform.position);
+
+                return;
+            }
+
+            if (!ignoreLocalThrottle && !CanDealDamage())
+                return;
+
+            if (targetView != null && !targetView.IsMine)
+                return;
+
+            PlayerHealthPresenter healthPresenter = ResolveHealthPresenter();
             if (healthPresenter == null)
             {
                 Debug.LogError("[EnemyCombatService] ❌ PlayerHealthPresenter NOT FOUND!");
@@ -52,37 +122,95 @@ namespace CombatManager.Service
                 return;
             }
 
-            Debug.Log($"[EnemyCombatService] ✅ Found PlayerHealthPresenter on: {healthPresenter.gameObject.name}");
+            Transform localPlayerRoot = healthPresenter.GetService()?.GetPlayerEntity();
+            if (localPlayerRoot == null || localPlayerRoot != playerRoot)
+                return;
 
-            PlayerKnockbackPresenter knockbackPresenter = Object.FindObjectOfType<PlayerKnockbackPresenter>();
-            
-            if (knockbackPresenter == null)
-            {
-                Debug.LogWarning("[EnemyCombatService] ⚠️ PlayerKnockbackPresenter not found");
-            }
-            else
-            {
-                Debug.Log($"[EnemyCombatService] ✅ Found PlayerKnockbackPresenter on: {knockbackPresenter.gameObject.name}");
-            }
+            PlayerKnockbackPresenter knockbackPresenter = ResolveKnockbackPresenter();
 
             // Call presenter's public methods
-            Debug.Log($"[EnemyCombatService] Applying {model.damageAmount} damage...");
             healthPresenter.ChangeHealth(-model.damageAmount);
-            Debug.Log($"[EnemyCombatService] ✅ Damage applied!");
+            model.lastDamageTime = Time.time;
 
             // Apply knockback
             if (knockbackPresenter != null)
             {
-                Transform attackerTransform = collision.otherCollider.transform;
-                Debug.Log($"[EnemyCombatService] Applying knockback from {attackerTransform.name}...");
-                knockbackPresenter.Knockback(attackerTransform, model.knockbackForce);
-                Debug.Log($"[EnemyCombatService] ✅ Knockback applied!");
+                knockbackPresenter.Knockback(enemyTransform, model.knockbackForce);
             }
 
             // Show damage popup
-            ShowDamagePopup(collision.transform.position);
+            ShowDamagePopup(playerRoot.position);
+        }
 
-            Debug.Log($"[EnemyCombatService] ========== DAMAGE COMPLETE ==========");
+        private static Transform ResolvePlayerRoot(Collider2D playerCollider)
+        {
+            if (playerCollider == null)
+                return null;
+
+            if (playerCollider.GetComponent<Photon.Pun.PhotonView>() != null)
+                return playerCollider.transform;
+
+            Photon.Pun.PhotonView parentView = playerCollider.GetComponentInParent<Photon.Pun.PhotonView>();
+            if (parentView != null)
+                return parentView.transform;
+
+            if (playerCollider.CompareTag("Player") || playerCollider.CompareTag("PlayerEntity"))
+                return playerCollider.transform;
+
+            Transform taggedParent = playerCollider.transform;
+            while (taggedParent != null)
+            {
+                if (taggedParent.CompareTag("Player") || taggedParent.CompareTag("PlayerEntity"))
+                    return taggedParent;
+                taggedParent = taggedParent.parent;
+            }
+
+            return null;
+        }
+
+        private static Photon.Pun.PhotonView ResolvePlayerPhotonView(Collider2D playerCollider, Transform playerRoot)
+        {
+            if (playerCollider != null)
+            {
+                Photon.Pun.PhotonView colliderView = playerCollider.GetComponent<Photon.Pun.PhotonView>();
+                if (colliderView != null)
+                    return colliderView;
+
+                Photon.Pun.PhotonView parentView = playerCollider.GetComponentInParent<Photon.Pun.PhotonView>();
+                if (parentView != null)
+                    return parentView;
+            }
+
+            if (playerRoot != null)
+            {
+                Photon.Pun.PhotonView rootView = playerRoot.GetComponent<Photon.Pun.PhotonView>();
+                if (rootView != null)
+                    return rootView;
+
+                Photon.Pun.PhotonView childView = playerRoot.GetComponentInChildren<Photon.Pun.PhotonView>(true);
+                if (childView != null)
+                    return childView;
+            }
+
+            return null;
+        }
+
+        private PlayerHealthPresenter ResolveHealthPresenter()
+        {
+            if (cachedHealthPresenter != null)
+                return cachedHealthPresenter;
+
+            cachedHealthPresenter = Object.FindObjectOfType<PlayerHealthPresenter>();
+            return cachedHealthPresenter;
+        }
+
+        private PlayerKnockbackPresenter ResolveKnockbackPresenter()
+        {
+            if (cachedKnockbackPresenter != null)
+                return cachedKnockbackPresenter;
+
+            cachedKnockbackPresenter = Object.FindObjectOfType<PlayerKnockbackPresenter>();
+            return cachedKnockbackPresenter;
         }
 
         public void ShowDamagePopup(Vector3 position)

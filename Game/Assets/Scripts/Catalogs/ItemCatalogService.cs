@@ -26,9 +26,9 @@ public class ItemCatalogService : MonoBehaviour
         Converters = { new ItemDataConverter() }
     };
 
-    private readonly Dictionary<string, ItemData> _catalog     = new();
-    private readonly Dictionary<string, Sprite>   _spriteCache = new();
-    private readonly Dictionary<string, Sprite>   _structureInteractionSpriteCache = new();
+    private readonly Dictionary<string, ItemData> _catalog     = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Sprite>   _spriteCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Sprite>   _structureInteractionSpriteCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>True once catalog JSON is fully parsed and all icon sprites downloaded.</summary>
     public bool IsReady { get; private set; }
@@ -69,6 +69,27 @@ public class ItemCatalogService : MonoBehaviour
     {
         _spriteCache.TryGetValue(itemId, out var s);
         return s;
+    }
+
+    /// <summary>Returns a copy of all catalog items.</summary>
+    public List<ItemData> GetAllItems()
+    {
+        return new List<ItemData>(_catalog.Values);
+    }
+
+    /// <summary>Returns all catalog items of the requested item type.</summary>
+    public List<ItemData> GetItemsByType(ItemType itemType)
+    {
+        var result = new List<ItemData>();
+        foreach (ItemData item in _catalog.Values)
+        {
+            if (item != null && item.itemType == itemType)
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
     }
 
     /// <summary>Returns the cached structure interaction Sprite, or null if not available.</summary>

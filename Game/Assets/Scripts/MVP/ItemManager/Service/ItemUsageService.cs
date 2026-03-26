@@ -1,4 +1,5 @@
 using UnityEngine;
+using CombatManager.Presenter;
 
 /// <summary>
 /// Dispatches item usage to the appropriate service based on item type.
@@ -8,13 +9,11 @@ public class ItemUsageService : IItemUsageService
 {
     private readonly IUseToolService useToolService;
     private readonly IUseSeedService useSeedService;
-    private readonly IUseStructureService useStructureService;
 
-    public ItemUsageService(IUseToolService useToolService, IUseSeedService useSeedService = null, IUseStructureService useStructureService = null)
+    public ItemUsageService(IUseToolService useToolService, IUseSeedService useSeedService = null)
     {
         this.useToolService = useToolService;
         this.useSeedService = useSeedService ?? new UseSeedService();
-        this.useStructureService = useStructureService ?? new UseStructureService();
     }
 
     public bool UseTool(ItemData item, Vector3 pos)
@@ -110,6 +109,13 @@ public class ItemUsageService : IItemUsageService
     public bool UseWeapon(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsageService] UseWeapon: " + item.itemID + " at: " + pos);
+        if (item is not WeaponData weapon)
+        {
+            Debug.LogWarning("[ItemUsageService] UseWeapon: item is not WeaponData");
+            return false;
+        }
+
+        WeaponEquipPresenter.Instance?.EquipWeapon(weapon);
         return true;
     }
 
@@ -128,10 +134,5 @@ public class ItemUsageService : IItemUsageService
     {
         Debug.LogWarning("[ItemUsageService] Unknown ToolType: " + toolData.toolType);
         return false;
-    }
-
-    public bool UseStructure(ItemData item, Vector3 pos)
-    {
-        return useStructureService.UseStructure(item, pos);
     }
 }

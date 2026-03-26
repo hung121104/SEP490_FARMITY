@@ -118,11 +118,25 @@ namespace CombatManager.Presenter
 
         private IEnumerator FindPlayerDelayed()
         {
-            yield return new WaitForSeconds(0.5f);
-            FindLocalPlayer();
+            const float timeout = 8f;
+            float elapsed = 0f;
+
+            yield return new WaitForSeconds(0.2f);
+
+            while (elapsed < timeout)
+            {
+                if (TryFindLocalPlayer())
+                    yield break;
+
+                elapsed += 0.25f;
+                yield return new WaitForSeconds(0.25f);
+            }
+
+            Debug.LogError($"[{GetType().Name}] Local player not found after retry timeout!");
+            enabled = false;
         }
 
-        private void FindLocalPlayer()
+        private bool TryFindLocalPlayer()
         {
             foreach (GameObject go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
             {
@@ -130,19 +144,11 @@ namespace CombatManager.Presenter
                 if (pv != null && pv.IsMine)
                 {
                     SetupPlayerReferences(go);
-                    return;
+                    return true;
                 }
             }
 
-            GameObject fallback = GameObject.FindGameObjectWithTag("PlayerEntity");
-            if (fallback != null)
-            {
-                SetupPlayerReferences(fallback);
-                return;
-            }
-
-            Debug.LogError($"[{GetType().Name}] Local player not found!");
-            enabled = false;
+            return false;
         }
 
         private void SetupPlayerReferences(GameObject playerGO)

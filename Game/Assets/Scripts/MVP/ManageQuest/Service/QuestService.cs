@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class QuestService : IQuestService
 {
-    public static System.Action OnQuestUpdated;
+    public event System.Action OnQuestUpdated;
     private Dictionary<string, QuestModel> activeQuests = new Dictionary<string, QuestModel>();
     private HashSet<string> completedQuests = new HashSet<string>();
 

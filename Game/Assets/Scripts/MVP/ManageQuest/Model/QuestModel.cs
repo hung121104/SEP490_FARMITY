@@ -41,10 +41,4 @@ public class QuestObjective
 
 
 
-public enum QuestStatus
-{
-    NotAccepted,
-    Active,
-    Completed,
-    TurnedIn
-}
+// QuestStatus moved to GameEnums.cs
