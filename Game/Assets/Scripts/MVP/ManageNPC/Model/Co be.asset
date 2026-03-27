@@ -15,19 +15,13 @@ MonoBehaviour:
   npcName: cobe
   avatar: {fileID: -996944172213880842, guid: f57493b21de412141b014a356ef2dd7b, type: 3}
   nodes:
-  - dialogueText: 'We have traveled through many lands...
-
-'
+  - dialogueText: We have traveled through many lands...
     options: []
-  - dialogueText: 'Do you believe in fate?
-
-'
+  - dialogueText: Do you believe in fate?
     options:
     - optionText: Yes
       nextNodeIndex: 2
     - optionText: No
       nextNodeIndex: 2
-  - dialogueText: 'So, fate brought us together.
-
-'
+  - dialogueText: So, fate brought us together.
     options: []

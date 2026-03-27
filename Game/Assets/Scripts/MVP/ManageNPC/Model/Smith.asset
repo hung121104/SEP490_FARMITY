@@ -15,7 +15,7 @@ MonoBehaviour:
   npcName: Smith
   avatar: {fileID: -9180426125723624345, guid: e7ae839008072a548aabeda2278408b3, type: 3}
   nodes:
-  - dialogueText: Hello My Friend
+  - dialogueText: Hello my friend
     options: []
-  - dialogueText: Bye See you again!
+  - dialogueText: bye. see you again
     options: []

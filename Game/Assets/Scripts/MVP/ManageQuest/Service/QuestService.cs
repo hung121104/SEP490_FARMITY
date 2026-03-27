@@ -7,25 +7,23 @@ public class QuestService : IQuestService
     private Dictionary<string, QuestModel> activeQuests = new Dictionary<string, QuestModel>();
     private HashSet<string> completedQuests = new HashSet<string>();
 
-    public void AcceptQuest(QuestModel quest, IInventoryService inventory)
+    public bool AcceptQuest(QuestModel quest, IInventoryService inventory)
     {
-        if (quest == null) return;
+        if (quest == null) return false;
 
-        if (!activeQuests.ContainsKey(quest.questId))
-        {
-            quest.status = QuestStatus.Active;
+        if (activeQuests.ContainsKey(quest.questId)) return false;
 
-            foreach (var obj in quest.objectives)
-            {
-                obj.currentAmount = 0;
-            }
+        quest.status = QuestStatus.Active;
 
-            SyncObjectiveWithInventory(quest, inventory);
-            activeQuests.Add(quest.questId, quest);
+        foreach (var obj in quest.objectives)
+            obj.currentAmount = 0;
 
-            Debug.Log("Quest Accepted: " + quest.questName);
-            OnQuestUpdated?.Invoke();
-        }
+        SyncObjectiveWithInventory(quest, inventory);
+        activeQuests.Add(quest.questId, quest);
+
+        Debug.Log("Quest Accepted: " + quest.questName);
+        OnQuestUpdated?.Invoke();
+        return true;
     }
 
     public QuestModel GetQuest(string questId)
@@ -55,34 +53,26 @@ public class QuestService : IQuestService
         return activeQuests.ContainsKey(questId) && activeQuests[questId].status == QuestStatus.Completed;
     }
 
-    public void UpdateObjective(string objectiveId, int amount)
+    public void UpdateObjective(string questId, string objectiveId, int amount)
     {
-        foreach (var quest in activeQuests.Values)
+        if (!activeQuests.TryGetValue(questId, out QuestModel quest)) return;
+        if (quest.status != QuestStatus.Active) return;
+
+        foreach (var obj in quest.objectives)
         {
-            if (quest.status != QuestStatus.Active) continue;
-
-            foreach (var obj in quest.objectives)
+            if (obj.objectiveId == objectiveId)
             {
-                if (obj.objectiveId == objectiveId)
-                {
-                    obj.currentAmount = amount;
-
-                    Debug.Log($"{quest.questName} progress: {obj.currentAmount}/{obj.requiredAmount}");
-                }
-            }
-
-            bool allFinished = quest.objectives.TrueForAll(o => o.currentAmount >= o.requiredAmount);
-
-            if (allFinished)
-            {
-                quest.status = QuestStatus.Completed; 
-                Debug.Log($"Quest {quest.questName} is now COMPLETED!");
-            }
-            else
-            {
-                quest.status = QuestStatus.Active; 
+                obj.currentAmount = amount;
+                Debug.Log($"{quest.questName} progress: {obj.currentAmount}/{obj.requiredAmount}");
             }
         }
+
+        bool allFinished = quest.objectives.TrueForAll(o => o.currentAmount >= o.requiredAmount);
+        quest.status = allFinished ? QuestStatus.Completed : QuestStatus.Active;
+
+        if (allFinished)
+            Debug.Log($"Quest {quest.questName} is now COMPLETED!");
+
         OnQuestUpdated?.Invoke();
     }
 
@@ -125,15 +115,11 @@ public class QuestService : IQuestService
         OnQuestUpdated?.Invoke();
     }
 
-    public void GiveReward(string questId, IInventoryService inventory)
+    public void GiveReward(QuestReward reward, IInventoryService inventory)
     {
-        if (!activeQuests.ContainsKey(questId)) return;
-
-        QuestModel quest = activeQuests[questId];
-        if (quest.reward == null) return;
-
-        inventory.AddItem(quest.reward.itemId, quest.reward.quantity);
-        Debug.Log($"Reward received: {quest.reward.itemId} x{quest.reward.quantity}");
+        if (reward == null) return;
+        inventory.AddItem(reward.itemId, reward.quantity);
+        Debug.Log($"Reward received: {reward.itemId} x{reward.quantity}");
     }
 
     public void SyncObjectiveWithInventory(QuestModel quest, IInventoryService inventory)

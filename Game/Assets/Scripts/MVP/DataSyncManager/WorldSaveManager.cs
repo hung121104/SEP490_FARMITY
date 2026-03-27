@@ -7,7 +7,7 @@ using Photon.Pun;
 using UnityEngine;
 
 /// <summary>
-/// Host-only component that supersedes the legacy SaveWorld.cs auto-save.
+/// Host-only component that supersedes the legacy UpdateWorld.cs auto-save.
 ///
 /// SETUP
 /// -----
@@ -16,7 +16,7 @@ using UnityEngine;
 /// 2. In every place a tile is mutated (CropManager, WateringCan logic, etc.),
 ///    call WorldSaveManager.TryMarkChunkDirty(worldX, worldY, sectionId) after
 ///    computing the chunkX/chunkY from world coordinates.
-/// 3. Disable / remove the old SaveWorld.cs component - this replaces it.
+/// 3. Disable / remove the old UpdateWorld.cs component — this replaces it.
 ///
 /// DIRTY TRACKING
 /// --------------

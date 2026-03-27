@@ -20,7 +20,7 @@ public class FishingService : IFishingService
         GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
         if (player == null)
         {
-            Debug.LogError("[FishingService]Can find Player!");
+            Debug.LogError("[FishingService] Không tìm thấy Player! Hãy gắn Tag 'Player' cho nhân vật.");
             return false;
         }
 
@@ -51,7 +51,7 @@ public class FishingService : IFishingService
         }
 
        
-        Debug.LogWarning($"[FishingService] Its not Water {bobberLandingPos}. Cant fishing here!");
+        Debug.LogWarning($"[FishingService] Phao rớt trên bờ tại tọa độ {bobberLandingPos}. Cant fishing here!");
         return false;
     }
     public bool CatchFish()

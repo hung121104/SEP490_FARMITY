@@ -58,9 +58,6 @@ export class UpsertCharacterInWorldDto {
 export class UpdateWorldDto {
   worldId: string;
 
-  // Optional world metadata fields
-  worldName?: string;
-
   // Optional world fields to update
   day?: number;
   month?: number;

@@ -1,21 +1,15 @@
 using System.Threading.Tasks;
-using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using Photon.Pun;
-using TMPro;
 
 public class CreateWorld : MonoBehaviour
 {
-    private static readonly Regex WorldNameRegex = new Regex(@"^[A-Za-z ]+$");
-
     public string token;
     public string worldName = "Unnamed world";
     // Legacy InputField (UI) to read world name from; set in Inspector
     public InputField legacyWorldNameInput;
-    [Header("UI Feedback")]
-    [SerializeField] private TextMeshProUGUI statusText;
     
     [Header("Scene")]
     [SerializeField]
@@ -44,25 +38,10 @@ public class CreateWorld : MonoBehaviour
     // Call this from a UI button to create a world
     public async void OnCreateButton()
     {
-        SetStatus(string.Empty);
-
         string worldNameToUse = worldName;
         if (legacyWorldNameInput != null && !string.IsNullOrEmpty(legacyWorldNameInput.text))
         {
             worldNameToUse = legacyWorldNameInput.text;
-        }
-
-        worldNameToUse = worldNameToUse != null ? worldNameToUse.Trim() : string.Empty;
-        if (string.IsNullOrEmpty(worldNameToUse))
-        {
-            OnError("World name cannot be empty.");
-            return;
-        }
-
-        if (!WorldNameRegex.IsMatch(worldNameToUse))
-        {
-            OnError("World name must contain only alphabet letters and spaces.");
-            return;
         }
 
         var result = await presenter.CreateWorld(worldNameToUse);
@@ -76,17 +55,13 @@ public class CreateWorld : MonoBehaviour
         }
         else
         {
-            string err = !string.IsNullOrEmpty(presenter.LastCreateWorldError)
-                ? presenter.LastCreateWorldError
-                : "Create failed (see log).";
-            OnError(err);
+            OnError("Create failed (see log).");
         }
     }
 
     void OnSuccess(WorldResponse resp)
     {
         Debug.Log("Created world: " + resp.worldName + " id: " + resp._id);
-        SetStatus($"World '{resp.worldName}' created.");
         
         // Load the newly created world using WorldSelectionManager
         LoadCreatedWorld(resp._id, resp.worldName);
@@ -125,14 +100,5 @@ public class CreateWorld : MonoBehaviour
     void OnError(string err)
     {
         Debug.LogError("Create world failed: " + err);
-        SetStatus("Create world failed: " + err);
-    }
-
-    private void SetStatus(string message)
-    {
-        if (statusText != null)
-        {
-            statusText.text = message;
-        }
     }
 }

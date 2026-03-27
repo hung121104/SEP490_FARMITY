@@ -4,6 +4,7 @@ using ExitGames.Client.Photon;
 
 public class WeatherView : MonoBehaviourPunCallbacks
 {
+    // Static members kept on WeatherView so external systems (Crop, Lighting, etc.) need no changes.
     /// <summary>Fired once when weather transitions to Rain.</summary>
     public static event System.Action OnRainStarted;
     /// <summary>Fired once when weather transitions away from Rain.</summary>
@@ -13,7 +14,6 @@ public class WeatherView : MonoBehaviourPunCallbacks
 
     [Header("Weather Settings")]
     [SerializeField] private SeasonManagerView seasonManager;
-    [Header("Weather Settings")]
     [Range(0f, 1f)]
     [SerializeField] private float rainChance = 0.5f;
 
@@ -22,6 +22,7 @@ public class WeatherView : MonoBehaviourPunCallbacks
     [SerializeField] private float rainySeasonRainChance = 0.7f;
     [SerializeField] private float sunnySeasonRainChance = 0.3f;
     [SerializeField] private RainManager rainManager;
+
     [Header("References")]
     [SerializeField] private TimeManagerView timeManager;
     [SerializeField] private WeatherForecastView forecastView;
@@ -34,25 +35,26 @@ public class WeatherView : MonoBehaviourPunCallbacks
         var model = new WeatherModel();
         var service = new WeatherService(model);
 
-        presenter = new WeatherPresenter(service, this);
-        forecastPresenter = new WeatherForecastPresenter(service, forecastView);
+        presenter = new WeatherPresenter(
+            service, this,
+            rainChance, rainySeasonRainChance, sunnySeasonRainChance);
 
-        presenter.OnWeatherChanged += DisplayWeather;
+        forecastPresenter = new WeatherForecastPresenter(service, forecastView);
     }
 
     private void Start()
     {
         if (seasonManager != null)
         {
-            ApplySeasonRainChance(seasonManager.CurrentSeason);
-            seasonManager.OnSeasonChanged += OnSeasonChanged;
+            presenter.ApplySeasonRainChance(seasonManager.CurrentSeason);
+            seasonManager.OnSeasonChanged += presenter.OnSeasonChanged;
         }
 
         if (PhotonNetwork.IsMasterClient)
             StartCoroutine(WaitForBootstrapperAndInit());
         else
         {
-            presenter.Initialize(rainChance);
+            presenter.Initialize();
             if (timeManager != null)
                 timeManager.OnDayChanged += presenter.OnNewDay;
             forecastPresenter.Refresh();
@@ -61,31 +63,18 @@ public class WeatherView : MonoBehaviourPunCallbacks
 
     private System.Collections.IEnumerator WaitForBootstrapperAndInit()
     {
-        // Wait for WorldDataBootstrapper to finish loading saved data
+        // Wait for WorldDataBootstrapper to finish loading saved data.
         while (WorldDataBootstrapper.Instance != null && !WorldDataBootstrapper.Instance.IsReady)
             yield return null;
 
-        var wdm = WorldDataManager.Instance;
-        // If world has been saved before (day > 0), restore weather from save.
-        // day defaults to 0 on schema, game starts with day >= 1 after first save.
-        if (wdm != null && wdm.Day > 0)
-        {
-            presenter.SetRainChance(rainChance);
-            presenter.RestoreFromSave(wdm.WeatherToday, wdm.WeatherTomorrow);
-            Debug.Log($"[WeatherView] Restored weather from save: today={wdm.WeatherToday}, tomorrow={wdm.WeatherTomorrow}");
-        }
-        else
-        {
-            presenter.Initialize(rainChance);
-        }
+        // Presenter decides whether to restore from save or run a fresh init.
+        presenter.CompleteInitialization();
 
         if (timeManager != null)
             timeManager.OnDayChanged += presenter.OnNewDay;
 
         forecastPresenter.Refresh();
     }
-
-   
 
     public override void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
@@ -97,7 +86,7 @@ public class WeatherView : MonoBehaviourPunCallbacks
     {
         // Re-apply season rain chance now that we're in a room and season is known.
         if (seasonManager != null)
-            ApplySeasonRainChance(seasonManager.CurrentSeason);
+            presenter.ApplySeasonRainChance(seasonManager.CurrentSeason);
 
         if (!PhotonNetwork.IsMasterClient)
         {
@@ -109,12 +98,13 @@ public class WeatherView : MonoBehaviourPunCallbacks
             }
             // Load weather from room props (handles both: Start ran before join, and
             // join happened before Start ran but master hadn't pushed props yet).
-            presenter.Initialize(rainChance);
+            presenter.Initialize();
         }
 
         forecastPresenter.Refresh();
     }
 
+    // Called by WeatherPresenter — visual update + transition event firing only.
     public void DisplayWeather(WeatherType weather)
     {
         bool shouldRain = weather == WeatherType.Rain;
@@ -124,44 +114,18 @@ public class WeatherView : MonoBehaviourPunCallbacks
         if (rainManager != null)
             rainManager.SetRainState(shouldRain);
 
-        // Fire transition events
+        // Fire transition events for other systems listening on WeatherView.
         if (shouldRain && !wasRaining)
             OnRainStarted?.Invoke();
         else if (!shouldRain && wasRaining)
             OnRainStopped?.Invoke();
 
-        // Keep WorldDataManager in sync for auto-save
-        if (WorldDataManager.Instance != null)
-            WorldDataManager.Instance.SetWeather(
-                (int)presenter.GetTodayWeather(),
-                (int)presenter.GetTomorrowWeather());
-
-        Debug.Log("DisplayWeather called: " + weather);
+        Debug.Log("[WeatherView] DisplayWeather: " + weather);
     }
 
     private void OnDestroy()
     {
-        presenter.OnWeatherChanged -= DisplayWeather;
+        presenter?.Dispose();
         IsRaining = false;
-    }
-    private void OnSeasonChanged(Season newSeason)
-    {
-        rainChance = newSeason == Season.Rainy
-            ? rainySeasonRainChance
-            : sunnySeasonRainChance;
-
-        presenter.SetRainChance(rainChance);
-
-        Debug.Log("Rain chance updated to: " + rainChance);
-    }
-
-    private void ApplySeasonRainChance(Season season)
-    {
-        if (season == Season.Rainy)
-            rainChance = rainySeasonRainChance;
-        else
-            rainChance = sunnySeasonRainChance;
-
-        Debug.Log($"Rain chance set to: {rainChance}");
     }
 }

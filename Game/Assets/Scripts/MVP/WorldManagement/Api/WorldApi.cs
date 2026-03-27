@@ -110,9 +110,6 @@ public static class WorldApi
         [JsonProperty("worldId")]
         public string worldId;
 
-        [JsonProperty("worldName", NullValueHandling = NullValueHandling.Ignore)]
-        public string worldName;
-
         [JsonProperty("day",    NullValueHandling = NullValueHandling.Ignore)] public int? day;
         [JsonProperty("month",  NullValueHandling = NullValueHandling.Ignore)] public int? month;
         [JsonProperty("year",   NullValueHandling = NullValueHandling.Ignore)] public int? year;

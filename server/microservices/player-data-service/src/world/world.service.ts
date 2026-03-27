@@ -12,8 +12,6 @@ import { CharacterService } from '../character/character.service';
 
 @Injectable()
 export class WorldService {
-  private static readonly WORLD_NAME_REGEX = /^[A-Za-z ]+$/;
-
   constructor(
     @InjectModel(World.name) private worldModel: Model<WorldDocument>,
     @InjectModel(Chunk.name) private chunkModel: Model<ChunkDocument>,
@@ -46,12 +44,10 @@ export class WorldService {
   }
 
   async createWorld(createWorldDto: CreateWorldDto): Promise<World> {
-    const normalizedWorldName = this.normalizeWorldName(createWorldDto.worldName, true) as string;
-
     // ownerId is provided by gateway after middleware verification
     // Application-level uniqueness check to prevent duplicates when index is missing
     const ownerObjId = createWorldDto.ownerId ? new Types.ObjectId(createWorldDto.ownerId) : undefined;
-    const existing = await this.worldModel.findOne({ ownerId: ownerObjId, worldName: normalizedWorldName }).exec();
+    const existing = await this.worldModel.findOne({ ownerId: ownerObjId, worldName: createWorldDto.worldName }).exec();
     if (existing) {
       if (!createWorldDto._id || existing._id.toString() !== createWorldDto._id) {
         throw new RpcException({ status: 409, message: 'World name already exists for this owner' });
@@ -63,7 +59,7 @@ export class WorldService {
         return await this.worldModel
           .findByIdAndUpdate(
             createWorldDto._id,
-            { worldName: normalizedWorldName, ownerId: ownerObjId },
+            { worldName: createWorldDto.worldName, ownerId: ownerObjId },
             { upsert: true, new: true },
           )
           .exec();
@@ -71,7 +67,7 @@ export class WorldService {
       // Create world first, then create initial character.
       // This avoids requiring a replica set in dev: if character creation fails,
       // remove the world as a compensating action.
-      const created = await this.worldModel.create({ worldName: normalizedWorldName, ownerId: ownerObjId });
+      const created = await this.worldModel.create({ worldName: createWorldDto.worldName, ownerId: ownerObjId });
       try {
         if (ownerObjId) {
           await this.characterService.createCharacter(created._id as Types.ObjectId, ownerObjId as Types.ObjectId);
@@ -93,26 +89,6 @@ export class WorldService {
       }
       throw err;
     }
-  }
-
-  private normalizeWorldName(worldName?: string, required = false): string | undefined {
-    if (worldName === undefined) {
-      if (required) {
-        throw new RpcException({ status: 400, message: 'World name cannot be empty.' });
-      }
-      return undefined;
-    }
-
-    const trimmed = worldName.trim();
-    if (!trimmed) {
-      throw new RpcException({ status: 400, message: 'World name cannot be empty.' });
-    }
-
-    if (!WorldService.WORLD_NAME_REGEX.test(trimmed)) {
-      throw new RpcException({ status: 400, message: 'World name must contain only alphabet letters and spaces.' });
-    }
-
-    return trimmed;
   }
 
   async getWorld(getWorldDto: GetWorldDto): Promise<any> {
@@ -229,8 +205,6 @@ export class WorldService {
 
     // Build partial update for world fields
     const worldUpdate: Partial<World> = {};
-    const normalizedWorldName = this.normalizeWorldName(dto.worldName);
-    if (normalizedWorldName !== undefined) worldUpdate.worldName = normalizedWorldName;
     if (dto.day !== undefined) worldUpdate.day = dto.day;
     if (dto.month !== undefined) worldUpdate.month = dto.month;
     if (dto.year !== undefined) worldUpdate.year = dto.year;
@@ -240,19 +214,9 @@ export class WorldService {
     if (dto.weatherToday !== undefined) worldUpdate.weatherToday = dto.weatherToday;
     if (dto.weatherTomorrow !== undefined) worldUpdate.weatherTomorrow = dto.weatherTomorrow;
 
-    let updatedWorld = world;
-    if (Object.keys(worldUpdate).length > 0) {
-      try {
-        updatedWorld = await this.worldModel
-          .findByIdAndUpdate(dto.worldId, { $set: worldUpdate }, { new: true })
-          .exec();
-      } catch (err: any) {
-        if (err?.code === 11000) {
-          throw new RpcException({ status: 409, message: 'World name already exists for this owner' });
-        }
-        throw err;
-      }
-    }
+    const updatedWorld = Object.keys(worldUpdate).length > 0
+      ? await this.worldModel.findByIdAndUpdate(dto.worldId, { $set: worldUpdate }, { new: true }).exec()
+      : world;
 
     // Upsert up to 4 characters
     const charactersResult: any[] = [];
@@ -304,8 +268,6 @@ export class WorldService {
 
       // 1. Update world time fields
       const worldUpdate: Partial<World> = {};
-      const normalizedWorldName = this.normalizeWorldName(dto.worldName);
-      if (normalizedWorldName !== undefined) worldUpdate.worldName = normalizedWorldName;
       if (dto.day !== undefined)    worldUpdate.day    = dto.day;
       if (dto.month !== undefined)  worldUpdate.month  = dto.month;
       if (dto.year !== undefined)   worldUpdate.year   = dto.year;
@@ -315,18 +277,11 @@ export class WorldService {
       if (dto.weatherTomorrow !== undefined) worldUpdate.weatherTomorrow = dto.weatherTomorrow;
 
       if (Object.keys(worldUpdate).length > 0) {
-        try {
-          await this.worldModel.findByIdAndUpdate(
-            dto.worldId,
-            { $set: worldUpdate },
-            { new: true, ...opts },
-          ).exec();
-        } catch (err: any) {
-          if (err?.code === 11000) {
-            throw new RpcException({ status: 409, message: 'World name already exists for this owner' });
-          }
-          throw err;
-        }
+        await this.worldModel.findByIdAndUpdate(
+          dto.worldId,
+          { $set: worldUpdate },
+          { new: true, ...opts },
+        ).exec();
       }
 
       // 2. Overwrite character positions (full replace of each character's position)
@@ -396,8 +351,6 @@ export class WorldService {
       });
       return result;
     } catch (txErr: any) {
-      if (txErr instanceof RpcException) throw txErr;
-
       // If transactions are unsupported (standalone or shared-tier Atlas),
       // fall back to non-transactional writes so dev environments still work.
       const isNoTxSupport =
