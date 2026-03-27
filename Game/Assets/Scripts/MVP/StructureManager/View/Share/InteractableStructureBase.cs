@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using Photon.Pun;
 
@@ -260,6 +261,10 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
                 CloseUI();
             return;
         }
+
+        // Block interaction when the pointer is over a UI element
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return;
 
         if (_isTargeted)
             Interact();
