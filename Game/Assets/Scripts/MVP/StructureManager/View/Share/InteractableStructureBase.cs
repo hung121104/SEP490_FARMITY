@@ -44,6 +44,16 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     // ── Structure Interaction Badge ───────────────────────────────────────
     private GameObject _structureInteractionBadge;
     private SpriteRenderer _structureInteractionRenderer;
+    private SpriteRenderer _structureSpriteRenderer;
+
+    /// <summary>
+    /// Tracks which world positions currently have an active badge (structure hidden).
+    /// Survives chunk refresh so re-spawned structures restore their visual state.
+    /// </summary>
+    private static readonly HashSet<Vector2Int> _activeBadgePositions = new HashSet<Vector2Int>();
+
+    /// <summary>Exact tile coordinate set by subclass via SetupStructureInteractionBadge.</summary>
+    private Vector2Int _badgePositionKey;
 
     // ── IInteractable Properties ────────────────────────────────────────
     public bool IsPlayerInRange => _playerInRange;
@@ -84,6 +94,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private void Awake()
     {
         _triggerCollider = GetComponent<Collider2D>();
+        _structureSpriteRenderer = GetComponentInParent<SpriteRenderer>();
 
         if (mouseHoverTrigger != null)
         {
@@ -151,6 +162,9 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private void OnDestroy()
     {
         UnsubscribeInput();
+        // Only remove from tracking on true destroy, not pool release
+        if (!_isBeingPooled)
+            _activeBadgePositions.Remove(_badgePositionKey);
         OnStructureDestroyed();
 
         if (mouseHoverTrigger != null)
@@ -291,8 +305,10 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     // ── Structure Interaction Badge ──────────────────────────────────────
 
-    protected void SetupStructureInteractionBadge(string structureId)
+    protected void SetupStructureInteractionBadge(string structureId, int worldX, int worldY)
     {
+        _badgePositionKey = new Vector2Int(worldX, worldY);
+
         // Destroy previous badge to prevent duplicates when reused from pool
         if (_structureInteractionBadge != null)
         {
@@ -315,21 +331,53 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
             sprite.pixelsPerUnit,
             0,
             SpriteMeshType.FullRect);
-        _structureInteractionRenderer.sortingLayerName = "WalkInfront";
-        _structureInteractionRenderer.sortingOrder = 1;
-        _structureInteractionBadge.SetActive(false);
+
+        // Badge uses same sorting as structure so it sits directly behind it
+        if (_structureSpriteRenderer != null)
+        {
+            _structureInteractionRenderer.sortingLayerName = _structureSpriteRenderer.sortingLayerName;
+            _structureInteractionRenderer.sortingOrder = _structureSpriteRenderer.sortingOrder;
+        }
+        else
+        {
+            _structureInteractionRenderer.sortingLayerName = "WalkInfront";
+            _structureInteractionRenderer.sortingOrder = 0;
+        }
+
+        // Restore state after chunk refresh: if this exact tile was active, show badge
+        if (_activeBadgePositions.Contains(_badgePositionKey))
+        {
+            _structureInteractionBadge.SetActive(true);
+            SetStructureAlpha(0f);
+        }
+        else
+        {
+            _structureInteractionBadge.SetActive(false);
+        }
+    }
+
+    private void SetStructureAlpha(float alpha)
+    {
+        if (_structureSpriteRenderer == null) return;
+        var c = _structureSpriteRenderer.color;
+        c.a = alpha;
+        _structureSpriteRenderer.color = c;
     }
 
     protected void ShowStructureInteractionBadge()
     {
-        if (_structureInteractionBadge != null)
-            _structureInteractionBadge.SetActive(true);
+        if (_structureInteractionRenderer == null) return;
+        _structureInteractionBadge.SetActive(true);
+        SetStructureAlpha(0f);
+        _activeBadgePositions.Add(_badgePositionKey);
     }
 
     protected void HideStructureInteractionBadge()
     {
-        if (_structureInteractionBadge != null)
-            _structureInteractionBadge.SetActive(false);
+        if (_structureInteractionRenderer == null) return;
+        _structureInteractionBadge.SetActive(false);
+        SetStructureAlpha(1f);
+        _activeBadgePositions.Remove(_badgePositionKey);
     }
 
     // ── IInteractable ────────────────────────────────────────────────────
