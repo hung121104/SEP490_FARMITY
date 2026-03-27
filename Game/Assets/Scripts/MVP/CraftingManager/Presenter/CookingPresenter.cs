@@ -310,15 +310,26 @@ public class CookingPresenter
         }
     }
 
+    private static readonly HashSet<CraftingCategory> cookingAllowedCategories = new HashSet<CraftingCategory>
+    {
+        CraftingCategory.Food,
+        CraftingCategory.Materials
+    };
+
     private List<RecipeModel> GetFilteredRecipes()
     {
         // Get cooking recipes filtered by station level
         List<RecipeModel> recipes = craftingService.GetCookingRecipesByLevel(currentStationLevel);
 
-        // Filter by category if not "All"
         if (currentCategory != CraftingCategory.General)
         {
+            // Filter by selected category
             recipes = recipes.Where(r => r.Category == currentCategory).ToList();
+        }
+        else
+        {
+            // "All" tab: only show categories that belong to cooking (exclude Tools, Furniture, etc.)
+            recipes = recipes.Where(r => cookingAllowedCategories.Contains(r.Category)).ToList();
         }
 
         return recipes;
