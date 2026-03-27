@@ -1,4 +1,5 @@
 using System.Collections;
+using CombatManager.Service;
 using Photon.Pun;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -34,6 +35,21 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
 
     private IEnumerator SaveThenLeave()
     {
+        // Flush local skill loadout first so the latest slot assignment is persisted
+        // before Photon tears down room/player objects.
+        ISkillLoadoutSyncService loadoutSync = FindObjectOfType<SkillLoadoutSyncService>();
+        if (loadoutSync != null)
+        {
+            bool loadoutSaved = false;
+            yield return loadoutSync.FlushNow(
+                timeoutSeconds: 6f,
+                onCompleted: (success) => loadoutSaved = success
+            );
+
+            if (!loadoutSaved)
+                Debug.LogWarning("[LeaveRoomButton] Skill loadout flush timed out — continuing leave flow.");
+        }
+
         // Non-master: push final position + stamina state to master via RPC
         // so it can be saved even if this GO is destroyed before BuildPayload runs.
         if (!PhotonNetwork.IsMasterClient)
