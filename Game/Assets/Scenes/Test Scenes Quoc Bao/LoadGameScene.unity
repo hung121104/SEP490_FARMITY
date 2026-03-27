@@ -266,6 +266,7 @@ GameObject:
   - component: {fileID: 957054336}
   - component: {fileID: 957054338}
   - component: {fileID: 957054337}
+  - component: {fileID: 957054339}
   m_Layer: 5
   m_Name: Book
   m_TagString: Untagged
@@ -332,6 +333,34 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 957054335}
   m_CullTransparentMesh: 1
+--- !u!114 &957054339
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 957054335}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47953117fb698644f895b7eff7914bdb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  book: {fileID: 957054335}
+  animator: {fileID: 2027643189}
+  targetPosition: {fileID: 999159126}
+  bookImage: {fileID: 957054337}
+  hideBookOnStart: 0
+  onStartAnimation: 1
+  onStartAnimationTrigger: 0
+  onShowBookAnimationTrigger: 1
+  onTransitionInAnimationTrigger: 0
+  moveDuration: 0.5
+  delay: 1.3
+  scaleDuration: 0.5
+  scaleTarget: 57
+  openBookBtn: {fileID: 0}
+  closeBookBtn: {fileID: 0}
+  panelController: {fileID: 0}
 --- !u!1 &999159125
 GameObject:
   m_ObjectHideFlags: 0
@@ -411,81 +440,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c885c212b4794440ae13eabe48a9c5a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!1 &1257711334
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1257711337}
-  - component: {fileID: 1257711336}
-  - component: {fileID: 1257711335}
-  m_Layer: 0
-  m_Name: UI_Mananger
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1257711335
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1257711334}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0fae4c90d80b0fd4fb8266943198a554, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  backgroundImage: {fileID: 1713553319}
---- !u!114 &1257711336
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1257711334}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 47953117fb698644f895b7eff7914bdb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  book: {fileID: 957054335}
-  animator: {fileID: 2027643189}
-  targetPosition: {fileID: 999159126}
-  bookImage: {fileID: 957054337}
-  moveDuration: 0.5
-  delay: 1.3
-  scaleDuration: 0.5
-  scaleTarget: 57
-  onStartAnimationName: turnRToL
-  loginCanvasGroup: {fileID: 0}
-  registerCanvasGroup: {fileID: 0}
-  titleCanvasGroup: {fileID: 0}
-  openBookBtn: {fileID: 0}
-  closeBookBtn: {fileID: 0}
-  openLoginBtn: {fileID: 0}
-  openRegisterBtn: {fileID: 0}
-  openTitleBtn: {fileID: 0}
---- !u!4 &1257711337
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1257711334}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 392.75574, y: 243.16309, z: 2.3285336}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1366383683
 GameObject:
   m_ObjectHideFlags: 0
@@ -634,6 +588,7 @@ GameObject:
   - component: {fileID: 1713553321}
   - component: {fileID: 1713553320}
   - component: {fileID: 1713553319}
+  - component: {fileID: 1713553322}
   m_Layer: 5
   m_Name: RawImage
   m_TagString: Untagged
@@ -695,6 +650,19 @@ RectTransform:
   m_AnchoredPosition: {x: 0.00012207031, y: 0}
   m_SizeDelta: {x: 1600, y: 900}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1713553322
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1713553318}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0fae4c90d80b0fd4fb8266943198a554, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  backgroundImage: {fileID: 1713553319}
 --- !u!1 &1969242513
 GameObject:
   m_ObjectHideFlags: 0
@@ -983,5 +951,4 @@ SceneRoots:
   - {fileID: 1366383686}
   - {fileID: 1969242517}
   - {fileID: 1993478170}
-  - {fileID: 1257711337}
   - {fileID: 1053266168}

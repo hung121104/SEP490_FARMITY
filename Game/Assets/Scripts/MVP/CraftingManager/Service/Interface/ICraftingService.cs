@@ -17,6 +17,7 @@ public interface ICraftingService
     void UnlockRecipe(string recipeID);
     void LockRecipe(string recipeID);
     bool IsRecipeUnlocked(string recipeID);
+    void RemoveRecipe(string recipeID);
 
     // Query Operations
     RecipeModel GetRecipe(string recipeID);
@@ -26,6 +27,8 @@ public interface ICraftingService
     List<RecipeModel> GetRecipesByType(RecipeType type);
     List<RecipeModel> GetCraftingRecipes();
     List<RecipeModel> GetCookingRecipes();
+    List<RecipeModel> GetCraftingRecipesByLevel(int stationLevel);
+    List<RecipeModel> GetCookingRecipesByLevel(int stationLevel);
     List<RecipeModel> GetCraftableRecipes(IInventoryService inventory);
 
     // Ingredient Check

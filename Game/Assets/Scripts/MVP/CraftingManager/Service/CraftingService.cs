@@ -147,6 +147,12 @@ public class CraftingService : ICraftingService
         recipe?.Lock();
     }
 
+    public void RemoveRecipe(string recipeID)
+    {
+        model.RemoveRecipe(recipeID);
+        Debug.Log($"[CraftingService] Removed recipe from UI model: {recipeID}");
+    }
+
     public bool IsRecipeUnlocked(string recipeID)
     {
         var recipe = model.GetRecipe(recipeID);
@@ -199,6 +205,16 @@ public class CraftingService : ICraftingService
     public List<RecipeModel> GetCookingRecipes()
     {
         return model.GetCookingRecipes();
+    }
+
+    public List<RecipeModel> GetCraftingRecipesByLevel(int stationLevel)
+    {
+        return model.GetCraftingRecipesByLevel(stationLevel);
+    }
+
+    public List<RecipeModel> GetCookingRecipesByLevel(int stationLevel)
+    {
+        return model.GetCookingRecipesByLevel(stationLevel);
     }
 
     public List<RecipeModel> GetCraftableRecipes(IInventoryService inventory)

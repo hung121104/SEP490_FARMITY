@@ -38,6 +38,12 @@ export class UpdateCraftingRecipeDto {
   @IsInt()
   category?: number;
 
+  /** Minimum structure tier required: 0=Wood, 1=Bronze, 2=Iron, 3=Gold */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  recipeLevel?: number;
+
   @IsOptional()
   @IsString()
   @IsNotEmpty()

@@ -42,6 +42,7 @@ public class ItemDataConverter : JsonConverter<ItemData>
             ItemType.Quest      => new QuestItemData(),
             ItemType.Cooking    => new CookingData(),
             ItemType.Structure  => new StructureItemData(),
+            ItemType.Fertilizer => new FertilizerData(),
             _                   => new ItemData()
         };
 

@@ -228,6 +228,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   roomNameText: {fileID: 3875556701642199457}
   playerCountText: {fileID: 7229246404740678047}
+  lockStateText: {fileID: 0}
   joinButton: {fileID: 4637439846844049151}
 --- !u!1 &4565062709109120216
 GameObject:

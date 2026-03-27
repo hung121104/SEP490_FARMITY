@@ -8,18 +8,26 @@ public class TabController : MonoBehaviour
     
     [Header("Crafting Integration")]
     [SerializeField] private CraftingSystemManager craftingSystemManager;
-    [SerializeField] private int craftingTabIndex = 2; // Index của tab inventory/crafting, -1 = không sử dụng
+    [SerializeField] private InventoryGameView inventoryGameView;
+    [SerializeField] private int craftingTabIndex = 2; // Index tab inventory/crafting
+    [SerializeField] private int inventoryTabIndex = 0; // Index tab inventory
 
     private int currentTabIndex = 0;
 
     // Start is called before the first frame update
-    void Start() {
-        // Auto-assign craftingSystemManager nếu chưa được gán trong Inspector
+    void Start() {         
         if (craftingSystemManager == null)
-        {
             craftingSystemManager = FindFirstObjectByType<CraftingSystemManager>();
-        }
+            
+        if (inventoryGameView == null)
+            inventoryGameView = FindFirstObjectByType<InventoryGameView>();
         
+        ActivateTab(0);
+    }
+
+    private void OnEnable()
+    {
+        // When menu is opened, automatically switch to main inventory tab
         ActivateTab(0);
     }
 
@@ -39,12 +47,22 @@ public class TabController : MonoBehaviour
         pages[tabNo].SetActive(true);
         tabActive[tabNo].enabled = true;
 
+        if (tabNo == craftingTabIndex && inventoryTabIndex >= 0 && inventoryTabIndex < pages.Length)
+        {
+            pages[inventoryTabIndex].SetActive(true);
+        }
+
         currentTabIndex = tabNo;
 
         // Open crafting tab.
         if (tabNo == craftingTabIndex && craftingSystemManager != null)
         {
             craftingSystemManager.OpenCraftingInInventory();
+        }
+        else if (tabNo == inventoryTabIndex && inventoryGameView != null)
+        {
+            // Specifically reset the pos to default when switching back to the main inventory tab
+            inventoryGameView.OpenInventory();
         }
     }
 }

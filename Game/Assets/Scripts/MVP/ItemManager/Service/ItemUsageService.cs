@@ -1,4 +1,5 @@
 using UnityEngine;
+using CombatManager.Presenter;
 
 /// <summary>
 /// Dispatches item usage to the appropriate service based on item type.
@@ -8,13 +9,11 @@ public class ItemUsageService : IItemUsageService
 {
     private readonly IUseToolService useToolService;
     private readonly IUseSeedService useSeedService;
-    private readonly IUseStructureService useStructureService;
 
-    public ItemUsageService(IUseToolService useToolService, IUseSeedService useSeedService = null, IUseStructureService useStructureService = null)
+    public ItemUsageService(IUseToolService useToolService, IUseSeedService useSeedService = null)
     {
         this.useToolService = useToolService;
         this.useSeedService = useSeedService ?? new UseSeedService();
-        this.useStructureService = useStructureService ?? new UseStructureService();
     }
 
     public bool UseTool(ItemData item, Vector3 pos)
@@ -23,6 +22,13 @@ public class ItemUsageService : IItemUsageService
         if (item is not ToolData toolData)
         {
             Debug.LogWarning("[ItemUsageService] UseTool: item is not ToolData");
+            return false;
+        }
+
+        var stamina = StaminaView.FindLocal();
+        if (stamina != null && !stamina.TryConsumeToolStamina(toolData.staminaCost))
+        {
+            Debug.Log("[ItemUsageService] Blocked tool use due to low stamina.");
             return false;
         }
 
@@ -37,6 +43,18 @@ public class ItemUsageService : IItemUsageService
         };
     }
 
+    public bool UseFertilizer(ItemData item, Vector3 pos)
+    {
+        Debug.Log("[ItemUsageService] UseFertilizer: " + item.itemID + " at: " + pos);
+        if (item is not FertilizerData fertilizerData)
+        {
+            Debug.LogWarning("[ItemUsageService] UseFertilizer: item is not FertilizerData");
+            return false;
+        }
+
+        return useToolService.UseFertilizer(fertilizerData, pos);
+    }
+
     public (bool, int) UseSeed(ItemData item, Vector3 pos)
     {
         return useSeedService.UseSeed(item, pos);
@@ -45,12 +63,59 @@ public class ItemUsageService : IItemUsageService
     public (bool, int) UseConsumable(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsageService] UseConsumable: " + item.itemID + " at: " + pos);
+
+        var stamina = StaminaView.FindLocal();
+        var health  = CombatManager.Presenter.PlayerHealthPresenter.FindLocal();
+
+        if (item is ConsumableData consumable)
+        {
+            stamina?.ApplyConsumableEffects(
+                consumable.viableRestore,
+                consumable.regenBoostMultiplier,
+                consumable.toolEfficiencyReductionPercent / 100f,
+                consumable.effectDurationSeconds);
+            if (consumable.healthRestore > 0) health?.ChangeHealth(consumable.healthRestore);
+            return (true, 1);
+        }
+
+        if (item is CookingData cooking)
+        {
+            stamina?.ApplyConsumableEffects(
+                cooking.viableRestore,
+                cooking.regenBoostMultiplier,
+                cooking.toolEfficiencyReductionPercent / 100f,
+                cooking.effectDurationSeconds);
+            if (cooking.healthRestore > 0) health?.ChangeHealth(cooking.healthRestore);
+            return (true, 1);
+        }
+
+        if (item is CropData crop)
+        {
+            if (crop.viableRestore > 0) stamina?.ApplyConsumableEffects(crop.viableRestore, 1f, 0f, 0f);
+            if (crop.healthRestore  > 0) health?.ChangeHealth(crop.healthRestore);
+            return (true, 1);
+        }
+
+        if (item is ForageData forage)
+        {
+            if (forage.viableRestore > 0) stamina?.ApplyConsumableEffects(forage.viableRestore, 1f, 0f, 0f);
+            if (forage.healthRestore  > 0) health?.ChangeHealth(forage.healthRestore);
+            return (true, 1);
+        }
+
         return (true, 1);
     }
 
     public bool UseWeapon(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsageService] UseWeapon: " + item.itemID + " at: " + pos);
+        if (item is not WeaponData weapon)
+        {
+            Debug.LogWarning("[ItemUsageService] UseWeapon: item is not WeaponData");
+            return false;
+        }
+
+        WeaponEquipPresenter.Instance?.EquipWeapon(weapon);
         return true;
     }
 
@@ -69,10 +134,5 @@ public class ItemUsageService : IItemUsageService
     {
         Debug.LogWarning("[ItemUsageService] Unknown ToolType: " + toolData.toolType);
         return false;
-    }
-
-    public bool UseStructure(ItemData item, Vector3 pos)
-    {
-        return useStructureService.UseStructure(item, pos);
     }
 }

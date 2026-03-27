@@ -5,6 +5,11 @@ import { CreateWorldDto } from './dto/create-world.dto';
 import { GetWorldDto } from './dto/get-world.dto';
 import { GetWorldsByOwnerDto } from './dto/get-worlds-by-owner.dto';
 import { UpdateWorldDto } from './dto/update-world.dto';
+import {
+  AddWorldBlacklistDto,
+  GetWorldBlacklistDto,
+  RemoveWorldBlacklistDto,
+} from './dto/world-blacklist.dto';
 
 @Controller()
 export class WorldController {
@@ -43,5 +48,20 @@ export class WorldController {
   @MessagePattern('delete-world')
   async deleteWorld(@Body() getWorldDto: GetWorldDto) {
     return this.worldService.deleteWorld(getWorldDto);
+  }
+
+  @MessagePattern('get-world-blacklist')
+  async getWorldBlacklist(@Body() dto: GetWorldBlacklistDto) {
+    return this.worldService.getWorldBlacklist(dto);
+  }
+
+  @MessagePattern('add-world-blacklist-player')
+  async addWorldBlacklistPlayer(@Body() dto: AddWorldBlacklistDto) {
+    return this.worldService.addWorldBlacklistPlayer(dto);
+  }
+
+  @MessagePattern('remove-world-blacklist-player')
+  async removeWorldBlacklistPlayer(@Body() dto: RemoveWorldBlacklistDto) {
+    return this.worldService.removeWorldBlacklistPlayer(dto);
   }
 }

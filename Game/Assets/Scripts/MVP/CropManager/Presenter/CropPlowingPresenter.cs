@@ -57,4 +57,17 @@ public class CropPlowingPresenter
     {
         cropPlowingService.Initialize(tilledTile);
     }
+    
+    public bool IsTillable(Vector3 worldPosition)
+    {
+        // Handle hoeing to untill or remove crop (these are valid actions too)
+        if (WorldDataManager.Instance != null && 
+           (WorldDataManager.Instance.HasCropAtWorldPosition(worldPosition) || 
+            WorldDataManager.Instance.IsTilledAtWorldPosition(worldPosition)))
+        {
+            return true;
+        }
+        
+        return cropPlowingService.IsTillable(Vector3Int.zero, worldPosition);
+    }
 }

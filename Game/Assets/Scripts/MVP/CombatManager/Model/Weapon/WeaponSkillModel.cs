@@ -1,5 +1,5 @@
 using UnityEngine;
-using CombatManager.SO;
+using CombatManager.Model;
 
 namespace CombatManager.Model
 {

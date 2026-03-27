@@ -12,7 +12,7 @@ namespace AchievementManager.View
         #region Serialized Fields
 
         [Header("Panel")]
-        [SerializeField] private GameObject panelRoot;
+        [SerializeField] private CanvasGroup panelCanvasGroup;
 
         [Header("Container")]
         [SerializeField] private Transform inProgressContainer;
@@ -81,16 +81,16 @@ namespace AchievementManager.View
 
         public void Show()
         {
-            if (panelRoot != null)
-                panelRoot.SetActive(true);
+            if (panelCanvasGroup != null)
+                panelCanvasGroup.Show();
             IsOpen = true;
             Debug.Log("[AchievementPanelView] Panel opened");
         }
 
         public void Hide()
         {
-            if (panelRoot != null)
-                panelRoot.SetActive(false);
+            if (panelCanvasGroup != null)
+                panelCanvasGroup.Hide();
             IsOpen = false;
             Debug.Log("[AchievementPanelView] Panel closed");
         }

@@ -17,9 +17,10 @@ import {
   UploadedFile,
   UploadedFiles,
   BadRequestException,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { FileInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FileFieldsInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { firstValueFrom } from 'rxjs';
 import { Response, Request } from 'express';
@@ -44,6 +45,17 @@ import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
+import { UpdateSkillLoadoutDto } from './dto/update-skill-loadout.dto';
+import {
+  UpdateWorldBlacklistDto,
+  WorldBlacklistQueryDto,
+} from './dto/world-blacklist.dto';
+import { CreateQuestDto } from './dto/create-quest.dto';
+import { UpdateQuestDto } from './dto/update-quest.dto';
+import { GetDashboardAnalyticsQueryDto } from './dto/get-dashboard-analytics-query.dto';
+import { PlayerHeartbeatDto } from './dto/player-heartbeat.dto';
+
+const FERTILIZER_ITEM_TYPE = 14;
 
 @Controller()
 export class GatewayController {
@@ -72,6 +84,223 @@ export class GatewayController {
       message = payload.message || payload.error || JSON.stringify(payload);
     }
     return new HttpException(message, status);
+  }
+
+  private async enrichBlacklistResponse(payload: any) {
+    const blacklistedPlayerIds: string[] = Array.isArray(payload?.blacklistedPlayerIds)
+      ? payload.blacklistedPlayerIds.map((id: unknown) => String(id))
+      : [];
+
+    if (blacklistedPlayerIds.length === 0) {
+      return {
+        ...payload,
+        blacklistedPlayers: [],
+      };
+    }
+
+    const uniqueIds = Array.from(new Set(blacklistedPlayerIds));
+    const lookup = await Promise.all(
+      uniqueIds.map(async (accountId) => {
+        try {
+          const account: any = await firstValueFrom(this.authClient.send('find-account', accountId));
+          return { accountId, username: account?.username ?? null };
+        } catch {
+          return { accountId, username: null };
+        }
+      }),
+    );
+
+    const usernameMap = new Map(lookup.map((item) => [item.accountId, item.username]));
+
+    return {
+      ...payload,
+      blacklistedPlayers: blacklistedPlayerIds.map((accountId) => ({
+        accountId,
+        username: usernameMap.get(accountId) ?? null,
+      })),
+    };
+  }
+
+  private parseCrossResults(crossResults: any): any {
+    if (crossResults === undefined) return undefined;
+
+    try {
+      return typeof crossResults === 'string'
+        ? JSON.parse(crossResults)
+        : crossResults;
+    } catch {
+      throw new BadRequestException(
+        'crossResults must be a valid JSON array, e.g. [{"targetPlantId":"plant_corn","resultPlantId":"plant_hybrid_corn"}]',
+      );
+    }
+  }
+
+  private buildCreateItemDto(
+    body: any,
+    iconUrl: string,
+    forcedItemType?: number,
+    structureInteractionSpriteUrl?: string,
+  ): CreateItemDto {
+    const dto: CreateItemDto = {
+      ...body,
+      iconUrl,
+      itemType: forcedItemType ?? Number(body.itemType),
+      itemCategory: Number(body.itemCategory),
+      maxStack: Number(body.maxStack),
+      basePrice: Number(body.basePrice ?? 0),
+      buyPrice: Number(body.buyPrice ?? 0),
+      isStackable: body.isStackable === 'true' || body.isStackable === true,
+      canBeSold: body.canBeSold !== 'false' && body.canBeSold !== false,
+      canBeBought: body.canBeBought === 'true' || body.canBeBought === true,
+      isQuestItem: body.isQuestItem === 'true' || body.isQuestItem === true,
+      isArtifact: body.isArtifact === 'true' || body.isArtifact === true,
+      isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
+    };
+
+    if (structureInteractionSpriteUrl) dto.structureInteractionSpriteUrl = structureInteractionSpriteUrl;
+
+    const crossResults = this.parseCrossResults(body.crossResults);
+    if (crossResults !== undefined) dto.crossResults = crossResults;
+
+    if (body.damage !== undefined) dto.damage = Number(body.damage);
+    if (body.critChance !== undefined) dto.critChance = Number(body.critChance);
+    if (body.weaponType !== undefined) dto.weaponType = Number(body.weaponType);
+    if (body.tier !== undefined) dto.tier = Number(body.tier);
+    if (body.attackCooldown !== undefined)
+      dto.attackCooldown = Number(body.attackCooldown);
+    if (body.knockbackForce !== undefined)
+      dto.knockbackForce = Number(body.knockbackForce);
+    if (body.projectileSpeed !== undefined)
+      dto.projectileSpeed = Number(body.projectileSpeed);
+    if (body.projectileRange !== undefined)
+      dto.projectileRange = Number(body.projectileRange);
+    if (body.projectileKnockback !== undefined)
+      dto.projectileKnockback = Number(body.projectileKnockback);
+
+    return dto;
+  }
+
+  private buildUpdateItemDto(
+    body: any,
+    iconUrl?: string,
+    forcedItemType?: number,
+    structureInteractionSpriteUrl?: string,
+  ): UpdateItemDto {
+    const dto: UpdateItemDto = { ...body };
+
+    if (iconUrl) dto.iconUrl = iconUrl;
+    if (structureInteractionSpriteUrl) dto.structureInteractionSpriteUrl = structureInteractionSpriteUrl;
+    if (forcedItemType !== undefined) dto.itemType = forcedItemType;
+    else if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
+
+    if (body.itemCategory !== undefined)
+      dto.itemCategory = Number(body.itemCategory);
+    if (body.maxStack !== undefined) dto.maxStack = Number(body.maxStack);
+    if (body.basePrice !== undefined) dto.basePrice = Number(body.basePrice);
+    if (body.buyPrice !== undefined) dto.buyPrice = Number(body.buyPrice);
+    if (body.isStackable !== undefined)
+      dto.isStackable =
+        body.isStackable === 'true' || body.isStackable === true;
+    if (body.canBeSold !== undefined)
+      dto.canBeSold = body.canBeSold !== 'false' && body.canBeSold !== false;
+    if (body.canBeBought !== undefined)
+      dto.canBeBought =
+        body.canBeBought === 'true' || body.canBeBought === true;
+    if (body.isQuestItem !== undefined)
+      dto.isQuestItem =
+        body.isQuestItem === 'true' || body.isQuestItem === true;
+    if (body.isArtifact !== undefined)
+      dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
+    if (body.isRareItem !== undefined)
+      dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
+
+    const crossResults = this.parseCrossResults(body.crossResults);
+    if (crossResults !== undefined) dto.crossResults = crossResults;
+
+    if (body.damage !== undefined) dto.damage = Number(body.damage);
+    if (body.critChance !== undefined) dto.critChance = Number(body.critChance);
+    if (body.weaponType !== undefined) dto.weaponType = Number(body.weaponType);
+    if (body.tier !== undefined) dto.tier = Number(body.tier);
+    if (body.attackCooldown !== undefined)
+      dto.attackCooldown = Number(body.attackCooldown);
+    if (body.knockbackForce !== undefined)
+      dto.knockbackForce = Number(body.knockbackForce);
+    if (body.projectileSpeed !== undefined)
+      dto.projectileSpeed = Number(body.projectileSpeed);
+    if (body.projectileRange !== undefined)
+      dto.projectileRange = Number(body.projectileRange);
+    if (body.projectileKnockback !== undefined)
+      dto.projectileKnockback = Number(body.projectileKnockback);
+
+    return dto;
+  }
+
+  private parseNumericField(value: any): number | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) {
+      throw new BadRequestException(`Invalid numeric value: ${value}`);
+    }
+    return parsed;
+  }
+
+  private buildCreateCombatSkillDto(body: any, iconUrl: string): any {
+    const dto: any = {
+      ...body,
+      iconUrl,
+    };
+
+    const numericFields = [
+      'requiredWeaponType',
+      'cooldown',
+      'skillMultiplier',
+      'projectileSpeed',
+      'projectileRange',
+      'projectileKnockback',
+      'slashVfxDuration',
+      'slashVfxSpawnOffset',
+      'slashVfxPositionOffsetX',
+      'slashVfxPositionOffsetY',
+      'slashKnockbackForce',
+    ];
+
+    for (const field of numericFields) {
+      if (body[field] !== undefined) {
+        dto[field] = this.parseNumericField(body[field]);
+      }
+    }
+
+    return dto;
+  }
+
+  private buildUpdateCombatSkillDto(body: any, iconUrl?: string): any {
+    const dto: any = {
+      ...body,
+    };
+
+    if (iconUrl) dto.iconUrl = iconUrl;
+
+    const numericFields = [
+      'requiredWeaponType',
+      'cooldown',
+      'skillMultiplier',
+      'projectileSpeed',
+      'projectileRange',
+      'projectileKnockback',
+      'slashVfxDuration',
+      'slashVfxSpawnOffset',
+      'slashVfxPositionOffsetX',
+      'slashVfxPositionOffsetY',
+      'slashKnockbackForce',
+    ];
+
+    for (const field of numericFields) {
+      if (body[field] !== undefined) {
+        dto[field] = this.parseNumericField(body[field]);
+      }
+    }
+
+    return dto;
   }
 
   @Post('player-data/world')
@@ -179,6 +408,74 @@ export class GatewayController {
         message = payload.message || payload.error || JSON.stringify(payload);
       }
       throw new HttpException(message, status);
+    }
+  }
+
+  @Get('player-data/world/blacklist')
+  async getWorldBlacklist(@Query() query: WorldBlacklistQueryDto, @Req() req: Request) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      const response = await firstValueFrom(
+        this.playerDataClient.send('get-world-blacklist', {
+          worldId: query._id,
+          requesterId,
+          requesterIsAdmin,
+        }),
+      );
+      return await this.enrichBlacklistResponse(response);
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('player-data/world/blacklist')
+  async addWorldBlacklistPlayer(
+    @Body() dto: UpdateWorldBlacklistDto,
+    @Req() req: Request,
+  ) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      const response = await firstValueFrom(
+        this.playerDataClient.send('add-world-blacklist-player', {
+          worldId: dto._id,
+          requesterId,
+          requesterIsAdmin,
+          playerId: dto.playerId,
+        }),
+      );
+      return await this.enrichBlacklistResponse(response);
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('player-data/world/blacklist')
+  async removeWorldBlacklistPlayer(
+    @Body() dto: UpdateWorldBlacklistDto,
+    @Req() req: Request,
+  ) {
+    const requesterIdRaw = req['user']?.sub;
+    const requesterId = requesterIdRaw ? String(requesterIdRaw) : undefined;
+    const requesterIsAdmin = !!req['user']?.isAdmin;
+    if (!requesterId) throw new UnauthorizedException('Missing requester');
+    try {
+      const response = await firstValueFrom(
+        this.playerDataClient.send('remove-world-blacklist-player', {
+          worldId: dto._id,
+          requesterId,
+          requesterIsAdmin,
+          playerId: dto.playerId,
+        }),
+      );
+      return await this.enrichBlacklistResponse(response);
+    } catch (err) {
+      throw this.rpcError(err);
     }
   }
 
@@ -290,6 +587,37 @@ export class GatewayController {
   @Get('auth/admin-check')
   async adminCheck(@Req() req: Request) {
     return req['user'];
+  }
+
+  @Post('player-data/heartbeat')
+  async playerHeartbeat(@Req() req: Request, @Body() dto: PlayerHeartbeatDto) {
+    const payload = req['user'];
+    if (!payload?.sid || !payload?.sub) {
+      throw new UnauthorizedException('Missing session context');
+    }
+
+    try {
+      return await firstValueFrom(
+        this.authClient.send('player-heartbeat', {
+          sid: String(payload.sid),
+          sub: String(payload.sub),
+          clientUnixMs: dto?.clientUnixMs,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('admin/analytics/summary')
+  async getAdminAnalyticsSummary(@Query() query: GetDashboardAnalyticsQueryDto) {
+    try {
+      return await firstValueFrom(
+        this.authClient.send('get-dashboard-analytics', query),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
   }
 
   @Post('auth/logout')
@@ -434,6 +762,126 @@ export class GatewayController {
     }
   }
 
+  // ── Game Data: Resource Configs ─────────────────────────────────────────────
+
+  @Get('game-data/resource-configs/catalog')
+  async getResourceConfigCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-resource-config-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('game-data/resource-configs')
+  @UseInterceptors(
+    FileInterceptor('sprite', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createResourceConfig(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const dto: any = {
+        resourceId: body.resourceId,
+        name: body.name,
+        maxHp: Number(body.maxHp),
+      };
+
+      if (body.requiredToolId) dto.requiredToolId = body.requiredToolId;
+      if (body.resourceType) dto.resourceType = body.resourceType;
+      if (body.spawnWeight !== undefined)
+        dto.spawnWeight = Number(body.spawnWeight);
+
+      if (file) {
+        dto.spriteUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'resource-sprites',
+        );
+      }
+
+      if (body.dropTable) {
+        try {
+          dto.dropTable =
+            typeof body.dropTable === 'string'
+              ? JSON.parse(body.dropTable)
+              : body.dropTable;
+        } catch {
+          throw new BadRequestException('dropTable must be a valid JSON array');
+        }
+      } else {
+        dto.dropTable = [];
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('create-resource-config', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Put('game-data/resource-configs/:resourceId')
+  @UseInterceptors(
+    FileInterceptor('sprite', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateResourceConfig(
+    @Param('resourceId') resourceId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      const dto: any = {};
+      if (body.name) dto.name = body.name;
+      if (body.maxHp !== undefined) dto.maxHp = Number(body.maxHp);
+      if (body.requiredToolId !== undefined)
+        dto.requiredToolId = body.requiredToolId;
+      if (body.resourceType !== undefined)
+        dto.resourceType = body.resourceType;
+      if (body.spawnWeight !== undefined)
+        dto.spawnWeight = Number(body.spawnWeight);
+
+      if (file) {
+        dto.spriteUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'resource-sprites',
+        );
+      }
+
+      if (body.dropTable !== undefined) {
+        try {
+          dto.dropTable =
+            typeof body.dropTable === 'string'
+              ? JSON.parse(body.dropTable)
+              : body.dropTable;
+        } catch {
+          throw new BadRequestException('dropTable must be a valid JSON array');
+        }
+      }
+
+      return await firstValueFrom(
+        this.adminClient.send('update-resource-config', { resourceId, dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('game-data/resource-configs/:resourceId')
+  async deleteResourceConfig(@Param('resourceId') resourceId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-resource-config', { resourceId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   // ── Game Data: Items ────────────────────────────────────────────────────────
 
   /** POST /game-data/items/create — accepts multipart/form-data with an icon file
@@ -441,53 +889,43 @@ export class GatewayController {
    *  creates the item in admin-service (admin only). */
   @Post('game-data/items/create')
   @UseInterceptors(
-    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+    FileFieldsInterceptor(
+      [
+        { name: 'icon', maxCount: 1 },
+        { name: 'structureInteractionSprite', maxCount: 1 },
+      ],
+      { limits: { fileSize: 5 * 1024 * 1024 } },
+    ),
   )
   async createItem(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles()
+    files: {
+      icon?: Express.Multer.File[];
+      structureInteractionSprite?: Express.Multer.File[];
+    },
     @Body() body: any,
   ) {
-    if (!file)
+    const iconFile = files?.icon?.[0];
+    if (!iconFile)
       throw new BadRequestException(
         'An icon file is required (field name: "icon")',
       );
     try {
-      // Upload icon to Cloudinary internally — no separate endpoint needed
       const iconUrl = await this.cloudinaryService.uploadFile(
-        file,
+        iconFile,
         body.folder || 'item-icons',
       );
 
-      // Parse numeric/boolean fields that arrive as strings from form-data
-      const dto: CreateItemDto = {
-        ...body,
-        iconUrl,
-        itemType: Number(body.itemType),
-        itemCategory: Number(body.itemCategory),
-        maxStack: Number(body.maxStack),
-        basePrice: Number(body.basePrice ?? 0),
-        buyPrice: Number(body.buyPrice ?? 0),
-        isStackable: body.isStackable === 'true' || body.isStackable === true,
-        canBeSold: body.canBeSold !== 'false' && body.canBeSold !== false,
-        canBeBought: body.canBeBought === 'true' || body.canBeBought === true,
-        isQuestItem: body.isQuestItem === 'true' || body.isQuestItem === true,
-        isArtifact: body.isArtifact === 'true' || body.isArtifact === true,
-        isRareItem: body.isRareItem === 'true' || body.isRareItem === true,
-      };
-
-      // crossResults arrives as a JSON string in multipart form-data
-      if (body.crossResults !== undefined) {
-        try {
-          dto.crossResults =
-            typeof body.crossResults === 'string'
-              ? JSON.parse(body.crossResults)
-              : body.crossResults;
-        } catch {
-          throw new BadRequestException(
-            'crossResults must be a valid JSON array, e.g. [{"targetPlantId":"plant_corn","resultPlantId":"plant_hybrid_corn"}]',
-          );
-        }
+      let structureInteractionSpriteUrl: string | undefined;
+      const interactionFile = files?.structureInteractionSprite?.[0];
+      if (interactionFile) {
+        structureInteractionSpriteUrl = await this.cloudinaryService.uploadFile(
+          interactionFile,
+          body.folder || 'item-icons',
+        );
       }
+
+      const dto = this.buildCreateItemDto(body, iconUrl, undefined, structureInteractionSpriteUrl);
 
       return await firstValueFrom(this.adminClient.send('create-item', dto));
     } catch (err) {
@@ -544,59 +982,43 @@ export class GatewayController {
    *  Accepts multipart/form-data; include an "icon" file to replace the icon. */
   @Put('game-data/items/:itemID')
   @UseInterceptors(
-    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+    FileFieldsInterceptor(
+      [
+        { name: 'icon', maxCount: 1 },
+        { name: 'structureInteractionSprite', maxCount: 1 },
+      ],
+      { limits: { fileSize: 5 * 1024 * 1024 } },
+    ),
   )
   async updateItem(
     @Param('itemID') itemID: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles()
+    files: {
+      icon?: Express.Multer.File[];
+      structureInteractionSprite?: Express.Multer.File[];
+    },
     @Body() body: any,
   ) {
     try {
-      const dto: UpdateItemDto = { ...body };
-
-      // If a new icon was uploaded, replace the iconUrl
-      if (file) {
-        dto.iconUrl = await this.cloudinaryService.uploadFile(
-          file,
+      let iconUrl: string | undefined;
+      const iconFile = files?.icon?.[0];
+      if (iconFile) {
+        iconUrl = await this.cloudinaryService.uploadFile(
+          iconFile,
           body.folder || 'item-icons',
         );
       }
 
-      // Parse numeric / boolean fields that arrive as strings from form-data
-      if (body.itemType !== undefined) dto.itemType = Number(body.itemType);
-      if (body.itemCategory !== undefined)
-        dto.itemCategory = Number(body.itemCategory);
-      if (body.maxStack !== undefined) dto.maxStack = Number(body.maxStack);
-      if (body.basePrice !== undefined) dto.basePrice = Number(body.basePrice);
-      if (body.buyPrice !== undefined) dto.buyPrice = Number(body.buyPrice);
-      if (body.isStackable !== undefined)
-        dto.isStackable =
-          body.isStackable === 'true' || body.isStackable === true;
-      if (body.canBeSold !== undefined)
-        dto.canBeSold = body.canBeSold !== 'false' && body.canBeSold !== false;
-      if (body.canBeBought !== undefined)
-        dto.canBeBought =
-          body.canBeBought === 'true' || body.canBeBought === true;
-      if (body.isQuestItem !== undefined)
-        dto.isQuestItem =
-          body.isQuestItem === 'true' || body.isQuestItem === true;
-      if (body.isArtifact !== undefined)
-        dto.isArtifact = body.isArtifact === 'true' || body.isArtifact === true;
-      if (body.isRareItem !== undefined)
-        dto.isRareItem = body.isRareItem === 'true' || body.isRareItem === true;
-
-      if (body.crossResults !== undefined) {
-        try {
-          dto.crossResults =
-            typeof body.crossResults === 'string'
-              ? JSON.parse(body.crossResults)
-              : body.crossResults;
-        } catch {
-          throw new BadRequestException(
-            'crossResults must be a valid JSON array',
-          );
-        }
+      let structureInteractionSpriteUrl: string | undefined;
+      const interactionFile = files?.structureInteractionSprite?.[0];
+      if (interactionFile) {
+        structureInteractionSpriteUrl = await this.cloudinaryService.uploadFile(
+          interactionFile,
+          body.folder || 'item-icons',
+        );
       }
+
+      const dto = this.buildUpdateItemDto(body, iconUrl, undefined, structureInteractionSpriteUrl);
 
       return await firstValueFrom(
         this.adminClient.send('update-item', { itemID, dto }),
@@ -612,6 +1034,233 @@ export class GatewayController {
   async deleteItem(@Param('itemID') itemID: string) {
     try {
       return await firstValueFrom(this.adminClient.send('delete-item', itemID));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Combat Skills ───────────────────────────────────────────────
+
+  /** GET /game-data/combat-skills/catalog — full catalog { skills: [...] } for Unity client */
+  @Get('game-data/combat-skills/catalog')
+  async getCombatSkillCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-skill-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/combat-skills/all — flat array of all combat skill documents */
+  @Get('game-data/combat-skills/all')
+  async getAllCombatSkills() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-combat-skills', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/combat-skills/by-skill-id/:skillId — find by game-side skillId string */
+  @Get('game-data/combat-skills/by-skill-id/:skillId')
+  async getCombatSkillById(@Param('skillId') skillId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-skill-by-id', { skillId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** POST /game-data/combat-skills/create — accepts multipart/form-data with required icon file (admin only) */
+  @Post('game-data/combat-skills/create')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createCombatSkill(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'An icon file is required (field name: "icon")',
+      );
+
+    try {
+      const iconUrl = await this.cloudinaryService.uploadFile(
+        file,
+        body.folder || 'skill-icons',
+      );
+      const dto = this.buildCreateCombatSkillDto(body, iconUrl);
+
+      return await firstValueFrom(
+        this.adminClient.send('create-combat-skill', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/combat-skills/:skillId — accepts multipart/form-data; include icon file to replace icon (admin only) */
+  @Put('game-data/combat-skills/:skillId')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateCombatSkill(
+    @Param('skillId') skillId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() patch: any,
+  ) {
+    try {
+      let iconUrl: string | undefined;
+      if (file) {
+        iconUrl = await this.cloudinaryService.uploadFile(
+          file,
+          patch.folder || 'skill-icons',
+        );
+      }
+
+      const dto = this.buildUpdateCombatSkillDto(patch, iconUrl);
+
+      return await firstValueFrom(
+        this.adminClient.send('update-combat-skill', { skillId, ...dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/combat-skills/:skillId — delete by game-side skillId (admin only) */
+  @Delete('game-data/combat-skills/:skillId')
+  async deleteCombatSkill(@Param('skillId') skillId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-combat-skill', { skillId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('game-data/fertilizers/create')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createFertilizer(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'An icon file is required (field name: "icon")',
+      );
+
+    try {
+      const iconUrl = await this.cloudinaryService.uploadFile(
+        file,
+        body.folder || 'item-icons',
+      );
+      const dto = this.buildCreateItemDto(body, iconUrl, FERTILIZER_ITEM_TYPE);
+
+      return await firstValueFrom(
+        this.adminClient.send('create-fertilizer', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/catalog')
+  async getFertilizerCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/all')
+  async getAllFertilizers() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-fertilizers', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/by-item-id/:itemID')
+  async getFertilizerByItemId(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-by-item-id', itemID),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('game-data/fertilizers/:id')
+  async getFertilizerById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-fertilizer-by-id', id),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Put('game-data/fertilizers/:itemID')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateFertilizer(
+    @Param('itemID') itemID: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    try {
+      let iconUrl: string | undefined;
+      if (file) {
+        iconUrl = await this.cloudinaryService.uploadFile(
+          file,
+          body.folder || 'item-icons',
+        );
+      }
+
+      const dto = this.buildUpdateItemDto(
+        body,
+        iconUrl,
+        FERTILIZER_ITEM_TYPE,
+      );
+
+      return await firstValueFrom(
+        this.adminClient.send('update-fertilizer', { itemID, dto }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  @Delete('game-data/fertilizers/:itemID')
+  async deleteFertilizer(@Param('itemID') itemID: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-fertilizer', itemID),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1163,7 +1812,7 @@ export class GatewayController {
     if (!accountId) throw new UnauthorizedException('Missing account');
     try {
       return await firstValueFrom(
-        this.playerDataClient.send('get-player-achievements', String(accountId)),
+        this.authClient.send('get-player-achievements', String(accountId)),
       );
     } catch (err) {
       throw this.rpcError(err);
@@ -1180,9 +1829,74 @@ export class GatewayController {
     if (!accountId) throw new UnauthorizedException('Missing account');
     try {
       return await firstValueFrom(
-        this.playerDataClient.send('update-achievement-progress', {
+        this.authClient.send('update-achievement-progress', {
           ...dto,
           accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/achievement/progress/batch — update progress for multiple requirements in one call */
+  @Put('player-data/achievement/progress/batch')
+  async updateAchievementProgressBatch(
+    @Body(new ParseArrayPipe({ items: UpdateAchievementProgressDto }))
+    updates: UpdateAchievementProgressDto[],
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    try {
+      return await firstValueFrom(
+        this.authClient.send('update-achievement-progress-batch', {
+          accountId: String(accountId),
+          updates,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /player-data/combat/skill-loadout?worldId=... — get this player's persisted skill slots for a world */
+  @Get('player-data/combat/skill-loadout')
+  async getSkillLoadout(@Query('worldId') worldId: string, @Req() req: Request) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    if (!worldId) throw new BadRequestException('worldId is required');
+
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('get-character-skill-loadout', {
+          worldId,
+          accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/combat/skill-loadout — update this player's persisted skill slots */
+  @Put('player-data/combat/skill-loadout')
+  async updateSkillLoadout(
+    @Body() dto: UpdateSkillLoadoutDto,
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    if (!dto?.worldId) throw new BadRequestException('worldId is required');
+
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('update-character-skill-loadout', {
+          worldId: dto.worldId,
+          accountId: String(accountId),
+          playerSkillSlotIds: Array.isArray(dto.playerSkillSlotIds)
+            ? dto.playerSkillSlotIds
+            : [],
         }),
       );
     } catch (err) {
@@ -1294,6 +2008,107 @@ export class GatewayController {
     try {
       return await firstValueFrom(
         this.adminClient.send('delete-skin-config', { configId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Combat Catalog ─────────────────────────────────────────────────────────
+
+  /**
+   * GET /game-data/combat-catalogs — public (no auth required).
+   * Query param `type` is optional (e.g. ?type=weapon).
+   */
+  @Get('game-data/combat-catalogs')
+  async getCombatCatalog(@Query('type') type?: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-catalog', { type }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** POST /game-data/combat-catalogs — admin-only (skill_vfx tint configs only). */
+  @Post('game-data/combat-catalogs')
+  async createCombatCatalog(@Body() body: any) {
+    try {
+      const type = (body.type || 'skill_vfx').toString().trim().toLowerCase();
+      if (type !== 'skill_vfx') {
+        throw new BadRequestException(
+          "Combat catalog now supports only type='skill_vfx'.",
+        );
+      }
+
+      const dto = {
+        configId: body.configId,
+        displayName: body.displayName,
+        type,
+        primaryColorHex: body.primaryColorHex,
+        secondaryColorHex: body.secondaryColorHex,
+        colorIntensity:
+          body.colorIntensity !== undefined
+            ? Number(body.colorIntensity)
+            : undefined,
+        tintAlpha:
+          body.tintAlpha !== undefined ? Number(body.tintAlpha) : undefined,
+      };
+
+      return await firstValueFrom(
+        this.adminClient.send('create-combat-catalog', dto),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/combat-catalogs/:configId — admin-only (skill_vfx tint configs only). */
+  @Put('game-data/combat-catalogs/:configId')
+  async updateCombatCatalog(
+    @Param('configId') configId: string,
+    @Body() body: any,
+  ) {
+    try {
+      const patch: Record<string, any> = {};
+      if (body.displayName !== undefined) patch.displayName = body.displayName;
+      if (body.type !== undefined) {
+        const normalizedType = body.type.toString().trim().toLowerCase();
+        if (normalizedType !== 'skill_vfx') {
+          throw new BadRequestException(
+            "Combat catalog now supports only type='skill_vfx'.",
+          );
+        }
+        patch.type = normalizedType;
+      }
+      if (body.primaryColorHex !== undefined)
+        patch.primaryColorHex = body.primaryColorHex;
+      if (body.secondaryColorHex !== undefined)
+        patch.secondaryColorHex = body.secondaryColorHex;
+      if (body.colorIntensity !== undefined)
+        patch.colorIntensity = Number(body.colorIntensity);
+      if (body.tintAlpha !== undefined)
+        patch.tintAlpha = Number(body.tintAlpha);
+
+      return await firstValueFrom(
+        this.adminClient.send('update-combat-catalog', { configId, ...patch }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * DELETE /game-data/combat-catalogs/:configId — admin-only.
+   */
+  @Delete('game-data/combat-catalogs/:configId')
+  async deleteCombatCatalog(@Param('configId') configId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('delete-combat-catalog', { configId }),
       );
     } catch (err) {
       throw this.rpcError(err);
@@ -1436,6 +2251,82 @@ export class GatewayController {
       return await firstValueFrom(
         this.adminClient.send('delete-material', { materialId }),
       );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Quest CRUD ─────────────────────────────────────────────────────────────
+
+  /** POST /game-data/quests — create a new quest definition (admin only) */
+  @Post('game-data/quests')
+  async createQuest(@Body() body: CreateQuestDto) {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('create-quest', body));
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/quests/catalog — full catalog { quests: [...] } for Unity client */
+  @Get('game-data/quests/catalog')
+  async getQuestCatalog() {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('get-quest-catalog', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/quests/all — flat array of all quests */
+  @Get('game-data/quests/all')
+  async getAllQuests() {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('get-all-quests', {}));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/quests/by-quest-id/:questId — find by game-side questId string */
+  @Get('game-data/quests/by-quest-id/:questId')
+  async getQuestByQuestId(@Param('questId') questId: string) {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('get-quest-by-quest-id', questId));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/quests/:id — find by MongoDB _id */
+  @Get('game-data/quests/:id')
+  async getQuestById(@Param('id') id: string) {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('get-quest-by-id', id));
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/quests/:questId — update quest by game-side questId (admin only) */
+  @Put('game-data/quests/:questId')
+  async updateQuest(@Param('questId') questId: string, @Body() body: UpdateQuestDto) {
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('update-quest', { questId, dto: body }),
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/quests/:questId — delete by game-side questId (admin only) */
+  @Delete('game-data/quests/:questId')
+  async deleteQuest(@Param('questId') questId: string) {
+    try {
+      return await firstValueFrom(this.playerDataClient.send('delete-quest', questId));
     } catch (err) {
       throw this.rpcError(err);
     }

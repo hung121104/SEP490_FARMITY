@@ -107,6 +107,24 @@ public class WeatherService : IWeatherService
         model.SetRainChance(chance);
     }
 
+    public void RestoreFromSave(int todayWeather, int tomorrowWeather)
+    {
+        model.SetToday((WeatherType)todayWeather);
+        model.SetTomorrow((WeatherType)tomorrowWeather);
+
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
+        {
+            Hashtable props = new Hashtable
+            {
+                { PROP_TODAY, todayWeather },
+                { PROP_TOMORROW, tomorrowWeather }
+            };
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+        }
+
+        OnWeatherChanged?.Invoke(model.TodayWeather);
+    }
+
     public void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
         bool changed = false;

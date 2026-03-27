@@ -64,6 +64,16 @@ public class DroppedItemService : IDroppedItemService
             return;
         }
 
+        // Skip items whose catalog data has been deleted (orphaned references)
+        if (ItemCatalogService.Instance != null
+            && ItemCatalogService.Instance.IsReady
+            && !string.IsNullOrEmpty(item.itemId)
+            && ItemCatalogService.Instance.GetItemData(item.itemId) == null)
+        {
+            Debug.LogWarning($"[DroppedItemService] Skipping orphaned dropped item '{item.itemId}' (not in catalog).");
+            return;
+        }
+
         if (items.ContainsKey(item.dropId))
         {
             Debug.LogWarning($"[DroppedItemService] Item '{item.dropId}' already registered, overwriting.");

@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
+using TMPro;
 
 /// <summary>
 /// View for the registration screen.
@@ -18,19 +18,17 @@ public class RegisterView : MonoBehaviour
     [SerializeField] private Button registerButton;
 
     [Header("Feedback")]
-    [SerializeField] private Text errorText;
+    [SerializeField] private TextMeshProUGUI errorText;
 
     [Header("OTP Verification")]
     [SerializeField] private InputField otpField;
     [SerializeField] private Button verifyButton;
 
     [Header("Panel Navigation")]
-    [Tooltip("BookPanelController that owns the OTP and Register canvas groups.")]
+    [Tooltip("BookPanelController that owns the register/OTP panels.")]
     [SerializeField] private BookPanelController bookPanelController;
     [Tooltip("Index of the OTP panel inside BookPanelController's Panels list.")]
     [SerializeField] private int otpPanelIndex = 1;
-    [Tooltip("Index of the Register panel inside BookPanelController's Panels list.")]
-    [SerializeField] private int registerPanelIndex = 0;
 
     private RegisterPresenter presenter;
 
@@ -57,7 +55,7 @@ public class RegisterView : MonoBehaviour
 
     public void ShowOtpPanel()
     {
-        bookPanelController?.ShowPanel(otpPanelIndex);
+        NavigateToPanel(otpPanelIndex, "OTP");
 
         if (errorText != null)
             errorText.text = "A verification code has been sent to your email.";
@@ -65,8 +63,6 @@ public class RegisterView : MonoBehaviour
 
     public void HideOtpPanel()
     {
-        bookPanelController?.ShowPanel(registerPanelIndex);
-
         if (otpField != null)
             otpField.text = string.Empty;
     }
@@ -97,5 +93,22 @@ public class RegisterView : MonoBehaviour
             errorText.text = string.Empty;
 
         Debug.Log("[RegisterView] Registration and email verification successful!");
+    }
+
+    private void NavigateToPanel(int panelIndex, string panelName)
+    {
+        if (bookPanelController == null)
+        {
+            Debug.LogWarning($"[RegisterView] Cannot show {panelName} panel: BookPanelController is not assigned.");
+            return;
+        }
+
+        if (panelIndex < 0)
+        {
+            Debug.LogWarning($"[RegisterView] Cannot show {panelName} panel: invalid panel index {panelIndex}.");
+            return;
+        }
+
+        bookPanelController.ShowPanel(panelIndex);
     }
 }

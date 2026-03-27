@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Photon.Pun;
 using UnityEngine;
@@ -56,6 +57,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
     private float _timer     = 0f;
     private bool  _isSaving  = false;
+    private bool  _pendingPlayerLeftSave = false;
 
     /// <summary>True while a save coroutine is running.</summary>
     public bool IsSaving => _isSaving;
@@ -73,6 +75,31 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
     private void OnEnable()  => Application.wantsToQuit += OnWantsToQuit;
     private void OnDisable() => Application.wantsToQuit -= OnWantsToQuit;
+
+    // OnPlayerLeftRoom fires on the master BEFORE Photon destroys the leaving player's
+    // owns objects, so BuildPayload() can still read their StaminaView / position.
+    // This ensures a non-master's final stamina (and position) are persisted even when
+    // the auto-save timer has not yet elapsed.
+    public override void OnPlayerLeftRoom(Photon.Realtime.Player otherPlayer)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (WorldDataBootstrapper.Instance == null || !WorldDataBootstrapper.Instance.IsReady) return;
+
+        if (_isSaving)
+        {
+            // A save is already in flight — queue a follow-up so the leaving
+            // player's final position/stamina are persisted once it completes.
+            _pendingPlayerLeftSave = true;
+            if (ShowDebugLogs)
+                Debug.Log($"[WorldSave] Player '{otherPlayer.NickName}' left during active save — queued follow-up save.");
+            return;
+        }
+
+        if (ShowDebugLogs)
+            Debug.Log($"[WorldSave] Player '{otherPlayer.NickName}' left — triggering immediate save.");
+
+        StartCoroutine(AutoSaveCoroutine());
+    }
 
     private void Update()
     {
@@ -133,6 +160,8 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
         bool hasContent = (payload.characters != null && payload.characters.Count > 0)
                        || (payload.deltas     != null && payload.deltas.Count     > 0)
                        || (payload.inventoryDeltas != null && payload.inventoryDeltas.Count > 0)
+                       || (payload.chestDeltas != null && payload.chestDeltas.Count > 0)
+                       || (payload.deletedChests != null && payload.deletedChests.Count > 0)
                        || payload.day != null;
 
         if (!hasContent)
@@ -154,9 +183,39 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
         if (saved)
         {
+            // Sync saved stamina values back into PlayerDataManager so that if a joined
+            // client re-enters mid-session, TryRestoreFromSavedCharacterData() reads the
+            // current in-session values instead of the stale initial API-load values.
+            if (payload.characters != null && PlayerDataManager.Instance != null)
+            {
+                foreach (var charUpdate in payload.characters)
+                {
+                    if (string.IsNullOrEmpty(charUpdate.accountId)) continue;
+                    int idx = PlayerDataManager.Instance.players
+                        .FindIndex(p => p.accountId == charUpdate.accountId);
+                    if (idx < 0) continue;
+                    var pd = PlayerDataManager.Instance.players[idx];
+                    if (charUpdate.currentStamina.HasValue)
+                        pd.currentStamina = charUpdate.currentStamina.Value;
+                    if (charUpdate.viableStamina.HasValue)
+                        pd.viableStamina = charUpdate.viableStamina.Value;
+                    if (charUpdate.regenBoostMultiplier.HasValue)
+                        pd.regenBoostMultiplier = charUpdate.regenBoostMultiplier.Value;
+                    if (charUpdate.regenBoostRemaining.HasValue)
+                        pd.regenBoostRemaining = charUpdate.regenBoostRemaining.Value;
+                    if (charUpdate.toolEfficiencyReduction.HasValue)
+                        pd.toolEfficiencyReduction = charUpdate.toolEfficiencyReduction.Value;
+                    if (charUpdate.toolEfficiencyRemaining.HasValue)
+                        pd.toolEfficiencyRemaining = charUpdate.toolEfficiencyRemaining.Value;
+                    PlayerDataManager.Instance.players[idx] = pd;
+                }
+            }
+
             ClearPendingUntilledForDirtyChunks();
             _dirtyChunks.Clear();
             WorldDataManager.Instance?.InventoryData?.ClearAllDirtyFlags();
+            WorldDataManager.Instance?.ChestData?.ClearAllDirtyFlags();
+            WorldDataManager.Instance?.ChestData?.ClearDeletedChests();
             if (ShowDebugLogs) Debug.Log("[WorldSave] Auto-save sent successfully.");
         }
         else
@@ -166,6 +225,15 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
         }
 
         _isSaving = false;
+
+        // A player left while this save was in-flight — run one more save now
+        // so their final position/stamina are captured (their GO may be gone by
+        // this point, but PlayerDataManager still has their last-synced values).
+        if (_pendingPlayerLeftSave)
+        {
+            _pendingPlayerLeftSave = false;
+            StartCoroutine(AutoSaveCoroutine());
+        }
     }
 
     // ──────────────────────────────────────────────────── Quit-flush
@@ -206,6 +274,8 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     ClearPendingUntilledForDirtyChunks();
                     _dirtyChunks.Clear();
                     WorldDataManager.Instance?.InventoryData?.ClearAllDirtyFlags();
+                    WorldDataManager.Instance?.ChestData?.ClearAllDirtyFlags();
+                    WorldDataManager.Instance?.ChestData?.ClearDeletedChests();
                     Debug.Log("[WorldSave] Quit-flush complete.");
                 }
                 else         Debug.LogWarning("[WorldSave] Quit-flush HTTP request failed — quitting anyway.");
@@ -262,6 +332,9 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             hour   = wdm?.Hour,
             minute = wdm?.Minute,
             gold   = wdm?.Gold,
+            // Weather state from WorldDataManager
+            weatherToday    = wdm?.WeatherToday,
+            weatherTomorrow = wdm?.WeatherTomorrow,
         };
 
         // ── Characters — read live positions from PlayerEntity GameObjects ──
@@ -286,14 +359,73 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             if (appearance != null)
             {
                 var (hair, outfit, hat, tool) = appearance.GetCurrentAppearance();
-                charUpdate.hairConfigId   = string.IsNullOrEmpty(hair)   ? null : hair;
-                charUpdate.outfitConfigId = string.IsNullOrEmpty(outfit) ? null : outfit;
-                charUpdate.hatConfigId    = string.IsNullOrEmpty(hat)    ? null : hat;
-                charUpdate.toolConfigId   = string.IsNullOrEmpty(tool)   ? null : tool;
+                // Send empty string (not null) so the server clears the field when the
+                // player removes an outfit. NullValueHandling.Include on the DTO ensures
+                // empty strings are serialised and the server always receives the update.
+                charUpdate.hairConfigId   = hair   ?? string.Empty;
+                charUpdate.outfitConfigId = outfit ?? string.Empty;
+                charUpdate.hatConfigId    = hat    ?? string.Empty;
+                charUpdate.toolConfigId   = tool   ?? string.Empty;
+            }
+
+            var stamina = go.GetComponent<StaminaView>();
+            if (stamina != null)
+            {
+                charUpdate.currentStamina = stamina.CurrentStamina;
+                charUpdate.viableStamina  = stamina.ViableStamina;
+                if (stamina.RegenBoostRemaining > 0f)
+                {
+                    charUpdate.regenBoostMultiplier = stamina.RegenBoostMultiplier;
+                    charUpdate.regenBoostRemaining  = stamina.RegenBoostRemaining;
+                }
+                if (stamina.ToolEfficiencyRemaining > 0f)
+                {
+                    charUpdate.toolEfficiencyReduction = stamina.ToolEfficiencyReduction;
+                    charUpdate.toolEfficiencyRemaining = stamina.ToolEfficiencyRemaining;
+                }
             }
 
             characters.Add(charUpdate);
         }
+
+        // ── Fallback: include players whose GOs are already destroyed ──────────
+        // When a joined client leaves, their GO may be gone before BuildPayload
+        // runs (e.g. during a pending follow-up save). RPC_FinalPlayerState on
+        // StaminaView writes the client's last-known state into PlayerDataManager
+        // so it's available here as a fallback.
+        if (PlayerDataManager.Instance != null)
+        {
+            var coveredIds = new HashSet<string>(characters.Select(c => c.accountId));
+            foreach (var pd in PlayerDataManager.Instance.players)
+            {
+                if (string.IsNullOrEmpty(pd.accountId) || coveredIds.Contains(pd.accountId)) continue;
+
+                var fallback = new WorldApi.UpdateWorldRequest.CharacterUpdate
+                {
+                    accountId     = pd.accountId,
+                    positionX     = pd.positionX,
+                    positionY     = pd.positionY,
+                    hairConfigId   = pd.hairConfigId   ?? string.Empty,
+                    outfitConfigId = pd.outfitConfigId ?? string.Empty,
+                    hatConfigId    = pd.hatConfigId    ?? string.Empty,
+                    toolConfigId   = pd.toolConfigId   ?? string.Empty,
+                    currentStamina = pd.currentStamina,
+                    viableStamina  = pd.viableStamina,
+                };
+                if (pd.regenBoostRemaining > 0f)
+                {
+                    fallback.regenBoostMultiplier = pd.regenBoostMultiplier;
+                    fallback.regenBoostRemaining  = pd.regenBoostRemaining;
+                }
+                if (pd.toolEfficiencyRemaining > 0f)
+                {
+                    fallback.toolEfficiencyReduction = pd.toolEfficiencyReduction;
+                    fallback.toolEfficiencyRemaining = pd.toolEfficiencyRemaining;
+                }
+                characters.Add(fallback);
+            }
+        }
+
         if (characters.Count > 0) request.characters = characters;
 
         // ── Tile deltas — only dirty chunks ──
@@ -311,7 +443,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
                 foreach (var slot in chunkData.GetAllTiles())
                 {
-                    if (!slot.IsTilled && !slot.HasCrop) continue;  // skip empty slots
+                    if (!slot.IsTilled && !slot.HasCrop && !slot.HasResource && !slot.HasStructure) continue;  // skip empty slots
 
                     // localIndex = localX + localY * 30
                     int localX     = slot.WorldX - chunkX * 30;
@@ -322,18 +454,40 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
                     if (slot.HasCrop)
                     {
-                        td.type               = "crop";
-                        td.plantId            = slot.Crop.PlantId;
-                        td.cropStage          = slot.Crop.CropStage;
-                        td.growthTimer        = slot.Crop.GrowthTimer;
-                        td.pollenHarvestCount = slot.Crop.PollenHarvestCount;
-                        td.isWatered          = slot.Crop.IsWatered;
-                        td.isFertilized       = slot.Crop.IsFertilized;
-                        td.isPollinated       = slot.Crop.IsPollinated;
+                        td.type = "crop";
+                        // Auto-map all CropTileData public fields. WaterDecayTimer is
+                        // excluded via [JsonIgnore] on the struct — no manual updates needed
+                        // when fields are added to CropTileData in the future.
+                        var cropFields = Newtonsoft.Json.Linq.JObject.FromObject(slot.Crop);
+                        td._extra = cropFields.ToObject<Dictionary<string, Newtonsoft.Json.Linq.JToken>>();
                     }
-                    else  // tilled only
+                    else if (slot.HasResource)
+                    {
+                        td.type = "resource";
+                        td._extra = new Dictionary<string, Newtonsoft.Json.Linq.JToken>
+                        {
+                            ["resourceId"] = slot.Resource.ResourceId,
+                            ["currentHp"] = slot.Resource.CurrentHp,
+                        };
+                    }
+                    else if (slot.HasStructure)
+                    {
+                        td.type = "structure";
+                        td._extra = new Dictionary<string, Newtonsoft.Json.Linq.JToken>
+                        {
+                            ["structureId"]    = slot.Structure.StructureId,
+                            ["structureLevel"] = slot.Structure.StructureLevel,
+                            ["currentHp"]      = slot.Structure.CurrentHp,
+                        };
+                    }
+                    else  // tilled only — still need to persist watered state
                     {
                         td.type = "tilled";
+                        if (slot.Crop.IsWatered)
+                        {
+                            var tilledFields = Newtonsoft.Json.Linq.JObject.FromObject(slot.Crop);
+                            td._extra = tilledFields.ToObject<Dictionary<string, Newtonsoft.Json.Linq.JToken>>();
+                        }
                     }
 
                     tileDict[localIndex.ToString()] = td;
@@ -437,6 +591,82 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
         else
         {
             if (ShowDebugLogs) Debug.LogWarning("[WorldSave] InventoryDataModule is null!");
+        }
+
+        // ── Chest deltas — only dirty chests ──
+        var chestModule = wdm?.ChestData;
+        if (chestModule != null)
+        {
+            var dirtyChestIds = chestModule.GetDirtyChestIds();
+            if (ShowDebugLogs)
+                Debug.Log($"[WorldSave] Chest check: {dirtyChestIds.Count} dirty chest(s)");
+
+            if (dirtyChestIds.Count > 0)
+            {
+                var chestDeltas = new List<WorldApi.ChestDelta>();
+                var tempSlots = new List<ChestSlotEntry>();
+
+                foreach (var chestId in dirtyChestIds)
+                {
+                    if (!ChestDataModule.TryParseChestId(chestId, out short tx, out short ty)) continue;
+                    if (!chestModule.TryGetHeader(tx, ty, out var header)) continue;
+
+                    var slots = new Dictionary<string, WorldApi.ChestSlotDelta>();
+
+                    // Gather occupied slots for this chest
+                    chestModule.GetChestSlots(tx, ty, tempSlots);
+
+                    // Send ALL slots (occupied → $set, empty → $unset on server)
+                    for (byte i = 0; i < header.MaxSlots; i++)
+                    {
+                        ChestSlotEntry found = default;
+                        bool hasSlot = false;
+                        for (int s = 0; s < tempSlots.Count; s++)
+                        {
+                            if (tempSlots[s].SlotIndex == i) { found = tempSlots[s]; hasSlot = true; break; }
+                        }
+
+                        if (hasSlot && !string.IsNullOrEmpty(found.ItemId))
+                        {
+                            slots[i.ToString()] = new WorldApi.ChestSlotDelta
+                            {
+                                itemId   = found.ItemId,
+                                quantity = found.Quantity
+                            };
+                        }
+                        else
+                        {
+                            slots[i.ToString()] = new WorldApi.ChestSlotDelta
+                            {
+                                itemId   = null,
+                                quantity = 0
+                            };
+                        }
+                    }
+
+                    chestDeltas.Add(new WorldApi.ChestDelta
+                    {
+                        tileX          = tx,
+                        tileY          = ty,
+                        maxSlots       = header.MaxSlots,
+                        structureLevel = header.StructureLevel,
+                        slots          = slots
+                    });
+                }
+                if (chestDeltas.Count > 0) request.chestDeltas = chestDeltas;
+            }
+
+            // ── Deleted chests — chests destroyed since last save ──
+            var deleted = chestModule.GetDeletedChests();
+            if (deleted.Count > 0)
+            {
+                var deletedList = new List<WorldApi.DeletedChest>();
+                foreach (var (dtx, dty) in deleted)
+                {
+                    deletedList.Add(new WorldApi.DeletedChest { tileX = dtx, tileY = dty });
+                }
+                request.deletedChests = deletedList;
+            }
         }
 
         return request;

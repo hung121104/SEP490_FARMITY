@@ -12,5 +12,8 @@ public interface IWeatherService
     WeatherType GetTodayWeather();
     WeatherType GetTomorrowWeather();
 
+    /// <summary>Restores weather from saved data (server). Skips random generation.</summary>
+    void RestoreFromSave(int todayWeather, int tomorrowWeather);
+
     void SetRainChance(float chance);
 }

@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Attach to a Button in the game scene.
 /// Saves the world (master only), leaves the Photon room, destroys
-/// per-session DontDestroyOnLoad singletons, then loads MainMenuScene.
+/// per-session DontDestroyOnLoad singletons (except InputManager), then loads MainMenuScene.
 /// </summary>
 public class LeaveRoomButton : MonoBehaviourPunCallbacks
 {
@@ -34,6 +34,16 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
 
     private IEnumerator SaveThenLeave()
     {
+        // Non-master: push final position + stamina state to master via RPC
+        // so it can be saved even if this GO is destroyed before BuildPayload runs.
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            var stamina = StaminaView.FindLocal();
+            stamina?.PushFinalStateToMaster();
+            // Wait one frame so the RPC is flushed to the master before leaving.
+            yield return null;
+        }
+
         // Master client: trigger a save and wait for it to finish
         if (PhotonNetwork.IsMasterClient && WorldSaveManager.Instance != null)
         {
@@ -70,7 +80,6 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
         TryDestroy(WorldDataManager.Instance?.gameObject);
         TryDestroy(WorldSelectionManager.Instance?.gameObject);
         TryDestroy(PlayerDataManager.Instance?.gameObject);
-        TryDestroy(InputManager.Instance?.gameObject);
     }
 
     private static void TryDestroy(GameObject go)

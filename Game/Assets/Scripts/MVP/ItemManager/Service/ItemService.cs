@@ -154,6 +154,7 @@ public class ItemService : IItemService
     {
         return model.ItemType == ItemType.Consumable ||
                model.ItemType == ItemType.Tool ||
+               model.ItemType == ItemType.Fertilizer ||
                model.ItemType == ItemType.Seed;
     }
 

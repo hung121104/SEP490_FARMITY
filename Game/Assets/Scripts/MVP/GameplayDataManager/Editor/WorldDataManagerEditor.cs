@@ -96,6 +96,7 @@ public class WorldDataManagerEditor : Editor
                 "🌱 Crop with Tilled Ground (most common)\n" +
                 "🌿 Crop without Tilled (unusual)\n" +
                 "🟫 Tilled Ground Only (no crop)\n" +
+                "🪨 Resource (Tree/Rock/Ore)\n" +
                 "⬜ Empty Tile (should not occur)", 
                 MessageType.None);
             
@@ -149,11 +150,14 @@ public class WorldDataManagerEditor : Editor
                     int cropsOnly = 0;
                     int tilledOnly = 0;
                     int emptyTiles = 0;
+                    int resourcesOnly = 0;
                     
                     foreach (var slot in chunk.tiles.Values)
                     {
                         if (slot.HasCrop && slot.IsTilled) cropsWithTilled++;
                         else if (slot.HasCrop) cropsOnly++;
+                        else if (slot.HasStructure) {} // Ignore count here
+                        else if (slot.HasResource) resourcesOnly++;
                         else if (slot.IsTilled) tilledOnly++;
                         else emptyTiles++;
                     }
@@ -180,6 +184,8 @@ public class WorldDataManagerEditor : Editor
                         EditorGUILayout.LabelField($"🟫 {tilledOnly}", GUILayout.Width(60));
                     if (cropsOnly > 0)
                         EditorGUILayout.LabelField($"🌿 {cropsOnly}", GUILayout.Width(60));
+                    if (resourcesOnly > 0)
+                        EditorGUILayout.LabelField($"🪨 {resourcesOnly}", GUILayout.Width(60));
                     EditorGUILayout.LabelField($"Dirty: {(chunk.IsDirty ? "✓" : "✗")}", GUILayout.Width(70));
                     EditorGUILayout.EndHorizontal();
 
@@ -226,6 +232,12 @@ public class WorldDataManagerEditor : Editor
                                 icon = "🏠";
                                 state = $"Structure: {tile.Structure.StructureId}";
                                 textColor = new Color(0.8f, 0.8f, 1f);
+                            }
+                            else if (tile.HasResource)
+                            {
+                                icon = "🪨";
+                                state = $"Resource: {tile.Resource.ResourceId} (HP: {tile.Resource.CurrentHp})";
+                                textColor = new Color(0.7f, 0.7f, 0.7f);
                             }
                             else if (tile.IsTilled)
                             {

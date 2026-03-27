@@ -10,6 +10,7 @@ public class CreateAndJoinRoom : MonoBehaviourPunCallbacks
     [SerializeField] private InputField joinInput;
     [SerializeField] private InputField playerNameInput;
     [SerializeField] private TMP_Dropdown regionDropdown;
+    [SerializeField] private TextMeshProUGUI statusText;
 
     public List<string> regions = new List<string> { "hk", "asia", "eu", "us", "jp", "kr", "au" };
 
@@ -69,6 +70,7 @@ public class CreateAndJoinRoom : MonoBehaviourPunCallbacks
         if (!string.IsNullOrEmpty(roomName))
         {
             SetPlayerName();
+            UpdateStatus($"Creating room: {roomName}...");
             PhotonNetwork.CreateRoom(roomName);
         }
     }
@@ -79,6 +81,7 @@ public class CreateAndJoinRoom : MonoBehaviourPunCallbacks
         if (!string.IsNullOrEmpty(roomName))
         {
             SetPlayerName();
+            UpdateStatus($"Joining room: {roomName}...");
             PhotonNetwork.JoinRoom(roomName);
         }
     }
@@ -93,6 +96,23 @@ public class CreateAndJoinRoom : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        PhotonNetwork.LoadLevel("GameCoreTestScene");
+        // With AutomaticallySyncScene = true, only the master calls LoadLevel.
+        // Non-master clients are synced automatically by PUN.
+        if (PhotonNetwork.IsMasterClient || !PhotonNetwork.AutomaticallySyncScene)
+            PhotonNetwork.LoadLevel("GameCoreTestScene");
+    }
+
+    private void UpdateStatus(string message)
+    {
+        if (statusText != null)
+            statusText.text = message;
+        else
+            Debug.Log($"[CreateAndJoinRoom] {message}");
+    }
+
+    public override void OnJoinRoomFailed(short returnCode, string message)
+    {
+        Debug.LogWarning($"[CreateAndJoinRoom] OnJoinRoomFailed: ({returnCode}) {message}");
+        UpdateStatus("Join failed: " + message);
     }
 }

@@ -2,6 +2,8 @@
 
 export class TileDataDto {
   type?: string;
+
+  // Crop fields
   plantId?: string | null;
   cropStage?: number;
   growthTimer?: number;
@@ -9,6 +11,10 @@ export class TileDataDto {
   isWatered?: boolean;
   isFertilized?: boolean;
   isPollinated?: boolean;
+
+  // Resource fields (trees, rocks, etc.)
+  resourceId?: string | null;
+  currentHp?: number;
 }
 
 /** One dirty chunk's changed tiles.  key = local tile index "0"–"899". */
@@ -41,6 +47,12 @@ export class UpsertCharacterInWorldDto {
   positionX: number;
   positionY: number;
   sectionIndex?: number;
+  currentStamina?: number;
+  viableStamina?: number;
+  regenBoostMultiplier?: number;
+  regenBoostRemaining?: number;
+  toolEfficiencyReduction?: number;
+  toolEfficiencyRemaining?: number;
 }
 
 export class UpdateWorldDto {

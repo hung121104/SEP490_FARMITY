@@ -135,7 +135,7 @@ export class CreateItemDto {
 
   @IsOptional()
   @IsInt()
-  energyRestore?: number;
+  viableRestore?: number;
 
   @IsOptional()
   @IsInt()
@@ -143,7 +143,15 @@ export class CreateItemDto {
 
   @IsOptional()
   @IsNumber()
-  bufferDuration?: number;
+  regenBoostMultiplier?: number;
+
+  @IsOptional()
+  @IsNumber()
+  toolEfficiencyReductionPercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  effectDurationSeconds?: number;
 
   // ── Weapon (itemType: 6) ───────────────────────────────────────────────────
 
@@ -156,12 +164,44 @@ export class CreateItemDto {
   critChance?: number;
 
   @IsOptional()
+  @IsString()
+  weaponMaterialId?: string;
+
+  @IsOptional()
+  @IsInt()
+  weaponType?: number;
+
+  @IsOptional()
+  @IsInt()
+  tier?: number;
+
+  @IsOptional()
   @IsNumber()
-  attackSpeed?: number;
+  attackCooldown?: number;
+
+  @IsOptional()
+  @IsNumber()
+  knockbackForce?: number;
+
+  @IsOptional()
+  @IsNumber()
+  projectileSpeed?: number;
+
+  @IsOptional()
+  @IsNumber()
+  projectileRange?: number;
+
+  @IsOptional()
+  @IsNumber()
+  projectileKnockback?: number;
 
   @IsOptional()
   @IsString()
-  weaponMaterialId?: string;
+  linkedSkillId?: string;
+
+  @IsOptional()
+  @IsString()
+  weaponPrefabKey?: string;
 
   // ── Fish (itemType: 7) ─────────────────────────────────────────────────────
 
@@ -218,4 +258,21 @@ export class CreateItemDto {
   @IsOptional()
   @IsBoolean()
   autoConsume?: boolean;
+
+  // ── Structure (itemType: 13) ─────────────────────────────────────────────────
+
+  @IsOptional()
+  @IsInt()
+  structureInteractionType?: number;
+
+  @IsOptional()
+  @IsInt()
+  structureLevel?: number;
+
+  @IsOptional()
+  @IsString()
+  structureInteractionSpriteUrl?: string;
+
+  // ── Fertilizer (itemType: 14) ───────────────────────────────────────────────
+  // No additional fields beyond the shared base item properties.
 }

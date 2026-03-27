@@ -6,7 +6,8 @@ import { World, WorldDocument } from './world.schema';
 import { Chunk, ChunkDocument } from './chunk.schema';
 import { CreateWorldDto } from './dto/create-world.dto';
 import { GetWorldDto } from './dto/get-world.dto';
-import { UpdateWorldDto, ChunkDeltaDto } from './dto/update-world.dto';
+import { UpdateWorldDto, ChunkDeltaDto, ChestDeltaDto, DeletedChestDto } from './dto/update-world.dto';
+import { ChestInventory, ChestInventoryDocument } from './chest-inventory.schema';
 import { CharacterService } from '../character/character.service';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class WorldService {
   constructor(
     @InjectModel(World.name) private worldModel: Model<WorldDocument>,
     @InjectModel(Chunk.name) private chunkModel: Model<ChunkDocument>,
+    @InjectModel(ChestInventory.name) private chestInventoryModel: Model<ChestInventoryDocument>,
     @InjectConnection() private readonly connection: Connection,
     private readonly characterService: CharacterService,
   ) {}
@@ -155,6 +157,36 @@ export class WorldService {
       result.chunks = [];
     }
 
+    // Fetch all saved chest documents for this world.
+    // slots Map is converted to a plain JS object { "0": {...}, "5": {...} }
+    // so Unity's Newtonsoft.Json can deserialize it as Dictionary<string, ChestSlotData>.
+    try {
+      const chests = await this.chestInventoryModel
+        .find({ worldId: world._id })
+        .lean()
+        .exec();
+
+      result.chests = chests.map((chest) => {
+        let slotsObj: Record<string, any> = {};
+        if (chest.slots instanceof Map) {
+          chest.slots.forEach((v, k) => { slotsObj[k] = v; });
+        } else if (chest.slots && typeof chest.slots === 'object') {
+          slotsObj = chest.slots as any;
+        }
+
+        return {
+          tileX:          chest.tileX,
+          tileY:          chest.tileY,
+          maxSlots:       chest.maxSlots,
+          structureLevel: chest.structureLevel,
+          slots:          slotsObj,
+        };
+      });
+    } catch (err) {
+      console.error('[WorldService] Failed to fetch chests for world', err);
+      result.chests = [];
+    }
+
     return result;
   }
 
@@ -179,6 +211,8 @@ export class WorldService {
     if (dto.hour !== undefined) worldUpdate.hour = dto.hour;
     if (dto.minute !== undefined) worldUpdate.minute = dto.minute;
     if (dto.gold !== undefined) worldUpdate.gold = dto.gold;
+    if (dto.weatherToday !== undefined) worldUpdate.weatherToday = dto.weatherToday;
+    if (dto.weatherTomorrow !== undefined) worldUpdate.weatherTomorrow = dto.weatherTomorrow;
 
     const updatedWorld = Object.keys(worldUpdate).length > 0
       ? await this.worldModel.findByIdAndUpdate(dto.worldId, { $set: worldUpdate }, { new: true }).exec()
@@ -239,6 +273,8 @@ export class WorldService {
       if (dto.year !== undefined)   worldUpdate.year   = dto.year;
       if (dto.hour !== undefined)   worldUpdate.hour   = dto.hour;
       if (dto.minute !== undefined) worldUpdate.minute = dto.minute;
+      if (dto.weatherToday !== undefined) worldUpdate.weatherToday = dto.weatherToday;
+      if (dto.weatherTomorrow !== undefined) worldUpdate.weatherTomorrow = dto.weatherTomorrow;
 
       if (Object.keys(worldUpdate).length > 0) {
         await this.worldModel.findByIdAndUpdate(
@@ -290,6 +326,16 @@ export class WorldService {
             charactersResult[idx] = charObj;
           }
         }
+      }
+
+      // 5. Apply chest deltas — only the chests whose slots changed
+      if (dto.chestDeltas && dto.chestDeltas.length > 0) {
+        await this.applyChestDeltas(worldOid, dto.chestDeltas, opts);
+      }
+
+      // 6. Delete destroyed chests
+      if (dto.deletedChests && dto.deletedChests.length > 0) {
+        await this.deleteChests(worldOid, dto.deletedChests, opts);
       }
 
       return { ok: true, characters: charactersResult };
@@ -363,6 +409,78 @@ export class WorldService {
     }
   }
 
+  // ────────────────────────────────────────────────────────────────────────────
+  //  applyChestDeltas
+  //
+  //  For each dirty chest, upsert the chest document and merge only the
+  //  changed slot keys using targeted $set / $unset operators.
+  //  This never overwrites slots that were NOT included in the delta.
+  // ────────────────────────────────────────────────────────────────────────────
+  private async applyChestDeltas(
+    worldOid: Types.ObjectId,
+    deltas: ChestDeltaDto[],
+    opts: object,
+  ): Promise<void> {
+    for (const delta of deltas) {
+      if (!delta.slots || Object.keys(delta.slots).length === 0) continue;
+
+      // Build $set for occupied slots and $unset for cleared slots
+      const setFields: Record<string, any> = {};
+      const unsetFields: Record<string, any> = {};
+
+      for (const [slotIndex, slotData] of Object.entries(delta.slots)) {
+        if (slotData?.itemId && slotData.quantity > 0) {
+          setFields[`slots.${slotIndex}`] = { itemId: slotData.itemId, quantity: slotData.quantity };
+        } else {
+          unsetFields[`slots.${slotIndex}`] = 1;
+        }
+      }
+
+      // Always include maxSlots and structureLevel in $set (handles both insert and upgrade)
+      setFields['maxSlots'] = delta.maxSlots;
+      setFields['structureLevel'] = delta.structureLevel;
+
+      const updateOps: Record<string, any> = {
+        $setOnInsert: {
+          worldId: worldOid,
+          tileX:   delta.tileX,
+          tileY:   delta.tileY,
+        },
+      };
+
+      if (Object.keys(setFields).length > 0) updateOps.$set = setFields;
+      if (Object.keys(unsetFields).length > 0) updateOps.$unset = unsetFields;
+
+      await this.chestInventoryModel.findOneAndUpdate(
+        {
+          worldId: worldOid,
+          tileX:   delta.tileX,
+          tileY:   delta.tileY,
+        },
+        updateOps,
+        { upsert: true, new: true, ...opts },
+      ).exec();
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  //  deleteChests
+  //
+  //  Remove chest documents for chests that were destroyed in-game.
+  // ────────────────────────────────────────────────────────────────────────────
+  private async deleteChests(
+    worldOid: Types.ObjectId,
+    deleted: DeletedChestDto[],
+    opts: object,
+  ): Promise<void> {
+    for (const chest of deleted) {
+      await this.chestInventoryModel.deleteOne(
+        { worldId: worldOid, tileX: chest.tileX, tileY: chest.tileY },
+        opts,
+      ).exec();
+    }
+  }
+
   async deleteWorld(getWorldDto: GetWorldDto): Promise<World | null> {
     if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
     const world = await this.worldModel.findById(getWorldDto._id).exec();
@@ -374,6 +492,9 @@ export class WorldService {
     // Delete all characters associated with this world
     const deletedCharactersCount = await this.characterService.deleteByWorldId(getWorldDto._id);
     console.log(`[WorldService] Deleted ${deletedCharactersCount} character(s) for world ${getWorldDto._id}`);
+    // Delete all chests associated with this world
+    const deletedChestsResult = await this.chestInventoryModel.deleteMany({ worldId: world._id }).exec();
+    console.log(`[WorldService] Deleted ${deletedChestsResult.deletedCount} chest(s) for world ${getWorldDto._id}`);
     // Delete the world itself
     const deleted = await this.worldModel.findByIdAndDelete(getWorldDto._id).exec();
     return deleted;
@@ -382,5 +503,86 @@ export class WorldService {
   async getWorldsByOwner(dto: { ownerId: string }): Promise<World[]> {
     const ownerObjId = dto.ownerId ? new Types.ObjectId(dto.ownerId) : undefined;
     return this.worldModel.find({ ownerId: ownerObjId }).exec();
+  }
+
+  async getWorldBlacklist(dto: { worldId: string; requesterId: string; requesterIsAdmin?: boolean }) {
+    if (!dto.worldId) throw new RpcException({ status: 400, message: 'worldId required' });
+    if (!dto.requesterId) throw new RpcException({ status: 400, message: 'requesterId required' });
+
+    const world = await this.worldModel.findById(dto.worldId).exec();
+    if (!world) throw new RpcException({ status: 404, message: 'World not found' });
+
+    return {
+      worldId: world._id.toString(),
+      blacklistedPlayerIds: Array.isArray(world.blacklistedPlayerIds) ? world.blacklistedPlayerIds : [],
+    };
+  }
+
+  async addWorldBlacklistPlayer(dto: { worldId: string; requesterId: string; requesterIsAdmin?: boolean; playerId: string }) {
+    if (!dto.worldId) throw new RpcException({ status: 400, message: 'worldId required' });
+    if (!dto.requesterId) throw new RpcException({ status: 400, message: 'requesterId required' });
+    if (!dto.playerId) throw new RpcException({ status: 400, message: 'playerId required' });
+
+    const world = await this.worldModel.findById(dto.worldId).exec();
+    if (!world) throw new RpcException({ status: 404, message: 'World not found' });
+
+    const isAdmin = !!dto.requesterIsAdmin;
+    const requesterId = dto.requesterId;
+    const isOwner = !!requesterId && world.ownerId?.toString() === requesterId;
+    if (!isOwner && !isAdmin) {
+      throw new RpcException({ status: 401, message: 'Not authorized to manage this world blacklist' });
+    }
+
+    if (dto.playerId === world.ownerId?.toString()) {
+      throw new RpcException({ status: 400, message: 'Owner cannot blacklist self' });
+    }
+
+    const current = Array.isArray(world.blacklistedPlayerIds) ? world.blacklistedPlayerIds : [];
+    const merged = Array.from(new Set([...current, dto.playerId]));
+    const wasAdded = merged.length !== current.length;
+
+    if (wasAdded) {
+      world.blacklistedPlayerIds = merged;
+      await world.save();
+    }
+
+    return {
+      worldId: world._id.toString(),
+      playerId: dto.playerId,
+      added: wasAdded,
+      blacklistedPlayerIds: merged,
+    };
+  }
+
+  async removeWorldBlacklistPlayer(dto: { worldId: string; requesterId: string; requesterIsAdmin?: boolean; playerId: string }) {
+    if (!dto.worldId) throw new RpcException({ status: 400, message: 'worldId required' });
+    if (!dto.requesterId) throw new RpcException({ status: 400, message: 'requesterId required' });
+    if (!dto.playerId) throw new RpcException({ status: 400, message: 'playerId required' });
+
+    const world = await this.worldModel.findById(dto.worldId).exec();
+    if (!world) throw new RpcException({ status: 404, message: 'World not found' });
+
+    const isAdmin = !!dto.requesterIsAdmin;
+    const requesterId = dto.requesterId;
+    const isOwner = !!requesterId && world.ownerId?.toString() === requesterId;
+    if (!isOwner && !isAdmin) {
+      throw new RpcException({ status: 401, message: 'Not authorized to manage this world blacklist' });
+    }
+
+    const current = Array.isArray(world.blacklistedPlayerIds) ? world.blacklistedPlayerIds : [];
+    const filtered = current.filter((id) => id !== dto.playerId);
+    const wasRemoved = filtered.length !== current.length;
+
+    if (wasRemoved) {
+      world.blacklistedPlayerIds = filtered;
+      await world.save();
+    }
+
+    return {
+      worldId: world._id.toString(),
+      playerId: dto.playerId,
+      removed: wasRemoved,
+      blacklistedPlayerIds: filtered,
+    };
   }
 }

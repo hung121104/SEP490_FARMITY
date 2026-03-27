@@ -18,7 +18,7 @@ namespace AchievementManager.View
         #region Serialized Fields
 
         [Header("Popup Panel")]
-        [SerializeField] private GameObject popupRoot;
+        [SerializeField] private CanvasGroup popupCanvasGroup;
         [SerializeField] private Animator popupAnimator;
 
         [Header("Content")]
@@ -50,8 +50,8 @@ namespace AchievementManager.View
             if (dismissButton != null)
                 dismissButton.onClick.AddListener(DismissCurrent);
 
-            if (popupRoot != null)
-                popupRoot.SetActive(false);
+            if (popupCanvasGroup != null)
+                popupCanvasGroup.Hide();
         }
 
         #endregion
@@ -116,8 +116,8 @@ namespace AchievementManager.View
                 achievementDescText.text = achievement.description;
 
             // Show panel
-            if (popupRoot != null)
-                popupRoot.SetActive(true);
+            if (popupCanvasGroup != null)
+                popupCanvasGroup.Show();
 
             // Play show animation if available
             if (popupAnimator != null)
@@ -143,8 +143,8 @@ namespace AchievementManager.View
                 yield return new WaitForSeconds(0.5f);
             }
 
-            if (popupRoot != null)
-                popupRoot.SetActive(false);
+            if (popupCanvasGroup != null)
+                popupCanvasGroup.Hide();
 
             Debug.Log("[AchievementUnlockPopupView] Popup hidden");
         }

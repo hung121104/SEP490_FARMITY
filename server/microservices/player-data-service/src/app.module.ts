@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CharacterModule } from './character/character.module';
 import { WorldModule } from './world/world.module';
-import { PlayerAchievementModule } from './player-achievement/player-achievement.module';
+import { QuestModule } from './quest/quest.module';
 
 @Module({
   imports: [
@@ -17,7 +17,7 @@ import { PlayerAchievementModule } from './player-achievement/player-achievement
     }),
     CharacterModule,
     WorldModule,
-    PlayerAchievementModule,
+    QuestModule,
   ],
 })
 export class AppModule {}

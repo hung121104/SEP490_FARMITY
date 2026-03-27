@@ -59,6 +59,10 @@ public class CropHarvestingService : ICropHarvestingService
             && !string.IsNullOrEmpty(tileData.PlantId))
         {
             PlantData plantData = cropManagerView.GetPlantData(tileData.PlantId);
+
+            // Block harvest of fallback placeholder crops (late-join orphaned data).
+            if (plantData != null && plantData.isFallback) return false;
+
             if (plantData != null && !string.IsNullOrEmpty(plantData.harvestedItemId))
                 harvestedItem = ItemCatalogService.Instance?.GetItemData(plantData.harvestedItemId);
             else
@@ -75,6 +79,15 @@ public class CropHarvestingService : ICropHarvestingService
 
         cropManagerView?.UnregisterCrop(worldX, worldY);
         syncManager?.BroadcastCropRemoved(worldX, worldY);
+
+        // If it's raining, re-water the remaining tilled tile
+        if (WeatherView.IsRaining && worldData.IsTilledAtWorldPosition(snappedPos))
+        {
+            worldData.WaterTileAtWorldPosition(snappedPos);
+
+            if (syncManager != null && PhotonNetwork.IsConnected)
+                syncManager.BroadcastTileWatered(worldX, worldY);
+        }
 
         if (loadingManager != null)
         {

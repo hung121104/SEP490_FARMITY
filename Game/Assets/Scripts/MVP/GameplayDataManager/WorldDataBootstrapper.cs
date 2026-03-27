@@ -22,6 +22,13 @@ public class WorldDataBootstrapper : MonoBehaviour
     /// <summary>True once all managers have been populated with API data.</summary>
     public bool IsReady { get; private set; } = false;
 
+    /// <summary>
+    /// Fired on the MasterClient immediately after world data has been fully distributed to all
+    /// managers. Systems that need world data to be ready before running (e.g. ResourceSpawnerManager)
+    /// should subscribe to this instead of polling IsReady.
+    /// </summary>
+    public static event System.Action OnWorldDataReady;
+
     private string _worldId;
     private string _authToken;
 
@@ -61,7 +68,9 @@ public class WorldDataBootstrapper : MonoBehaviour
             if (!string.IsNullOrEmpty(_authToken))
                 req.SetRequestHeader("Authorization", "Bearer " + _authToken);
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             req.certificateHandler = new AcceptAllCertificates();
+#endif
             yield return req.SendWebRequest();
 
 #if UNITY_2020_1_OR_NEWER
@@ -138,13 +147,92 @@ public class WorldDataBootstrapper : MonoBehaviour
                 Debug.Log($"[WorldDataBootstrapper] Loaded {data.chunks.Count} chunk(s) from save.");
             }
 
+            // 4. Chest inventory data — load saved chest contents into ChestDataModule
+            if (WorldDataManager.Instance?.ChestData != null && data.chests != null && data.chests.Count > 0)
+            {
+                var chestModule = WorldDataManager.Instance.ChestData;
+                foreach (var chest in data.chests)
+                {
+                    short tx = (short)chest.tileX;
+                    short ty = (short)chest.tileY;
+
+                    // Register chest header (idempotent — may already be registered via structure spawn)
+                    chestModule.RegisterChest(tx, ty, (byte)chest.maxSlots, (byte)chest.structureLevel);
+
+                    // Load slot contents
+                    if (chest.slots != null)
+                    {
+                        foreach (var kvp in chest.slots)
+                        {
+                            if (!byte.TryParse(kvp.Key, out byte slotIndex)) continue;
+                            var slotData = kvp.Value;
+                            if (slotData == null || string.IsNullOrEmpty(slotData.itemId)) continue;
+
+                            chestModule.SetSlot(tx, ty, slotIndex, slotData.itemId, (ushort)slotData.quantity);
+                        }
+                    }
+                }
+                // Clear dirty flags since this data was just loaded from DB (not a user change)
+                chestModule.ClearAllDirtyFlags();
+                Debug.Log($"[WorldDataBootstrapper] Loaded {data.chests.Count} chest(s) from save.");
+            }
+
+            // --- Orphaned data cleanup ---
+            // Validate all world data references against loaded catalogs.
+            // Removes entries whose catalog data no longer exists (hard-deleted by admin).
+            if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
+                && WorldDataManager.Instance != null)
+            {
+                var cleanupService = new OrphanedDataCleanupService(
+                    ItemCatalogService.Instance,
+                    PlantCatalogService.Instance,
+                    ResourceCatalogManager.Instance,
+                    RecipeCatalogService.Instance,
+                    WorldDataManager.Instance);
+
+                // Subscribe chest item drop event so valid items are spawned in the world
+                var dropSyncManager = FindAnyObjectByType<DroppedItemSyncManager>();
+                if (dropSyncManager != null)
+                {
+                    cleanupService.OnChestItemDrop += (itemId, quantity, worldPos) =>
+                    {
+                        var itemData = ItemCatalogService.Instance.GetItemData(itemId);
+                        if (itemData == null) return;
+                        var itemModel = new ItemModel(itemData, Quality.Normal, quantity);
+                        var dropData = DroppedItemData.FromItemModel(itemModel, worldPos.x, worldPos.y);
+                        if (dropData != null)
+                            dropSyncManager.SendDropRequest(dropData);
+                    };
+                }
+
+                var report = cleanupService.RunCleanup();
+                if (report.TotalCleaned > 0)
+                {
+                    Debug.LogWarning($"[WorldDataBootstrapper] Orphaned data cleanup: " +
+                        $"crops={report.OrphanedCrops}, structures={report.OrphanedStructures}, " +
+                        $"resources={report.OrphanedResources}, inventory={report.OrphanedInventorySlots}, " +
+                        $"chests={report.OrphanedChestSlots}, recipes={report.OrphanedRecipes}");
+
+                    // Show notification to the player
+                    var notificationView = FindAnyObjectByType<CleanupNotificationView>();
+                    if (notificationView != null)
+                    {
+                        var presenter = new CleanupNotificationPresenter(notificationView);
+                        presenter.NotifyCleanup(report);
+                    }
+                }
+            }
+
             IsReady = true;
-            Debug.Log($"[WorldDataBootstrapper] Ready. World: {data.worldName} | Characters: {data.characters?.Count ?? 0} | Chunks: {data.chunks?.Count ?? 0}");
+            OnWorldDataReady?.Invoke();
+            Debug.Log($"[WorldDataBootstrapper] Ready. World: {data.worldName} | Characters: {data.characters?.Count ?? 0} | Chunks: {data.chunks?.Count ?? 0} | Chests: {data.chests?.Count ?? 0}");
         }
     }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
     private class AcceptAllCertificates : CertificateHandler
     {
         protected override bool ValidateCertificate(byte[] certificateData) => true;
     }
+#endif
 }

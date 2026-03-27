@@ -3,6 +3,7 @@ using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.UI;
 
+[RequireComponent(typeof(StaminaView))]
 public class PlayerMovement : MonoBehaviourPun, IPunObservable
 {
     private PlayerMovementPresenter presenter;
@@ -13,10 +14,13 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
     private PhotonView _photonView;
     private SpriteRenderer spriteRenderer;
     private Collider2D playerCollider;
+    private StaminaView staminaView;
+    private bool sprintIntent;
 
     [SerializeField] private Camera playerCa;
     [SerializeField] private CinemachineCamera cinemachineCamera;
     [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float sprintSpeedMultiplier = 1.5f;
     [SerializeField] private Text _text;
 
     void Awake()
@@ -30,6 +34,7 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
                       ?? GetComponentInChildren<SpriteRenderer>();
         presenter      = new PlayerMovementPresenter();
         playerCollider = GetComponent<CapsuleCollider2D>();
+        staminaView    = GetComponent<StaminaView>() ?? gameObject.AddComponent<StaminaView>();
     }
 
     void Start()
@@ -67,10 +72,16 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
                 return;
             }
 
-            float rawX = Input.GetAxisRaw("Horizontal");
-            float rawY = Input.GetAxisRaw("Vertical");
+            Vector2 rawInput = Vector2.zero;
+            if (InputManager.Instance != null)
+                rawInput = InputManager.Instance.Move.ReadValue<Vector2>();
 
-            Vector2 direction = presenter.CalculateMovementDirection(rawX, rawY);
+            Vector2 direction = presenter.CalculateMovementDirection(rawInput.x, rawInput.y);
+            sprintIntent = InputManager.Instance != null
+                && InputManager.Instance.Sprint.ReadValue<float>() > 0f
+                && direction != Vector2.zero;
+
+            staminaView?.SetLocalSprintIntent(sprintIntent);
 
             if (direction != Vector2.zero)
                 lastInput = direction;
@@ -95,7 +106,11 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
             return;
         }
 
-        rb.linearVelocity = presenter.calculatePlayerVelocity(moveInput, moveSpeed);
+        float speedMultiplier = 1f;
+        if (sprintIntent && staminaView != null && staminaView.CanSprintLocally)
+            speedMultiplier = sprintSpeedMultiplier;
+
+        rb.linearVelocity = presenter.calculatePlayerVelocity(moveInput, moveSpeed * speedMultiplier);
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)

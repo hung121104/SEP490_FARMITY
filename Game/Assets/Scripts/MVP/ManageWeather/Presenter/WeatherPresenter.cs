@@ -50,4 +50,9 @@ public class WeatherPresenter
         service.SetRainChance(chance);
     }
 
+    public void RestoreFromSave(int todayWeather, int tomorrowWeather)
+    {
+        service.RestoreFromSave(todayWeather, tomorrowWeather);
+    }
+
 }

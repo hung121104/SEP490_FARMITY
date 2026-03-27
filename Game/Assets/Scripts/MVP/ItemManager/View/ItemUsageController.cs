@@ -1,13 +1,11 @@
 ﻿using UnityEngine;
+using CombatManager.Presenter;
+using UnityEngine;
 
 public class ItemUsageController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private HotbarView hotbarView;
-
-    [Header("Settings")]
-    [SerializeField] private LayerMask farmableGroundLayer;
-    [SerializeField] private LayerMask targetLayer;
 
     private HotbarPresenter presenter;
     private ItemUsagePresenter itemUsagePresenter;
@@ -68,6 +66,15 @@ public class ItemUsageController : MonoBehaviour
     {
         _currentItem = item;
 
+        // Weapon equip is explicit via use input (right-click flow), not by slot selection.
+        if (item is WeaponData)
+            return;
+
+        if (WeaponEquipPresenter.Instance != null && WeaponEquipPresenter.Instance.IsWeaponEquipped())
+        {
+            WeaponEquipPresenter.Instance.UnequipWeapon();
+        }
+
         if (item is ToolData tool)
         {
             string configId = MaterialCatalogService.Instance?.GetMaterial(tool.toolMaterialId)?.materialId;
@@ -94,6 +101,13 @@ public class ItemUsageController : MonoBehaviour
 
     private void HandleItemUsed(ItemData item, Vector3 targetPosition, int inventorySlotIndex)
     {
+        // Block usage of fallback placeholder items (orphaned data from deleted catalog entries)
+        if (item.isFallback)
+        {
+            Debug.LogWarning($"[ItemUsageController] Blocked use of fallback item '{item.itemID}'. This item is no longer available.");
+            return;
+        }
+
         Debug.Log("ItemUsageController: Using " + item.itemName + " at " + targetPosition);
 
         // Update tool layer sprite before the action plays
@@ -109,15 +123,41 @@ public class ItemUsageController : MonoBehaviour
                 itemUsagePresenter.UseTool(item, targetPosition);
                 break;
 
+            case ItemType.Fertilizer:
+                void OnFertilizeResult(bool success)
+                {
+                    CropFertilizingView.OnFertilizeResult -= OnFertilizeResult;
+                    Debug.Log($"[ItemUsageController] Fertilizer result: {(success ? "SUCCESS" : "FAILED")}");
+                    if (success)
+                        presenter.ConsumeCurrentItem(1);
+                }
+                CropFertilizingView.OnFertilizeResult += OnFertilizeResult;
+                bool fertilizerEventFired = itemUsagePresenter.UseFertilizer(item, targetPosition);
+                if (!fertilizerEventFired)
+                {
+                    Debug.LogWarning($"[ItemUsageController] Fertilizer event was NOT fired. " +
+                        $"Item runtime type: {item.GetType().Name} (expected FertilizerData). " +
+                        $"Check: 1) Item has itemType=Fertilizer in catalog, " +
+                        $"2) CropFertilizingView exists in scene and is enabled.");
+                    CropFertilizingView.OnFertilizeResult -= OnFertilizeResult;
+                }
+                break;
+
             case ItemType.Consumable:
                 var (consumed, amount) = itemUsagePresenter.UseConsumable(item, targetPosition);
                 if (consumed && amount > 0)
                     presenter.ConsumeCurrentItem(amount);
                 break;
 
+            case ItemType.Crop:
+            case ItemType.Forage:
+                var (foodConsumed, foodAmount) = itemUsagePresenter.UseConsumable(item, targetPosition);
+                if (foodConsumed && foodAmount > 0)
+                    presenter.ConsumeCurrentItem(foodAmount);
+                break;
+
             case ItemType.Weapon:
-                if (itemUsagePresenter.UseWeapon(item, targetPosition))
-                    presenter.ConsumeCurrentItem(1);
+                itemUsagePresenter.UseWeapon(item, targetPosition);
                 break;
 
             case ItemType.Pollen:
@@ -145,9 +185,10 @@ public class ItemUsageController : MonoBehaviour
                 break;
 
             case ItemType.Structure:
-                // Toggle and placement handled entirely by StructureView via UseStructureService.OnStructureRequested
-                // (mirrors the CropPlantingView / UseSeedService pattern)
-                itemUsagePresenter.UseStructure(item, targetPosition);
+                // Placement delegated to StructureView → StructurePresenter → StructureService
+                // Item consumed here on success (same pattern as Consumable, Fertilizer, etc.)
+                if (StructureView.Instance != null && StructureView.Instance.TryPlaceActiveStructure(item.itemID))
+                    presenter.ConsumeCurrentItem(1);
                 break;
 
             default:

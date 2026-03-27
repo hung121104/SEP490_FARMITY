@@ -33,4 +33,10 @@ public interface IInventoryView
 
     //Close operations
     void CancelAllActions();
+
+    // Position & Visibility
+    void ShowWithParent(Transform parentContainer);
+    void ReturnToOriginalParent();
+    void Show();
+    void Hide();
 }

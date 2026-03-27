@@ -17,11 +17,43 @@ public class PhotonMessageQueueManager : MonoBehaviour
     [Tooltip("Log when message queue is resumed")]
     private bool debugLog = true;
 
+    [SerializeField]
+    [Tooltip("Continuously ensure queue is running while connected and in-room")]
+    private bool enforceWhileInRoom = true;
+
+    [SerializeField]
+    [Tooltip("Watchdog interval in seconds")]
+    private float watchdogInterval = 0.5f;
+
+    private float _nextWatchdogTime;
+
     private void Awake()
     {
         if (resumeOnAwake)
         {
             ResumeMessageQueue();
+        }
+
+        _nextWatchdogTime = Time.unscaledTime + watchdogInterval;
+    }
+
+    private void Update()
+    {
+        if (!enforceWhileInRoom)
+            return;
+
+        if (Time.unscaledTime < _nextWatchdogTime)
+            return;
+
+        _nextWatchdogTime = Time.unscaledTime + watchdogInterval;
+
+        if (PhotonNetwork.IsConnected && PhotonNetwork.InRoom && !PhotonNetwork.IsMessageQueueRunning)
+        {
+            PhotonNetwork.IsMessageQueueRunning = true;
+            if (debugLog)
+            {
+                Debug.Log("[PhotonMessageQueueManager] Watchdog resumed message queue while in-room.");
+            }
         }
     }
 

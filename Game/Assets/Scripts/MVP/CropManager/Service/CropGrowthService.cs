@@ -14,6 +14,19 @@ public class CropGrowthService : ICropGrowthService
     private readonly WorldDataManager worldData;
     private readonly ChunkDataSyncManager syncManager;
 
+    // Cached to avoid FindAnyObjectByType per decay tick
+    private ChunkLoadingManager _chunkLoader;
+
+    // ── Configuration ─────────────────────────────────────────────────────
+    /// <inheritdoc/>
+    public float WateringSpeedMultiplier { get; set; } = 2f;
+
+    /// <inheritdoc/>
+    public float WaterDecayDurationMinutes { get; set; } = 24f;
+
+    /// <inheritdoc/>
+    public bool IsRaining { get; set; }
+
     // ── Events ────────────────────────────────────────────────────────────
     /// <inheritdoc/>
     public event System.Action<int, int, byte> OnCropStageChanged;
@@ -128,16 +141,27 @@ public class CropGrowthService : ICropGrowthService
 
                     // ── Per-tile speed multiplier from watering / fertilizer ──
                     float speedMult = 1f;
-                    if (tile.Crop.IsWatered)    speedMult *= 2f;
-                    else                        speedMult *= 0.5f;
+                    if (tile.Crop.IsWatered)    speedMult *= WateringSpeedMultiplier;
                     if (tile.Crop.IsFertilized) speedMult *= 1.5f;
 
+                    float prevTimerFloor = Mathf.FloorToInt(tile.Crop.GrowthTimer);
                     float addedTime = deltaTime * speedMult;
                     worldData.AddGrowthTime(worldPos, addedTime);
 
                     // Re-read updated timer
                     if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData updatedTile))
                         continue;
+
+                    // Throttle dirty marking to once per game-minute of accumulated growth.
+                    // This ensures partial-stage progress survives quit/autosave even when
+                    // no stage transition has occurred yet.
+                    if ((!PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient)
+                        && Mathf.FloorToInt(updatedTile.GrowthTimer) != prevTimerFloor)
+                    {
+                        int cx = Mathf.FloorToInt(tile.WorldX / 30f);
+                        int cy = Mathf.FloorToInt(tile.WorldY / 30f);
+                        WorldSaveManager.TryMarkChunkDirty(cx, cy, sectionConfig.SectionId);
+                    }
 
                     int nextStageIndex = updatedTile.CropStage + 1;
                     // Hybrid mature step may not have a growthStages entry — default to 60s.
@@ -152,6 +176,17 @@ public class CropGrowthService : ICropGrowthService
                         // Carry over excess time for the next stage
                         worldData.UpdateGrowthTimer(worldPos, updatedTile.GrowthTimer - durationRequired);
 
+                        // Always mark the chunk dirty so the stage change is saved on the next
+                        // auto-save / quit — even in offline mode where BroadcastCropStageUpdated
+                        // is intentionally skipped (IsConnected == false).
+                        // In online mode we only save from the master client (same rule as MarkDirty).
+                        if (!PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient)
+                        {
+                            int cx  = Mathf.FloorToInt(tile.WorldX / 30f);
+                            int cy  = Mathf.FloorToInt(tile.WorldY / 30f);
+                            WorldSaveManager.TryMarkChunkDirty(cx, cy, sectionConfig.SectionId);
+                        }
+
                         if (PhotonNetwork.IsConnected && syncManager != null)
                             syncManager.BroadcastCropStageUpdated(tile.WorldX, tile.WorldY, newStage);
 
@@ -161,6 +196,52 @@ public class CropGrowthService : ICropGrowthService
                         {
                             Debug.Log($"[CropGrowthService] '{updatedTile.PlantId}' at ({tile.WorldX},{tile.WorldY}) ready to harvest.");
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    public void TickWaterDecay(float gameMinutesDelta)
+    {
+        if (worldData == null || gameMinutesDelta <= 0f) return;
+
+        // Pause water decay while it's raining
+        if (IsRaining) return;
+
+        for (int s = 0; s < worldData.sectionConfigs.Count; s++)
+        {
+            var sectionConfig = worldData.sectionConfigs[s];
+            if (!sectionConfig.IsActive) continue;
+
+            var section = worldData.GetSection(sectionConfig.SectionId);
+            if (section == null) continue;
+
+            foreach (var chunkPair in section)
+            {
+                UnifiedChunkData chunk = chunkPair.Value;
+
+                foreach (var tile in chunk.GetAllTiles())
+                {
+                    if (!tile.IsTilled || !tile.Crop.IsWatered) continue;
+
+                    // Accumulate decay time
+                    chunk.AddWaterDecayTime(tile.WorldX, tile.WorldY, gameMinutesDelta);
+
+                    if (tile.Crop.WaterDecayTimer + gameMinutesDelta >= WaterDecayDurationMinutes)
+                    {
+                        chunk.UnwaterTile(tile.WorldX, tile.WorldY);
+
+                        // Remove the watered overlay tile from the tilemap directly
+                        if (_chunkLoader == null)
+                            _chunkLoader = UnityEngine.Object.FindAnyObjectByType<ChunkLoadingManager>();
+
+                        _chunkLoader?.ClearWateredTileAt(new Vector3(tile.WorldX, tile.WorldY, 0));
+
+                        if (PhotonNetwork.IsConnected && syncManager != null)
+                            syncManager.BroadcastTileUnwatered(tile.WorldX, tile.WorldY);
+
+                        Debug.Log($"[CropGrowthService] Water evaporated at ({tile.WorldX},{tile.WorldY}) after {WaterDecayDurationMinutes} game-minutes.");
                     }
                 }
             }
@@ -193,5 +274,37 @@ public class CropGrowthService : ICropGrowthService
 
         OnCropStageChanged?.Invoke(worldX, worldY, newStage);
         Debug.Log($"[CropGrowthService] Force-grew ({worldX},{worldY}) → stage {newStage}.");
+    }
+
+    public void WaterAllTilledTiles()
+    {
+        if (worldData == null) return;
+
+        int count = 0;
+
+        for (int s = 0; s < worldData.sectionConfigs.Count; s++)
+        {
+            var sectionConfig = worldData.sectionConfigs[s];
+            if (!sectionConfig.IsActive) continue;
+
+            var section = worldData.GetSection(sectionConfig.SectionId);
+            if (section == null) continue;
+
+            foreach (var chunkPair in section)
+            {
+                UnifiedChunkData chunk = chunkPair.Value;
+
+                foreach (var tile in chunk.GetAllTiles())
+                {
+                    if (!tile.IsTilled || tile.Crop.IsWatered) continue;
+
+                    chunk.WaterTile(tile.WorldX, tile.WorldY);
+                    count++;
+                }
+            }
+        }
+
+        if (count > 0)
+            Debug.Log($"[CropGrowthService] Rain watered {count} tilled tiles.");
     }
 }

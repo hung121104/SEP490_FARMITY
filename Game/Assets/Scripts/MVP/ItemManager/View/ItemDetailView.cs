@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -127,13 +127,15 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
 
     public void SetPosition(Vector2 screenPosition)
     {
-        if (panelRectTransform == null || parentCanvas == null) return;
+        if (panelRectTransform == null || parentCanvas == null || panelRectTransform.parent == null) return;
 
-        // Convert screen position to canvas position
+        Camera cam = parentCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? parentCanvas.worldCamera : null;
+
+        // Convert screen position to local position of whatever PARENT it currently belongs to
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            parentCanvas.transform as RectTransform,
+            panelRectTransform.parent as RectTransform,
             screenPosition,
-            parentCanvas.worldCamera,
+            cam,
             out Vector2 localPoint
         );
 
@@ -197,19 +199,27 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
 
     private Vector2 ClampToCanvas(Vector2 localPoint)
     {
-        if (parentCanvas == null || panelRectTransform == null) return localPoint;
+        if (parentCanvas == null || panelRectTransform == null || panelRectTransform.parent == null) return localPoint;
 
         Vector2 pivot = panelRectTransform.pivot;
         Vector2 size = panelRectTransform.rect.size;
 
         RectTransform canvasRect = parentCanvas.transform as RectTransform;
-        Vector2 canvasSize = canvasRect.rect.size;
+        RectTransform parentRect = panelRectTransform.parent as RectTransform;
 
-        // Calculate bounds
-        float minX = -canvasSize.x / 2 + size.x * pivot.x;
-        float maxX = canvasSize.x / 2 - size.x * (1 - pivot.x);
-        float minY = -canvasSize.y / 2 + size.y * pivot.y;
-        float maxY = canvasSize.y / 2 - size.y * (1 - pivot.y);
+        // Find the canvas corners in world space
+        Vector3[] canvasCorners = new Vector3[4];
+        canvasRect.GetWorldCorners(canvasCorners);
+        
+        // Convert bottom-left (0) and top-right (2) corners from world to parent local space
+        Vector3 bottomLeftLocal = parentRect.InverseTransformPoint(canvasCorners[0]);
+        Vector3 topRightLocal = parentRect.InverseTransformPoint(canvasCorners[2]);
+
+        // Calculate bounds in local space relative to the panel's pivot/size
+        float minX = bottomLeftLocal.x + size.x * pivot.x;
+        float maxX = topRightLocal.x - size.x * (1 - pivot.x);
+        float minY = bottomLeftLocal.y + size.y * pivot.y;
+        float maxY = topRightLocal.y - size.y * (1 - pivot.y);
 
         // Clamp position
         localPoint.x = Mathf.Clamp(localPoint.x, minX, maxX);

@@ -20,6 +20,7 @@ public class RecipeModel
 
     public System.Collections.Generic.List<RecipeIngredient> Ingredients => recipeData.ingredients;
     public CraftingCategory Category   => recipeData.Category;
+    public int              RecipeLevel => recipeData.recipeLevel;
 
     public RecipeModel(RecipeData data)
     {

@@ -82,6 +82,19 @@ public class CropPlantingService : ICropPlantingService
                 RefreshChunkVisuals(chunkPos);
             }
 
+            // Mark dirty unconditionally so offline mode saves planting too.
+            // In online mode this also runs — the subsequent broadcast will also call
+            // MarkDirty, which is harmless (_dirtyChunks is a set).
+            if (!PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient)
+            {
+                int cx        = Mathf.FloorToInt(worldX / 30f);
+                int cy        = Mathf.FloorToInt(worldY / 30f);
+                int sectionId = WorldDataManager.Instance != null
+                    ? WorldDataManager.Instance.GetSectionIdFromWorldPosition(worldPosition)
+                    : 0;
+                WorldSaveManager.TryMarkChunkDirty(cx, cy, sectionId);
+            }
+
             // Sync to network if connected
             if (PhotonNetwork.IsConnected && syncManager != null)
             {

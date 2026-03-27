@@ -80,5 +80,19 @@ public class CraftingModel
         return GetRecipesByType(RecipeType.Cooking);
     }
 
+    public List<RecipeModel> GetCraftingRecipesByLevel(int stationLevel)
+    {
+        return recipes.Values
+            .Where(r => r.RecipeType == RecipeType.Crafting && r.isUnlocked && r.RecipeLevel <= stationLevel)
+            .ToList();
+    }
+
+    public List<RecipeModel> GetCookingRecipesByLevel(int stationLevel)
+    {
+        return recipes.Values
+            .Where(r => r.RecipeType == RecipeType.Cooking && r.isUnlocked && r.RecipeLevel <= stationLevel)
+            .ToList();
+    }
+
     #endregion
 }

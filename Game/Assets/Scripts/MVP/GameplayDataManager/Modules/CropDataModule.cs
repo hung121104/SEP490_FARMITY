@@ -21,38 +21,17 @@ public class CropDataModule : IWorldDataModule
         this.manager       = manager;
         this.showDebugLogs = manager.showDebugLogs;
 
+        // Only create the section-level dictionaries here.
+        // Individual UnifiedChunkData instances are allocated lazily on first access via GetChunk(),
+        // which avoids pre-allocating empty dictionaries for all 24+ chunks before any data arrives.
         foreach (var config in manager.sectionConfigs)
         {
             if (!config.IsActive) continue;
-
             sections[config.SectionId] = new Dictionary<Vector2Int, UnifiedChunkData>();
-
-            for (int x = 0; x < config.ChunksWidth; x++)
-            {
-                for (int y = 0; y < config.ChunksHeight; y++)
-                {
-                    int worldChunkX = config.ChunkStartX + x;
-                    int worldChunkY = config.ChunkStartY + y;
-                    Vector2Int chunkPos = new Vector2Int(worldChunkX, worldChunkY);
-
-                    sections[config.SectionId][chunkPos] = new UnifiedChunkData
-                    {
-                        ChunkX    = worldChunkX,
-                        ChunkY    = worldChunkY,
-                        SectionId = config.SectionId,
-                        IsLoaded  = true
-                    };
-                }
-            }
         }
 
         if (showDebugLogs)
-        {
-            int totalChunks = 0;
-            foreach (var section in sections.Values)
-                totalChunks += section.Count;
-            Debug.Log($"[CropDataModule] Initialized with {sections.Count} sections, {totalChunks} chunks");
-        }
+            Debug.Log($"[CropDataModule] Initialized {sections.Count} section(s) (chunks are lazy-allocated on first access)");
     }
 
     // ── Chunk/Section access ──────────────────────────────────────────────
@@ -60,7 +39,27 @@ public class CropDataModule : IWorldDataModule
     public UnifiedChunkData GetChunk(int sectionId, Vector2Int chunkPos)
     {
         if (!sections.TryGetValue(sectionId, out var section)) return null;
-        section.TryGetValue(chunkPos, out var chunk);
+
+        if (!section.TryGetValue(chunkPos, out var chunk))
+        {
+            // Lazy-allocate on first access: find the matching section config to fill metadata
+            WorldSectionConfig cfg = null;
+            foreach (var c in manager.sectionConfigs)
+            {
+                if (c.SectionId == sectionId && c.ContainsChunk(chunkPos)) { cfg = c; break; }
+            }
+            if (cfg == null) return null; // chunk position not in this section
+
+            chunk = new UnifiedChunkData
+            {
+                ChunkX    = chunkPos.x,
+                ChunkY    = chunkPos.y,
+                SectionId = sectionId,
+                IsLoaded  = false
+            };
+            section[chunkPos] = chunk;
+        }
+
         return chunk;
     }
 
@@ -197,6 +196,66 @@ public class CropDataModule : IWorldDataModule
         if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
             return false;
         return chunk.IsPollinatedAt(wx, wy);
+    }
+
+    // ── Watering ──────────────────────────────────────────────────────────
+
+    public bool WaterTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
+            return false;
+
+        bool success = chunk.WaterTile(wx, wy);
+        if (success && showDebugLogs)
+        {
+            Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+            Debug.Log($"✓ Watered tile at ({wx},{wy}) [Chunk: {chunkPos}, Section: {sectionId}]");
+        }
+        return success;
+    }
+
+    public bool UnwaterTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.UnwaterTile(wx, wy);
+    }
+
+    public bool IsWateredAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.IsWateredAt(wx, wy);
+    }
+
+    public bool AddWaterDecayTime(Vector3 worldPos, float deltaMinutes)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.AddWaterDecayTime(wx, wy, deltaMinutes);
+    }
+
+    // ── Fertilizer ────────────────────────────────────────────────────────
+
+    public bool FertilizeTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
+            return false;
+
+        bool success = chunk.FertilizeTile(wx, wy);
+        if (success && showDebugLogs)
+        {
+            Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+            Debug.Log($"✓ Fertilized tile at ({wx},{wy}) [Chunk: {chunkPos}, Section: {sectionId}]");
+        }
+        return success;
+    }
+
+    public bool IsFertilizedAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.IsFertilizedAt(wx, wy);
     }
 
     // ── IWorldDataModule ──────────────────────────────────────────────────

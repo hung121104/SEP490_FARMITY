@@ -18,6 +18,7 @@ namespace CombatManager.Service
         #region Knockback
 
         void ApplyKnockback(Transform enemyTransform, float knockbackForce);
+        void ApplyKnockbackFromPosition(Vector2 sourcePosition, float knockbackForce);
         bool IsKnockbackActive();
 
         #endregion

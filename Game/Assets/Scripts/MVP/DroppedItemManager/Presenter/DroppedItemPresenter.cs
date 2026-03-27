@@ -13,9 +13,6 @@ using Photon.Pun;
 ///   - Handle drop/pickup request flow
 ///   - Decide when to spawn/despawn visuals based on chunk state
 ///   - Trigger inventory integration for local player pickups
-///
-/// All Unity-specific operations (Instantiate, Destroy, FindObject) are in the View.
-/// All business logic (data creation, registry) is in the Service.
 /// </summary>
 public class DroppedItemPresenter
 {
@@ -37,6 +34,12 @@ public class DroppedItemPresenter
 
     /// <summary>Request the View to clear all active visuals (used during rebuild).</summary>
     public event Action OnClearAllVisualsRequested;
+
+    /// <summary>Request the View to add a PARTIAL amount of picked-up item to inventory.</summary>
+    public event Action<DroppedItemData, int> OnPartialPickupToInventoryRequested;
+
+    /// <summary>Request the View to update visual for a partial pickup.</summary>
+    public event Action<DroppedItemData> OnVisualQuantityUpdateRequested;
 
     // ── Constructor ───────────────────────────────────────────
 
@@ -69,6 +72,7 @@ public class DroppedItemPresenter
             syncManager.OnItemSpawned += HandleItemSpawned;
             syncManager.OnItemRemoved += HandleItemRemoved;
             syncManager.OnSyncBatchReceived += HandleSyncBatch;
+            syncManager.OnItemPartiallyPicked += HandleItemPartiallyPicked;
         }
         else
         {
@@ -84,6 +88,7 @@ public class DroppedItemPresenter
             syncManager.OnItemSpawned -= HandleItemSpawned;
             syncManager.OnItemRemoved -= HandleItemRemoved;
             syncManager.OnSyncBatchReceived -= HandleSyncBatch;
+            syncManager.OnItemPartiallyPicked -= HandleItemPartiallyPicked;
         }
     }
 
@@ -234,8 +239,6 @@ public class DroppedItemPresenter
         else if (isLocalDrop)
         {
             // Always spawn items dropped by the local player — they are standing right here.
-            // The chunk may not be tracked yet (ChunkLoadingManager still initializing),
-            // but the item should be visible immediately.
             if (showDebugLogs)
                 Debug.Log($"[DroppedItemPresenter] Chunk ({chunk.x},{chunk.y}) not loaded, but item was dropped locally — spawning anyway.");
             OnSpawnVisualRequested?.Invoke(data);
@@ -269,6 +272,32 @@ public class DroppedItemPresenter
         if (pickedByActorNumber == PhotonNetwork.LocalPlayer.ActorNumber && data != null)
         {
             OnAddToInventoryRequested?.Invoke(data);
+        }
+    }
+
+    /// <summary>
+    /// Called when Master confirms an item was partially picked up.
+    /// Updates service quantity, visual, and adds to local inventory.
+    /// </summary>
+    private void HandleItemPartiallyPicked(string dropId, int amountPicked, int pickedByActorNumber)
+    {
+        DroppedItemData data = service.GetItem(dropId);
+        if (data == null) return;
+
+        // Reduce local quantity
+        data.quantity -= amountPicked;
+        if (data.quantity < 0) data.quantity = 0;
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemPresenter] Item partially picked: {dropId}, picked={amountPicked}, remaining={data.quantity}");
+
+        // Update visual
+        OnVisualQuantityUpdateRequested?.Invoke(data);
+
+        // If local player picked it, add the amount to inventory
+        if (pickedByActorNumber == PhotonNetwork.LocalPlayer.ActorNumber)
+        {
+            OnPartialPickupToInventoryRequested?.Invoke(data, amountPicked);
         }
     }
 

@@ -73,4 +73,101 @@ public static class WorldDataManagerCropExtensions
 
     public static bool IsPollinatedAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
         => manager.CropData?.IsPollinatedAtWorldPosition(worldPos) ?? false;
+
+    public static bool WaterTileAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.WaterTileAtWorldPosition(worldPos) ?? false;
+
+    public static bool UnwaterTileAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.UnwaterTileAtWorldPosition(worldPos) ?? false;
+
+    public static bool IsWateredAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.IsWateredAtWorldPosition(worldPos) ?? false;
+
+    public static bool AddWaterDecayTime(this WorldDataManager manager, Vector3 worldPos, float deltaMinutes)
+        => manager.CropData?.AddWaterDecayTime(worldPos, deltaMinutes) ?? false;
+
+    public static bool FertilizeTileAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.FertilizeTileAtWorldPosition(worldPos) ?? false;
+
+    public static bool IsFertilizedAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+        => manager.CropData?.IsFertilizedAtWorldPosition(worldPos) ?? false;
+}
+
+/// <summary>
+/// Extension methods for WorldDataManager - Resource operations.
+/// Keeps WorldDataManager focused on core coordination (SOLID - Single Responsibility).
+/// </summary>
+public static class WorldDataManagerResourceExtensions
+{
+    public static bool PlaceResourceAtWorldPosition(this WorldDataManager manager, Vector3 worldPos, string resourceId, int currentHp)
+    {
+        if (manager.CropData == null) return false;
+        int wx = Mathf.FloorToInt(worldPos.x);
+        int wy = Mathf.FloorToInt(worldPos.y);
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        var chunkPos = manager.WorldToChunkCoords(worldPos);
+        var chunk = manager.CropData.GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+        
+        return chunk.PlaceResource(resourceId, currentHp, wx, wy);
+    }
+
+    public static bool RemoveResourceAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+    {
+        if (manager.CropData == null) return false;
+        int wx = Mathf.FloorToInt(worldPos.x);
+        int wy = Mathf.FloorToInt(worldPos.y);
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        var chunkPos = manager.WorldToChunkCoords(worldPos);
+        var chunk = manager.CropData.GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+        
+        return chunk.RemoveResource(wx, wy);
+    }
+
+    public static bool HasResourceAtWorldPosition(this WorldDataManager manager, Vector3 worldPos)
+    {
+        if (manager.CropData == null) return false;
+        int wx = Mathf.FloorToInt(worldPos.x);
+        int wy = Mathf.FloorToInt(worldPos.y);
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        var chunkPos = manager.WorldToChunkCoords(worldPos);
+        var chunk = manager.CropData.GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+
+        return chunk.HasResource(wx, wy);
+    }
+
+    public static bool TryGetResourceAtWorldPosition(this WorldDataManager manager, Vector3 worldPos,
+                                                  out UnifiedChunkData.ResourceTileData resource)
+    {
+        resource = default;
+        if (manager.CropData == null) return false;
+        int wx = Mathf.FloorToInt(worldPos.x);
+        int wy = Mathf.FloorToInt(worldPos.y);
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        var chunkPos = manager.WorldToChunkCoords(worldPos);
+        var chunk = manager.CropData.GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+
+        return chunk.TryGetResource(wx, wy, out resource);
+    }
+
+    public static bool UpdateResourceHpAtWorldPosition(this WorldDataManager manager, Vector3 worldPos, int newHp)
+    {
+        if (manager.CropData == null) return false;
+        int wx = Mathf.FloorToInt(worldPos.x);
+        int wy = Mathf.FloorToInt(worldPos.y);
+        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        if (sectionId == -1) return false;
+        var chunkPos = manager.WorldToChunkCoords(worldPos);
+        var chunk = manager.CropData.GetChunk(sectionId, chunkPos);
+        if (chunk == null) return false;
+
+        return chunk.UpdateResourceHp(wx, wy, newHp);
+    }
 }

@@ -3,8 +3,16 @@ import { Document } from 'mongoose';
 
 export type AccountDocument = Account & Document;
 
+export class AccountAchievementProgress {
+  @Prop({ type: [Number], default: [] })
+  progress: number[];
 
-@Schema()
+  @Prop({ default: null })
+  achievedAt: Date | null;
+}
+
+
+@Schema({ timestamps: true })
 export class Account {
   @Prop({ required: true, unique: true })
   username: string;
@@ -30,6 +38,17 @@ export class Account {
 
   @Prop()
   resetOtpRequestedAt?: Date;
+
+  @Prop({
+    type: Map,
+    of: {
+      progress: { type: [Number], default: [] },
+      achievedAt: { type: Date, default: null },
+    },
+    default: () => new Map(),
+  })
+  achievementProgress: Map<string, AccountAchievementProgress>;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);
+AccountSchema.index({ isAdmin: 1, createdAt: 1 });

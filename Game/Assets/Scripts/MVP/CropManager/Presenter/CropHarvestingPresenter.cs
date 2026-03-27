@@ -33,7 +33,10 @@ public class CropHarvestingPresenter
         bool success = service.TryHarvest(worldPos, out ItemData harvestedItem);
 
         if (success)
+        {
             view.OnHarvestSuccess(worldPos, harvestedItem);
+            GameEventBus.FireCropHarvested(harvestedItem?.itemID);
+        }
         else
             view.OnHarvestFailed(worldPos);
     }

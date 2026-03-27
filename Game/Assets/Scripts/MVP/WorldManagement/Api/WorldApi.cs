@@ -20,14 +20,17 @@ public static class WorldApi
     [Serializable]
     public class TileDataDto
     {
-        [JsonProperty("type",               NullValueHandling = NullValueHandling.Ignore)] public string type;
-        [JsonProperty("plantId",            NullValueHandling = NullValueHandling.Ignore)] public string plantId;
-        [JsonProperty("cropStage",          NullValueHandling = NullValueHandling.Ignore)] public int?   cropStage;
-        [JsonProperty("growthTimer",        NullValueHandling = NullValueHandling.Ignore)] public float? growthTimer;
-        [JsonProperty("pollenHarvestCount", NullValueHandling = NullValueHandling.Ignore)] public int?   pollenHarvestCount;
-        [JsonProperty("isWatered",          NullValueHandling = NullValueHandling.Ignore)] public bool?  isWatered;
-        [JsonProperty("isFertilized",       NullValueHandling = NullValueHandling.Ignore)] public bool?  isFertilized;
-        [JsonProperty("isPollinated",       NullValueHandling = NullValueHandling.Ignore)] public bool?  isPollinated;
+        /// <summary>"crop" | "tilled" | "resource" | "empty"</summary>
+        [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
+        public string type;
+
+        /// <summary>
+        /// All crop-specific fields are captured here automatically via Newtonsoft
+        /// JsonExtensionData.  Adding a new field to CropTileData requires NO change
+        /// to this class — it flows through to the server transparently.
+        /// </summary>
+        [JsonExtensionData]
+        public Dictionary<string, Newtonsoft.Json.Linq.JToken> _extra;
     }
 
     /// <summary>
@@ -66,6 +69,37 @@ public static class WorldApi
         [JsonProperty("slots")]     public Dictionary<string, InventorySlotDelta> slots;
     }
 
+    // ── Chest delta DTOs ──────────────────────────────────────────────────────
+
+    [Serializable]
+    public class ChestSlotDelta
+    {
+        [JsonProperty("itemId")]   public string itemId;
+        [JsonProperty("quantity")] public int    quantity;
+    }
+
+    /// <summary>
+    /// One chest's changed slots.
+    /// Key of the slots dictionary = slot index as string ("0"–"35").
+    /// </summary>
+    [Serializable]
+    public class ChestDelta
+    {
+        [JsonProperty("tileX")]          public int tileX;
+        [JsonProperty("tileY")]          public int tileY;
+        [JsonProperty("maxSlots")]       public int maxSlots;
+        [JsonProperty("structureLevel")] public int structureLevel;
+        [JsonProperty("slots")]          public Dictionary<string, ChestSlotDelta> slots;
+    }
+
+    /// <summary>Identifies a chest that was destroyed and should be removed from DB.</summary>
+    [Serializable]
+    public class DeletedChest
+    {
+        [JsonProperty("tileX")] public int tileX;
+        [JsonProperty("tileY")] public int tileY;
+    }
+
     // -------------------------------------------------------------------------
     //  Request model
     // -------------------------------------------------------------------------
@@ -83,6 +117,9 @@ public static class WorldApi
         [JsonProperty("minute", NullValueHandling = NullValueHandling.Ignore)] public int? minute;
         [JsonProperty("gold",   NullValueHandling = NullValueHandling.Ignore)] public int? gold;
 
+        [JsonProperty("weatherToday",    NullValueHandling = NullValueHandling.Ignore)] public int? weatherToday;
+        [JsonProperty("weatherTomorrow", NullValueHandling = NullValueHandling.Ignore)] public int? weatherTomorrow;
+
         [JsonProperty("characters", NullValueHandling = NullValueHandling.Ignore)]
         public List<CharacterUpdate> characters;
 
@@ -98,6 +135,18 @@ public static class WorldApi
         [JsonProperty("inventoryDeltas", NullValueHandling = NullValueHandling.Ignore)]
         public List<PlayerInventoryDelta> inventoryDeltas;
 
+        /// <summary>
+        /// Only dirty chests are included.  Null / empty → no chest changes to save.
+        /// </summary>
+        [JsonProperty("chestDeltas", NullValueHandling = NullValueHandling.Ignore)]
+        public List<ChestDelta> chestDeltas;
+
+        /// <summary>
+        /// Chests destroyed since last save.  Null / empty → no chests to delete.
+        /// </summary>
+        [JsonProperty("deletedChests", NullValueHandling = NullValueHandling.Ignore)]
+        public List<DeletedChest> deletedChests;
+
         public class CharacterUpdate
         {
             [JsonProperty("accountId")]  public string accountId;
@@ -105,10 +154,28 @@ public static class WorldApi
             [JsonProperty("positionY")]  public float  positionY;
             [JsonProperty("sectionIndex", NullValueHandling = NullValueHandling.Ignore)] public int? sectionIndex;
 
-            [JsonProperty("hairConfigId",   NullValueHandling = NullValueHandling.Ignore)] public string hairConfigId;
-            [JsonProperty("outfitConfigId", NullValueHandling = NullValueHandling.Ignore)] public string outfitConfigId;
-            [JsonProperty("hatConfigId",    NullValueHandling = NullValueHandling.Ignore)] public string hatConfigId;
-            [JsonProperty("toolConfigId",   NullValueHandling = NullValueHandling.Ignore)] public string toolConfigId;
+            [JsonProperty("hairConfigId")]   public string hairConfigId;
+            [JsonProperty("outfitConfigId")] public string outfitConfigId;
+            [JsonProperty("hatConfigId")]    public string hatConfigId;
+            [JsonProperty("toolConfigId")]   public string toolConfigId;
+
+            [JsonProperty("currentStamina", NullValueHandling = NullValueHandling.Ignore)]
+            public float? currentStamina;
+
+            [JsonProperty("viableStamina", NullValueHandling = NullValueHandling.Ignore)]
+            public float? viableStamina;
+
+            [JsonProperty("regenBoostMultiplier", NullValueHandling = NullValueHandling.Ignore)]
+            public float? regenBoostMultiplier;
+
+            [JsonProperty("regenBoostRemaining", NullValueHandling = NullValueHandling.Ignore)]
+            public float? regenBoostRemaining;
+
+            [JsonProperty("toolEfficiencyReduction", NullValueHandling = NullValueHandling.Ignore)]
+            public float? toolEfficiencyReduction;
+
+            [JsonProperty("toolEfficiencyRemaining", NullValueHandling = NullValueHandling.Ignore)]
+            public float? toolEfficiencyRemaining;
         }
     }
 

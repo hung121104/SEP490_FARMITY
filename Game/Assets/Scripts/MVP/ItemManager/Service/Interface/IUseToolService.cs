@@ -7,5 +7,6 @@ public interface IUseToolService
     bool UsePickaxe(ToolData item, Vector3 pos);
     bool UseAxe(ToolData item, Vector3 pos);
     bool UseFishingRod(ToolData item, Vector3 pos);
+    bool UseFertilizer(FertilizerData item, Vector3 pos);
     bool UsePollen(PollenData pollen, Vector3 pos);
 }

@@ -21,7 +21,6 @@ namespace CombatManager.View
         [SerializeField] private Color normalColor = Color.white;
         [SerializeField] private Color cooldownColor = new Color(0.3f, 0.3f, 0.3f, 1f);
         [SerializeField] private Color emptyColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
-        [SerializeField] private Sprite emptyIcon;
 
         #region Unity Lifecycle
 
@@ -45,8 +44,10 @@ namespace CombatManager.View
         {
             if (skillIcon != null)
             {
-                skillIcon.sprite = icon != null ? icon : emptyIcon;
-                skillIcon.color = normalColor;
+                bool hasIcon = icon != null;
+                skillIcon.sprite = icon;
+                skillIcon.enabled = hasIcon;
+                skillIcon.color = hasIcon ? normalColor : Color.clear;
             }
 
             if (background != null)
@@ -58,7 +59,8 @@ namespace CombatManager.View
         {
             if (skillIcon != null)
             {
-                skillIcon.sprite = emptyIcon;
+                skillIcon.sprite = null;
+                skillIcon.enabled = false;
                 skillIcon.color = emptyColor;
             }
 
