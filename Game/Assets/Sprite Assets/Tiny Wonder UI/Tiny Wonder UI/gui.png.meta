@@ -1830,12 +1830,12 @@ TextureImporter:
       name: gui_64
       rect:
         serializedVersion: 2
-        x: 274
-        y: 207
-        width: 13
-        height: 18
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+        x: 275
+        y: 208
+        width: 11
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
