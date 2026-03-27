@@ -387,13 +387,17 @@ public class ChestPresenter
 
         if (!dragFromChest)
         {
-            chestView?.HideDragPreview();
-            draggedSlot = -1;
-            return;
+            // Player → Player: move/merge within player inventory while chest is open
+            if (draggedSlot != targetSlot)
+            {
+                playerInventoryService.MoveItem(draggedSlot, targetSlot);
+                RefreshPlayerSlot(draggedSlot);
+                RefreshPlayerSlot(targetSlot);
+            }
         }
         else
         {
-            // Chest → Player: transfer with swap support
+            // Chest → Player: transfer with merge/swap support
             transferService.TransferToPlayer(chestModel, draggedSlot, inventoryModel, targetSlot);
             SyncChestSlot(draggedSlot);
             SyncPlayerSlot(targetSlot);
