@@ -24,6 +24,21 @@ public class ChestService : IChestService
             chestModel.SetItemAtSlot(chestSlot, playerItem);
             playerModel.ClearSlot(playerSlot);
         }
+        else if (playerItem.CanStackWith(chestItem))
+        {
+            // Merge stacks
+            int spaceInTarget = chestItem.GetRemainingStackSpace();
+            int amountToMove = Mathf.Min(spaceInTarget, playerItem.Quantity);
+
+            if (amountToMove > 0)
+            {
+                chestItem.AddQuantity(amountToMove);
+                playerItem.AddQuantity(-amountToMove);
+
+                if (playerItem.Quantity <= 0)
+                    playerModel.ClearSlot(playerSlot);
+            }
+        }
         else
         {
             // Swap: exchange items between player and chest
@@ -51,6 +66,21 @@ public class ChestService : IChestService
             playerModel.SetItemAtSlot(playerSlot, chestItem);
             chestModel.ClearSlot(chestSlot);
         }
+        else if (chestItem.CanStackWith(playerItem))
+        {
+            // Merge stacks
+            int spaceInTarget = playerItem.GetRemainingStackSpace();
+            int amountToMove = Mathf.Min(spaceInTarget, chestItem.Quantity);
+
+            if (amountToMove > 0)
+            {
+                playerItem.AddQuantity(amountToMove);
+                chestItem.AddQuantity(-amountToMove);
+
+                if (chestItem.Quantity <= 0)
+                    chestModel.ClearSlot(chestSlot);
+            }
+        }
         else
         {
             // Swap: exchange items between chest and player
@@ -76,6 +106,21 @@ public class ChestService : IChestService
             // Simple move
             chestModel.SetItemAtSlot(toSlot, fromItem);
             chestModel.ClearSlot(fromSlot);
+        }
+        else if (fromItem.CanStackWith(toItem))
+        {
+            // Merge stacks
+            int spaceInTarget = toItem.GetRemainingStackSpace();
+            int amountToMove = Mathf.Min(spaceInTarget, fromItem.Quantity);
+
+            if (amountToMove > 0)
+            {
+                toItem.AddQuantity(amountToMove);
+                fromItem.AddQuantity(-amountToMove);
+
+                if (fromItem.Quantity <= 0)
+                    chestModel.ClearSlot(fromSlot);
+            }
         }
         else
         {

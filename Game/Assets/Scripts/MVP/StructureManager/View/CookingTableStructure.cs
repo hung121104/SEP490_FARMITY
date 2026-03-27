@@ -75,7 +75,7 @@ public class CookingTableStructure : InteractableStructureBase, IWorldStructure
         this.worldY = worldY;
         cookingLevel = structureData.StructureLevel;
 
-        SetupStructureInteractionBadge(structureData.StructureId);
+        SetupStructureInteractionBadge(structureData.StructureId, worldX, worldY);
     }
 
     // ── Badge (Open/Close Notifications) ─────────────────────────────────
