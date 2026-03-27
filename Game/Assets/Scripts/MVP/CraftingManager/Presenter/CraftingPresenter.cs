@@ -308,15 +308,27 @@ public class CraftingPresenter
         }
     }
 
+    private static readonly HashSet<CraftingCategory> craftingAllowedCategories = new HashSet<CraftingCategory>
+    {
+        CraftingCategory.Tools,
+        CraftingCategory.Materials,
+        CraftingCategory.Furniture
+    };
+
     private List<RecipeModel> GetFilteredRecipes()
     {
         // Get crafting recipes filtered by station level
         List<RecipeModel> recipes = craftingService.GetCraftingRecipesByLevel(currentStationLevel);
 
-        // Filter by category if not "All"
         if (currentCategory != CraftingCategory.General)
         {
+            // Filter by selected category
             recipes = recipes.Where(r => r.Category == currentCategory).ToList();
+        }
+        else
+        {
+            // "All" tab: only show categories that belong to crafting (exclude Food, etc.)
+            recipes = recipes.Where(r => craftingAllowedCategories.Contains(r.Category)).ToList();
         }
 
         return recipes;
