@@ -25,7 +25,13 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Game Scenes/AuthMenu/AuthScene.unity
   - m_enabled: 1
+    m_path: Assets/Scenes/Game Scenes/MainMenu/CreateWorldScene.unity
+  - m_enabled: 1
     m_path: Assets/Scenes/Game Scenes/MainMenu/MainMenuScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Game Scenes/MainMenu/OnlineWorldListScene.unity
+  - m_enabled: 1
+    m_path: Assets/Scenes/Game Scenes/MainMenu/PlayerWorldListScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Game Scenes/GameCoreTestScene.unity
   - m_enabled: 1

@@ -1,181 +1,85 @@
 using System.Collections;
-using System;
+using System.Collections.Generic;
 using UnityEngine;
-using TMPro;
-using UnityEngine.UI;
+using Photon.Pun;
 
-/// <summary>
-/// MVP View helper used only for updating world names.
-/// It sends worldId + worldName to PUT /player-data/world and does not perform auto-save.
-/// </summary>
 public class UpdateWorld : MonoBehaviour
 {
-    [Header("Reusable Rename Panel")]
-    [SerializeField] private TMP_InputField worldNameInput;
-    [SerializeField] private InputField legacyWorldNameInput;
-    [SerializeField] private GameObject renamePanelRoot;
+    [SerializeField] private float autoSaveInterval = 5f;
 
-    private string targetWorldId;
-
-    /// <summary>
-    /// Bind the popup to a specific world before showing it.
-    /// </summary>
-    public void BeginRenameForWorld(string worldId, string currentWorldName)
+    void Start()
     {
-        targetWorldId = worldId;
-        SetInputText(currentWorldName ?? string.Empty);
-
-        if (renamePanelRoot != null)
-        {
-            renamePanelRoot.SetActive(true);
-        }
+        InvokeRepeating(nameof(OnAutoSaveTick), autoSaveInterval, autoSaveInterval);
     }
 
-    /// <summary>
-    /// UI button hook on the reusable popup confirm button.
-    /// </summary>
-    public void OnUpdateButtonOnClick()
+    private void OnAutoSaveTick()
     {
-        string proposedName = ReadInputText();
-        if (string.IsNullOrEmpty(proposedName))
-        {
-            NotifyStatus("Rename failed: World name is empty.");
-            return;
-        }
+        // Only the master client drives the save — it has PlayerDataManager + WorldDataManager populated
+        if (!PhotonNetwork.IsMasterClient) return;
 
-        UpdateWorldNameById(targetWorldId, proposedName, (ok, response) =>
-        {
-            if (!ok)
-            {
-                NotifyStatus($"Rename failed: {response}");
-                return;
-            }
-
-            NotifyStatus($"World renamed to '{proposedName}'.");
-            RefreshWorldList();
-            ClearRenameState();
-            if (renamePanelRoot != null)
-            {
-                renamePanelRoot.SetActive(false);
-            }
-        });
+        StartCoroutine(SaveWorld());
     }
 
-    /// <summary>
-    /// Optional close/cancel hook for popup close button.
-    /// </summary>
-    public void OnCancelRenameButtonClick()
+    private IEnumerator SaveWorld()
     {
-        ClearRenameState();
-        if (renamePanelRoot != null)
+        // Guard: managers must be ready
+        if (WorldDataBootstrapper.Instance == null || !WorldDataBootstrapper.Instance.IsReady)
         {
-            renamePanelRoot.SetActive(false);
-        }
-    }
-
-    /// <summary>
-    /// Programmatic entry point for world-list flow where worldId is known per item.
-    /// </summary>
-    public void UpdateWorldNameById(string worldId, string newWorldName, Action<bool, string> onComplete = null)
-    {
-        string sanitized = string.IsNullOrEmpty(newWorldName) ? null : newWorldName.Trim();
-        if (string.IsNullOrEmpty(sanitized))
-        {
-            Debug.LogWarning("[UpdateWorld] World name is empty. Update cancelled.");
-            onComplete?.Invoke(false, "World name is empty.");
-            return;
-        }
-
-        if (string.IsNullOrEmpty(worldId))
-        {
-            Debug.LogWarning("[UpdateWorld] Missing worldId. Rename skipped.");
-            onComplete?.Invoke(false, "Missing worldId.");
-            return;
-        }
-
-        StartCoroutine(UpdateWorldNameRoutine(worldId, sanitized, onComplete));
-    }
-
-    private string ReadInputText()
-    {
-        if (worldNameInput != null && !string.IsNullOrEmpty(worldNameInput.text))
-        {
-            return worldNameInput.text.Trim();
-        }
-        if (legacyWorldNameInput != null && !string.IsNullOrEmpty(legacyWorldNameInput.text))
-        {
-            return legacyWorldNameInput.text.Trim();
-        }
-        return null;
-    }
-
-    private void SetInputText(string value)
-    {
-        if (worldNameInput != null)
-        {
-            worldNameInput.text = value;
-        }
-        if (legacyWorldNameInput != null)
-        {
-            legacyWorldNameInput.text = value;
-        }
-    }
-
-    private void ClearRenameState()
-    {
-        targetWorldId = null;
-        SetInputText(string.Empty);
-    }
-
-    private void NotifyStatus(string message)
-    {
-        MyWorldListView listView = UnityEngine.Object.FindFirstObjectByType<MyWorldListView>();
-        if (listView != null)
-        {
-            listView.UpdateStatus(message);
-        }
-        else
-        {
-            Debug.Log($"[UpdateWorld] {message}");
-        }
-    }
-
-    private void RefreshWorldList()
-    {
-        MyWorldListView listView = UnityEngine.Object.FindFirstObjectByType<MyWorldListView>();
-        if (listView != null)
-        {
-            listView.ReloadWorlds();
-        }
-    }
-
-    private IEnumerator UpdateWorldNameRoutine(string worldId, string newWorldName, Action<bool, string> onComplete)
-    {
-        string jwt = SessionManager.Instance?.JwtToken;
-        if (string.IsNullOrEmpty(jwt))
-        {
-            Debug.LogWarning("[UpdateWorld] Missing JWT token. Rename skipped.");
-            onComplete?.Invoke(false, "Missing JWT token.");
+            Debug.LogWarning("[UpdateWorld] Skipping save — world data not ready yet.");
             yield break;
         }
 
+        string worldId = WorldSelectionManager.Instance?.SelectedWorldId;
+        if (string.IsNullOrEmpty(worldId))
+        {
+            Debug.LogWarning("[UpdateWorld] Skipping save — no worldId.");
+            yield break;
+        }
+
+        string jwt = SessionManager.Instance?.JwtToken;
+        if (string.IsNullOrEmpty(jwt))
+        {
+            Debug.LogWarning("[UpdateWorld] Skipping save — no JWT token.");
+            yield break;
+        }
+
+        // Build character list from live PlayerEntity positions
+        var characters = new List<WorldApi.UpdateWorldRequest.CharacterUpdate>();
+        foreach (var go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+        {
+            PhotonView pv = go.GetComponent<PhotonView>();
+            if (pv == null || pv.Owner == null) continue;
+
+            if (!pv.Owner.CustomProperties.TryGetValue("accountId", out object rawId)) continue;
+            string accountId = rawId as string;
+            if (string.IsNullOrEmpty(accountId)) continue;
+            var cached = PlayerDataManager.Instance?.players.Find(p => p.accountId == accountId);
+
+            characters.Add(new WorldApi.UpdateWorldRequest.CharacterUpdate
+            {
+                accountId    = accountId,
+                positionX    = go.transform.position.x,
+                positionY    = go.transform.position.y,
+            });
+        }
+
+        var wdm = WorldDataManager.Instance;
         var request = new WorldApi.UpdateWorldRequest
         {
-            worldId = worldId,
-            worldName = newWorldName,
+            worldId    = worldId,
+            day        = wdm?.Day,
+            month      = wdm?.Month,
+            year       = wdm?.Year,
+            hour       = wdm?.Hour,
+            minute     = wdm?.Minute,
+            gold       = wdm?.Gold,
+            characters = characters.Count > 0 ? characters : null
         };
 
         yield return StartCoroutine(WorldApi.UpdateWorld(jwt, request, (ok, json) =>
         {
-            if (!ok)
-            {
-                Debug.LogWarning($"[UpdateWorld] Rename failed: {json}");
-                onComplete?.Invoke(false, json);
-                return;
-            }
-
-            Debug.Log($"[UpdateWorld] World renamed to '{newWorldName}'.");
-            onComplete?.Invoke(true, json);
+            if (ok) Debug.Log("[UpdateWorld] Auto-save successful.");
+            else    Debug.LogWarning($"[UpdateWorld] Auto-save failed: {json}");
         }));
     }
 }

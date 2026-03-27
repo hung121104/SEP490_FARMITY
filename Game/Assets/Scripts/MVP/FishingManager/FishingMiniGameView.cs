@@ -1,9 +1,10 @@
 ﻿using System;
 using UnityEngine;
-using UnityEngine.UI; 
+using UnityEngine.UI; // Thêm thư viện UI
 
 public class FishingMiniGameView : MonoBehaviour
 {
+    // Cung cấp sự kiện cho Presenter lắng nghe
     public event Action OnMiniGameWon;
 
     public event Action OnMiniGameLost;
