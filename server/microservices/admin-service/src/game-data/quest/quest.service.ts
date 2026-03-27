@@ -20,7 +20,7 @@ export class QuestService {
     return quest.save();
   }
 
-  /** Returns the catalog payload: { quests: [...] } — consumed by Unity client */
+  /** Returns the catalog payload: { quests: [...] } – consumed by Unity client */
   async getCatalog(): Promise<{ quests: Quest[] }> {
     const quests = await this.questModel.find().exec();
     return { quests };
