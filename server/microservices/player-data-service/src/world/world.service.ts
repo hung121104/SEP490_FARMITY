@@ -489,15 +489,55 @@ export class WorldService {
     if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {
       throw new RpcException({ status: 401, message: 'Not authorized to delete this world' });
     }
-    // Delete all characters associated with this world
-    const deletedCharactersCount = await this.characterService.deleteByWorldId(getWorldDto._id);
-    console.log(`[WorldService] Deleted ${deletedCharactersCount} character(s) for world ${getWorldDto._id}`);
-    // Delete all chests associated with this world
-    const deletedChestsResult = await this.chestInventoryModel.deleteMany({ worldId: world._id }).exec();
-    console.log(`[WorldService] Deleted ${deletedChestsResult.deletedCount} chest(s) for world ${getWorldDto._id}`);
-    // Delete the world itself
-    const deleted = await this.worldModel.findByIdAndDelete(getWorldDto._id).exec();
-    return deleted;
+
+    const performDeletes = async (session?: any): Promise<World | null> => {
+      const opts = session ? { session } : {};
+
+      const deletedCharactersCount = await this.characterService.deleteByWorldId(
+        world._id,
+        session ? { session } : undefined,
+      );
+      console.log(`[WorldService] Deleted ${deletedCharactersCount} character(s) for world ${getWorldDto._id}`);
+
+      const deletedChestsResult = await this.chestInventoryModel
+        .deleteMany({ worldId: world._id }, opts)
+        .exec();
+      console.log(`[WorldService] Deleted ${deletedChestsResult.deletedCount} chest(s) for world ${getWorldDto._id}`);
+
+      const deletedChunksResult = await this.chunkModel
+        .deleteMany({ worldId: world._id }, opts)
+        .exec();
+      console.log(`[WorldService] Deleted ${deletedChunksResult.deletedCount} chunk(s) for world ${getWorldDto._id}`);
+
+      return this.worldModel.findByIdAndDelete(getWorldDto._id, opts).exec();
+    };
+
+    // ── try with transaction first ──
+    let session: any;
+    try {
+      session = await this.connection.startSession();
+      let result: World | null = null;
+      await session.withTransaction(async () => {
+        result = await performDeletes(session);
+      });
+      return result;
+    } catch (txErr: any) {
+      if (txErr instanceof RpcException) throw txErr;
+
+      // If transactions are unsupported (standalone or shared-tier Atlas),
+      // fall back to non-transactional writes so dev environments still work.
+      const isNoTxSupport =
+        txErr?.code === 20 ||                          // Transaction numbers only on replicasets
+        txErr?.codeName === 'IllegalOperation' ||
+        (txErr?.message || '').includes('replica');
+      if (isNoTxSupport) {
+        console.warn('[WorldService.deleteWorld] Transactions not supported — falling back to non-transactional deletes.');
+        return performDeletes();
+      }
+      throw new RpcException({ status: 500, message: `deleteWorld failed: ${txErr?.message ?? txErr}` });
+    } finally {
+      if (session) session.endSession().catch(() => { /* ignore */ });
+    }
   }
 
   async getWorldsByOwner(dto: { ownerId: string }): Promise<World[]> {
