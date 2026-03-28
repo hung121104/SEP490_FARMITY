@@ -3,15 +3,11 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PlantService } from './plant.service';
 import { CreatePlantDto } from './dto/create-plant.dto';
 import { UpdatePlantDto } from './dto/update-plant.dto';
-import { CatalogVersionService } from '../../catalog-version/catalog-version.service';
 import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class PlantController {
-  constructor(
-    private readonly plantService: PlantService,
-    private readonly catalogVersionService: CatalogVersionService,
-  ) {}
+  constructor(private readonly plantService: PlantService) {}
 
   /** Create a new plant definition */
   @MessagePattern('create-plant')
@@ -19,8 +15,7 @@ export class PlantController {
     @Payload() createPlantDto: CreatePlantDto,
   ): Promise<CatalogChange> {
     const data = await this.plantService.create(createPlantDto);
-    const catalogVersion = await this.catalogVersionService.increment();
-    return { data, catalogVersion, changeType: 'create', entityType: 'plant' };
+    return { data, changeType: 'create', entityType: 'plant' };
   }
 
   /** Return full catalog: { plants: [...] } – consumed by Unity PlantCatalogService */
@@ -53,15 +48,13 @@ export class PlantController {
     @Payload() payload: { plantId: string; dto: UpdatePlantDto },
   ): Promise<CatalogChange> {
     const data = await this.plantService.update(payload.plantId, payload.dto);
-    const catalogVersion = await this.catalogVersionService.increment();
-    return { data, catalogVersion, changeType: 'update', entityType: 'plant' };
+    return { data, changeType: 'update', entityType: 'plant' };
   }
 
   /** Delete a plant by game-side plantId string */
   @MessagePattern('delete-plant')
   async deletePlant(@Payload() plantId: string): Promise<CatalogChange> {
     const data = await this.plantService.delete(plantId);
-    const catalogVersion = await this.catalogVersionService.increment();
-    return { data, catalogVersion, changeType: 'delete', entityType: 'plant' };
+    return { data, changeType: 'delete', entityType: 'plant' };
   }
 }

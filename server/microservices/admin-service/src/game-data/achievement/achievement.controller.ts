@@ -3,23 +3,17 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AchievementService } from './achievement.service';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementDto } from './dto/update-achievement.dto';
-import { CatalogVersionService } from '../../catalog-version/catalog-version.service';
 import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class AchievementController {
-  constructor(
-    private readonly achievementService: AchievementService,
-    private readonly catalogVersionService: CatalogVersionService,
-  ) {}
+  constructor(private readonly achievementService: AchievementService) {}
 
   @MessagePattern('create-achievement')
   async create(@Payload() dto: CreateAchievementDto): Promise<CatalogChange> {
     const data = await this.achievementService.create(dto);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'create',
       entityType: 'achievement',
     };
@@ -44,10 +38,8 @@ export class AchievementController {
       payload.achievementId,
       payload.dto,
     );
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'update',
       entityType: 'achievement',
     };
@@ -56,10 +48,8 @@ export class AchievementController {
   @MessagePattern('delete-achievement')
   async delete(@Payload() achievementId: string): Promise<CatalogChange> {
     const data = await this.achievementService.delete(achievementId);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'delete',
       entityType: 'achievement',
     };

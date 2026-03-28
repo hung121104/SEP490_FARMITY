@@ -3,7 +3,6 @@
  *  the full object to the SSE stream for real-time sync. */
 export interface CatalogChange<T = any> {
   data: T;
-  catalogVersion: number;
   changeType: 'create' | 'update' | 'delete';
   entityType: string;
 }

@@ -3,25 +3,19 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CombatSkillService } from './combat-skill.service';
 import { CreateCombatSkillDto } from './dto/create-combat-skill.dto';
 import { UpdateCombatSkillDto } from './dto/update-combat-skill.dto';
-import { CatalogVersionService } from '../../catalog-version/catalog-version.service';
 import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class CombatSkillController {
-  constructor(
-    private readonly combatSkillService: CombatSkillService,
-    private readonly catalogVersionService: CatalogVersionService,
-  ) {}
+  constructor(private readonly combatSkillService: CombatSkillService) {}
 
   @MessagePattern('create-combat-skill')
   async create(
     @Payload() dto: CreateCombatSkillDto,
   ): Promise<CatalogChange> {
     const data = await this.combatSkillService.create(dto);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'create',
       entityType: 'combat-skill',
     };
@@ -48,10 +42,8 @@ export class CombatSkillController {
   ): Promise<CatalogChange> {
     const { skillId, ...dto } = payload;
     const data = await this.combatSkillService.update(skillId, dto);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'update',
       entityType: 'combat-skill',
     };
@@ -62,10 +54,8 @@ export class CombatSkillController {
     @Payload() payload: { skillId: string },
   ): Promise<CatalogChange> {
     const data = await this.combatSkillService.delete(payload.skillId);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'delete',
       entityType: 'combat-skill',
     };

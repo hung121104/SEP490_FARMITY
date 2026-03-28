@@ -3,15 +3,11 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { QuestService } from './quest.service';
 import { CreateQuestDto } from './dto/create-quest.dto';
 import { UpdateQuestDto } from './dto/update-quest.dto';
-import { CatalogVersionService } from '../../catalog-version/catalog-version.service';
 import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class QuestController {
-  constructor(
-    private readonly questService: QuestService,
-    private readonly catalogVersionService: CatalogVersionService,
-  ) {}
+  constructor(private readonly questService: QuestService) {}
 
   /** Create a new quest definition */
   @MessagePattern('create-quest')
@@ -19,10 +15,8 @@ export class QuestController {
     @Payload() createQuestDto: CreateQuestDto,
   ): Promise<CatalogChange> {
     const data = await this.questService.create(createQuestDto);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'create',
       entityType: 'quest',
     };
@@ -61,10 +55,8 @@ export class QuestController {
       payload.questId,
       payload.dto,
     );
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'update',
       entityType: 'quest',
     };
@@ -74,10 +66,8 @@ export class QuestController {
   @MessagePattern('delete-quest')
   async deleteQuest(@Payload() questId: string): Promise<CatalogChange> {
     const data = await this.questService.delete(questId);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'delete',
       entityType: 'quest',
     };

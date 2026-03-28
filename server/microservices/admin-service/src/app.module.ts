@@ -16,7 +16,6 @@ import { MaterialModule } from './game-data/material/material.module';
 import { ResourceConfigModule } from './game-data/resource-config/resource-config.module';
 import { CombatSkillModule } from './game-data/combat-skill/combat-skill.module';
 import { QuestModule } from './game-data/quest/quest.module';
-import { CatalogVersionModule } from './catalog-version/catalog-version.module';
 
 @Module({
   imports: [
@@ -43,7 +42,6 @@ import { CatalogVersionModule } from './catalog-version/catalog-version.module';
     ResourceConfigModule,
     CombatSkillModule,
     QuestModule,
-    CatalogVersionModule,
   ],
 })
 export class AppModule {}

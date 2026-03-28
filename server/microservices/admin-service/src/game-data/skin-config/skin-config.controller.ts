@@ -2,15 +2,11 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { SkinConfigService } from './skin-config.service';
 import { CreateSkinConfigDto } from './dto/create-skin-config.dto';
-import { CatalogVersionService } from '../../catalog-version/catalog-version.service';
 import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class SkinConfigController {
-  constructor(
-    private readonly skinConfigService: SkinConfigService,
-    private readonly catalogVersionService: CatalogVersionService,
-  ) {}
+  constructor(private readonly skinConfigService: SkinConfigService) {}
 
   /**
    * Public catalog fetch — Unity calls this on startup.
@@ -31,10 +27,8 @@ export class SkinConfigController {
     @Payload() dto: CreateSkinConfigDto,
   ): Promise<CatalogChange> {
     const data = await this.skinConfigService.create(dto);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'create',
       entityType: 'skin-config',
     };
@@ -58,10 +52,8 @@ export class SkinConfigController {
   ): Promise<CatalogChange> {
     const { configId, ...patch } = payload;
     const data = await this.skinConfigService.update(configId, patch);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'update',
       entityType: 'skin-config',
     };
@@ -76,10 +68,8 @@ export class SkinConfigController {
     @Payload() payload: { configId: string },
   ): Promise<CatalogChange> {
     const data = await this.skinConfigService.remove(payload.configId);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'delete',
       entityType: 'skin-config',
     };

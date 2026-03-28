@@ -3,15 +3,11 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ItemService } from './item.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
-import { CatalogVersionService } from '../../catalog-version/catalog-version.service';
 import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class ItemController {
-  constructor(
-    private readonly itemService: ItemService,
-    private readonly catalogVersionService: CatalogVersionService,
-  ) {}
+  constructor(private readonly itemService: ItemService) {}
 
   /** Create a new item definition */
   @MessagePattern('create-item')
@@ -19,8 +15,7 @@ export class ItemController {
     @Payload() createItemDto: CreateItemDto,
   ): Promise<CatalogChange> {
     const data = await this.itemService.create(createItemDto);
-    const catalogVersion = await this.catalogVersionService.increment();
-    return { data, catalogVersion, changeType: 'create', entityType: 'item' };
+    return { data, changeType: 'create', entityType: 'item' };
   }
 
   /** Return full catalog: { items: [...] } – consumed by Unity client */
@@ -53,16 +48,14 @@ export class ItemController {
     @Payload() payload: { itemID: string; dto: UpdateItemDto },
   ): Promise<CatalogChange> {
     const data = await this.itemService.update(payload.itemID, payload.dto);
-    const catalogVersion = await this.catalogVersionService.increment();
-    return { data, catalogVersion, changeType: 'update', entityType: 'item' };
+    return { data, changeType: 'update', entityType: 'item' };
   }
 
   /** Delete an item by game-side itemID string */
   @MessagePattern('delete-item')
   async deleteItem(@Payload() itemID: string): Promise<CatalogChange> {
     const data = await this.itemService.delete(itemID);
-    const catalogVersion = await this.catalogVersionService.increment();
-    return { data, catalogVersion, changeType: 'delete', entityType: 'item' };
+    return { data, changeType: 'delete', entityType: 'item' };
   }
 
   @MessagePattern('create-fertilizer')
@@ -70,8 +63,7 @@ export class ItemController {
     @Payload() createItemDto: CreateItemDto,
   ): Promise<CatalogChange> {
     const data = await this.itemService.createFertilizer(createItemDto);
-    const catalogVersion = await this.catalogVersionService.increment();
-    return { data, catalogVersion, changeType: 'create', entityType: 'item' };
+    return { data, changeType: 'create', entityType: 'item' };
   }
 
   @MessagePattern('get-fertilizer-catalog')
@@ -102,14 +94,12 @@ export class ItemController {
       payload.itemID,
       payload.dto,
     );
-    const catalogVersion = await this.catalogVersionService.increment();
-    return { data, catalogVersion, changeType: 'update', entityType: 'item' };
+    return { data, changeType: 'update', entityType: 'item' };
   }
 
   @MessagePattern('delete-fertilizer')
   async deleteFertilizer(@Payload() itemID: string): Promise<CatalogChange> {
     const data = await this.itemService.deleteFertilizer(itemID);
-    const catalogVersion = await this.catalogVersionService.increment();
-    return { data, catalogVersion, changeType: 'delete', entityType: 'item' };
+    return { data, changeType: 'delete', entityType: 'item' };
   }
 }

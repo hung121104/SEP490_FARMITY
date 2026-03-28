@@ -18,31 +18,23 @@ using ExitGames.Client.Photon;
 ///   2. Admin CUD → server SSE event → Host receives here
 ///   3. Host applies change to local catalog + broadcasts via Photon
 ///   4. Clients receive Photon event → apply to local catalog
-///   5. Late-join clients compare version via RoomProperties → REST fetch if stale
-///
-/// Follows DataSyncManager conventions (MonoBehaviourPunCallbacks, event codes, singleton).
+///   5. SSE reconnect / Late-join → RefetchAllCatalogs (no version tracking)
 /// </summary>
 public class CatalogSyncManager : MonoBehaviourPunCallbacks
 {
     public static CatalogSyncManager Instance { get; private set; }
 
     // ── Photon Event Codes ─────────────────────────────────────────────────
-    private const byte CATALOG_CHANGE_EVENT = 170; // range 161-199 reserved for catalog sync
-
-    // ── Room Properties Key ────────────────────────────────────────────────
-    private const string ROOM_PROP_CATALOG_VER = "CATALOG_VER";
+    private const byte CATALOG_CHANGE_EVENT = 170;
 
     // ── SSE Reconnect ──────────────────────────────────────────────────────
     private const float SSE_RECONNECT_INITIAL = 1f;
     private const float SSE_RECONNECT_MAX = 30f;
 
-    [Header("Settings")]
-
     [Header("Debug")]
     [SerializeField] private bool showDebugLogs = true;
 
     // ── State ──────────────────────────────────────────────────────────────
-    private int localVersion;
     private Coroutine sseCoroutine;
     private float reconnectDelay;
     private bool isDestroyed;
@@ -63,9 +55,8 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
 
     private void Start()
     {
-        Log($"[CatalogSync] Start — IsInRoom={PhotonNetwork.InRoom}, IsMaster={PhotonNetwork.IsMasterClient}, IsConnected={PhotonNetwork.IsConnected}");
+        Log($"[CatalogSync] Start — IsInRoom={PhotonNetwork.InRoom}, IsMaster={PhotonNetwork.IsMasterClient}");
 
-        // If already in a room when scene loads (e.g. scene was loaded after joining)
         if (PhotonNetwork.InRoom)
         {
             Log("[CatalogSync] Already in room at Start — triggering OnJoinedRoom manually.");
@@ -91,11 +82,12 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
         PhotonNetwork.NetworkingClient.EventReceived -= OnPhotonEvent;
     }
 
-    // ── Public API ─────────────────────────────────────────────────────────
+    // ── Photon Callbacks ──────────────────────────────────────────────────
 
     /// <summary>
     /// Auto-called by Photon when joining a room.
-    /// Starts SSE (Master) or version check (Client).
+    /// Master: starts SSE listener.
+    /// Client: RefetchAll to ensure up-to-date catalogs.
     /// </summary>
     public override void OnJoinedRoom()
     {
@@ -103,11 +95,10 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             StartSseListener();
-            FetchAndSetVersion();
         }
         else
         {
-            StartCoroutine(CheckVersionOnJoin());
+            StartCoroutine(RefetchAllCatalogs());
         }
     }
 
@@ -140,12 +131,11 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             request.downloadHandler = new SseDownloadHandler(OnSseEvent);
             request.certificateHandler = new BypassCertificateHandler();
             request.SetRequestHeader("Accept", "text/event-stream");
-            request.timeout = 0; // no timeout — SSE is a long-lived stream
+            request.timeout = 0;
 
             var op = request.SendWebRequest();
 
             Log("[CatalogSync] SSE request sent — waiting for stream...");
-            // Wait until connection drops or error
             while (!op.isDone && !isDestroyed)
                 yield return null;
 
@@ -153,10 +143,9 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
 
             if (isDestroyed) yield break;
 
-            Debug.LogWarning($"[CatalogSync] SSE connection lost: {request.error}. Reconnecting in {reconnectDelay}s");
-
-            // Version check on reconnect to catch missed events
-            yield return FetchVersionAndReconcile();
+            // SSE dropped — refetch all catalogs to catch any missed events
+            Log("[CatalogSync] SSE reconnect — refetching all catalogs.");
+            yield return RefetchAllCatalogs();
 
             yield return new WaitForSeconds(reconnectDelay);
             reconnectDelay = Mathf.Min(reconnectDelay * 2, SSE_RECONNECT_MAX);
@@ -172,12 +161,7 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             var sseEvent = JsonConvert.DeserializeObject<SseCatalogEvent>(eventData);
             if (sseEvent == null) return;
 
-            // Reset reconnect delay on successful event
             reconnectDelay = SSE_RECONNECT_INITIAL;
-
-            // Update local version
-            localVersion = sseEvent.version;
-            UpdateRoomVersion(localVersion);
 
             // Apply to local catalog
             ApplyCatalogChange(sseEvent.type, sseEvent.entity, sseEvent.data);
@@ -188,10 +172,9 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
 
             // Broadcast to all clients via Photon
             BroadcastCatalogChange(sseEvent.type, sseEvent.entity,
-                sseEvent.version, entityName, typeName,
+                entityName, typeName,
                 sseEvent.data?.ToString(Formatting.None) ?? "");
 
-            // Fire local event for notifications
             OnCatalogChanged?.Invoke(sseEvent.type, sseEvent.entity, entityName, typeName);
         }
         catch (Exception ex)
@@ -203,16 +186,15 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
     // ── Photon Broadcasting ────────────────────────────────────────────────
 
     private void BroadcastCatalogChange(string changeType, string entityType,
-        int version, string entityName, string typeName, string jsonData)
+        string entityName, string typeName, string jsonData)
     {
         object[] data = new object[]
         {
             changeType,     // 0
             entityType,     // 1
-            version,        // 2
-            entityName,     // 3
-            typeName,       // 4
-            jsonData         // 5
+            entityName,     // 2
+            typeName,       // 3
+            jsonData        // 4
         };
 
         var options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
@@ -224,19 +206,15 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
     private void OnPhotonEvent(EventData photonEvent)
     {
         if (photonEvent.Code != CATALOG_CHANGE_EVENT) return;
-        if (PhotonNetwork.IsMasterClient) return; // Master already applied locally
+        if (PhotonNetwork.IsMasterClient) return;
 
         var payload = (object[])photonEvent.CustomData;
         string changeType = (string)payload[0];
         string entityType = (string)payload[1];
-        int version = (int)payload[2];
-        string entityName = (string)payload[3];
-        string typeName = (string)payload[4];
-        string jsonData = (string)payload[5];
+        string entityName = (string)payload[2];
+        string typeName = (string)payload[3];
+        string jsonData = (string)payload[4];
 
-        localVersion = version;
-
-        // Apply to local catalog
         if (!string.IsNullOrEmpty(jsonData))
         {
             var dataObj = JObject.Parse(jsonData);
@@ -259,7 +237,6 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             return;
         }
 
-        // Add / Update
         switch (entityType)
         {
             case "item":
@@ -286,11 +263,6 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
         }
     }
 
-    /// <summary>
-    /// Handles delete operations. On Master: cleanup world data FIRST via
-    /// CatalogDeleteHandler, then remove from catalog, then cascade recipes.
-    /// On Client: just remove from catalog (world data already synced via FIFO).
-    /// </summary>
     private void ApplyDelete(string entityType, JObject data)
     {
         bool isMaster = PhotonNetwork.IsMasterClient;
@@ -336,98 +308,10 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // ── Version Management ─────────────────────────────────────────────────
-
-    private void FetchAndSetVersion()
-    {
-        StartCoroutine(FetchVersionCoroutine(v =>
-        {
-            localVersion = v;
-            UpdateRoomVersion(v);
-        }));
-    }
-
-    private IEnumerator FetchVersionAndReconcile()
-    {
-        int serverVersion = 0;
-        yield return FetchVersionCoroutine(v => serverVersion = v);
-
-        if (serverVersion > localVersion)
-        {
-            Debug.LogWarning($"[CatalogSync] Version drift: local={localVersion}, server={serverVersion}. Refetching catalogs.");
-            localVersion = serverVersion;
-            UpdateRoomVersion(serverVersion);
-            yield return RefetchAllCatalogs();
-        }
-    }
-
-    private IEnumerator FetchVersionCoroutine(Action<int> callback)
-    {
-        string url = $"{AppConfig.ApiBaseUrl}/game-data/catalog-version";
-        using var request = UnityWebRequest.Get(url);
-        request.timeout = 10;
-        yield return request.SendWebRequest();
-
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            Debug.LogWarning($"[CatalogSync] Failed to fetch catalog version: {request.error}");
-            callback(localVersion);
-            yield break;
-        }
-
-        try
-        {
-            var resp = JsonConvert.DeserializeObject<CatalogVersionResponse>(request.downloadHandler.text);
-            Log($"[CatalogSync] Server catalog version = {resp?.version ?? 0}");
-            callback(resp?.version ?? 0);
-        }
-        catch
-        {
-            callback(localVersion);
-        }
-    }
-
-    private void UpdateRoomVersion(int version)
-    {
-        if (!PhotonNetwork.IsMasterClient || PhotonNetwork.CurrentRoom == null) return;
-
-        var props = new ExitGames.Client.Photon.Hashtable
-        {
-            { ROOM_PROP_CATALOG_VER, version }
-        };
-        PhotonNetwork.CurrentRoom.SetCustomProperties(props);
-    }
-
-    // ── Late-Join Version Check (Client) ───────────────────────────────────
-
-    private IEnumerator CheckVersionOnJoin()
-    {
-        // Wait for room to be available
-        while (PhotonNetwork.CurrentRoom == null)
-            yield return null;
-
-        // Always check server version — don't skip even if CATALOG_VER not yet set
-        // (Master may not have called FetchAndSetVersion yet when client joins)
-        int serverVersion = 0;
-        yield return FetchVersionCoroutine(sv => serverVersion = sv);
-
-        if (serverVersion > localVersion)
-        {
-            Log($"[CatalogSync] Late-join version check: stale (local={localVersion}, server={serverVersion}). Refetching.");
-            localVersion = serverVersion;
-            yield return RefetchAllCatalogs();
-        }
-        else
-        {
-            Log($"[CatalogSync] Late-join version check: up to date (local={localVersion}, server={serverVersion}).");
-        }
-    }
-
     // ── Full Catalog Refetch ───────────────────────────────────────────────
 
     private IEnumerator RefetchAllCatalogs()
     {
-        // Force refetch on all catalog services (bypasses IsReady guard)
         if (ItemCatalogService.Instance != null)
         {
             ItemCatalogService.Instance.ForceRefetch();
@@ -522,21 +406,10 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
         public string type;    // "create", "update", "delete"
         public string entity;  // "item", "plant", "recipe"
         public JObject data;   // full entity document
-        public int version;    // new catalog version
-    }
-
-    [Serializable]
-    private class CatalogVersionResponse
-    {
-        public int version;
     }
 
     // ── SSE Download Handler ───────────────────────────────────────────────
 
-    /// <summary>
-    /// Custom DownloadHandler that parses SSE text/event-stream format in real-time.
-    /// Calls onEvent for each complete "data:" line.
-    /// </summary>
     private class SseDownloadHandler : DownloadHandlerScript
     {
         private readonly Action<string> onEvent;
@@ -552,7 +425,6 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             string chunk = Encoding.UTF8.GetString(rawData, 0, dataLength);
             buffer.Append(chunk);
 
-            // Process complete lines
             string text = buffer.ToString();
             int lastNewline = text.LastIndexOf('\n');
             if (lastNewline < 0) return true;
@@ -568,7 +440,6 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
                 if (trimmed.StartsWith("data:"))
                 {
                     string data = trimmed.Substring(5).Trim();
-                    // Skip keepalive pings (data starting with ':')
                     if (!string.IsNullOrEmpty(data) && !data.StartsWith(':'))
                     {
                         try { onEvent(data); }
@@ -586,10 +457,6 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
 
     // ── Certificate Handler ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Bypasses SSL certificate validation for local dev (self-signed certs on localhost).
-    /// Safe for development; do NOT use in production builds.
-    /// </summary>
     private class BypassCertificateHandler : CertificateHandler
     {
         protected override bool ValidateCertificate(byte[] certificateData) => true;

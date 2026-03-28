@@ -3,15 +3,11 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CraftingRecipeService } from './crafting-recipe.service';
 import { CreateCraftingRecipeDto } from './dto/create-crafting-recipe.dto';
 import { UpdateCraftingRecipeDto } from './dto/update-crafting-recipe.dto';
-import { CatalogVersionService } from '../../catalog-version/catalog-version.service';
 import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class CraftingRecipeController {
-  constructor(
-    private readonly craftingRecipeService: CraftingRecipeService,
-    private readonly catalogVersionService: CatalogVersionService,
-  ) {}
+  constructor(private readonly craftingRecipeService: CraftingRecipeService) {}
 
   /** Create a new crafting recipe.
    *  Validates that resultItemId and all ingredient itemIds exist in the DB. */
@@ -20,10 +16,8 @@ export class CraftingRecipeController {
     @Payload() dto: CreateCraftingRecipeDto,
   ): Promise<CatalogChange> {
     const data = await this.craftingRecipeService.create(dto);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'create',
       entityType: 'recipe',
     };
@@ -63,10 +57,8 @@ export class CraftingRecipeController {
       payload.recipeID,
       payload.dto,
     );
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'update',
       entityType: 'recipe',
     };
@@ -78,10 +70,8 @@ export class CraftingRecipeController {
     @Payload() recipeID: string,
   ): Promise<CatalogChange> {
     const data = await this.craftingRecipeService.delete(recipeID);
-    const catalogVersion = await this.catalogVersionService.increment();
     return {
       data,
-      catalogVersion,
       changeType: 'delete',
       entityType: 'recipe',
     };
