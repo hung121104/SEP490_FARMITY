@@ -25,6 +25,9 @@ public class RecipeCatalogService : MonoBehaviour
     
     public static event Action<string> OnRecipeRemoved;
 
+    /// <summary>Fired after the full catalog is loaded or reloaded (ForceRefetch).</summary>
+    public static event Action OnCatalogReloaded;
+
     /// <summary>True once the catalog JSON is fully parsed and ready to query.</summary>
     public bool IsReady { get; private set; }
 
@@ -236,5 +239,6 @@ public class RecipeCatalogService : MonoBehaviour
         IsReady = true;
         Debug.Log($"[RecipeCatalogService] Catalog ready with {loaded} recipe(s).");
         CatalogProgressManager.NotifyCompleted();
+        OnCatalogReloaded?.Invoke();
     }
 }

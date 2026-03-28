@@ -63,6 +63,36 @@ public class QuestCatalogService : MonoBehaviour
         StartCoroutine(FetchCatalog());
     }
 
+    // ── Catalog Sync (real-time updates from CatalogSyncManager) ───────────
+
+    /// <summary>Adds or replaces a quest in the catalog from a JSON string.</summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var quest = JsonConvert.DeserializeObject<QuestCatalogData>(json);
+            if (quest == null || string.IsNullOrWhiteSpace(quest.questId)) return;
+            _catalog[quest.questId] = quest;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[QuestCatalogService] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Removes a quest from the catalog.</summary>
+    public bool RemoveQuest(string questId)
+    {
+        return _catalog.Remove(questId);
+    }
+
+    /// <summary>Forces a full catalog refetch regardless of current state.</summary>
+    public void ForceRefetch()
+    {
+        IsReady = false;
+        StartCoroutine(FetchCatalog());
+    }
+
     // ── Loading ───────────────────────────────────────────────────────────────
     private IEnumerator FetchCatalog()
     {

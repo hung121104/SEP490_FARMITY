@@ -55,6 +55,13 @@ public class AchievementCatalogService : MonoBehaviour
         StartCoroutine(FetchCatalog());
     }
 
+    /// <summary>Forces a full catalog refetch regardless of current state.</summary>
+    public void ForceRefetch()
+    {
+        IsReady = false;
+        StartCoroutine(FetchCatalog());
+    }
+
     private IEnumerator FetchCatalog()
     {
         IsReady = false;

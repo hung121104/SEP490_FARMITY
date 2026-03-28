@@ -37,8 +37,6 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
     private const float SSE_RECONNECT_MAX = 30f;
 
     [Header("Settings")]
-    [Tooltip("Seconds before SSE connection attempt times out (0 = no timeout)")]
-    [SerializeField] private int sseConnectTimeout = 10;
 
     [Header("Debug")]
     [SerializeField] private bool showDebugLogs = true;
@@ -142,7 +140,7 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             request.downloadHandler = new SseDownloadHandler(OnSseEvent);
             request.certificateHandler = new BypassCertificateHandler();
             request.SetRequestHeader("Accept", "text/event-stream");
-            request.timeout = sseConnectTimeout; // 0 = no timeout
+            request.timeout = 0; // no timeout — SSE is a long-lived stream
 
             var op = request.SendWebRequest();
 
@@ -283,6 +281,13 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
                     RecipeCatalogService.Instance?.AddOrUpdateFromJson(json);
                 break;
 
+            case "quest":
+                if (changeType == "delete")
+                    QuestCatalogService.Instance?.RemoveQuest(data.Value<string>("questId"));
+                else
+                    QuestCatalogService.Instance?.AddOrUpdateFromJson(json);
+                break;
+
             default:
                 Log($"[CatalogSync] Unhandled entity type: {entityType}");
                 break;
@@ -359,14 +364,8 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
         while (PhotonNetwork.CurrentRoom == null)
             yield return null;
 
-        // Read version from room properties
-        int roomVersion = 0;
-        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(ROOM_PROP_CATALOG_VER, out var v))
-            roomVersion = (int)v;
-
-        if (roomVersion <= 0) yield break;
-
-        // Fetch server version
+        // Always check server version — don't skip even if CATALOG_VER not yet set
+        // (Master may not have called FetchAndSetVersion yet when client joins)
         int serverVersion = 0;
         yield return FetchVersionCoroutine(sv => serverVersion = sv);
 
@@ -376,21 +375,9 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             localVersion = serverVersion;
             yield return RefetchAllCatalogs();
         }
-    }
-
-    // ── Master Switch ──────────────────────────────────────────────────────
-
-    public override void OnMasterClientSwitched(Player newMasterClient)
-    {
-        if (newMasterClient.IsLocal)
-        {
-            Log("[CatalogSync] Became new Master. Starting SSE listener.");
-            StartSseListener();
-            StartCoroutine(FetchVersionAndReconcile());
-        }
         else
         {
-            StopSseListener();
+            Log($"[CatalogSync] Late-join version check: up to date (local={localVersion}, server={serverVersion}).");
         }
     }
 
@@ -420,6 +407,41 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
                 yield return null;
         }
 
+        if (QuestCatalogService.Instance != null)
+        {
+            QuestCatalogService.Instance.ForceRefetch();
+            while (!QuestCatalogService.Instance.IsReady)
+                yield return null;
+        }
+
+        if (AchievementCatalogService.Instance != null)
+        {
+            AchievementCatalogService.Instance.ForceRefetch();
+            while (!AchievementCatalogService.Instance.IsReady)
+                yield return null;
+        }
+
+        if (MaterialCatalogService.Instance != null)
+        {
+            MaterialCatalogService.Instance.ForceRefetch();
+            while (!MaterialCatalogService.Instance.IsReady)
+                yield return null;
+        }
+
+        if (ResourceCatalogManager.Instance != null)
+        {
+            ResourceCatalogManager.Instance.ForceRefetch();
+            while (!ResourceCatalogManager.Instance.IsReady)
+                yield return null;
+        }
+
+        if (SkillVfxCatalogManager.Instance != null)
+        {
+            SkillVfxCatalogManager.Instance.ForceRefetch();
+            while (!SkillVfxCatalogManager.Instance.IsReady)
+                yield return null;
+        }
+
         Log("[CatalogSync] All catalogs refetched.");
     }
 
@@ -433,6 +455,7 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             "item" => data.Value<string>("itemName") ?? data.Value<string>("itemID") ?? "Unknown Item",
             "plant" => data.Value<string>("plantName") ?? data.Value<string>("plantId") ?? "Unknown Plant",
             "recipe" => data.Value<string>("recipeName") ?? data.Value<string>("recipeID") ?? "Unknown Recipe",
+            "quest" => data.Value<string>("questName") ?? data.Value<string>("questId") ?? "Unknown Quest",
             _ => data.Value<string>("name") ?? "Unknown"
         };
     }

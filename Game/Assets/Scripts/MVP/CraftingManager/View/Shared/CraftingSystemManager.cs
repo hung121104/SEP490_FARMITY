@@ -98,8 +98,10 @@ public class CraftingSystemManager : MonoBehaviour
         // 8. Connect inventory to sub-UIs (after all systems ready)
         InitializeInventoryForSubUIs();
 
-        // 9. Subscribe to catalog removals to dynamically purge recipes 
-        RecipeCatalogService.OnRecipeRemoved += HandleOrphanedRecipeRemoved;
+        // 9. Subscribe to catalog events for real-time sync
+        RecipeCatalogService.OnRecipeRemoved  += HandleOrphanedRecipeRemoved;
+        RecipeCatalogService.OnCatalogReloaded += HandleRecipeCatalogReloaded;
+        CatalogSyncManager.OnCatalogChanged   += HandleCatalogChanged;
 
         Debug.Log("[CraftingSystemManager] System initialized successfully");
     }
@@ -107,6 +109,29 @@ public class CraftingSystemManager : MonoBehaviour
     private void HandleOrphanedRecipeRemoved(string recipeId)
     {
         craftingService?.RemoveRecipe(recipeId);
+    }
+
+    /// <summary>Full catalog reload — rebuild CraftingModel from RecipeCatalogService.</summary>
+    private void HandleRecipeCatalogReloaded()
+    {
+        if (RecipeCatalogService.Instance == null) return;
+        var recipes = RecipeCatalogService.Instance.GetAllRecipes();
+        craftingService?.LoadRecipes(recipes);
+        Debug.Log($"[CraftingSystemManager] Catalog reloaded — {recipes.Count} recipe(s) synced.");
+    }
+
+    /// <summary>Real-time single recipe add/update from SSE.</summary>
+    private void HandleCatalogChanged(string changeType, string entityType, string entityName, string typeName)
+    {
+        if (entityType != "recipe" || RecipeCatalogService.Instance == null) return;
+
+        if (changeType == "create" || changeType == "update")
+        {
+            // Recipe already updated in RecipeCatalogService by CatalogSyncManager.
+            // Sync all recipes to pick up the change.
+            var recipes = RecipeCatalogService.Instance.GetAllRecipes();
+            craftingService?.LoadRecipes(recipes);
+        }
     }
 
     /// <summary>
@@ -346,7 +371,9 @@ public class CraftingSystemManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        RecipeCatalogService.OnRecipeRemoved -= HandleOrphanedRecipeRemoved;
+        RecipeCatalogService.OnRecipeRemoved  -= HandleOrphanedRecipeRemoved;
+        RecipeCatalogService.OnCatalogReloaded -= HandleRecipeCatalogReloaded;
+        CatalogSyncManager.OnCatalogChanged   -= HandleCatalogChanged;
 
         // Cleanup presenters
         if (craftingPresenter != null)
