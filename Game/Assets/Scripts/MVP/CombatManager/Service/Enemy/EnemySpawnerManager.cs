@@ -39,6 +39,7 @@ namespace CombatManager.Service
     {
         private const byte ENEMY_SPAWN_EVENT = 172;
         private const byte ENEMY_SPAWN_SYNC_REQUEST_EVENT = 173;
+        private const byte ENEMY_DESPAWN_EVENT = 174;
         private const string ROOM_PROP_ENEMY_SPAWNER_STATE = "enemySpawnerState";
 
         private static EnemySpawnerManager instance;
@@ -62,6 +63,14 @@ namespace CombatManager.Service
         [Tooltip("Max seconds to wait for bootstrap before fallback initialization.")]
         [SerializeField] private float bootstrapWaitTimeoutSeconds = 8f;
 
+        [Header("Chunk Materialization")]
+        [Tooltip("Refresh cadence for player-driven enemy chunk materialization checks.")]
+        [SerializeField] private float materializationRefreshIntervalSeconds = 0.25f;
+        [Tooltip("Maximum enemy materializations processed per refresh tick.")]
+        [SerializeField] private int maxMaterializePerRefresh = 24;
+        [Tooltip("Maximum enemy dematerializations processed per refresh tick.")]
+        [SerializeField] private int maxDematerializePerRefresh = 32;
+
         private readonly Dictionary<string, EnemySpawnTypeMapping> mappingByEnemyId =
             new Dictionary<string, EnemySpawnTypeMapping>(System.StringComparer.OrdinalIgnoreCase);
 
@@ -75,6 +84,8 @@ namespace CombatManager.Service
         private int runtimeSequence;
         private bool authoritativeInitialized;
         private float initStartRealtime;
+        private float nextMaterializationRefreshAt;
+        private EnemyDataManager enemyDataManager;
 
         private bool IsAuthoritative => !PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient;
 
@@ -83,6 +94,7 @@ namespace CombatManager.Service
             public string runtimeId;
             public string enemyId;
             public Vector3 position;
+            public bool isMaterialized;
         }
 
         private struct PendingRespawnEntry
@@ -173,11 +185,15 @@ namespace CombatManager.Service
             }
 
             instance = this;
+            enemyDataManager = EnemyDataManager.Instance;
             BuildMappingLookup();
         }
 
         private void Start()
         {
+            if (enemyDataManager == null)
+                enemyDataManager = EnemyDataManager.Instance;
+
             if (!IsAuthoritative)
             {
                 StartCoroutine(RequestSpawnSnapshotWhenReady());
@@ -191,7 +207,17 @@ namespace CombatManager.Service
 
         private void Update()
         {
-            if (!IsAuthoritative || !authoritativeInitialized || pendingRespawns.Count == 0)
+            if (!IsAuthoritative || !authoritativeInitialized)
+                return;
+
+            if (enemyDataManager != null && Time.time >= nextMaterializationRefreshAt)
+            {
+                nextMaterializationRefreshAt = Time.time + Mathf.Max(0.1f, materializationRefreshIntervalSeconds);
+                enemyDataManager.RefreshPlayerDrivenActiveChunks(true);
+                SyncMaterializationState();
+            }
+
+            if (pendingRespawns.Count == 0)
                 return;
 
             long nowUnixMs = GetUnixTimeMs();
@@ -272,6 +298,16 @@ namespace CombatManager.Service
                 return;
             }
 
+            if (photonEvent.Code == ENEMY_DESPAWN_EVENT)
+            {
+                if (photonEvent.CustomData is string despawnRuntimeId && !string.IsNullOrWhiteSpace(despawnRuntimeId))
+                {
+                    DematerializeRuntime(despawnRuntimeId, false);
+                }
+
+                return;
+            }
+
             if (photonEvent.Code != ENEMY_SPAWN_EVENT)
                 return;
 
@@ -349,6 +385,9 @@ namespace CombatManager.Service
             if (activeByRuntimeId.Remove(runtimeId))
                 DecrementActiveCount(enemyId);
 
+            if (enemyDataManager != null)
+                enemyDataManager.RemoveRuntimeData(runtimeId);
+
             if (!mappingByEnemyId.TryGetValue(enemyId, out EnemySpawnTypeMapping mapping) || mapping == null)
                 return;
 
@@ -402,8 +441,84 @@ namespace CombatManager.Service
             }
 
             string runtimeId = BuildRuntimeEnemyId(enemyId);
-            BroadcastSpawn(enemyId, runtimeId, spawnPos);
+            RegisterOrUpdateRuntimeState(runtimeId, enemyId, spawnPos, false, true, false);
+
+            if (ShouldMaterializeAtPosition(spawnPos))
+                MaterializeRuntime(runtimeId);
+
+            if (IsAuthoritative)
+                PersistRoomState();
+
             return true;
+        }
+
+        private bool ShouldMaterializeAtPosition(Vector3 worldPosition)
+        {
+            if (!IsAuthoritative || enemyDataManager == null)
+                return true;
+
+            return enemyDataManager.ShouldBeMaterialized(worldPosition);
+        }
+
+        private void SyncMaterializationState()
+        {
+            if (!IsAuthoritative || activeByRuntimeId.Count == 0)
+                return;
+
+            List<string> runtimeIds = new List<string>(activeByRuntimeId.Keys);
+            bool changed = false;
+            int materializedCount = 0;
+            int dematerializedCount = 0;
+
+            for (int i = 0; i < runtimeIds.Count; i++)
+            {
+                string runtimeId = runtimeIds[i];
+                if (!activeByRuntimeId.TryGetValue(runtimeId, out EnemyRuntimeSpawnRecord record))
+                    continue;
+
+                if (record.isMaterialized)
+                {
+                    Vector3 livePosition = TryGetRuntimeScenePosition(runtimeId, record.position);
+                    if (livePosition != record.position)
+                    {
+                        record.position = livePosition;
+                        activeByRuntimeId[runtimeId] = record;
+                        if (enemyDataManager != null)
+                            enemyDataManager.UpdateRuntimePosition(runtimeId, livePosition);
+                    }
+                }
+
+                bool shouldMaterialize = ShouldMaterializeAtPosition(record.position);
+                if (shouldMaterialize && !record.isMaterialized)
+                {
+                    if (materializedCount >= Mathf.Max(1, maxMaterializePerRefresh))
+                        continue;
+
+                    MaterializeRuntime(runtimeId);
+                    materializedCount++;
+                    changed = true;
+                }
+                else if (!shouldMaterialize && record.isMaterialized)
+                {
+                    if (dematerializedCount >= Mathf.Max(1, maxDematerializePerRefresh))
+                        continue;
+
+                    DematerializeRuntime(runtimeId, true);
+                    dematerializedCount++;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+                PersistRoomState();
+        }
+
+        private void MaterializeRuntime(string runtimeId)
+        {
+            if (!activeByRuntimeId.TryGetValue(runtimeId, out EnemyRuntimeSpawnRecord record))
+                return;
+
+            BroadcastSpawn(record.enemyId, record.runtimeId, record.position);
         }
 
         private void BroadcastSpawn(string enemyId, string runtimeId, Vector3 spawnPos)
@@ -422,7 +537,10 @@ namespace CombatManager.Service
         private void SpawnEnemyInstance(string enemyId, Vector3 spawnPos, string runtimeId)
         {
             if (EnemyWithRuntimeIdExists(runtimeId))
+            {
+                RegisterOrUpdateRuntimeState(runtimeId, enemyId, spawnPos, true, true, false);
                 return;
+            }
 
             if (!mappingByEnemyId.TryGetValue(enemyId, out EnemySpawnTypeMapping mapping) ||
                 mapping == null ||
@@ -438,11 +556,17 @@ namespace CombatManager.Service
             if (presenter != null)
                 presenter.SetRuntimeEnemyId(runtimeId);
 
-            RegisterActive(runtimeId, enemyId, spawnPos);
+            RegisterOrUpdateRuntimeState(runtimeId, enemyId, spawnPos, true, true, false);
             LogDebug($"Spawned enemy '{enemyId}' runtime '{runtimeId}' at {spawnPos}.");
         }
 
-        private void RegisterActive(string runtimeId, string enemyId, Vector3 position)
+        private void RegisterOrUpdateRuntimeState(
+            string runtimeId,
+            string enemyId,
+            Vector3 position,
+            bool isMaterialized,
+            bool incrementIfNew,
+            bool persistState = true)
         {
             if (string.IsNullOrWhiteSpace(runtimeId) || string.IsNullOrWhiteSpace(enemyId))
                 return;
@@ -453,13 +577,78 @@ namespace CombatManager.Service
                 runtimeId = runtimeId,
                 enemyId = enemyId,
                 position = position,
+                isMaterialized = isMaterialized,
             };
 
-            if (!alreadyExists)
+            if (!alreadyExists && incrementIfNew)
                 IncrementActiveCount(enemyId);
 
-            if (IsAuthoritative)
+            if (enemyDataManager != null)
+            {
+                enemyDataManager.UpsertRuntimeData(runtimeId, enemyId, position, isMaterialized);
+            }
+
+            if (persistState && IsAuthoritative)
                 PersistRoomState();
+        }
+
+        private void DematerializeRuntime(string runtimeId, bool broadcast)
+        {
+            if (string.IsNullOrWhiteSpace(runtimeId))
+                return;
+
+            if (!activeByRuntimeId.TryGetValue(runtimeId, out EnemyRuntimeSpawnRecord record))
+                return;
+
+            Vector3 latestPosition = TryGetRuntimeScenePosition(runtimeId, record.position);
+            record.position = latestPosition;
+            record.isMaterialized = false;
+            activeByRuntimeId[runtimeId] = record;
+
+            if (enemyDataManager != null)
+            {
+                enemyDataManager.UpdateRuntimePosition(runtimeId, latestPosition);
+                enemyDataManager.SetMaterialized(runtimeId, false);
+            }
+
+            DestroyEnemyVisual(runtimeId);
+
+            if (broadcast && PhotonNetwork.IsConnected)
+            {
+                RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+                PhotonNetwork.RaiseEvent(ENEMY_DESPAWN_EVENT, runtimeId, opts, SendOptions.SendReliable);
+            }
+        }
+
+        private static Vector3 TryGetRuntimeScenePosition(string runtimeId, Vector3 fallback)
+        {
+            if (EnemySyncManager.Instance != null && EnemySyncManager.Instance.TryGetEnemyByRuntimeId(runtimeId, out EnemyPresenter enemy) && enemy != null)
+                return enemy.transform.position;
+
+            return fallback;
+        }
+
+        private static void DestroyEnemyVisual(string runtimeId)
+        {
+            if (EnemySyncManager.Instance != null && EnemySyncManager.Instance.TryGetEnemyByRuntimeId(runtimeId, out EnemyPresenter cachedEnemy) && cachedEnemy != null)
+            {
+                UnityEngine.Object.Destroy(cachedEnemy.gameObject);
+                return;
+            }
+
+            EnemyPresenter[] allEnemies = FindObjectsOfType<EnemyPresenter>(true);
+            for (int i = 0; i < allEnemies.Length; i++)
+            {
+                EnemyPresenter enemy = allEnemies[i];
+                if (enemy == null)
+                    continue;
+
+                if (enemy.GetRuntimeEnemyId() != runtimeId)
+                    continue;
+
+                UnityEngine.Object.Destroy(enemy.gameObject);
+                return;
+            }
         }
 
         private void RebuildActiveFromScene()
@@ -479,7 +668,7 @@ namespace CombatManager.Service
                 if (data == null || string.IsNullOrWhiteSpace(data.enemyId) || string.IsNullOrWhiteSpace(runtimeId))
                     continue;
 
-                RegisterActive(runtimeId, data.enemyId, enemy.transform.position);
+                RegisterOrUpdateRuntimeState(runtimeId, data.enemyId, enemy.transform.position, true, true, false);
             }
         }
 
@@ -609,6 +798,12 @@ namespace CombatManager.Service
                 FillInitialSpawnTargets();
             }
 
+            if (enemyDataManager != null)
+            {
+                enemyDataManager.RefreshPlayerDrivenActiveChunks(true);
+                SyncMaterializationState();
+            }
+
             PersistRoomState();
             authoritativeInitialized = true;
         }
@@ -652,7 +847,13 @@ namespace CombatManager.Service
                     if (active == null || string.IsNullOrWhiteSpace(active.enemyId) || string.IsNullOrWhiteSpace(active.runtimeId))
                         continue;
 
-                    SpawnEnemyInstance(active.enemyId, new Vector3(active.x, active.y, active.z), active.runtimeId);
+                    RegisterOrUpdateRuntimeState(
+                        active.runtimeId,
+                        active.enemyId,
+                        new Vector3(active.x, active.y, active.z),
+                        false,
+                        true,
+                        false);
                     restoredAnyActive = true;
                 }
             }
@@ -788,6 +989,9 @@ namespace CombatManager.Service
             foreach (KeyValuePair<string, EnemyRuntimeSpawnRecord> kvp in activeByRuntimeId)
             {
                 EnemyRuntimeSpawnRecord record = kvp.Value;
+                if (!record.isMaterialized)
+                    continue;
+
                 object[] payload =
                 {
                     record.enemyId,
