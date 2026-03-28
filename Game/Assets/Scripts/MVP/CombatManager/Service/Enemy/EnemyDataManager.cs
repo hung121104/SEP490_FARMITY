@@ -48,6 +48,12 @@ namespace CombatManager.Service
         private float nextScanAt;
         private ChunkLoadingManager chunkLoadingManager;
 
+        public bool FollowChunkLoadingManager => followChunkLoadingManager;
+        public bool HasChunkLoadingManager => chunkLoadingManager != null;
+        public int ActiveChunkCount => activeChunks.Count;
+        public int PlayerTargetCount => playerTargets.Count;
+        public int RuntimeEnemyCount => runtimeById.Count;
+
         public static EnemyDataManager Instance
         {
             get
@@ -89,6 +95,42 @@ namespace CombatManager.Service
         public IEnumerable<EnemyRuntimeData> GetAllRuntimeData()
         {
             return runtimeById.Values;
+        }
+
+        public int GetMaterializedEnemyCount()
+        {
+            int count = 0;
+            foreach (EnemyRuntimeData data in runtimeById.Values)
+            {
+                if (data.isMaterialized)
+                    count++;
+            }
+
+            return count;
+        }
+
+        public List<EnemyRuntimeData> GetRuntimeDataSnapshot()
+        {
+            return new List<EnemyRuntimeData>(runtimeById.Values);
+        }
+
+        public List<Vector2Int> GetActiveChunksSnapshot()
+        {
+            return new List<Vector2Int>(activeChunks);
+        }
+
+        public Dictionary<int, int> GetEnemyCountBySection()
+        {
+            Dictionary<int, int> result = new Dictionary<int, int>();
+            foreach (EnemyRuntimeData data in runtimeById.Values)
+            {
+                if (!result.ContainsKey(data.sectionId))
+                    result[data.sectionId] = 0;
+
+                result[data.sectionId]++;
+            }
+
+            return result;
         }
 
         public bool TryGetRuntimeData(string runtimeId, out EnemyRuntimeData data)
