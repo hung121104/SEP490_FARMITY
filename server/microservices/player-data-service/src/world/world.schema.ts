@@ -38,6 +38,22 @@ export class World {
 
   @Prop({ type: [String], default: [] })
   blacklistedPlayerIds: string[];
+
+  @Prop({ type: Object, default: null })
+  enemySpawnerState?: {
+    runtimeSequence?: number;
+    active?: Array<{
+      runtimeId: string;
+      enemyId: string;
+      x: number;
+      y: number;
+      z: number;
+    }>;
+    pending?: Array<{
+      enemyId: string;
+      dueUnixMs: number;
+    }>;
+  };
 }
 
 export const WorldSchema = SchemaFactory.createForClass(World);

@@ -213,6 +213,7 @@ export class WorldService {
     if (dto.gold !== undefined) worldUpdate.gold = dto.gold;
     if (dto.weatherToday !== undefined) worldUpdate.weatherToday = dto.weatherToday;
     if (dto.weatherTomorrow !== undefined) worldUpdate.weatherTomorrow = dto.weatherTomorrow;
+    if (dto.enemySpawnerState !== undefined) worldUpdate.enemySpawnerState = dto.enemySpawnerState as any;
 
     const updatedWorld = Object.keys(worldUpdate).length > 0
       ? await this.worldModel.findByIdAndUpdate(dto.worldId, { $set: worldUpdate }, { new: true }).exec()
@@ -275,6 +276,7 @@ export class WorldService {
       if (dto.minute !== undefined) worldUpdate.minute = dto.minute;
       if (dto.weatherToday !== undefined) worldUpdate.weatherToday = dto.weatherToday;
       if (dto.weatherTomorrow !== undefined) worldUpdate.weatherTomorrow = dto.weatherTomorrow;
+      if (dto.enemySpawnerState !== undefined) worldUpdate.enemySpawnerState = dto.enemySpawnerState as any;
 
       if (Object.keys(worldUpdate).length > 0) {
         await this.worldModel.findByIdAndUpdate(

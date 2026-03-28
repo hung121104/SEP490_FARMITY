@@ -17,6 +17,10 @@ namespace CombatManager.SO
         [Tooltip("Prefab with EnemyPresenter + Animator + SpriteRenderer")]
         public GameObject enemyPrefab;
 
+        [Header("Spawn")]
+        [Tooltip("Seconds to wait before this enemy type respawns after death.")]
+        public float respawnDelaySeconds = 20f;
+
         [Header("Stats")]
         public int maxHealth = 10;
         public int damageAmount = 1;
@@ -66,6 +70,9 @@ namespace CombatManager.SO
 
             if (string.IsNullOrEmpty(enemyId))
                 enemyId = name.ToLower().Replace(" ", "_");
+
+            if (respawnDelaySeconds < 0f)
+                respawnDelaySeconds = 0f;
         }
 
         #endregion

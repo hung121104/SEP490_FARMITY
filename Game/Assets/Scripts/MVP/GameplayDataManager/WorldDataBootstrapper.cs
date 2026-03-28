@@ -104,6 +104,8 @@ public class WorldDataBootstrapper : MonoBehaviour
                 yield break;
             }
 
+            CombatManager.Service.EnemySpawnerManager.SetBootstrapState(data.enemySpawnerState);
+
             // --- Distribute to managers ---
 
             // 1. Player / character positions

@@ -17,13 +17,18 @@ MonoBehaviour:
   enemyDescription: 
   enemyIcon: {fileID: 4723107735738678597, guid: 68167aab8fca85940b69701c2b1bd634, type: 3}
   enemyPrefab: {fileID: 7112447425611430327, guid: 6edb4661a74bb254196935fc2a73d48d, type: 3}
-  maxHealth: 500
+  maxActiveOnMap: 10
+  respawnDelaySeconds: 60
+  maxHealth: 100
   damageAmount: 5
   knockbackForce: 10
   moveSpeed: 2
   chaseSpeed: 3
   wanderSpeed: 1
   wanderRange: 5
+  enableSeparation: 1
+  separationRadius: 0.8
+  separationForce: 2.5
   detectionRange: 8
   attackRange: 1.5
   fieldOfViewAngle: 120

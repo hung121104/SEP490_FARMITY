@@ -23,6 +23,7 @@ public class WorldApiResponse
     public int gold;
     public int weatherToday;
     public int weatherTomorrow;
+    public WorldApi.EnemySpawnerStateDto enemySpawnerState;
     public List<CharacterEntry> characters = new List<CharacterEntry>();
 
     /// <summary>Loaded chunk documents — one per saved 30x30 chunk.</summary>

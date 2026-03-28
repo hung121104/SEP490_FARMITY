@@ -24,6 +24,8 @@ namespace CombatManager.Presenter
         private const float STATE_BROADCAST_INTERVAL = 0.1f;
         private const float REMOTE_POSITION_LERP = 12f;
 
+        public static event System.Action<string, string, Vector3> OnEnemyAuthoritativeDeath;
+
         [Header("Model")]
         [SerializeField] private EnemyModel model = new EnemyModel();
 
@@ -567,6 +569,7 @@ namespace CombatManager.Presenter
             {
                 // ✅ Fire achievement event with enemy ID - called ONCE
                 GameEventBus.FireEnemyKilled(enemyId, 1);
+                OnEnemyAuthoritativeDeath?.Invoke(model.runtimeEnemyId, enemyId, transform.position);
             }
 
             aiService.Stop();
