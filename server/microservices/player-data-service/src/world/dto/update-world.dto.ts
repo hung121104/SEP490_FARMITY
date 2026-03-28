@@ -120,6 +120,6 @@ export class UpdateWorldDto {
    */
   deletedChests?: DeletedChestDto[];
 
-  /** Enemy spawner persistence blob (active enemies + pending respawns). */
+  /** Enemy spawner persistence blob (stored in WorldEntities collection). */
   enemySpawnerState?: EnemySpawnerStateDto;
 }

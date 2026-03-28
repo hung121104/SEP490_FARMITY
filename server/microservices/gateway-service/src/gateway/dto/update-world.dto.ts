@@ -81,7 +81,7 @@ export class UpdateWorldDto {
    */
   inventoryDeltas?: PlayerInventoryDeltaDto[];
 
-  /** Enemy spawner persistence blob (active enemies + pending respawns). */
+  /** Enemy spawner persistence blob (stored in WorldEntities collection). */
   enemySpawnerState?: {
     runtimeSequence?: number;
     active?: Array<{

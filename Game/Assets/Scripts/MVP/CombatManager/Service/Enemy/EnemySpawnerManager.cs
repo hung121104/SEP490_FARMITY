@@ -128,6 +128,8 @@ namespace CombatManager.Service
 
         public WorldApi.EnemySpawnerStateDto BuildPersistentStateForSave()
         {
+            long nowUnixMs = GetUnixTimeMs();
+
             WorldApi.EnemySpawnerStateDto dto = new WorldApi.EnemySpawnerStateDto
             {
                 runtimeSequence = runtimeSequence,
@@ -154,7 +156,8 @@ namespace CombatManager.Service
                 dto.pending.Add(new WorldApi.EnemySpawnerPendingRespawnDto
                 {
                     enemyId = pending.enemyId,
-                    dueUnixMs = pending.dueUnixMs,
+                    // Persist remaining delay so countdown resumes only after rejoin.
+                    dueUnixMs = ToPersistedPendingValue(pending.dueUnixMs, nowUnixMs),
                 });
             }
 
@@ -485,6 +488,8 @@ namespace CombatManager.Service
             if (!PhotonNetwork.IsConnected || !IsAuthoritative || PhotonNetwork.CurrentRoom == null)
                 return;
 
+            long nowUnixMs = GetUnixTimeMs();
+
             EnemySpawnerStateDto dto = new EnemySpawnerStateDto
             {
                 runtimeSequence = runtimeSequence,
@@ -509,7 +514,8 @@ namespace CombatManager.Service
                 dto.pending.Add(new PendingRespawnDto
                 {
                     enemyId = pending.enemyId,
-                    dueUnixMs = pending.dueUnixMs,
+                    // Persist remaining delay so countdown resumes only after rejoin.
+                    dueUnixMs = ToPersistedPendingValue(pending.dueUnixMs, nowUnixMs),
                 });
             }
 
@@ -552,6 +558,7 @@ namespace CombatManager.Service
             if (dto.pending == null)
                 return;
 
+            long nowUnixMs = GetUnixTimeMs();
             for (int i = 0; i < dto.pending.Count; i++)
             {
                 PendingRespawnDto pending = dto.pending[i];
@@ -561,7 +568,7 @@ namespace CombatManager.Service
                 pendingRespawns.Add(new PendingRespawnEntry
                 {
                     enemyId = pending.enemyId,
-                    dueUnixMs = pending.dueUnixMs,
+                    dueUnixMs = FromPersistedPendingValue(pending.dueUnixMs, nowUnixMs),
                 });
             }
         }
@@ -621,6 +628,7 @@ namespace CombatManager.Service
             pendingRespawns.Clear();
             if (bootstrapState.pending != null)
             {
+                long nowUnixMs = GetUnixTimeMs();
                 for (int i = 0; i < bootstrapState.pending.Count; i++)
                 {
                     WorldApi.EnemySpawnerPendingRespawnDto pending = bootstrapState.pending[i];
@@ -630,7 +638,7 @@ namespace CombatManager.Service
                     pendingRespawns.Add(new PendingRespawnEntry
                     {
                         enemyId = pending.enemyId,
-                        dueUnixMs = pending.dueUnixMs,
+                        dueUnixMs = FromPersistedPendingValue(pending.dueUnixMs, nowUnixMs),
                     });
                 }
             }
@@ -655,6 +663,20 @@ namespace CombatManager.Service
         private static long GetUnixTimeMs()
         {
             return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        }
+
+        private static long ToPersistedPendingValue(long dueUnixMs, long nowUnixMs)
+        {
+            return Math.Max(0L, dueUnixMs - nowUnixMs);
+        }
+
+        private static long FromPersistedPendingValue(long persistedValue, long nowUnixMs)
+        {
+            // Backward compatibility: legacy saves used absolute Unix ms deadlines.
+            if (persistedValue >= 1_000_000_000_000L)
+                return persistedValue;
+
+            return nowUnixMs + Math.Max(0L, persistedValue);
         }
 
         private static bool IsPendingDue(PendingRespawnEntry pending, long nowUnixMs)
