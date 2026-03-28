@@ -8,6 +8,9 @@ public class QuestLogPresenter
     /// <summary>View subscribes to this event and calls ShowQuestList itself — Presenter never calls View directly.</summary>
     public event System.Action<System.Collections.Generic.List<QuestLogItemData>> OnItemsRefreshed;
 
+    /// <summary>Fires with the first active quest (or null when list is empty). PinnedQuestView subscribes.</summary>
+    public event System.Action<QuestLogItemData> OnPinnedQuestChanged;
+
     public QuestLogPresenter(IQuestService service)
     {
         this.service = service;
@@ -30,6 +33,9 @@ public class QuestLogPresenter
 
         // Fire event — View handles its own rendering.
         OnItemsRefreshed?.Invoke(items);
+
+        // Pinned quest = first item in list (null if empty).
+        OnPinnedQuestChanged?.Invoke(items.Count > 0 ? items[0] : null);
     }
 
     // De-dup safe: remove before add to prevent double-subscribe on OnEnable cycles.
