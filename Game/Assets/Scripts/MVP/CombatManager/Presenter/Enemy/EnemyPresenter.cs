@@ -69,6 +69,8 @@ namespace CombatManager.Presenter
         private float lastDamagePopupAt = -10f;
         private const float DAMAGE_POPUP_INTERVAL = 0.1f;
         private const string ATTACK_TRIGGER = "Attack";
+        private bool hasGuardAnchorOverride;
+        private Vector3 guardAnchorOverride;
 
         private readonly List<Collider2D> activeAttackTargets = new List<Collider2D>();
 
@@ -240,6 +242,8 @@ namespace CombatManager.Presenter
             knockbackService.Initialize(this);
             combatService.Initialize(damagePopupPrefab);
             aiService.Initialize(transform);
+
+            ApplyGuardAnchorOverrideIfPresent();
 
             if (string.IsNullOrWhiteSpace(model.runtimeEnemyId))
             {
@@ -546,6 +550,21 @@ namespace CombatManager.Presenter
                 model.runtimeEnemyId = runtimeId;
                 EnemySyncManager.Instance.RegisterEnemy(this);
             }
+        }
+
+        public void SetGuardAnchor(Vector3 anchorWorldPosition)
+        {
+            hasGuardAnchorOverride = true;
+            guardAnchorOverride = anchorWorldPosition;
+            ApplyGuardAnchorOverrideIfPresent();
+        }
+
+        private void ApplyGuardAnchorOverrideIfPresent()
+        {
+            if (!hasGuardAnchorOverride)
+                return;
+
+            model.startPosition = guardAnchorOverride;
         }
 
         #endregion

@@ -554,7 +554,14 @@ namespace CombatManager.Service
             GameObject enemyObject = Instantiate(mapping.enemyData.enemyPrefab, spawnPos, Quaternion.identity);
             EnemyPresenter presenter = enemyObject.GetComponent<EnemyPresenter>();
             if (presenter != null)
+            {
                 presenter.SetRuntimeEnemyId(runtimeId);
+
+                if (enemyDataManager != null && enemyDataManager.TryGetOriginalSpawnPosition(runtimeId, out Vector3 originalSpawnPos))
+                    presenter.SetGuardAnchor(originalSpawnPos);
+                else
+                    presenter.SetGuardAnchor(spawnPos);
+            }
 
             RegisterOrUpdateRuntimeState(runtimeId, enemyId, spawnPos, true, true, false);
             LogDebug($"Spawned enemy '{enemyId}' runtime '{runtimeId}' at {spawnPos}.");

@@ -17,6 +17,7 @@ namespace CombatManager.Service
             public string runtimeId;
             public string enemyId;
             public Vector3 position;
+            public Vector3 originalSpawnPosition;
             public Vector2Int chunkPos;
             public int sectionId;
             public bool isMaterialized;
@@ -28,11 +29,11 @@ namespace CombatManager.Service
         [Tooltip("If true, enemy activation uses ChunkLoadingManager loaded chunks directly.")]
         [SerializeField] private bool followChunkLoadingManager = true;
         [Tooltip("Active window width centered around each player (in tiles).")]
-        [SerializeField] private int activeTileWindowWidth = 15;
+        [SerializeField] private int activeTileWindowWidth = 20;
         [Tooltip("Active window height centered around each player (in tiles).")]
-        [SerializeField] private int activeTileWindowHeight = 15;
+        [SerializeField] private int activeTileWindowHeight = 20;
         [Tooltip("Seconds between player scan and active chunk recalculation.")]
-        [SerializeField] private float playerScanIntervalSeconds = 0.5f;
+        [SerializeField] private float playerScanIntervalSeconds = 0.1f;
 
         [Header("Chunk Loading Sync")]
         [Tooltip("Seconds between retries when searching for ChunkLoadingManager.")]
@@ -43,6 +44,7 @@ namespace CombatManager.Service
 
         private readonly Dictionary<string, EnemyRuntimeData> runtimeById = new Dictionary<string, EnemyRuntimeData>();
         private readonly HashSet<Vector2Int> activeChunks = new HashSet<Vector2Int>();
+        private readonly List<RectInt> activeTileWindows = new List<RectInt>();
         private readonly List<Transform> playerTargets = new List<Transform>();
 
         private float nextScanAt;
@@ -144,6 +146,8 @@ namespace CombatManager.Service
                 return false;
 
             bool isNew = !runtimeById.TryGetValue(runtimeId, out EnemyRuntimeData data);
+            if (isNew)
+                data.originalSpawnPosition = position;
 
             data.runtimeId = runtimeId;
             data.enemyId = enemyId;
@@ -168,6 +172,16 @@ namespace CombatManager.Service
             return true;
         }
 
+        public bool TryGetOriginalSpawnPosition(string runtimeId, out Vector3 originalSpawnPosition)
+        {
+            originalSpawnPosition = default;
+            if (!runtimeById.TryGetValue(runtimeId, out EnemyRuntimeData data))
+                return false;
+
+            originalSpawnPosition = data.originalSpawnPosition;
+            return true;
+        }
+
         public bool SetMaterialized(string runtimeId, bool isMaterialized)
         {
             if (!runtimeById.TryGetValue(runtimeId, out EnemyRuntimeData data))
@@ -185,13 +199,32 @@ namespace CombatManager.Service
 
         public bool ShouldBeMaterialized(Vector3 worldPosition)
         {
-            if (activeChunks.Count == 0)
+            if (activeTileWindows.Count == 0)
             {
                 if (followChunkLoadingManager && chunkLoadingManager != null)
                     return false;
 
                 return true;
             }
+
+            int tileX = Mathf.FloorToInt(worldPosition.x);
+            int tileY = Mathf.FloorToInt(worldPosition.y);
+
+            bool inAnyTileWindow = false;
+            for (int i = 0; i < activeTileWindows.Count; i++)
+            {
+                if (!activeTileWindows[i].Contains(new Vector2Int(tileX, tileY)))
+                    continue;
+
+                inAnyTileWindow = true;
+                break;
+            }
+
+            if (!inAnyTileWindow)
+                return false;
+
+            if (followChunkLoadingManager && chunkLoadingManager != null)
+                return chunkLoadingManager.IsChunkLoaded(ResolveChunk(worldPosition));
 
             return activeChunks.Contains(ResolveChunk(worldPosition));
         }
@@ -238,6 +271,7 @@ namespace CombatManager.Service
         private void RebuildActiveChunksFromTiles()
         {
             activeChunks.Clear();
+            activeTileWindows.Clear();
 
             if (playerTargets.Count == 0)
                 return;
@@ -264,6 +298,12 @@ namespace CombatManager.Service
                 int minTileY = playerTileY - halfH;
                 int maxTileX = minTileX + widthTiles - 1;
                 int maxTileY = minTileY + heightTiles - 1;
+
+                activeTileWindows.Add(new RectInt(
+                    minTileX,
+                    minTileY,
+                    widthTiles,
+                    heightTiles));
 
                 int minChunkX = Mathf.FloorToInt((float)minTileX / chunkSizeTiles);
                 int minChunkY = Mathf.FloorToInt((float)minTileY / chunkSizeTiles);
