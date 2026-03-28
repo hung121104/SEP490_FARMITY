@@ -109,6 +109,38 @@ public class RecipeCatalogService : MonoBehaviour
         return toRemove.Count;
     }
 
+    // ── Catalog Sync (real-time updates from CatalogSyncManager) ───────────
+
+    /// <summary>
+    /// Adds or replaces a recipe in the catalog from a JSON string.
+    /// </summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var recipe = JsonConvert.DeserializeObject<RecipeData>(json);
+            if (recipe == null || string.IsNullOrWhiteSpace(recipe.recipeID)) return;
+            if (!recipe.IsValid()) return;
+
+            _catalog[recipe.recipeID] = recipe;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[RecipeCatalogService] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Removes a recipe from the catalog.</summary>
+    public bool RemoveRecipe(string recipeID)
+    {
+        if (_catalog.Remove(recipeID))
+        {
+            OnRecipeRemoved?.Invoke(recipeID);
+            return true;
+        }
+        return false;
+    }
+
     // ── Loading ───────────────────────────────────────────────────────────────
 
     private const int MAX_RETRIES = 3;
@@ -121,6 +153,13 @@ public class RecipeCatalogService : MonoBehaviour
             CatalogProgressManager.NotifyStarted();
             StartCoroutine(FetchCatalog());
         }
+    }
+
+    /// <summary>Forces a full catalog refetch regardless of current state.</summary>
+    public void ForceRefetch()
+    {
+        IsReady = false;
+        StartCoroutine(FetchCatalog());
     }
 
     private IEnumerator FetchCatalog()

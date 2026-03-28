@@ -3,16 +3,30 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CraftingRecipeService } from './crafting-recipe.service';
 import { CreateCraftingRecipeDto } from './dto/create-crafting-recipe.dto';
 import { UpdateCraftingRecipeDto } from './dto/update-crafting-recipe.dto';
+import { CatalogVersionService } from '../../catalog-version/catalog-version.service';
+import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class CraftingRecipeController {
-  constructor(private readonly craftingRecipeService: CraftingRecipeService) {}
+  constructor(
+    private readonly craftingRecipeService: CraftingRecipeService,
+    private readonly catalogVersionService: CatalogVersionService,
+  ) {}
 
   /** Create a new crafting recipe.
    *  Validates that resultItemId and all ingredient itemIds exist in the DB. */
   @MessagePattern('create-crafting-recipe')
-  async createCraftingRecipe(@Payload() dto: CreateCraftingRecipeDto) {
-    return this.craftingRecipeService.create(dto);
+  async createCraftingRecipe(
+    @Payload() dto: CreateCraftingRecipeDto,
+  ): Promise<CatalogChange> {
+    const data = await this.craftingRecipeService.create(dto);
+    const catalogVersion = await this.catalogVersionService.increment();
+    return {
+      data,
+      catalogVersion,
+      changeType: 'create',
+      entityType: 'recipe',
+    };
   }
 
   /** Return full catalog: { recipes: [...] } — consumed by Unity client */
@@ -44,13 +58,32 @@ export class CraftingRecipeController {
   @MessagePattern('update-crafting-recipe')
   async updateCraftingRecipe(
     @Payload() payload: { recipeID: string; dto: UpdateCraftingRecipeDto },
-  ) {
-    return this.craftingRecipeService.update(payload.recipeID, payload.dto);
+  ): Promise<CatalogChange> {
+    const data = await this.craftingRecipeService.update(
+      payload.recipeID,
+      payload.dto,
+    );
+    const catalogVersion = await this.catalogVersionService.increment();
+    return {
+      data,
+      catalogVersion,
+      changeType: 'update',
+      entityType: 'recipe',
+    };
   }
 
   /** Delete a crafting recipe by game-side recipeID string */
   @MessagePattern('delete-crafting-recipe')
-  async deleteCraftingRecipe(@Payload() recipeID: string) {
-    return this.craftingRecipeService.delete(recipeID);
+  async deleteCraftingRecipe(
+    @Payload() recipeID: string,
+  ): Promise<CatalogChange> {
+    const data = await this.craftingRecipeService.delete(recipeID);
+    const catalogVersion = await this.catalogVersionService.increment();
+    return {
+      data,
+      catalogVersion,
+      changeType: 'delete',
+      entityType: 'recipe',
+    };
   }
 }

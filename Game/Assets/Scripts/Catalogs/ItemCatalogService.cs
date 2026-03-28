@@ -113,6 +113,13 @@ public class ItemCatalogService : MonoBehaviour
         }
     }
 
+    /// <summary>Forces a full catalog refetch regardless of current state.</summary>
+    public void ForceRefetch()
+    {
+        IsReady = false;
+        StartCoroutine(FetchCatalog());
+    }
+
     private IEnumerator FetchCatalog()
     {
         IsReady = false;
@@ -234,6 +241,45 @@ public class ItemCatalogService : MonoBehaviour
         var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 16f);
         targetCache[itemId] = sprite;
         Debug.Log($"[ItemCatalogService] Sprite ready for '{itemId}'.");
+    }
+
+    // ── Catalog Sync (real-time updates from CatalogSyncManager) ───────────
+
+    /// <summary>
+    /// Adds or replaces an item in the catalog from a JSON string.
+    /// Starts sprite download asynchronously.
+    /// </summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var item = JsonConvert.DeserializeObject<ItemData>(json, _jsonSettings);
+            if (item == null || string.IsNullOrWhiteSpace(item.itemID)) return;
+
+            _catalog[item.itemID] = item;
+
+            if (!string.IsNullOrEmpty(item.iconUrl))
+                StartCoroutine(DownloadSprite(item.itemID, item.iconUrl));
+
+            if (item is StructureItemData structItem
+                && !string.IsNullOrEmpty(structItem.structureInteractionSpriteUrl))
+            {
+                StartCoroutine(DownloadSprite(item.itemID, structItem.structureInteractionSpriteUrl,
+                    _structureInteractionSpriteCache));
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[ItemCatalogService] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Removes an item and its cached sprites from the catalog.</summary>
+    public bool RemoveItem(string itemId)
+    {
+        _spriteCache.Remove(itemId);
+        _structureInteractionSpriteCache.Remove(itemId);
+        return _catalog.Remove(itemId);
     }
 
     // ── Fallback Injection (late-join orphaned data) ────────────────────────

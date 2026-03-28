@@ -3,14 +3,28 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CombatSkillService } from './combat-skill.service';
 import { CreateCombatSkillDto } from './dto/create-combat-skill.dto';
 import { UpdateCombatSkillDto } from './dto/update-combat-skill.dto';
+import { CatalogVersionService } from '../../catalog-version/catalog-version.service';
+import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class CombatSkillController {
-  constructor(private readonly combatSkillService: CombatSkillService) {}
+  constructor(
+    private readonly combatSkillService: CombatSkillService,
+    private readonly catalogVersionService: CatalogVersionService,
+  ) {}
 
   @MessagePattern('create-combat-skill')
-  async create(@Payload() dto: CreateCombatSkillDto) {
-    return this.combatSkillService.create(dto);
+  async create(
+    @Payload() dto: CreateCombatSkillDto,
+  ): Promise<CatalogChange> {
+    const data = await this.combatSkillService.create(dto);
+    const catalogVersion = await this.catalogVersionService.increment();
+    return {
+      data,
+      catalogVersion,
+      changeType: 'create',
+      entityType: 'combat-skill',
+    };
   }
 
   @MessagePattern('get-combat-skill-catalog')
@@ -29,13 +43,31 @@ export class CombatSkillController {
   }
 
   @MessagePattern('update-combat-skill')
-  async update(@Payload() payload: { skillId: string } & UpdateCombatSkillDto) {
+  async update(
+    @Payload() payload: { skillId: string } & UpdateCombatSkillDto,
+  ): Promise<CatalogChange> {
     const { skillId, ...dto } = payload;
-    return this.combatSkillService.update(skillId, dto);
+    const data = await this.combatSkillService.update(skillId, dto);
+    const catalogVersion = await this.catalogVersionService.increment();
+    return {
+      data,
+      catalogVersion,
+      changeType: 'update',
+      entityType: 'combat-skill',
+    };
   }
 
   @MessagePattern('delete-combat-skill')
-  async remove(@Payload() payload: { skillId: string }) {
-    return this.combatSkillService.delete(payload.skillId);
+  async remove(
+    @Payload() payload: { skillId: string },
+  ): Promise<CatalogChange> {
+    const data = await this.combatSkillService.delete(payload.skillId);
+    const catalogVersion = await this.catalogVersionService.increment();
+    return {
+      data,
+      catalogVersion,
+      changeType: 'delete',
+      entityType: 'combat-skill',
+    };
   }
 }
