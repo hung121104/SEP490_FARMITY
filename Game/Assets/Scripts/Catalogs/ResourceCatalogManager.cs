@@ -133,6 +133,34 @@ public class ResourceCatalogManager : MonoBehaviour
         return config;
     }
 
+    // ── Real-time Sync (SSE) ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Adds or updates a single resource config from a JSON string (SSE real-time sync).
+    /// </summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var config = JsonConvert.DeserializeObject<ResourceConfigData>(json);
+            if (config == null || string.IsNullOrWhiteSpace(config.resourceId)) return;
+            _resourceConfigs[config.resourceId] = config;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[ResourceCatalogManager] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Removes a resource config by ID (SSE real-time delete).
+    /// </summary>
+    public bool RemoveResource(string resourceId)
+    {
+        if (string.IsNullOrWhiteSpace(resourceId)) return false;
+        return _resourceConfigs.Remove(resourceId);
+    }
+
     // ── Fallback Injection (late-join orphaned data) ────────────────────────
 
     /// <summary>

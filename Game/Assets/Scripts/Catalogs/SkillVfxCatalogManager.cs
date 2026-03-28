@@ -44,6 +44,34 @@ public class SkillVfxCatalogManager : MonoBehaviour
 
     public IReadOnlyDictionary<string, CombatCatalogEntry> GetAllEntries() => _catalog;
 
+    // ── Real-time Sync (SSE) ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Adds or updates a single combat catalog entry from a JSON string (SSE real-time sync).
+    /// </summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var entry = JsonConvert.DeserializeObject<CombatCatalogEntry>(json);
+            if (entry == null || string.IsNullOrWhiteSpace(entry.configId)) return;
+            _catalog[entry.configId.Trim().ToLowerInvariant()] = entry;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[SkillVfxCatalogManager] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Removes a combat catalog entry by configId (SSE real-time delete).
+    /// </summary>
+    public bool RemoveEntry(string configId)
+    {
+        if (string.IsNullOrWhiteSpace(configId)) return false;
+        return _catalog.Remove(configId.Trim().ToLowerInvariant());
+    }
+
     public bool TryGetPrimaryTint(string configId, out Color tint)
     {
         tint = Color.white;

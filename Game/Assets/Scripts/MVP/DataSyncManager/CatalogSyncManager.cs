@@ -288,6 +288,20 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
                     QuestCatalogService.Instance?.AddOrUpdateFromJson(json);
                 break;
 
+            case "resource-config":
+                if (changeType == "delete")
+                    ResourceCatalogManager.Instance?.RemoveResource(data.Value<string>("resourceId"));
+                else
+                    ResourceCatalogManager.Instance?.AddOrUpdateFromJson(json);
+                break;
+
+            case "combat-catalog":
+                if (changeType == "delete")
+                    SkillVfxCatalogManager.Instance?.RemoveEntry(data.Value<string>("configId"));
+                else
+                    SkillVfxCatalogManager.Instance?.AddOrUpdateFromJson(json);
+                break;
+
             default:
                 Log($"[CatalogSync] Unhandled entity type: {entityType}");
                 break;
@@ -456,6 +470,8 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             "plant" => data.Value<string>("plantName") ?? data.Value<string>("plantId") ?? "Unknown Plant",
             "recipe" => data.Value<string>("recipeName") ?? data.Value<string>("recipeID") ?? "Unknown Recipe",
             "quest" => data.Value<string>("questName") ?? data.Value<string>("questId") ?? "Unknown Quest",
+            "resource-config" => data.Value<string>("name") ?? data.Value<string>("resourceId") ?? "Unknown Resource",
+            "combat-catalog" => data.Value<string>("displayName") ?? data.Value<string>("configId") ?? "Unknown Combat Config",
             _ => data.Value<string>("name") ?? "Unknown"
         };
     }
