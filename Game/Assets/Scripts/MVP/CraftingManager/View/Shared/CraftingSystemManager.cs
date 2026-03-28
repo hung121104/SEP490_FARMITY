@@ -123,12 +123,18 @@ public class CraftingSystemManager : MonoBehaviour
     /// <summary>Real-time single recipe add/update from SSE.</summary>
     private void HandleCatalogChanged(string changeType, string entityType, string entityName, string typeName)
     {
-        if (entityType != "recipe" || RecipeCatalogService.Instance == null) return;
+        if (RecipeCatalogService.Instance == null) return;
 
-        if (changeType == "create" || changeType == "update")
+        if (entityType == "recipe")
         {
-            // Recipe already updated in RecipeCatalogService by CatalogSyncManager.
-            // Sync all recipes to pick up the change.
+            // Recipe added, updated, or deleted — reload all recipes into CraftingModel.
+            var recipes = RecipeCatalogService.Instance.GetAllRecipes();
+            craftingService?.LoadRecipes(recipes);
+        }
+        else if (changeType == "delete" && entityType == "item")
+        {
+            // Item deleted → recipes using that item were cascade-removed by
+            // CatalogDeleteHandler.PostItemDelete(). Reload to reflect changes.
             var recipes = RecipeCatalogService.Instance.GetAllRecipes();
             craftingService?.LoadRecipes(recipes);
         }

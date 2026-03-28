@@ -242,11 +242,6 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             var dataObj = JObject.Parse(jsonData);
             ApplyCatalogChange(changeType, entityType, dataObj);
         }
-        else if (changeType == "delete")
-        {
-            // Delete events might not carry full data on client
-            // The entity ID is extracted from entityName or handled by Phase 2
-        }
 
         OnCatalogChanged?.Invoke(changeType, entityType, entityName, typeName);
     }
@@ -258,52 +253,85 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
         if (data == null) return;
         string json = data.ToString(Formatting.None);
 
+        if (changeType == "delete")
+        {
+            ApplyDelete(entityType, data);
+            return;
+        }
+
+        // Add / Update
         switch (entityType)
         {
             case "item":
-                if (changeType == "delete")
-                    ItemCatalogService.Instance?.RemoveItem(data.Value<string>("itemID"));
-                else
-                    ItemCatalogService.Instance?.AddOrUpdateFromJson(json);
+                ItemCatalogService.Instance?.AddOrUpdateFromJson(json);
+                break;
+            case "plant":
+                PlantCatalogService.Instance?.AddOrUpdateFromJson(json);
+                break;
+            case "recipe":
+                RecipeCatalogService.Instance?.AddOrUpdateFromJson(json);
+                break;
+            case "quest":
+                QuestCatalogService.Instance?.AddOrUpdateFromJson(json);
+                break;
+            case "resource-config":
+                ResourceCatalogManager.Instance?.AddOrUpdateFromJson(json);
+                break;
+            case "combat-catalog":
+                SkillVfxCatalogManager.Instance?.AddOrUpdateFromJson(json);
+                break;
+            default:
+                Log($"[CatalogSync] Unhandled entity type: {entityType}");
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Handles delete operations. On Master: cleanup world data FIRST via
+    /// CatalogDeleteHandler, then remove from catalog, then cascade recipes.
+    /// On Client: just remove from catalog (world data already synced via FIFO).
+    /// </summary>
+    private void ApplyDelete(string entityType, JObject data)
+    {
+        bool isMaster = PhotonNetwork.IsMasterClient;
+
+        switch (entityType)
+        {
+            case "item":
+                string itemId = data.Value<string>("itemID");
+                if (isMaster) CatalogDeleteHandler.HandleItemDelete(itemId);
+                ItemCatalogService.Instance?.RemoveItem(itemId);
+                if (isMaster) CatalogDeleteHandler.PostItemDelete();
                 break;
 
             case "plant":
-                if (changeType == "delete")
-                    PlantCatalogService.Instance?.RemovePlant(data.Value<string>("plantId"));
-                else
-                    PlantCatalogService.Instance?.AddOrUpdateFromJson(json);
+                string plantId = data.Value<string>("plantId");
+                if (isMaster) CatalogDeleteHandler.HandlePlantDelete(plantId);
+                PlantCatalogService.Instance?.RemovePlant(plantId);
                 break;
 
             case "recipe":
-                if (changeType == "delete")
-                    RecipeCatalogService.Instance?.RemoveRecipe(data.Value<string>("recipeID"));
-                else
-                    RecipeCatalogService.Instance?.AddOrUpdateFromJson(json);
+                string recipeId = data.Value<string>("recipeID");
+                if (isMaster) CatalogDeleteHandler.HandleRecipeDelete(recipeId);
+                RecipeCatalogService.Instance?.RemoveRecipe(recipeId);
                 break;
 
             case "quest":
-                if (changeType == "delete")
-                    QuestCatalogService.Instance?.RemoveQuest(data.Value<string>("questId"));
-                else
-                    QuestCatalogService.Instance?.AddOrUpdateFromJson(json);
+                QuestCatalogService.Instance?.RemoveQuest(data.Value<string>("questId"));
                 break;
 
             case "resource-config":
-                if (changeType == "delete")
-                    ResourceCatalogManager.Instance?.RemoveResource(data.Value<string>("resourceId"));
-                else
-                    ResourceCatalogManager.Instance?.AddOrUpdateFromJson(json);
+                string resourceId = data.Value<string>("resourceId");
+                if (isMaster) CatalogDeleteHandler.HandleResourceConfigDelete(resourceId);
+                ResourceCatalogManager.Instance?.RemoveResource(resourceId);
                 break;
 
             case "combat-catalog":
-                if (changeType == "delete")
-                    SkillVfxCatalogManager.Instance?.RemoveEntry(data.Value<string>("configId"));
-                else
-                    SkillVfxCatalogManager.Instance?.AddOrUpdateFromJson(json);
+                SkillVfxCatalogManager.Instance?.RemoveEntry(data.Value<string>("configId"));
                 break;
 
             default:
-                Log($"[CatalogSync] Unhandled entity type: {entityType}");
+                Log($"[CatalogSync] Unhandled delete for entity type: {entityType}");
                 break;
         }
     }
