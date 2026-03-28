@@ -28,9 +28,9 @@ namespace CombatManager.Service
         [Tooltip("If true, enemy activation uses ChunkLoadingManager loaded chunks directly.")]
         [SerializeField] private bool followChunkLoadingManager = true;
         [Tooltip("Active window width centered around each player (in tiles).")]
-        [SerializeField] private int activeTileWindowWidth = 10;
+        [SerializeField] private int activeTileWindowWidth = 15;
         [Tooltip("Active window height centered around each player (in tiles).")]
-        [SerializeField] private int activeTileWindowHeight = 10;
+        [SerializeField] private int activeTileWindowHeight = 15;
         [Tooltip("Seconds between player scan and active chunk recalculation.")]
         [SerializeField] private float playerScanIntervalSeconds = 0.5f;
 
