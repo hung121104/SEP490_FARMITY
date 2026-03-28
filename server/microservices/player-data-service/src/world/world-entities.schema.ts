@@ -48,7 +48,7 @@ export class EnemySpawnerState {
 
 export const EnemySpawnerStateSchema = SchemaFactory.createForClass(EnemySpawnerState);
 
-@Schema({ collection: 'WorldEntities' })
+@Schema({ collection: 'worldentities' })
 export class WorldEntities {
   @Prop({ type: Types.ObjectId, ref: 'World', required: true, unique: true, index: true })
   worldId: Types.ObjectId;
