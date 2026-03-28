@@ -62,9 +62,6 @@ export class UpdateWorldDto {
   worldId: string;
   ownerId: string;
 
-  // Optional world metadata fields
-  worldName?: string;
-
   // Optional world time/economy fields
   day?: number;
   month?: number;

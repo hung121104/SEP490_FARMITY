@@ -117,7 +117,7 @@ public class MyWorldListView : MonoBehaviour
         ShowLoading(false);
     }
 
-    public void UpdateStatus(string message)
+    private void UpdateStatus(string message)
     {
         if (statusText != null)
         {

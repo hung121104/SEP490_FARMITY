@@ -15,6 +15,7 @@ import { CombatCatalogModule } from './game-data/combat-catalog/combat-catalog.m
 import { MaterialModule } from './game-data/material/material.module';
 import { ResourceConfigModule } from './game-data/resource-config/resource-config.module';
 import { CombatSkillModule } from './game-data/combat-skill/combat-skill.module';
+import { QuestModule } from './game-data/quest/quest.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { CombatSkillModule } from './game-data/combat-skill/combat-skill.module'
     MaterialModule,
     ResourceConfigModule,
     CombatSkillModule,
+    QuestModule,
   ],
 })
 export class AppModule {}

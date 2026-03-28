@@ -22,16 +22,6 @@ public class WorldItemView : MonoBehaviour
     [Tooltip("Optional: name of the scene to load when this world is selected")]
     private string sceneToLoad;
 
-    [Header("Rename")]
-    [SerializeField]
-    [Tooltip("Optional reference to UpdateWorld helper in world list scene")]
-    private UpdateWorld updateWorldView;
-
-    [Header("Delete")]
-    [SerializeField]
-    [Tooltip("Optional reference to DeleteWorld helper in world list scene")]
-    private DeleteWorld deleteWorldView;
-
     private WorldModel worldData;
 
     /// <summary>
@@ -90,60 +80,6 @@ public class WorldItemView : MonoBehaviour
             PhotonNetwork.IsMessageQueueRunning = false;
         }
         SceneManager.LoadScene(sceneName);
-    }
-
-    /// <summary>
-    /// UI button hook from world-list item edit button.
-    /// Opens shared rename popup and binds this item's world id/name.
-    /// </summary>
-    public void OnEditWorldNameButton()
-    {
-        if (string.IsNullOrEmpty(Id))
-        {
-            Debug.LogWarning("[WorldItemView] Missing world id. Rename skipped.");
-            return;
-        }
-
-        if (updateWorldView == null)
-        {
-            updateWorldView = UnityEngine.Object.FindFirstObjectByType<UpdateWorld>();
-        }
-
-        if (updateWorldView == null)
-        {
-            Debug.LogError("[WorldItemView] UpdateWorld helper not found in scene.");
-            return;
-        }
-
-        string currentName = worldData != null ? worldData.worldName : string.Empty;
-        updateWorldView.BeginRenameForWorld(Id, currentName);
-    }
-
-    /// <summary>
-    /// UI button hook from world-list item delete button.
-    /// Opens shared delete confirmation popup bound to this world id.
-    /// </summary>
-    public void OnDeleteWorldButton()
-    {
-        if (string.IsNullOrEmpty(Id))
-        {
-            Debug.LogWarning("[WorldItemView] Missing world id. Delete skipped.");
-            return;
-        }
-
-        if (deleteWorldView == null)
-        {
-            deleteWorldView = UnityEngine.Object.FindFirstObjectByType<DeleteWorld>();
-        }
-
-        if (deleteWorldView == null)
-        {
-            Debug.LogError("[WorldItemView] DeleteWorld helper not found in scene.");
-            return;
-        }
-
-        string currentName = worldData != null ? worldData.worldName : "Unnamed World";
-        deleteWorldView.BeginDeleteForWorld(Id, currentName);
     }
 
     private void UpdateDisplay()

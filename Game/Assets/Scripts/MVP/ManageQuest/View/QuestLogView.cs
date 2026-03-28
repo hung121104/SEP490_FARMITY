@@ -2,6 +2,13 @@
 using TMPro;
 using System.Collections.Generic;
 
+/// <summary>Render-only DTO for one quest row in the quest log. View never touches QuestModel.</summary>
+public class QuestLogItemData
+{
+    public string questName;
+    public List<string> objectiveTexts; // pre-formatted by Presenter: "desc amount/required"
+}
+
 public class QuestLogView : MonoBehaviour
 {
     [Header("UI")]
@@ -14,13 +21,13 @@ public class QuestLogView : MonoBehaviour
         panelRoot.SetActive(!panelRoot.activeSelf);
     }
 
-    public void ShowQuestList(List<QuestModel> quests)
+    public void ShowQuestList(List<QuestLogItemData> items)
     {
         // Clear old UI
         foreach (Transform child in questListContainer)
             Destroy(child.gameObject);
 
-        foreach (var quest in quests)
+        foreach (var item in items)
         {
             GameObject entry = Instantiate(questItemPrefab, questListContainer);
 
@@ -33,22 +40,15 @@ public class QuestLogView : MonoBehaviour
             TMP_Text objectiveTemplate =
                 objectiveList.GetChild(0).GetComponent<TMP_Text>();
 
-            questNameText.text = quest.questName;
+            questNameText.text = item.questName;
 
-            // hide  template
             objectiveTemplate.gameObject.SetActive(false);
 
-            foreach (var obj in quest.objectives)
+            foreach (var text in item.objectiveTexts)
             {
-                TMP_Text objective =
-                    Instantiate(objectiveTemplate, objectiveList);
-
+                TMP_Text objective = Instantiate(objectiveTemplate, objectiveList);
                 objective.gameObject.SetActive(true);
-
-                objective.text =
-                    obj.description + " " +
-                    obj.currentAmount + "/" +
-                    obj.requiredAmount;
+                objective.text = text;
             }
         }
     }

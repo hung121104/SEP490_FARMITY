@@ -6,15 +6,33 @@ import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { CombatSkill, CombatSkillDocument } from '../combat-skill/combat-skill.schema';
 import { CombatSkillOwnership } from '../combat-skill/combat-skill.enums';
+import { Plant, PlantDocument } from '../plant/plant.schema';
+import {
+  CraftingRecipe,
+  CraftingRecipeDocument,
+} from '../crafting-recipe/crafting-recipe.schema';
+import {
+  ResourceConfig,
+  ResourceConfigDocument,
+} from '../resource-config/resource-config.schema';
+import { Material, MaterialDocument } from '../material/material.schema';
 
 const FERTILIZER_ITEM_TYPE = 14;
 const WEAPON_ITEM_TYPE = 6;
+const TOOL_ITEM_TYPE = 0;
 
 @Injectable()
 export class ItemService {
   constructor(
     @InjectModel(Item.name) private itemModel: Model<ItemDocument>,
     @InjectModel(CombatSkill.name) private combatSkillModel: Model<CombatSkillDocument>,
+    @InjectModel(Plant.name) private plantModel: Model<PlantDocument>,
+    @InjectModel(CraftingRecipe.name)
+    private craftingRecipeModel: Model<CraftingRecipeDocument>,
+    @InjectModel(ResourceConfig.name)
+    private resourceConfigModel: Model<ResourceConfigDocument>,
+    @InjectModel(Material.name)
+    private materialModel: Model<MaterialDocument>,
   ) {}
 
   async create(createItemDto: CreateItemDto): Promise<Item> {
@@ -24,6 +42,7 @@ export class ItemService {
     }
 
     await this.validateWeaponLinkedSkill(createItemDto.itemType, createItemDto.linkedSkillId);
+    await this.validateMaterialReferencesOnCreate(createItemDto);
 
     const item = new this.itemModel(createItemDto);
     return item.save();
@@ -102,9 +121,12 @@ export class ItemService {
   }
 
   async delete(itemID: string): Promise<Item | null> {
-    const item = await this.itemModel.findOneAndDelete({ itemID }).exec();
-    if (!item) throw new NotFoundException(`Item with itemID "${itemID}" not found`);
-    return item;
+    const existing = await this.itemModel.findOne({ itemID }).exec();
+    if (!existing) throw new NotFoundException(`Item with itemID "${itemID}" not found`);
+
+    await this.assertItemNotInUse(itemID, 'Item');
+
+    return this.itemModel.findOneAndDelete({ itemID }).exec();
   }
 
   async deleteByItemType(
@@ -112,11 +134,14 @@ export class ItemService {
     itemType: number,
     entityName = 'Item',
   ): Promise<Item | null> {
-    const item = await this.itemModel.findOneAndDelete({ itemID, itemType }).exec();
-    if (!item) {
+    const existing = await this.itemModel.findOne({ itemID, itemType }).exec();
+    if (!existing) {
       throw new NotFoundException(`${entityName} with itemID "${itemID}" not found`);
     }
-    return item;
+
+    await this.assertItemNotInUse(itemID, entityName);
+
+    return this.itemModel.findOneAndDelete({ itemID, itemType }).exec();
   }
 
   async createFertilizer(createItemDto: CreateItemDto): Promise<Item> {
@@ -227,6 +252,150 @@ export class ItemService {
         `linkedSkillId '${normalized}' must reference a WeaponSkill ownership entry`,
       );
     }
+  }
+
+  private async validateMaterialReferencesOnCreate(dto: CreateItemDto): Promise<void> {
+    const toolMaterialId = typeof dto.toolMaterialId === 'string' ? dto.toolMaterialId.trim() : '';
+    const weaponMaterialId = typeof dto.weaponMaterialId === 'string' ? dto.weaponMaterialId.trim() : '';
+
+    if (dto.itemType === TOOL_ITEM_TYPE && toolMaterialId) {
+      const material = await this.materialModel.findOne({ materialId: toolMaterialId }).lean().exec();
+      if (!material) {
+        throw new BadRequestException(`toolMaterialId '${toolMaterialId}' does not exist`);
+      }
+    }
+
+    if (dto.itemType === WEAPON_ITEM_TYPE && weaponMaterialId) {
+      const material = await this.materialModel.findOne({ materialId: weaponMaterialId }).lean().exec();
+      if (!material) {
+        throw new BadRequestException(`weaponMaterialId '${weaponMaterialId}' does not exist`);
+      }
+    }
+  }
+
+  private async assertItemNotInUse(itemID: string, entityName: string): Promise<void> {
+    type UsageEntry = {
+      location: string;
+      count: number;
+      examples: string[];
+    };
+
+    const usages: UsageEntry[] = [];
+
+    const [
+      plantHarvestCount,
+      plantPollenCount,
+      recipeResultCount,
+      recipeIngredientCount,
+      resourceDropCount,
+      smeltedResultCount,
+    ] = await Promise.all([
+      this.plantModel.countDocuments({ harvestedItemId: itemID }).exec(),
+      this.plantModel.countDocuments({ pollenItemId: itemID }).exec(),
+      this.craftingRecipeModel.countDocuments({ resultItemId: itemID }).exec(),
+      this.craftingRecipeModel.countDocuments({ 'ingredients.itemId': itemID }).exec(),
+      this.resourceConfigModel.countDocuments({ 'dropTable.itemId': itemID }).exec(),
+      this.itemModel.countDocuments({ smeltedResultId: itemID, itemID: { $ne: itemID } }).exec(),
+    ]);
+
+    if (plantHarvestCount > 0) {
+      const examples = await this.plantModel
+        .find({ harvestedItemId: itemID })
+        .select('plantId')
+        .limit(5)
+        .lean()
+        .exec();
+      usages.push({
+        location: 'Plant.harvestedItemId',
+        count: plantHarvestCount,
+        examples: examples.map((doc: any) => doc.plantId),
+      });
+    }
+
+    if (plantPollenCount > 0) {
+      const examples = await this.plantModel
+        .find({ pollenItemId: itemID })
+        .select('plantId')
+        .limit(5)
+        .lean()
+        .exec();
+      usages.push({
+        location: 'Plant.pollenItemId',
+        count: plantPollenCount,
+        examples: examples.map((doc: any) => doc.plantId),
+      });
+    }
+
+    if (recipeResultCount > 0) {
+      const examples = await this.craftingRecipeModel
+        .find({ resultItemId: itemID })
+        .select('recipeID')
+        .limit(5)
+        .lean()
+        .exec();
+      usages.push({
+        location: 'CraftingRecipe.resultItemId',
+        count: recipeResultCount,
+        examples: examples.map((doc: any) => doc.recipeID),
+      });
+    }
+
+    if (recipeIngredientCount > 0) {
+      const examples = await this.craftingRecipeModel
+        .find({ 'ingredients.itemId': itemID })
+        .select('recipeID')
+        .limit(5)
+        .lean()
+        .exec();
+      usages.push({
+        location: 'CraftingRecipe.ingredients.itemId',
+        count: recipeIngredientCount,
+        examples: examples.map((doc: any) => doc.recipeID),
+      });
+    }
+
+    if (resourceDropCount > 0) {
+      const examples = await this.resourceConfigModel
+        .find({ 'dropTable.itemId': itemID })
+        .select('resourceId')
+        .limit(5)
+        .lean()
+        .exec();
+      usages.push({
+        location: 'ResourceConfig.dropTable.itemId',
+        count: resourceDropCount,
+        examples: examples.map((doc: any) => doc.resourceId),
+      });
+    }
+
+    if (smeltedResultCount > 0) {
+      const examples = await this.itemModel
+        .find({ smeltedResultId: itemID, itemID: { $ne: itemID } })
+        .select('itemID')
+        .limit(5)
+        .lean()
+        .exec();
+      usages.push({
+        location: 'Item.smeltedResultId',
+        count: smeltedResultCount,
+        examples: examples.map((doc: any) => doc.itemID),
+      });
+    }
+
+    if (usages.length === 0) {
+      return;
+    }
+
+    const usageSummary = usages
+      .map(
+        (usage) =>
+          `${usage.location} (${usage.count}) [${usage.examples.join(', ')}${usage.count > usage.examples.length ? ', ...' : ''}]`,
+      )
+      .join('; ');
+
+    throw new ConflictException(
+      `Cannot delete ${entityName} "${itemID}" because it is currently used in other collections: ${usageSummary}`,
+    );
   }
 
 }

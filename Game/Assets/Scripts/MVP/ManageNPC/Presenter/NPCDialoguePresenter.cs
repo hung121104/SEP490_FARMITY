@@ -2,16 +2,16 @@
 {
     private INPCDialogueService service;
     private NPCDialogueView view;
-    private QuestPresenter questPresenter;
+    private QuestView questView;
 
     public NPCDialoguePresenter(
       INPCDialogueService service,
       NPCDialogueView view,
-      QuestPresenter questPresenter)
+      QuestView questView)
     {
-        this.service = service;
-        this.view = view;
-        this.questPresenter = questPresenter;
+        this.service   = service;
+        this.view      = view;
+        this.questView = questView;
     }
 
     public void StartDialogue()
@@ -61,7 +61,9 @@
         // QUEST OPTION
         if (option.optionText == "Quest")
         {
-            questPresenter.ShowQuest();
+            // NPCInteractionPresenter owns the quest flow — don't drive it from here.
+            // This branch is kept for completeness but quest state change is handled
+            // by NPCInteractionPresenter.HandleQuestInteraction().
             return;
         }
 

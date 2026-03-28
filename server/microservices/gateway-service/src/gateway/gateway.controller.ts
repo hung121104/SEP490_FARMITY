@@ -59,8 +59,6 @@ const FERTILIZER_ITEM_TYPE = 14;
 
 @Controller()
 export class GatewayController {
-  private static readonly WORLD_NAME_REGEX = /^[A-Za-z ]+$/;
-
   constructor(
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
@@ -310,21 +308,12 @@ export class GatewayController {
     const ownerIdRaw = req['user']?.sub;
     const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
-
-    const rawWorldName = typeof body?.worldName === 'string' ? body.worldName.trim() : '';
-    if (!rawWorldName) {
-      throw new HttpException('World name cannot be empty.', 400);
-    }
-    if (!GatewayController.WORLD_NAME_REGEX.test(rawWorldName)) {
-      throw new HttpException('World name must contain only alphabet letters and spaces.', 400);
-    }
-
     // forward optional _id for update, otherwise create
     try {
       return await firstValueFrom(
         this.playerDataClient.send('create-world', {
           _id: body._id,
-          worldName: rawWorldName,
+          worldName: body.worldName,
           ownerId,
         }),
       );
@@ -2273,7 +2262,7 @@ export class GatewayController {
   @Post('game-data/quests')
   async createQuest(@Body() body: CreateQuestDto) {
     try {
-      return await firstValueFrom(this.playerDataClient.send('create-quest', body));
+      return await firstValueFrom(this.adminClient.send('create-quest', body));
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -2284,7 +2273,7 @@ export class GatewayController {
   @Get('game-data/quests/catalog')
   async getQuestCatalog() {
     try {
-      return await firstValueFrom(this.playerDataClient.send('get-quest-catalog', {}));
+      return await firstValueFrom(this.adminClient.send('get-quest-catalog', {}));
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -2294,7 +2283,7 @@ export class GatewayController {
   @Get('game-data/quests/all')
   async getAllQuests() {
     try {
-      return await firstValueFrom(this.playerDataClient.send('get-all-quests', {}));
+      return await firstValueFrom(this.adminClient.send('get-all-quests', {}));
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -2304,7 +2293,7 @@ export class GatewayController {
   @Get('game-data/quests/by-quest-id/:questId')
   async getQuestByQuestId(@Param('questId') questId: string) {
     try {
-      return await firstValueFrom(this.playerDataClient.send('get-quest-by-quest-id', questId));
+      return await firstValueFrom(this.adminClient.send('get-quest-by-quest-id', questId));
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -2314,7 +2303,7 @@ export class GatewayController {
   @Get('game-data/quests/:id')
   async getQuestById(@Param('id') id: string) {
     try {
-      return await firstValueFrom(this.playerDataClient.send('get-quest-by-id', id));
+      return await firstValueFrom(this.adminClient.send('get-quest-by-id', id));
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -2325,7 +2314,7 @@ export class GatewayController {
   async updateQuest(@Param('questId') questId: string, @Body() body: UpdateQuestDto) {
     try {
       return await firstValueFrom(
-        this.playerDataClient.send('update-quest', { questId, dto: body }),
+        this.adminClient.send('update-quest', { questId, dto: body }),
       );
     } catch (err) {
       if (err instanceof HttpException) throw err;
@@ -2337,7 +2326,7 @@ export class GatewayController {
   @Delete('game-data/quests/:questId')
   async deleteQuest(@Param('questId') questId: string) {
     try {
-      return await firstValueFrom(this.playerDataClient.send('delete-quest', questId));
+      return await firstValueFrom(this.adminClient.send('delete-quest', questId));
     } catch (err) {
       throw this.rpcError(err);
     }

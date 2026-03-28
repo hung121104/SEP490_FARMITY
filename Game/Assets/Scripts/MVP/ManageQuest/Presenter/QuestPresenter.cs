@@ -4,78 +4,105 @@ using System.Linq;
 
 public class QuestPresenter
 {
-    private QuestView view;
-    private IQuestService service;
-    private QuestModel quest;
-    private IInventoryService inventory;
-    private string npcName;
-    private Sprite avatar;
+    private readonly IQuestService service;
+    private readonly IInventoryService inventory;
+    private readonly string npcName;
+    private readonly Sprite avatar;
 
-    public QuestPresenter(QuestView view, IQuestService service, IInventoryService inventory, string npcName, Sprite avatar)
+    private QuestModel quest;
+
+    /// <summary>View subscribes to this event and renders itself — Presenter never calls View directly.</summary>
+    public event System.Action<QuestDisplayData> OnQuestDataReady;
+    public event System.Action OnQuestAccepted;
+    public event System.Action OnQuestAcceptFailed;
+
+    public QuestPresenter(
+        IQuestService service,
+        IInventoryService inventory,
+        string npcName,
+        Sprite avatar)
     {
-        this.view = view;
-        this.service = service;
+        this.service   = service;
         this.inventory = inventory;
-        this.npcName = npcName;
-        this.avatar = avatar;
-        view.OnAccept += AcceptQuest;
+        this.npcName   = npcName;
+        this.avatar    = avatar;
     }
 
-    public bool TryPickRandomQuest(string lastQuestId)
+    // ── Called by NPCInteractionPresenter ──────────────────────────────
+    /// <summary>
+    /// Picks a random quest, renders it in the shared QuestView, and subscribes
+    /// this presenter's AcceptQuest to the view's OnAccept event for this session.
+    /// Returns false if no quest is available.
+    /// </summary>
+    public bool LoadAndDisplay(string lastQuestId)
     {
         if (!QuestCatalogService.Instance.IsReady) return false;
 
-        var availableQuests = QuestCatalogService.Instance.GetAllQuests()
+        var available = QuestCatalogService.Instance.GetAllQuests()
             .Where(q => q.NPCName == npcName
-                   && !service.IsQuestActive(q.questId)
-                   && q.questId != lastQuestId)
+                     && !service.IsQuestActive(q.questId)
+                     && q.questId != lastQuestId)
             .ToList();
 
-        if (availableQuests.Count == 0) return false;
+        if (available.Count == 0) return false;
 
-        float totalWeight = availableQuests.Sum(q => q.Weight);
-        float randomValue = Random.Range(0, totalWeight);
-        float cumulativeWeight = 0;
-
-        QuestCatalogData selected = availableQuests[0];
-        foreach (var q in availableQuests)
+        // Weighted random selection
+        float total       = available.Sum(q => q.Weight);
+        float roll        = Random.Range(0, total);
+        float accumulated = 0;
+        QuestCatalogData selected = available[0];
+        foreach (var q in available)
         {
-            cumulativeWeight += q.Weight;
-            if (randomValue <= cumulativeWeight)
-            {
-                selected = q;
-                break;
-            }
+            accumulated += q.Weight;
+            if (roll <= accumulated) { selected = q; break; }
         }
 
-
-        this.quest = new QuestModel
+        quest = new QuestModel
         {
-            questId = selected.questId,
-            questName = selected.questName,
+            questId     = selected.questId,
+            questName   = selected.questName,
             description = selected.description,
-            npcName = selected.NPCName,
-            reward = selected.reward,
-            objectives = selected.objectives,
-            status = QuestStatus.NotAccepted
+            npcName     = selected.NPCName,
+            reward      = selected.reward,
+            objectives  = selected.objectives,
+            status      = QuestStatus.NotAccepted
         };
 
+        // Build render-only DTO — View never sees QuestModel.
+        var data = new QuestDisplayData
+        {
+            questName      = quest.questName,
+            description    = quest.description,
+            npcName        = this.npcName,
+            avatar         = this.avatar,
+            hasReward      = quest.reward != null,
+            rewardQuantity = quest.reward != null ? quest.reward.quantity : 0,
+            rewardIcon     = quest.reward != null
+                             ? ItemCatalogService.Instance.GetCachedSprite(quest.reward.itemId)
+                             : null
+        };
+
+        // Fire event — View subscribes to render itself. Presenter never calls View directly.
+        OnQuestDataReady?.Invoke(data);
         return true;
     }
 
-    public void ShowQuest()
+    // ── Called directly by NPCInteractionPresenter when player confirms accept ──
+    public void HandleAccept()
     {
-        if (quest == null) return;
+        if (quest == null) { OnQuestAcceptFailed?.Invoke(); return; }
 
-        Sprite rewardIcon = null;
-        if (quest.reward != null)
-            rewardIcon = ItemCatalogService.Instance.GetCachedSprite(quest.reward.itemId);
+        bool success = service.AcceptQuest(quest, inventory);
 
-        view.ShowQuest(quest, npcName, avatar, rewardIcon);
+        if (success)
+            OnQuestAccepted?.Invoke();
+        else
+            OnQuestAcceptFailed?.Invoke();
     }
 
-    public void AcceptQuest()
+    /// <summary>Call when the player cancels (Back).</summary>
+    public void CancelQuest()
     {
-        if (quest != null) service.AcceptQuest(quest, inventory);
+        quest = null;
     }
 }

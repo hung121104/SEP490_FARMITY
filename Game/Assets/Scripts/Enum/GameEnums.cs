@@ -80,6 +80,12 @@ public enum Season
     Rainy
 }
 
+public enum WeatherType
+{
+    Sunny,
+    Rain
+}
+
 public enum DayOfWeek
 {
     Monday,

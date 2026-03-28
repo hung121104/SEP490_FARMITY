@@ -21,7 +21,7 @@ public class FishingBootstrapper : MonoBehaviour
 
         if (inventoryManager == null)
         {
-            Debug.LogError("[FishingBootstrapper] Cant Find InventoryGameView!");
+            Debug.LogError("[FishingBootstrapper] Không tìm thấy InventoryGameView! Hãy gắn UI Inventory vào Scene.");
             return;
         }
 
@@ -35,6 +35,7 @@ public class FishingBootstrapper : MonoBehaviour
         service = new FishingService(fishDatabase, globalInventory, model);
         presenter = new FishingPresenter(fishingView, service, model);
 
+        Debug.Log("🎣 Hệ thống câu cá MVP đã được lắp ráp thành công!");
     }
 
     private void OnEnable()

@@ -640,6 +640,8 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Query params: `_id` - MongoDB ObjectId string
   - Response: Deleted world document or `null`
   - Note: Only world owner can delete
+  - Note: Also deletes related `characters`, `chestinventories`, and `chunks` for the world.
+  - Note: Uses MongoDB transaction when supported; automatically falls back to sequential deletes when transactions are unavailable.
 
 ### World Blacklist
 
@@ -840,6 +842,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     - All other item fields as form-data text fields (see [Base Fields](#base-fields) and [Item Type Fields](#itemtype-discriminator--extra-fields) tables)
   - Response: Saved item document including `_id` and `iconUrl` (Cloudinary `secure_url`)
   - Note: Returns `409 Conflict` if an item with the same `itemID` already exists
+  - Note: Returns `400 Bad Request` when creating Tool/Weapon items if provided `toolMaterialId`/`weaponMaterialId` does not exist in Material catalog
 
 - **GET** `/game-data/items/catalog`: Get full item catalog in Unity-client format.
   - Response: `{ "items": [ ...itemObjects ] }`
@@ -869,6 +872,8 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Path param: `itemID` - game-side string identifier (e.g., `tool_hoe_basic`)
   - Response: Deleted item document
   - Note: Returns `404` if item not found
+  - Note: Returns `409 Conflict` when the item is referenced by other collections. Delete is denied and the error message includes where the item is used and sample referencing IDs.
+  - Current cross-collection checks include: `Plant.harvestedItemId`, `Plant.pollenItemId`, `CraftingRecipe.resultItemId`, `CraftingRecipe.ingredients.itemId`, `ResourceConfig.dropTable.itemId`, `Item.smeltedResultId`.
 
 #### Base Fields
 
@@ -929,6 +934,7 @@ Depending on `itemType`, specific extra fields must be included:
 - **GET** `/game-data/items/by-item-id/:itemID`: get one weapon item.
 - **GET** `/game-data/items/catalog`: get full item catalog (includes weapons).
 - **DELETE** `/game-data/items/:itemID` (admin): delete weapon item.
+  - Same dependency guard as item delete: returns `409 Conflict` if the weapon item is referenced in other collections.
 
 #### Required Weapon Runtime Fields
 
@@ -1058,6 +1064,17 @@ Depending on `itemType`, specific extra fields must be included:
   - Path param: `itemID` - game-side string identifier (e.g., `fertilizer_basic`)
   - Response: Deleted fertilizer document
   - Note: Returns `404` if fertilizer not found
+  - Note: Returns `409 Conflict` when the fertilizer item is referenced by other collections. Delete is denied and the error message includes where the item is used and sample referencing IDs.
+
+Example `409 Conflict` message:
+
+```json
+{
+  "statusCode": 409,
+  "message": "Cannot delete Item \"wood\" because it is currently used in other collections: CraftingRecipe.ingredients.itemId (2) [recipe_fence, recipe_chest]; ResourceConfig.dropTable.itemId (1) [tree_oak]",
+  "error": "Conflict"
+}
+```
 
 #### Fertilizer Fields
 
@@ -1186,6 +1203,7 @@ Notes for web form behavior:
     - `growthStages` — Send as **JSON string**, e.g., `[{"stageNum":0,"growthDurationMinutes":0},{"stageNum":1,"growthDurationMinutes":30}]`. `stageIconUrl` filled automatically from uploaded sprites.
   - Response: Saved plant document including `_id` and all resolved `stageIconUrl` CDN URLs
   - Note: Returns `409 Conflict` if a plant with the same `plantId` already exists
+  - Note: Returns `400 Bad Request` if `harvestedItemId` or `pollenItemId` does not reference an existing Item `itemID`
 
 - **GET** `/game-data/plants/catalog`: Get full plant catalog in Unity-client format.
   - Response: `{ "plants": [ ...plantObjects ] }`
@@ -1217,6 +1235,7 @@ Notes for web form behavior:
   - **Optional text fields**: Any subset of plant fields (all optional). `growthStages` as JSON string if replacing stages. When updating stage data without uploading new sprites, each stage entry must include `stageIconUrl` (copy existing CDN URL) to pass Mongoose validation.
   - Response: Updated plant document
   - Note: Returns `404` if plant not found
+  - Note: Returns `400 Bad Request` if effective `harvestedItemId` or `pollenItemId` does not reference an existing Item `itemID`
 
 - **DELETE** `/game-data/plants/:plantId`: Delete a plant by game-side `plantId` (admin only).
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
@@ -1278,6 +1297,20 @@ Notes for web form behavior:
 | `hybridMatureIconUrl`       | string      | —        | —       | **Auto-filled** from `hybridMatureSprite` file upload _(hybrid only)_                                                                                                                                                                             |
 | `dropSeeds`                 | bool        | —        | `false` | When `false`, harvest never generates seeds _(hybrid only)_                                                                                                                                                                                       |
 
+#### Plant ItemID Validation
+
+- `harvestedItemId` must reference an existing Item `itemID`.
+- `pollenItemId` is optional, but when provided it must reference an existing Item `itemID`.
+- Validation is enforced on both create and update.
+- Example error response:
+  ```json
+  {
+    "statusCode": 400,
+    "message": "Plant references non-existing itemID(s): item_missing_1, item_missing_2",
+    "error": "Bad Request"
+  }
+  ```
+
 #### `growthStages` Entry Fields
 
 | Field                   | Type   | Notes                                                                                                                                                                                                                                                                                                     |
@@ -1314,6 +1347,7 @@ Notes for web form behavior:
     ```
   - Response: Created recipe document (includes `_id` and all fields)
   - Note: Returns `409 Conflict` if a recipe with the same `recipeID` already exists.
+  - Note: Returns `400 Bad Request` if `resultItemId` or any `ingredients[].itemId` does not exist in Item catalog.
 
 - **GET** `/game-data/crafting-recipes/catalog`: Get full recipe catalog in Unity-client format.
   - Response: `{ "recipes": [ ...recipeObjects ] }`
@@ -1348,6 +1382,7 @@ Notes for web form behavior:
     }
     ```
   - Response: Updated recipe document
+  - Note: Returns `400 Bad Request` if provided `resultItemId` or any provided `ingredients[].itemId` does not exist in Item catalog.
 
 - **DELETE** `/game-data/crafting-recipes/:recipeID`: Delete a recipe by game-side `recipeID` (admin only).
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
@@ -1499,6 +1534,18 @@ Notes for web form behavior:
   - Path param: `materialId` — stable string key (e.g., `mat_copper`)
   - Response: Deleted material document.
   - Note: Returns `404` if not found. Does **not** delete the Cloudinary asset.
+  - Note: Returns `409 Conflict` when the material is still referenced by item documents. Delete is denied and the error includes where the material is used with sample item IDs.
+  - Current cross-collection checks include: `Item.toolMaterialId`, `Item.weaponMaterialId`.
+
+Example `409 Conflict` message:
+
+```json
+{
+  "statusCode": 409,
+  "message": "Cannot delete Material 'mat_copper' because it is currently used in other collections: Item.toolMaterialId (2) [tool_hoe_copper, tool_pickaxe_copper]; Item.weaponMaterialId (1) [weapon_staff_copper]",
+  "error": "Conflict"
+}
+```
 
 #### Material Fields
 
@@ -1664,7 +1711,19 @@ Notes for web form behavior:
 | `requiredToolType` | string       | —        | Required tool type to harvest this resource (default `Axe`)                             |
 | `minToolPower`     | int          | —        | Minimum tool power required to harvest (default 1)                                      |
 | `spriteUrl`        | string\|null | —        | Cloudinary URL for the resource sprite. **Auto-filled** if a `sprite` file is uploaded. |
-| `dropTable`        | array        | ✅       | Array of item drops with chance and amount range                                        |
+| `dropTable`        | array        | ✅       | Array of `{ itemId, minAmount, maxAmount, dropChance }` entries. Each `itemId` is validated at create/update time and **must be an existing Item in the catalog**. Returns `400 Bad Request` if any itemId does not exist. |
+
+#### Note on ResourceDropEntry Validation
+
+- All `itemId` values in `dropTable` are validated at **POST** and **PUT** time.
+- If any `itemId` in the `dropTable` does not match an existing Item document by `itemID`, the request fails with:
+  ```json
+  {
+    "statusCode": 400,
+    "message": "The following itemIds in dropTable do not exist in Item catalog: item_invalid, item_missing",
+    "error": "Bad Request"
+  }
+  ```
 
 ---
 
