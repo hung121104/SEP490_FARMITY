@@ -27,10 +27,10 @@ namespace CombatManager.Service
         [Header("Chunk Activation")]
         [Tooltip("If true, enemy activation uses ChunkLoadingManager loaded chunks directly.")]
         [SerializeField] private bool followChunkLoadingManager = true;
-        [Tooltip("Active chunk window width centered around each player (in chunks).")]
-        [SerializeField] private int activeChunkWindowWidth = 10;
-        [Tooltip("Active chunk window height centered around each player (in chunks).")]
-        [SerializeField] private int activeChunkWindowHeight = 10;
+        [Tooltip("Active window width centered around each player (in tiles).")]
+        [SerializeField] private int activeTileWindowWidth = 10;
+        [Tooltip("Active window height centered around each player (in tiles).")]
+        [SerializeField] private int activeTileWindowHeight = 10;
         [Tooltip("Seconds between player scan and active chunk recalculation.")]
         [SerializeField] private float playerScanIntervalSeconds = 0.5f;
 
@@ -209,29 +209,79 @@ namespace CombatManager.Service
             if (followChunkLoadingManager && chunkLoadingManager == null)
                 chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
 
+            ScanPlayers();
+
+            // Always build from tile-sized window first.
+            RebuildActiveChunksFromTiles();
+
+            // Optionally constrain by currently loaded map chunks to keep enemy visibility
+            // in sync with world chunk load/unload.
             if (followChunkLoadingManager && chunkLoadingManager != null)
             {
-                RebuildActiveChunksFromChunkLoader();
-                return;
+                FilterActiveChunksByLoadedChunks();
             }
-
-            ScanPlayers();
-            RebuildActiveChunks();
         }
 
-        private void RebuildActiveChunksFromChunkLoader()
+        private void FilterActiveChunksByLoadedChunks()
+        {
+            List<Vector2Int> loadedChunks = chunkLoadingManager.GetLoadedChunks();
+            HashSet<Vector2Int> loadedSet = new HashSet<Vector2Int>(loadedChunks);
+
+            activeChunks.RemoveWhere(chunk => !loadedSet.Contains(chunk));
+
+            if (showDebugLogs)
+            {
+                Debug.Log($"[EnemyDataManager] Active chunks after loader filter: {activeChunks.Count} (loaded={loadedChunks.Count})");
+            }
+        }
+
+        private void RebuildActiveChunksFromTiles()
         {
             activeChunks.Clear();
 
-            List<Vector2Int> loadedChunks = chunkLoadingManager.GetLoadedChunks();
-            for (int i = 0; i < loadedChunks.Count; i++)
+            if (playerTargets.Count == 0)
+                return;
+
+            int widthTiles = Mathf.Max(1, activeTileWindowWidth);
+            int heightTiles = Mathf.Max(1, activeTileWindowHeight);
+            int halfW = widthTiles / 2;
+            int halfH = heightTiles / 2;
+
+            int chunkSizeTiles = 30;
+            if (WorldDataManager.Instance != null)
+                chunkSizeTiles = Mathf.Max(1, WorldDataManager.Instance.chunkSizeTiles);
+
+            for (int i = 0; i < playerTargets.Count; i++)
             {
-                activeChunks.Add(loadedChunks[i]);
+                Transform player = playerTargets[i];
+                if (player == null)
+                    continue;
+
+                int playerTileX = Mathf.FloorToInt(player.position.x);
+                int playerTileY = Mathf.FloorToInt(player.position.y);
+
+                int minTileX = playerTileX - halfW;
+                int minTileY = playerTileY - halfH;
+                int maxTileX = minTileX + widthTiles - 1;
+                int maxTileY = minTileY + heightTiles - 1;
+
+                int minChunkX = Mathf.FloorToInt((float)minTileX / chunkSizeTiles);
+                int minChunkY = Mathf.FloorToInt((float)minTileY / chunkSizeTiles);
+                int maxChunkX = Mathf.FloorToInt((float)maxTileX / chunkSizeTiles);
+                int maxChunkY = Mathf.FloorToInt((float)maxTileY / chunkSizeTiles);
+
+                for (int x = minChunkX; x <= maxChunkX; x++)
+                {
+                    for (int y = minChunkY; y <= maxChunkY; y++)
+                    {
+                        activeChunks.Add(new Vector2Int(x, y));
+                    }
+                }
             }
 
             if (showDebugLogs)
             {
-                Debug.Log($"[EnemyDataManager] Active chunks from ChunkLoadingManager: {activeChunks.Count}");
+                Debug.Log($"[EnemyDataManager] Active chunks from tile window: players={playerTargets.Count}, chunks={activeChunks.Count}, tileWindow={widthTiles}x{heightTiles}");
             }
         }
 
@@ -263,45 +313,6 @@ namespace CombatManager.Service
 
                 if (!playerTargets.Contains(root))
                     playerTargets.Add(root);
-            }
-        }
-
-        private void RebuildActiveChunks()
-        {
-            activeChunks.Clear();
-
-            if (playerTargets.Count == 0)
-                return;
-
-            int width = Mathf.Max(1, activeChunkWindowWidth);
-            int height = Mathf.Max(1, activeChunkWindowHeight);
-            int halfW = width / 2;
-            int halfH = height / 2;
-
-            for (int i = 0; i < playerTargets.Count; i++)
-            {
-                Transform player = playerTargets[i];
-                if (player == null)
-                    continue;
-
-                Vector2Int center = ResolveChunk(player.position);
-                int minX = center.x - halfW;
-                int minY = center.y - halfH;
-                int maxX = minX + width - 1;
-                int maxY = minY + height - 1;
-
-                for (int x = minX; x <= maxX; x++)
-                {
-                    for (int y = minY; y <= maxY; y++)
-                    {
-                        activeChunks.Add(new Vector2Int(x, y));
-                    }
-                }
-            }
-
-            if (showDebugLogs)
-            {
-                Debug.Log($"[EnemyDataManager] Active chunks rebuilt. players={playerTargets.Count}, chunks={activeChunks.Count}");
             }
         }
 
