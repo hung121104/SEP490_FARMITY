@@ -80,9 +80,17 @@ export class CharacterService implements OnModuleInit {
   }
 
   // Delete all characters belonging to a world. Returns number of deleted documents.
-  async deleteByWorldId(worldId: string | Types.ObjectId): Promise<number> {
+  async deleteByWorldId(
+    worldId: string | Types.ObjectId,
+    options?: { session?: ClientSession },
+  ): Promise<number> {
     const oid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
-    const result = await this.characterModel.deleteMany({ worldId: oid });
+    const result = await this.characterModel
+      .deleteMany(
+        { worldId: oid },
+        options?.session ? { session: options.session } : {},
+      )
+      .exec();
     return result.deletedCount ?? 0;
   }
 

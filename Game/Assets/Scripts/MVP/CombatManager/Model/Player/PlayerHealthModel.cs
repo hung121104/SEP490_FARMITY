@@ -29,6 +29,7 @@ namespace CombatManager.Model
 
         [Header("Initialization")]
         public bool isInitialized = false;
+        public bool deathHandled = false;
 
         #endregion
 
@@ -48,6 +49,7 @@ namespace CombatManager.Model
             targetHealthValue = 0f;
             isInvulnerable = false;
             isInitialized = false;
+            deathHandled = false;
             playerEntity = null;
         }
 

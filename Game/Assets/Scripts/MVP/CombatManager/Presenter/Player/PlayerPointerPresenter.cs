@@ -29,6 +29,16 @@ namespace CombatManager.Presenter
             StartCoroutine(DelayedInitialize());
         }
 
+        private void OnEnable()
+        {
+            PlayerRegistry.OnLocalPlayerSpawned += HandleLocalPlayerSpawned;
+        }
+
+        private void OnDisable()
+        {
+            PlayerRegistry.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
+        }
+
         #endregion
 
         #region Initialization
@@ -50,8 +60,7 @@ namespace CombatManager.Presenter
             GameObject playerObj = FindLocalPlayerEntity();
             if (playerObj == null)
             {
-                Debug.LogError("[PlayerPointerPresenter] Local player not found!");
-                enabled = false;
+                Debug.LogWarning("[PlayerPointerPresenter] Local player not found yet. Waiting for spawn event.");
                 return;
             }
 
@@ -65,11 +74,7 @@ namespace CombatManager.Presenter
             }
 
             // Initialize service
-            service = new PlayerPointerService(model);
-            service.Initialize(playerObj.transform, prefabToUse, mainCamera);
-
-            // Spawn pointer
-            ((PlayerPointerService)service).SpawnPointer();
+            RebindToPlayer(playerObj.transform, prefabToUse, mainCamera);
 
             Debug.Log("[PlayerPointerPresenter] Initialized successfully");
         }
@@ -101,6 +106,37 @@ namespace CombatManager.Presenter
             }
 
             return null;
+        }
+
+        private void HandleLocalPlayerSpawned(Transform playerTransform)
+        {
+            if (playerTransform == null)
+                return;
+
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+                mainCamera = FindObjectOfType<Camera>();
+
+            GameObject prefabToUse = model.pointerPrefab != null ? model.pointerPrefab : pointerPrefab;
+            if (prefabToUse == null)
+                return;
+
+            RebindToPlayer(playerTransform, prefabToUse, mainCamera);
+        }
+
+        private void RebindToPlayer(Transform playerTransform, GameObject prefabToUse, Camera mainCamera)
+        {
+            if (playerTransform == null || prefabToUse == null)
+                return;
+
+            if (service == null)
+                service = new PlayerPointerService(model);
+
+            if (model.pointerTransform != null)
+                Destroy(model.pointerTransform.gameObject);
+
+            service.Initialize(playerTransform, prefabToUse, mainCamera);
+            ((PlayerPointerService)service).SpawnPointer();
         }
 
         #endregion

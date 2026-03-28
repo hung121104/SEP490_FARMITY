@@ -80,6 +80,16 @@ namespace CombatManager.Presenter
             OnStart();
         }
 
+        protected virtual void OnEnable()
+        {
+            PlayerRegistry.OnLocalPlayerSpawned += HandleLocalPlayerSpawned;
+        }
+
+        protected virtual void OnDisable()
+        {
+            PlayerRegistry.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
+        }
+
         protected virtual void Update()
         {
             skillService?.UpdateCooldown(Time.deltaTime);
@@ -181,6 +191,14 @@ namespace CombatManager.Presenter
             mainCamera = Camera.main;
 
             Debug.Log($"[{GetType().Name}] Player references set from: {playerGO.name}");
+        }
+
+        private void HandleLocalPlayerSpawned(Transform playerTransform)
+        {
+            if (playerTransform == null)
+                return;
+
+            SetupPlayerReferences(playerTransform.gameObject);
         }
 
         #endregion

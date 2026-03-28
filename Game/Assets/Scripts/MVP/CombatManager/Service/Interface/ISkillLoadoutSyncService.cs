@@ -14,6 +14,7 @@ namespace CombatManager.Service
             Action<string> onError = null);
 
         void SetRuntimeSnapshot(string[] slotSkillIds, bool markDirty);
+        IEnumerator FlushNow(float timeoutSeconds = 5f, Action<bool> onCompleted = null);
         void ForceFlush();
     }
 }

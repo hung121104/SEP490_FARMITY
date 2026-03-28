@@ -124,7 +124,7 @@ public class SpawnPlayer : MonoBehaviour
 
     private bool HasLocalOwnedNetworkPlayer()
     {
-        PhotonView[] views = FindObjectsOfType<PhotonView>(true);
+        PhotonView[] views = FindObjectsOfType<PhotonView>();
         for (int i = 0; i < views.Length; i++)
         {
             PhotonView pv = views[i];
