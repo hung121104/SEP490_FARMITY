@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53fc37f6882e5394ab5c8c9de47d2403, type: 3}
+  m_Name: SoundLibrary
+  m_EditorClassIdentifier: 
+  entries:
+  - id: 39
+    clips:
+    - {fileID: 8300000, guid: 4813952b3d587074b83dc632d91c26e8, type: 3}
+    volume: 1
+    pitchMin: 0
+    pitchMax: 0
+  - id: 41
+    clips:
+    - {fileID: 8300000, guid: b06d3f03de93f094ea839038d50ad1ae, type: 3}
+    volume: 1
+    pitchMin: 0
+    pitchMax: 0
+  - id: 8
+    clips:
+    - {fileID: 8300000, guid: 0737ee862dee0214ca47f7675e49f4b6, type: 3}
+    - {fileID: 8300000, guid: 660f7c288135ab74cb9b86c5562888c3, type: 3}
+    volume: 1
+    pitchMin: 0.8
+    pitchMax: 0.8
+  - id: 12
+    clips:
+    - {fileID: 8300000, guid: 8f475990dd27da149bb2ac20bfe7e1c5, type: 3}
+    - {fileID: 8300000, guid: 8d79740b592297146a9a3b0c34113061, type: 3}
+    volume: 1
+    pitchMin: 0
+    pitchMax: 0
