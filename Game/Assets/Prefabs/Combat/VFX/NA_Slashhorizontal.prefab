@@ -206,7 +206,7 @@ MonoBehaviour:
     knockbackForce: 0
     enemyLayers:
       serializedVersion: 2
-      m_Bits: 128
+      m_Bits: 129
     ownerTransform: {fileID: 0}
     damagePopupPrefab: {fileID: 0}
     hitCollider: {fileID: 5119034281474524937}

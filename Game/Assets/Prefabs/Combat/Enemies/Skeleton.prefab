@@ -172,7 +172,7 @@ GameObject:
   - component: {fileID: 3690947730565931198}
   - component: {fileID: 4053751365945816196}
   - component: {fileID: 4329647503656962591}
-  m_Layer: 7
+  m_Layer: 0
   m_Name: Skeleton
   m_TagString: Enemy
   m_Icon: {fileID: 0}
@@ -236,8 +236,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: -247455135
-  m_SortingLayer: 4
+  m_SortingLayerID: 1697184185
+  m_SortingLayer: 3
   m_SortingOrder: 0
   m_Sprite: {fileID: -2414949640370147915, guid: 9e210b64d1fd8504a8ce0281ac8a4492, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -314,6 +314,13 @@ MonoBehaviour:
   model:
     currentHealth: 10
     maxHealth: 10
+    lastHitAt: -999
+    regenProgress: 0
+    enableOutOfCombatRegen: 1
+    regenDelaySeconds: 10
+    regenHpPerSecond: 2
+    regenRequireNearGuardAnchor: 1
+    regenGuardProximity: 1.5
     currentState: 0
     isAlerted: 0
     alertTimer: 0
