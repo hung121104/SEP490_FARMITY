@@ -8,6 +8,7 @@ public class MyWorldListPresenter
 {
     private readonly IMyWorldListService service;
     private MyWorldListView view;
+    public string LastCreateWorldError { get; private set; }
 
     public MyWorldListPresenter(IMyWorldListService worldListService)
     {
@@ -51,12 +52,14 @@ public class MyWorldListPresenter
     /// </summary>
     public async Task<WorldModel> CreateWorld(string worldName)
     {
+        LastCreateWorldError = null;
         try
         {
             var resp = await service.CreateWorld(worldName);
             if (resp == null)
             {
-                view?.ShowError("Failed to create world.");
+                LastCreateWorldError = "Failed to create world.";
+                view?.ShowError(LastCreateWorldError);
                 return null;
             }
 
@@ -76,6 +79,7 @@ public class MyWorldListPresenter
         }
         catch (System.Exception ex)
         {
+            LastCreateWorldError = ex.Message;
             Debug.LogError($"Error creating world: {ex.Message}");
             view?.ShowError($"Error: {ex.Message}");
             return null;
@@ -88,5 +92,21 @@ public class MyWorldListPresenter
     public async Task LoadWorldsForOwner(string ownerId)
     {
         await LoadWorlds(ownerId);
+    }
+
+    /// <summary>
+    /// Delete a world by id.
+    /// </summary>
+    public async Task<(bool success, string message)> DeleteWorld(string worldId)
+    {
+        try
+        {
+            return await service.DeleteWorld(worldId);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Error deleting world: {ex.Message}");
+            return (false, ex.Message);
+        }
     }
 }

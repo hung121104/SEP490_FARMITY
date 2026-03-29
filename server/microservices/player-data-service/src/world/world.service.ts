@@ -29,16 +29,16 @@ export class WorldService {
       await this.worldModel.collection.dropIndex('world_id_1');
       console.log('[world-service] Dropped legacy index world_id_1');
     } catch (err) {
-      // ignore if index not found or other errors related to missing index
+      // ignore if index not found or other errors related to missing index     
       // log for visibility
       const msg = (err && (err as any).errmsg) || (err && (err as any).message) || String(err);
-      console.log('[world-service] No legacy world_id index to drop:', msg);
+      console.log('[world-service] No legacy world_id index to drop:', msg);    
     }
 
     // Ensure compound unique index on ownerId + worldName exists
     try {
       await this.worldModel.collection.createIndex({ ownerId: 1, worldName: 1 }, { unique: true });
-      console.log('[world-service] Ensured unique index on ownerId+worldName');
+      console.log('[world-service] Ensured unique index on ownerId+worldName'); 
     } catch (err) {
       const msg = (err && (err as any).errmsg) || (err && (err as any).message) || String(err);
       console.log('[world-service] Could not create unique index ownerId+worldName:', msg);
@@ -61,15 +61,18 @@ export class WorldService {
         return await this.worldModel
           .findByIdAndUpdate(
             createWorldDto._id,
-            { worldName: createWorldDto.worldName, ownerId: ownerObjId },
-            { upsert: true, new: true },
+            {
+              $set: { worldName: createWorldDto.worldName, ownerId: ownerObjId },
+              $setOnInsert: { hour: 7 },
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true },
           )
           .exec();
       }
       // Create world first, then create initial character.
       // This avoids requiring a replica set in dev: if character creation fails,
       // remove the world as a compensating action.
-      const created = await this.worldModel.create({ worldName: createWorldDto.worldName, ownerId: ownerObjId });
+      const created = await this.worldModel.create({ worldName: createWorldDto.worldName, ownerId: ownerObjId, hour: 7 });
       try {
         if (ownerObjId) {
           await this.characterService.createCharacter(created._id as Types.ObjectId, ownerObjId as Types.ObjectId);
@@ -85,7 +88,7 @@ export class WorldService {
         throw innerErr;
       }
     } catch (err) {
-      // handle duplicate key for ownerId+worldName compound unique index
+      // handle duplicate key for ownerId+worldName compound unique index       
       if ((err as any)?.code === 11000) {
         throw new RpcException({ status: 409, message: 'World name already exists for this owner' });
       }
@@ -96,14 +99,14 @@ export class WorldService {
   async getWorld(getWorldDto: GetWorldDto): Promise<any> {
 
     if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
-    const world = await this.worldModel.findById(getWorldDto._id).exec();
+    const world = await this.worldModel.findById(getWorldDto._id).exec();       
 
     if (!world) throw new RpcException({ status: 404, message: 'World not found' });
 
     // Verify the requester is the owner of this world
     const ownerObjId = getWorldDto.ownerId ? new Types.ObjectId(getWorldDto.ownerId) : undefined;
 
-    if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {
+    if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {   
       throw new RpcException({ status: 401, message: 'Not authorized to access this world' });
     }
 
@@ -146,7 +149,7 @@ export class WorldService {
         const charObj = c.toObject ? c.toObject() : { ...c };
         if (charObj.inventory instanceof Map) {
           const invObj: Record<string, any> = {};
-          charObj.inventory.forEach((v: any, k: string) => { invObj[k] = v; });
+          charObj.inventory.forEach((v: any, k: string) => { invObj[k] = v; }); 
           charObj.inventory = invObj;
         }
         return charObj;
@@ -157,7 +160,7 @@ export class WorldService {
     }
 
     // Fetch all saved chunk documents for this world.
-    // tiles Map is converted to a plain JS object { "0": {...}, "42": {...} }
+    // tiles Map is converted to a plain JS object { "0": {...}, "42": {...} }  
     // so Unity's Newtonsoft.Json can deserialize it as Dictionary<string, TileData>.
     try {
       const chunks = await this.chunkModel
@@ -182,12 +185,12 @@ export class WorldService {
         };
       });
     } catch (err) {
-      console.error('[WorldService] Failed to fetch chunks for world', err);
+      console.error('[WorldService] Failed to fetch chunks for world', err);    
       result.chunks = [];
     }
 
     // Fetch all saved chest documents for this world.
-    // slots Map is converted to a plain JS object { "0": {...}, "5": {...} }
+    // slots Map is converted to a plain JS object { "0": {...}, "5": {...} }   
     // so Unity's Newtonsoft.Json can deserialize it as Dictionary<string, ChestSlotData>.
     try {
       const chests = await this.chestInventoryModel
@@ -212,7 +215,7 @@ export class WorldService {
         };
       });
     } catch (err) {
-      console.error('[WorldService] Failed to fetch chests for world', err);
+      console.error('[WorldService] Failed to fetch chests for world', err);    
       result.chests = [];
     }
 
@@ -232,8 +235,13 @@ export class WorldService {
       throw new RpcException({ status: 401, message: 'Not authorized to update this world' });
     }
 
+    if (dto.worldName !== undefined && !dto.worldName.trim()) {
+      throw new RpcException({ status: 400, message: 'World name cannot be empty.' });
+    }
+
     // Build partial update for world fields
     const worldUpdate: Partial<World> = {};
+    if (dto.worldName !== undefined) worldUpdate.worldName = dto.worldName.trim();
     if (dto.day !== undefined) worldUpdate.day = dto.day;
     if (dto.month !== undefined) worldUpdate.month = dto.month;
     if (dto.year !== undefined) worldUpdate.year = dto.year;
@@ -261,7 +269,7 @@ export class WorldService {
           charactersResult.push(c);
         } catch (err) {
           console.error('[WorldService.updateWorld] upsertCharacter error', err);
-          throw new RpcException({ status: 400, message: `Failed to upsert character for accountId ${charDto.accountId}: ${(err as any)?.message ?? err}` });
+          throw new RpcException({ status: 400, message: `Failed to upsert character for accountId ${charDto.accountId}: ${(err as any)?.message ?? err}` });   
         }
       }
     }
@@ -280,7 +288,7 @@ export class WorldService {
   //  Runs inside a MongoDB client session so that the entire operation
   //  (world time update + character positions + tile deltas) is All-or-Nothing.
   //
-  //  Falls back to non-transactional writes if the server is a standalone
+  //  Falls back to non-transactional writes if the server is a standalone      
   //  (replica set required for multi-document transactions on Atlas).
   // ────────────────────────────────────────────────────────────────────────────
   async saveWorld(dto: UpdateWorldDto): Promise<any> {
@@ -296,14 +304,19 @@ export class WorldService {
       throw new RpcException({ status: 401, message: 'Not authorized to save this world' });
     }
 
+    if (dto.worldName !== undefined && !dto.worldName.trim()) {
+      throw new RpcException({ status: 400, message: 'World name cannot be empty.' });
+    }
+
     const worldOid = new Types.ObjectId(dto.worldId);
 
-    // ── helper: do all writes (used both inside and outside a transaction) ──
+    // ── helper: do all writes (used both inside and outside a transaction) ── 
     const performWrites = async (session?: any) => {
       const opts = session ? { session } : {};
 
       // 1. Update world time fields
       const worldUpdate: Partial<World> = {};
+      if (dto.worldName !== undefined) worldUpdate.worldName = dto.worldName.trim();
       if (dto.day !== undefined)    worldUpdate.day    = dto.day;
       if (dto.month !== undefined)  worldUpdate.month  = dto.month;
       if (dto.year !== undefined)   worldUpdate.year   = dto.year;
@@ -353,7 +366,7 @@ export class WorldService {
             const charObj: any = charDoc?.toObject ? charDoc.toObject() : { ...charDoc };
             const inv: Record<string, any> =
               charObj.inventory instanceof Map
-                ? Object.fromEntries(charObj.inventory as Map<string, any>)
+                ? Object.fromEntries(charObj.inventory as Map<string, any>)     
                 : { ...(charObj.inventory ?? {}) };
             for (const [slotIdx, slotData] of Object.entries(delta.slots) as [string, any][]) {
               if (slotData?.itemId && slotData.quantity > 0) {
@@ -391,8 +404,8 @@ export class WorldService {
       });
       return result;
     } catch (txErr: any) {
-      // If transactions are unsupported (standalone or shared-tier Atlas),
-      // fall back to non-transactional writes so dev environments still work.
+      // If transactions are unsupported (standalone or shared-tier Atlas),     
+      // fall back to non-transactional writes so dev environments still work.  
       const isNoTxSupport =
         txErr?.code === 20 ||                          // Transaction numbers only on replicasets
         txErr?.codeName === 'IllegalOperation' ||
@@ -410,7 +423,7 @@ export class WorldService {
   // ────────────────────────────────────────────────────────────────────────────
   //  applyTileDeltas
   //
-  //  For each dirty chunk, upsert the chunk document and merge only the
+  //  For each dirty chunk, upsert the chunk document and merge only the        
   //  changed tile keys using targeted $set operators.
   //  This never overwrites tiles that were NOT included in the delta.
   // ────────────────────────────────────────────────────────────────────────────
@@ -420,11 +433,11 @@ export class WorldService {
     opts: object,
   ): Promise<void> {
     for (const delta of deltas) {
-      if (!delta.tiles || Object.keys(delta.tiles).length === 0) continue;
+      if (!delta.tiles || Object.keys(delta.tiles).length === 0) continue;      
 
-      // Build a $set payload like: { "tiles.0": {...}, "tiles.42": {...} }
+      // Build a $set payload like: { "tiles.0": {...}, "tiles.42": {...} }     
       const tileSetFields: Record<string, any> = {};
-      for (const [tileIndex, tileData] of Object.entries(delta.tiles)) {
+      for (const [tileIndex, tileData] of Object.entries(delta.tiles)) {        
         tileSetFields[`tiles.${tileIndex}`] = tileData;
       }
 
@@ -452,7 +465,7 @@ export class WorldService {
   // ────────────────────────────────────────────────────────────────────────────
   //  applyChestDeltas
   //
-  //  For each dirty chest, upsert the chest document and merge only the
+  //  For each dirty chest, upsert the chest document and merge only the        
   //  changed slot keys using targeted $set / $unset operators.
   //  This never overwrites slots that were NOT included in the delta.
   // ────────────────────────────────────────────────────────────────────────────
@@ -462,13 +475,13 @@ export class WorldService {
     opts: object,
   ): Promise<void> {
     for (const delta of deltas) {
-      if (!delta.slots || Object.keys(delta.slots).length === 0) continue;
+      if (!delta.slots || Object.keys(delta.slots).length === 0) continue;      
 
       // Build $set for occupied slots and $unset for cleared slots
       const setFields: Record<string, any> = {};
       const unsetFields: Record<string, any> = {};
 
-      for (const [slotIndex, slotData] of Object.entries(delta.slots)) {
+      for (const [slotIndex, slotData] of Object.entries(delta.slots)) {        
         if (slotData?.itemId && slotData.quantity > 0) {
           setFields[`slots.${slotIndex}`] = { itemId: slotData.itemId, quantity: slotData.quantity };
         } else {
@@ -488,8 +501,8 @@ export class WorldService {
         },
       };
 
-      if (Object.keys(setFields).length > 0) updateOps.$set = setFields;
-      if (Object.keys(unsetFields).length > 0) updateOps.$unset = unsetFields;
+      if (Object.keys(setFields).length > 0) updateOps.$set = setFields;        
+      if (Object.keys(unsetFields).length > 0) updateOps.$unset = unsetFields;  
 
       await this.chestInventoryModel.findOneAndUpdate(
         {
@@ -551,14 +564,14 @@ export class WorldService {
 
   async deleteWorld(getWorldDto: GetWorldDto): Promise<World | null> {
     if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
-    const world = await this.worldModel.findById(getWorldDto._id).exec();
+    const world = await this.worldModel.findById(getWorldDto._id).exec();       
     if (!world) throw new RpcException({ status: 404, message: 'World not found' });
     const ownerObjId = getWorldDto.ownerId ? new Types.ObjectId(getWorldDto.ownerId) : undefined;
-    if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {
+    if (!ownerObjId || world.ownerId?.toString() !== ownerObjId.toString()) {   
       throw new RpcException({ status: 401, message: 'Not authorized to delete this world' });
     }
 
-    const performDeletes = async (session?: any): Promise<World | null> => {
+    const performDeletes = async (session?: any): Promise<World | null> => {    
       const opts = session ? { session } : {};
 
       const deletedCharactersCount = await this.characterService.deleteByWorldId(
@@ -596,8 +609,8 @@ export class WorldService {
     } catch (txErr: any) {
       if (txErr instanceof RpcException) throw txErr;
 
-      // If transactions are unsupported (standalone or shared-tier Atlas),
-      // fall back to non-transactional writes so dev environments still work.
+      // If transactions are unsupported (standalone or shared-tier Atlas),     
+      // fall back to non-transactional writes so dev environments still work.  
       const isNoTxSupport =
         txErr?.code === 20 ||                          // Transaction numbers only on replicasets
         txErr?.codeName === 'IllegalOperation' ||
@@ -640,7 +653,7 @@ export class WorldService {
 
     const isAdmin = !!dto.requesterIsAdmin;
     const requesterId = dto.requesterId;
-    const isOwner = !!requesterId && world.ownerId?.toString() === requesterId;
+    const isOwner = !!requesterId && world.ownerId?.toString() === requesterId; 
     if (!isOwner && !isAdmin) {
       throw new RpcException({ status: 401, message: 'Not authorized to manage this world blacklist' });
     }
@@ -676,7 +689,7 @@ export class WorldService {
 
     const isAdmin = !!dto.requesterIsAdmin;
     const requesterId = dto.requesterId;
-    const isOwner = !!requesterId && world.ownerId?.toString() === requesterId;
+    const isOwner = !!requesterId && world.ownerId?.toString() === requesterId; 
     if (!isOwner && !isAdmin) {
       throw new RpcException({ status: 401, message: 'Not authorized to manage this world blacklist' });
     }

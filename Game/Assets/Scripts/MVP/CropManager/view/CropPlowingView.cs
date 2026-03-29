@@ -1,9 +1,12 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using Photon.Pun;
+using System;
 
 public class CropPlowingView : MonoBehaviour
 {
+    public static event Action<Vector3Int, Vector3> OnPlowSucceeded;
+
     [Header("Tile Reference")]
     [SerializeField] private TileBase tilledTile;
     
@@ -164,6 +167,7 @@ public class CropPlowingView : MonoBehaviour
     public void OnPlowSuccess(Vector3Int tilePosition, Vector3 worldPosition)
     {
         Debug.Log($"Successfully plowed tile at {tilePosition}");
+        OnPlowSucceeded?.Invoke(tilePosition, worldPosition);
     }
 
     
