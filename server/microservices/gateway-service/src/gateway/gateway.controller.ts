@@ -59,6 +59,8 @@ const FERTILIZER_ITEM_TYPE = 14;
 
 @Controller()
 export class GatewayController {
+  private static readonly WORLD_NAME_REGEX = /^[A-Za-z1-9 ]+$/;
+
   constructor(
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
@@ -308,12 +310,21 @@ export class GatewayController {
     const ownerIdRaw = req['user']?.sub;
     const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
+
+    const rawWorldName = typeof body?.worldName === 'string' ? body.worldName.trim() : '';
+    if (!rawWorldName) {
+      throw new HttpException('World name cannot be empty.', 400);
+    }
+    if (!GatewayController.WORLD_NAME_REGEX.test(rawWorldName)) {
+      throw new HttpException('World name must contain only alphabet letters and spaces.', 400);
+    }
+
     // forward optional _id for update, otherwise create
     try {
       return await firstValueFrom(
         this.playerDataClient.send('create-world', {
           _id: body._id,
-          worldName: body.worldName,
+          worldName: rawWorldName,
           ownerId,
         }),
       );
