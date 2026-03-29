@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 12280289087161960}
   - component: {fileID: 8357647410001115334}
   - component: {fileID: 8975847804887154512}
-  m_Layer: 11
+  m_Layer: 0
   m_Name: NA_Stab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -77,8 +77,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 1467607503
-  m_SortingLayer: 5
+  m_SortingLayerID: 1697184185
+  m_SortingLayer: 3
   m_SortingOrder: 0
   m_Sprite: {fileID: 2135353636731062560, guid: f1996b2b31e892347bdb4ee583efb182, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
