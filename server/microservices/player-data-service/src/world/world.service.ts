@@ -60,7 +60,7 @@ export class WorldService {
           .findByIdAndUpdate(
             createWorldDto._id,
             { worldName: createWorldDto.worldName, ownerId: ownerObjId },
-            { upsert: true, new: true },
+            { upsert: true, new: true, setDefaultsOnInsert: true },
           )
           .exec();
       }

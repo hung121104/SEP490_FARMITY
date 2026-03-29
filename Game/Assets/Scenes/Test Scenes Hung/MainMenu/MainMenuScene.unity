@@ -8358,9 +8358,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   token: 
-  worldName: World 7
+  worldName: 
   legacyWorldNameInput: {fileID: 2074351436}
-  statusText: {fileID: 1156261142}
   sceneToLoad: LoadGameScene
 --- !u!1 &2135104763 stripped
 GameObject:

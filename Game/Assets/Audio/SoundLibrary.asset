@@ -45,3 +45,10 @@ MonoBehaviour:
     volume: 1
     pitchMin: 0
     pitchMax: 0
+  - id: 12
+    clips:
+    - {fileID: 8300000, guid: 8f475990dd27da149bb2ac20bfe7e1c5, type: 3}
+    - {fileID: 8300000, guid: 8d79740b592297146a9a3b0c34113061, type: 3}
+    volume: 1
+    pitchMin: 0
+    pitchMax: 0
