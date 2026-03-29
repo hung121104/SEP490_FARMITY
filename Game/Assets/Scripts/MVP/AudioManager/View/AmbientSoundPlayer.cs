@@ -24,6 +24,14 @@ public class AmbientSoundPlayer : MonoBehaviour
     [Tooltip("Duration of ambient crossfade in seconds")]
     [SerializeField] private float crossfadeDuration = 3f;
 
+    [Header("Rain Overlay")]
+    [Tooltip("When raining, day/night ambience is multiplied by this value")]
+    [Range(0f, 1f)]
+    [SerializeField] private float rainDuckMultiplier = 0.55f;
+    [Tooltip("Extra gain trim for the rain overlay itself to avoid masking footsteps")]
+    [Range(0f, 1f)]
+    [SerializeField] private float rainOverlayVolumeMultiplier = 0.45f;
+
     [Header("Debug")]
     [SerializeField] private bool showDebugLogs = false;
 
@@ -37,8 +45,18 @@ public class AmbientSoundPlayer : MonoBehaviour
     private AudioSource _zoneSourceB;
     private bool _zoneUsingA = true;
 
+    // Dedicated rain overlay source (does not replace other ambience)
+    private AudioSource _rainSource;
+    private float _rainBaseVolume;
+    private Coroutine _rainFadeRoutine;
+
     private bool _isNight;
+    private bool _hasStartedTimeAmbient;
+    private bool _isRainActive;
     private AmbientZoneType _currentZone = AmbientZoneType.Default;
+
+    private float _timeBaseVolumeA;
+    private float _timeBaseVolumeB;
 
     private Coroutine _timeFadeRoutine;
     private Coroutine _zoneFadeRoutine;
@@ -52,6 +70,21 @@ public class AmbientSoundPlayer : MonoBehaviour
         _timeSourceB = CreateAmbientSource("TimeAmbient_B");
         _zoneSourceA = CreateAmbientSource("ZoneAmbient_A");
         _zoneSourceB = CreateAmbientSource("ZoneAmbient_B");
+        _rainSource = CreateAmbientSource("RainAmbient");
+        _rainSource.volume = 0f;
+        _rainSource.loop = true;
+    }
+
+    private void OnEnable()
+    {
+        WeatherView.OnRainStarted += HandleRainStarted;
+        WeatherView.OnRainStopped += HandleRainStopped;
+    }
+
+    private void OnDisable()
+    {
+        WeatherView.OnRainStarted -= HandleRainStarted;
+        WeatherView.OnRainStopped -= HandleRainStopped;
     }
 
     private void Start()
@@ -61,6 +94,7 @@ public class AmbientSoundPlayer : MonoBehaviour
 
         // Initial state
         EvaluateTimeOfDay(forceImmediate: true);
+        SetRainActive(WeatherView.IsRaining);
     }
 
     private void Update()
@@ -78,21 +112,32 @@ public class AmbientSoundPlayer : MonoBehaviour
         if (timeManager == null) return;
 
         bool night = timeManager.hour >= nightStartHour || timeManager.hour < nightEndHour;
-        if (night == _isNight && !forceImmediate) return;
+        // Keep trying until the ambient actually starts. This prevents a startup race
+        // where AudioManager/SoundLibrary isn't ready on the first frame.
+        bool shouldAttempt = forceImmediate || !_hasStartedTimeAmbient || night != _isNight;
+        if (!shouldAttempt) return;
+
+        SoundId targetId = night ? SoundId.AmbientNightCrickets : SoundId.AmbientDayBirds;
+        bool started = CrossfadeTimeSources(targetId, forceImmediate || !_hasStartedTimeAmbient);
+        if (!started)
+        {
+            if (showDebugLogs)
+                Debug.LogWarning($"[AmbientSoundPlayer] Failed to start time ambient: {targetId}. Will retry.");
+            return;
+        }
 
         _isNight = night;
-        SoundId targetId = _isNight ? SoundId.AmbientNightCrickets : SoundId.AmbientDayBirds;
-        CrossfadeTimeSources(targetId, forceImmediate);
-        if (showDebugLogs) Debug.Log($"[AmbientSoundPlayer] Time → {(_isNight ? "Night" : "Day")}");
+        _hasStartedTimeAmbient = true;
+        if (showDebugLogs) Debug.Log($"[AmbientSoundPlayer] Time ambient active → {targetId}");
     }
 
-    private void CrossfadeTimeSources(SoundId id, bool immediate)
+    private bool CrossfadeTimeSources(SoundId id, bool immediate)
     {
-        if (AudioManager.Instance == null || AudioManager.Instance.Library == null) return;
-        if (!AudioManager.Instance.Library.TryGet(id, out var entry)) return;
+        if (AudioManager.Instance == null || AudioManager.Instance.Library == null) return false;
+        if (!AudioManager.Instance.Library.TryGet(id, out var entry)) return false;
 
         var clip = entry.GetRandomClip();
-        if (clip == null) return;
+        if (clip == null) return false;
 
         var incoming = _timeUsingA ? _timeSourceA : _timeSourceB;
         var outgoing = _timeUsingA ? _timeSourceB : _timeSourceA;
@@ -104,14 +149,18 @@ public class AmbientSoundPlayer : MonoBehaviour
         if (immediate)
         {
             outgoing.Stop();
-            incoming.volume = entry.volume;
+            SetTimeBaseVolume(outgoing, 0f);
+            SetTimeBaseVolume(incoming, entry.volume);
+            ApplyTimeSourceVolumesFromBase();
             incoming.Play();
         }
         else
         {
             if (_timeFadeRoutine != null) StopCoroutine(_timeFadeRoutine);
-            _timeFadeRoutine = StartCoroutine(Crossfade(outgoing, incoming, entry.volume, crossfadeDuration));
+            _timeFadeRoutine = StartCoroutine(CrossfadeTimeSourcesRoutine(outgoing, incoming, entry.volume, crossfadeDuration));
         }
+
+        return true;
     }
 
     #endregion
@@ -174,17 +223,49 @@ public class AmbientSoundPlayer : MonoBehaviour
     /// </summary>
     public void SetRainActive(bool raining)
     {
+        if (raining == _isRainActive)
+            return;
+
+        _isRainActive = raining;
+        ApplyTimeSourceVolumesFromBase();
+
         if (raining)
         {
-            CrossfadeZoneSources(SoundId.AmbientRain);
+            if (AudioManager.Instance == null || AudioManager.Instance.Library == null)
+                return;
+            if (!AudioManager.Instance.Library.TryGet(SoundId.AmbientRain, out var entry))
+                return;
+
+            var clip = entry.GetRandomClip();
+            if (clip == null)
+                return;
+
+            _rainBaseVolume = entry.volume * rainOverlayVolumeMultiplier;
+            _rainSource.clip = clip;
+            _rainSource.loop = true;
+            if (!_rainSource.isPlaying)
+                _rainSource.Play();
+
+            if (_rainFadeRoutine != null) StopCoroutine(_rainFadeRoutine);
+            _rainFadeRoutine = StartCoroutine(FadeSourceTo(_rainSource, _rainBaseVolume, crossfadeDuration));
+            if (showDebugLogs) Debug.Log("[AmbientSoundPlayer] Rain overlay ON (ducking day/night ambience)");
         }
         else
         {
-            // Re-evaluate zone to restore correct zone ambient
-            var zone = _currentZone;
-            _currentZone = AmbientZoneType.Default; // force re-evaluation
-            SetZone(zone);
+            if (_rainFadeRoutine != null) StopCoroutine(_rainFadeRoutine);
+            _rainFadeRoutine = StartCoroutine(FadeSourceTo(_rainSource, 0f, crossfadeDuration, stopWhenZero: true));
+            if (showDebugLogs) Debug.Log("[AmbientSoundPlayer] Rain overlay OFF");
         }
+    }
+
+    private void HandleRainStarted()
+    {
+        SetRainActive(true);
+    }
+
+    private void HandleRainStopped()
+    {
+        SetRainActive(false);
     }
 
     #endregion
@@ -203,6 +284,33 @@ public class AmbientSoundPlayer : MonoBehaviour
         if (AudioManager.Instance != null)
             src.outputAudioMixerGroup = AudioManager.Instance.AmbientGroup;
         return src;
+    }
+
+    private float GetTimeDuckingMultiplier()
+    {
+        return _isRainActive ? rainDuckMultiplier : 1f;
+    }
+
+    private void SetTimeBaseVolume(AudioSource source, float volume)
+    {
+        if (source == _timeSourceA)
+            _timeBaseVolumeA = Mathf.Max(0f, volume);
+        else if (source == _timeSourceB)
+            _timeBaseVolumeB = Mathf.Max(0f, volume);
+    }
+
+    private float GetTimeBaseVolume(AudioSource source)
+    {
+        if (source == _timeSourceA) return _timeBaseVolumeA;
+        if (source == _timeSourceB) return _timeBaseVolumeB;
+        return 0f;
+    }
+
+    private void ApplyTimeSourceVolumesFromBase()
+    {
+        float mul = GetTimeDuckingMultiplier();
+        _timeSourceA.volume = _timeBaseVolumeA * mul;
+        _timeSourceB.volume = _timeBaseVolumeB * mul;
     }
 
     private IEnumerator Crossfade(AudioSource outgoing, AudioSource incoming, float targetVol, float duration)
@@ -224,6 +332,51 @@ public class AmbientSoundPlayer : MonoBehaviour
         incoming.volume = targetVol;
         outgoing.volume = 0f;
         outgoing.Stop();
+    }
+
+    private IEnumerator CrossfadeTimeSourcesRoutine(AudioSource outgoing, AudioSource incoming, float incomingBaseTarget, float duration)
+    {
+        float outgoingBaseStart = GetTimeBaseVolume(outgoing);
+        SetTimeBaseVolume(incoming, 0f);
+        ApplyTimeSourceVolumesFromBase();
+
+        if (!incoming.isPlaying)
+            incoming.Play();
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+
+            SetTimeBaseVolume(incoming, Mathf.Lerp(0f, incomingBaseTarget, t));
+            SetTimeBaseVolume(outgoing, Mathf.Lerp(outgoingBaseStart, 0f, t));
+            ApplyTimeSourceVolumesFromBase();
+
+            yield return null;
+        }
+
+        SetTimeBaseVolume(incoming, incomingBaseTarget);
+        SetTimeBaseVolume(outgoing, 0f);
+        ApplyTimeSourceVolumesFromBase();
+        outgoing.Stop();
+    }
+
+    private IEnumerator FadeSourceTo(AudioSource source, float target, float duration, bool stopWhenZero = false)
+    {
+        float start = source.volume;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            source.volume = Mathf.Lerp(start, target, Mathf.Clamp01(elapsed / duration));
+            yield return null;
+        }
+
+        source.volume = target;
+        if (stopWhenZero && target <= 0.0001f)
+            source.Stop();
     }
 
     private IEnumerator FadeOut(AudioSource source, float duration)

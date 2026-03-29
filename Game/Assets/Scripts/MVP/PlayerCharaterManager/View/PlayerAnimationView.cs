@@ -285,7 +285,7 @@ public class PlayerAnimationView : MonoBehaviour
     {
         _animator?.SetFloat(paramActionX, dirX);
         _animator?.SetTrigger(triggerPlow);
-        _soundPlayer?.PlayRemoteAction(SoundId.Plow);
+        _soundPlayer?.PlayRemoteAction(SoundId.ToolSwing);
     }
 
     private void HandleWaterAnimation(ToolData tool, Vector3 targetPos)
@@ -311,7 +311,6 @@ public class PlayerAnimationView : MonoBehaviour
     {
         _animator?.SetFloat(paramActionX, dirX);
         _animator?.SetTrigger(triggerWater);
-        _soundPlayer?.PlayRemoteAction(SoundId.Watering);
     }
 
     [PunRPC]
@@ -319,7 +318,7 @@ public class PlayerAnimationView : MonoBehaviour
     {
         _animator?.SetFloat(paramActionX, dirX);
         _animator?.SetTrigger(triggerChop);
-        _soundPlayer?.PlayRemoteAction(SoundId.Chop);
+        _soundPlayer?.PlayRemoteAction(SoundId.ToolSwing);
     }
 
     // ── Photon sync (locomotion) ───────────────────────────────────────────

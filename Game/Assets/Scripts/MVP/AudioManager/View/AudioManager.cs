@@ -6,7 +6,7 @@ using UnityEngine.Audio;
 /// Singleton audio manager. Owns the SoundLibrary lookup, mixer references,
 /// and a small pool of AudioSources for world one-shots.
 /// 
-/// Usage:  AudioManager.Instance.PlaySound(SoundId.Chop, worldPos);
+/// Usage:  AudioManager.Instance.PlaySFX(SoundId.ToolSwing, worldPos);
 ///         AudioManager.Instance.PlayUI(SoundId.UIButtonClick);
 /// </summary>
 public class AudioManager : MonoBehaviour

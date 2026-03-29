@@ -13,15 +13,21 @@ MonoBehaviour:
   m_Name: SoundLibrary
   m_EditorClassIdentifier: 
   entries:
-  - id: 39
+  - id: 38
     clips:
     - {fileID: 8300000, guid: 4813952b3d587074b83dc632d91c26e8, type: 3}
     volume: 1
     pitchMin: 0
     pitchMax: 0
-  - id: 41
+  - id: 40
     clips:
     - {fileID: 8300000, guid: b06d3f03de93f094ea839038d50ad1ae, type: 3}
+    volume: 1
+    pitchMin: 0.8
+    pitchMax: 0.8
+  - id: 42
+    clips:
+    - {fileID: 8300000, guid: 21cfdea07ba957a45a29726682531711, type: 3}
     volume: 1
     pitchMin: 0
     pitchMax: 0

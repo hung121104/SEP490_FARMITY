@@ -36,7 +36,7 @@ public class AudioDiagnosticTest : MonoBehaviour
     {
         if (soundLibrary == null) { Debug.LogError("[AudioDiag] Assign soundLibrary first!"); return; }
         soundLibrary.Init();
-        if (!soundLibrary.TryGet(SoundId.Chop, out var entry)) { Debug.LogError("[AudioDiag] SoundId.Chop not found in library!"); return; }
+        if (!soundLibrary.TryGet(SoundId.ToolSwing, out var entry)) { Debug.LogError("[AudioDiag] SoundId.ToolSwing not found in library!"); return; }
 
         var clip = entry.GetRandomClip();
         if (clip == null) { Debug.LogError("[AudioDiag] Chop entry has no clips assigned!"); return; }
@@ -53,7 +53,7 @@ public class AudioDiagnosticTest : MonoBehaviour
     }
 
     // ── Test 2: Play via AudioManager.PlayOnSource ──
-    [ContextMenu("Test 2 — Via AudioManager.PlayOnSource (SoundId.Chop)")]
+    [ContextMenu("Test 2 — Via AudioManager.PlayOnSource (SoundId.ToolSwing)")]
     private void Test_AudioManagerChop()
     {
         if (AudioManager.Instance == null) { Debug.LogError("[AudioDiag] AudioManager.Instance is null — is it in the scene?"); return; }
@@ -62,7 +62,7 @@ public class AudioDiagnosticTest : MonoBehaviour
         src.spatialBlend = 0f;
         src.volume = 1f;
 
-        AudioManager.Instance.PlayOnSource(SoundId.Chop, src);
+        AudioManager.Instance.PlayOnSource(SoundId.ToolSwing, src);
         Debug.Log("[AudioDiag] Test2 fired — PlayOnSource(Chop). Did you hear it?");
     }
 
@@ -77,7 +77,7 @@ public class AudioDiagnosticTest : MonoBehaviour
         src.volume = 1f;
         src.outputAudioMixerGroup = null; // force bypass any mixer
 
-        AudioManager.Instance.PlayOnSource(SoundId.Chop, src);
+        AudioManager.Instance.PlayOnSource(SoundId.ToolSwing, src);
         Debug.Log("[AudioDiag] Test2b — mixer stripped. Did you hear it?");
     }
 

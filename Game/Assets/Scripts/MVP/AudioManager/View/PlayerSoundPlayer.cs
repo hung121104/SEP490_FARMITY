@@ -9,6 +9,10 @@ using Photon.Pun;
 /// For REMOTE players, sounds are triggered via the existing animation RPCs
 /// — the remote PlayerAnimationView can call PlayRemoteAction() when
 /// it receives an RPC trigger (chop, plow, water, etc.).
+///
+/// Tool audio pipeline:
+/// - On tool request (except watering/fishing) -> play generic ToolSwing.
+/// - On confirmed success event -> play tool-specific success sound.
 /// </summary>
 [RequireComponent(typeof(AudioSource))]
 public class PlayerSoundPlayer : MonoBehaviour
@@ -33,6 +37,10 @@ public class PlayerSoundPlayer : MonoBehaviour
     private PlayerAnimationView _animView;
     private Rigidbody2D _rb;
     private float _nextSkipDebugTime;
+    private ToolType? _pendingSuccessTool;
+    private float _pendingSuccessExpireAt;
+
+    private const float SuccessConfirmWindowSeconds = 0.9f;
 
     private void Awake()
     {
@@ -93,11 +101,16 @@ public class PlayerSoundPlayer : MonoBehaviour
         }
 
         // Tool events
-        UseToolService.OnHoeRequested += HandlePlow;
-        UseToolService.OnWateringCanRequested += HandleWatering;
-        UseToolService.OnAxeRequested += HandleChop;
-        UseToolService.OnPickaxeRequested += HandlePickaxe;
-        UseToolService.OnFishingRodRequested += HandleFishCast;
+        UseToolService.OnHoeRequested += HandleHoeSwingOnly;
+        UseToolService.OnAxeRequested += HandleToolSwing;
+        UseToolService.OnPickaxeRequested += HandleToolSwing;
+
+        // Confirmed success signals
+        CropPlowingView.OnPlowSucceeded += HandlePlowSucceeded;
+        ChunkDataSyncManager.OnResourceHpUpdated += HandleResourceSuccess;
+        ChunkDataSyncManager.OnResourceRemoved += HandleResourceRemovedSuccess;
+        ChunkDataSyncManager.OnStructureHpUpdated += HandleStructureSuccess;
+        ChunkDataSyncManager.OnStructureRemoved += HandleStructureRemovedSuccess;
 
         // GameEventBus events
         GameEventBus.OnCropHarvested += HandleHarvest;
@@ -113,11 +126,15 @@ public class PlayerSoundPlayer : MonoBehaviour
     {
         if (!_localResolved) return;
 
-        UseToolService.OnHoeRequested -= HandlePlow;
-        UseToolService.OnWateringCanRequested -= HandleWatering;
-        UseToolService.OnAxeRequested -= HandleChop;
-        UseToolService.OnPickaxeRequested -= HandlePickaxe;
-        UseToolService.OnFishingRodRequested -= HandleFishCast;
+        UseToolService.OnHoeRequested -= HandleHoeSwingOnly;
+        UseToolService.OnAxeRequested -= HandleToolSwing;
+        UseToolService.OnPickaxeRequested -= HandleToolSwing;
+
+        CropPlowingView.OnPlowSucceeded -= HandlePlowSucceeded;
+        ChunkDataSyncManager.OnResourceHpUpdated -= HandleResourceSuccess;
+        ChunkDataSyncManager.OnResourceRemoved -= HandleResourceRemovedSuccess;
+        ChunkDataSyncManager.OnStructureHpUpdated -= HandleStructureSuccess;
+        ChunkDataSyncManager.OnStructureRemoved -= HandleStructureRemovedSuccess;
 
         GameEventBus.OnCropHarvested -= HandleHarvest;
         GameEventBus.OnSeedPlanted -= HandlePlant;
@@ -198,34 +215,84 @@ public class PlayerSoundPlayer : MonoBehaviour
 
     #region Tool Handlers
 
-    private void HandlePlow(ToolData data, Vector3 pos)
+    private void HandleHoeSwingOnly(ToolData data, Vector3 pos)
     {
-        Play(SoundId.Plow);
-        Log("Plow");
+        Play(SoundId.ToolSwing);
+        Log("HoeToolSwing");
     }
 
-    private void HandleWatering(ToolData data, Vector3 pos)
+    private void HandleToolSwing(ToolData data, Vector3 pos)
     {
-        Play(SoundId.Watering);
-        Log("Watering");
+        if (data == null) return;
+
+        // Requirement: no swing sound for watering can and fishing rod.
+        if (data.toolType == ToolType.WateringCan || data.toolType == ToolType.FishingRod)
+            return;
+
+        Play(SoundId.ToolSwing);
+        Log($"ToolSwing({data.toolType})");
+
+        // Arm success confirmation for tools that should emit success sounds.
+        if (data.toolType == ToolType.Axe || data.toolType == ToolType.Pickaxe)
+            ArmPendingSuccess(data.toolType);
     }
 
-    private void HandleChop(ToolData data, Vector3 pos)
+    private void HandlePlowSucceeded(Vector3Int tilePosition, Vector3 worldPosition)
     {
-        Play(SoundId.Chop);
-        Log("Chop");
+        Play(SoundId.PlowSuccess);
+        Log("PlowSuccess");
     }
 
-    private void HandlePickaxe(ToolData data, Vector3 pos)
+    private void HandleResourceSuccess(int worldX, int worldY, int newHp)
     {
-        Play(SoundId.PickaxeHit);
-        Log("Pickaxe");
+        TryPlayPendingSuccess();
     }
 
-    private void HandleFishCast(ToolData data, Vector3 pos)
+    private void HandleResourceRemovedSuccess(int worldX, int worldY)
     {
-        Play(SoundId.FishingCast);
-        Log("FishCast");
+        TryPlayPendingSuccess();
+    }
+
+    private void HandleStructureSuccess(int worldX, int worldY, int newHp)
+    {
+        TryPlayPendingSuccess();
+    }
+
+    private void HandleStructureRemovedSuccess(int worldX, int worldY, string lastHitPlayerId)
+    {
+        TryPlayPendingSuccess();
+    }
+
+    private void ArmPendingSuccess(ToolType toolType)
+    {
+        _pendingSuccessTool = toolType;
+        _pendingSuccessExpireAt = Time.time + SuccessConfirmWindowSeconds;
+    }
+
+    private void TryPlayPendingSuccess()
+    {
+        if (!_pendingSuccessTool.HasValue)
+            return;
+
+        if (Time.time > _pendingSuccessExpireAt)
+        {
+            _pendingSuccessTool = null;
+            return;
+        }
+
+        switch (_pendingSuccessTool.Value)
+        {
+            case ToolType.Axe:
+                Play(SoundId.ChopSuccess);
+                Log("ChopSuccess");
+                break;
+            case ToolType.Pickaxe:
+                Play(SoundId.PickaxeSuccess);
+                Log("PickaxeSuccess");
+                break;
+        }
+
+        _pendingSuccessTool = null;
     }
 
     #endregion
