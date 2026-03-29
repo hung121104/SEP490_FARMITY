@@ -26,6 +26,18 @@ namespace CombatManager.SO
         public int damageAmount = 1;
         public float knockbackForce = 30f;
 
+        [Header("Out of Combat Regeneration")]
+        [Tooltip("If enabled, this enemy regenerates HP while out of combat.")]
+        public bool enableOutOfCombatRegen = true;
+        [Tooltip("Seconds after the last hit before regeneration starts.")]
+        public float regenDelaySeconds = 10f;
+        [Tooltip("HP regenerated per second while conditions are met.")]
+        public float regenHpPerSecond = 2f;
+        [Tooltip("Require enemy to be near its guard/home anchor to regenerate.")]
+        public bool regenRequireNearGuardAnchor = true;
+        [Tooltip("Allowed distance from guard/home anchor for regeneration.")]
+        public float regenGuardProximity = 1.5f;
+
         [Header("Movement")]
         public float moveSpeed = 2f;
         public float chaseSpeed = 3f;
@@ -73,6 +85,15 @@ namespace CombatManager.SO
 
             if (respawnDelaySeconds < 0f)
                 respawnDelaySeconds = 0f;
+
+            if (regenDelaySeconds < 0f)
+                regenDelaySeconds = 0f;
+
+            if (regenHpPerSecond < 0f)
+                regenHpPerSecond = 0f;
+
+            if (regenGuardProximity < 0f)
+                regenGuardProximity = 0f;
         }
 
         #endregion

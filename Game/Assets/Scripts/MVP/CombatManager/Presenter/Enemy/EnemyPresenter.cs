@@ -112,6 +112,8 @@ namespace CombatManager.Presenter
                 if (!knockbackService.IsKnockedBack())
                     aiService.UpdateBehavior(Time.deltaTime);
 
+                TryOutOfCombatRegeneration();
+
                 TryTriggerAttackAnimation();
 
                 if (healthService.IsDead())
@@ -287,6 +289,14 @@ namespace CombatManager.Presenter
             // Health
             model.maxHealth = enemyData.maxHealth;
             model.currentHealth = enemyData.maxHealth;
+            model.lastHitAt = -999f;
+            model.regenProgress = 0f;
+
+            model.enableOutOfCombatRegen = enemyData.enableOutOfCombatRegen;
+            model.regenDelaySeconds = enemyData.regenDelaySeconds;
+            model.regenHpPerSecond = enemyData.regenHpPerSecond;
+            model.regenRequireNearGuardAnchor = enemyData.regenRequireNearGuardAnchor;
+            model.regenGuardProximity = enemyData.regenGuardProximity;
 
             // Detection
             model.detectionRange = enemyData.detectionRange;
@@ -462,12 +472,85 @@ namespace CombatManager.Presenter
                 return;
 
             healthService.ChangeHealth(-damage);
+            model.lastHitAt = Time.time;
+            model.regenProgress = 0f;
             aiService.TakeKnockback(knockbackDirection, knockbackForce);
 
             PlayHitEffects();
 
             TrySpawnDamagePopup(damage);
             aiService.OnHit();
+        }
+
+        private void TryOutOfCombatRegeneration()
+        {
+            if (!IsAuthoritative || !model.enableOutOfCombatRegen || healthService == null || aiService == null)
+                return;
+
+            if (healthService.IsDead())
+                return;
+
+            int currentHp = healthService.GetCurrentHealth();
+            int maxHp = healthService.GetMaxHealth();
+            if (currentHp >= maxHp)
+            {
+                model.regenProgress = 0f;
+                return;
+            }
+
+            if (Time.time < model.lastHitAt + Mathf.Max(0f, model.regenDelaySeconds))
+            {
+                model.regenProgress = 0f;
+                return;
+            }
+
+            if (model.currentTarget != null || aiService.IsAlerted())
+            {
+                model.regenProgress = 0f;
+                return;
+            }
+
+            EnemyState state = aiService.GetCurrentState();
+            if (state == EnemyState.Chasing || state == EnemyState.Attacking)
+            {
+                model.regenProgress = 0f;
+                return;
+            }
+
+            if (model.regenRequireNearGuardAnchor)
+            {
+                float distanceToGuard = Vector2.Distance(transform.position, model.startPosition);
+                if (distanceToGuard > Mathf.Max(0f, model.regenGuardProximity))
+                {
+                    model.regenProgress = 0f;
+                    return;
+                }
+            }
+
+            float regenRate = Mathf.Max(0f, model.regenHpPerSecond);
+            if (regenRate <= 0f)
+                return;
+
+            model.regenProgress += regenRate * Time.deltaTime;
+            int healAmount = Mathf.FloorToInt(model.regenProgress);
+            if (healAmount <= 0)
+                return;
+
+            model.regenProgress -= healAmount;
+            healthService.ChangeHealth(healAmount);
+            TrySpawnHealingPopup(healAmount);
+        }
+
+        private void TrySpawnHealingPopup(int healAmount)
+        {
+            if (healAmount <= 0)
+                return;
+
+            if (Time.time - lastDamagePopupAt < DAMAGE_POPUP_INTERVAL)
+                return;
+
+            lastDamagePopupAt = Time.time;
+            DamagePopupPresenter.Spawn(transform.position, healAmount, PopupType.Heal);
         }
 
         private void PlayHitEffects()

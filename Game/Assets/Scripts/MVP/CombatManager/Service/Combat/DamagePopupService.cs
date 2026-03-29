@@ -47,7 +47,11 @@ namespace CombatManager.Service
 
         public void SpawnPopup(Vector3 position, int damage, PopupType type)
         {
-            SpawnPopup(position, damage.ToString(), type);
+            string text = damage.ToString();
+            if (type == PopupType.Heal)
+                text = $"+{Mathf.Abs(damage)}";
+
+            SpawnPopup(position, text, type);
         }
 
         public void SpawnPopup(Vector3 position, string text, PopupType type)
