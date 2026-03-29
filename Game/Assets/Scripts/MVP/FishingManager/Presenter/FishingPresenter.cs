@@ -30,7 +30,7 @@ public class FishingPresenter
         if (service.IsFishingWater(targetPosition))
         {
             model.isFishing = true;
-            // ép player dừng lại
+            
             GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
             if (player != null)
             {
@@ -73,7 +73,7 @@ public class FishingPresenter
         }
         catch (Exception e)
         {
-            Debug.LogWarning("Lỗi hệ thống: " + e.Message);
+            Debug.LogWarning("Error: " + e.Message);
             view.ShowFishingSuccess("");
         }
     }
