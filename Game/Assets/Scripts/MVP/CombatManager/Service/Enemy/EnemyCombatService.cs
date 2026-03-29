@@ -143,9 +143,6 @@ namespace CombatManager.Service
             {
                 knockbackPresenter.Knockback(enemyTransform, model.knockbackForce);
             }
-
-            // Show damage popup
-            ShowDamagePopup(playerRoot.position);
         }
 
         private static Transform ResolvePlayerRoot(Collider2D playerCollider)

@@ -12,13 +12,6 @@ namespace CombatManager.Model
     {
         [Header("Settings")]
         public int slotCount = 4;
-        public KeyCode[] activationKeys = new KeyCode[]
-        {
-            KeyCode.Z,
-            KeyCode.X,
-            KeyCode.C,
-            KeyCode.V
-        };
 
         [Header("Visual")]
         public Color emptySlotColor = new Color(1f, 1f, 1f, 0.3f);

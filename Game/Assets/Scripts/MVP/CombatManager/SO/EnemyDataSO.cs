@@ -17,10 +17,26 @@ namespace CombatManager.SO
         [Tooltip("Prefab with EnemyPresenter + Animator + SpriteRenderer")]
         public GameObject enemyPrefab;
 
+        [Header("Spawn")]
+        [Tooltip("Seconds to wait before this enemy type respawns after death.")]
+        public float respawnDelaySeconds = 20f;
+
         [Header("Stats")]
         public int maxHealth = 10;
         public int damageAmount = 1;
         public float knockbackForce = 30f;
+
+        [Header("Out of Combat Regeneration")]
+        [Tooltip("If enabled, this enemy regenerates HP while out of combat.")]
+        public bool enableOutOfCombatRegen = true;
+        [Tooltip("Seconds after the last hit before regeneration starts.")]
+        public float regenDelaySeconds = 10f;
+        [Tooltip("HP regenerated per second while conditions are met.")]
+        public float regenHpPerSecond = 2f;
+        [Tooltip("Require enemy to be near its guard/home anchor to regenerate.")]
+        public bool regenRequireNearGuardAnchor = true;
+        [Tooltip("Allowed distance from guard/home anchor for regeneration.")]
+        public float regenGuardProximity = 1.5f;
 
         [Header("Movement")]
         public float moveSpeed = 2f;
@@ -66,6 +82,18 @@ namespace CombatManager.SO
 
             if (string.IsNullOrEmpty(enemyId))
                 enemyId = name.ToLower().Replace(" ", "_");
+
+            if (respawnDelaySeconds < 0f)
+                respawnDelaySeconds = 0f;
+
+            if (regenDelaySeconds < 0f)
+                regenDelaySeconds = 0f;
+
+            if (regenHpPerSecond < 0f)
+                regenHpPerSecond = 0f;
+
+            if (regenGuardProximity < 0f)
+                regenGuardProximity = 0f;
         }
 
         #endregion
