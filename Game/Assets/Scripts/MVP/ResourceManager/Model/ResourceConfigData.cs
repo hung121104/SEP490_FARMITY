@@ -29,9 +29,6 @@ public class ResourceConfigData
     public int spawnWeight = 1;
     public List<DropEntry> dropTable = new List<DropEntry>(); // Corrected syntax and type based on existing DropEntry
 
-    /// <summary>True for fallback placeholder resources injected by OrphanedFallbackService (late-join only).</summary>
-    [Newtonsoft.Json.JsonIgnore]
-    public bool isFallback = false;
 }
 
 /// <summary>

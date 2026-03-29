@@ -39,9 +39,6 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private bool _inputSubscribed = false;
     private bool _isBeingPooled = false;
 
-    /// <summary>True if this structure's catalog data is a fallback placeholder (orphaned/deleted).</summary>
-    protected bool _isFallbackStructure = false;
-
     // ── Structure Interaction Badge ───────────────────────────────────────
     private GameObject _structureInteractionBadge;
     private SpriteRenderer _structureInteractionRenderer;
@@ -238,7 +235,6 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     private void OnInteract(InputAction.CallbackContext ctx)
     {
-        if (_isFallbackStructure) return;
         if (!CanInteract()) return;
 
         if (IsUIOpen())
@@ -260,7 +256,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     private void EvaluateTargetState()
     {
-        bool shouldBeTargeted = _playerInRange && _isMouseHovering && !_isFallbackStructure;
+        bool shouldBeTargeted = _playerInRange && _isMouseHovering;
 
         if (shouldBeTargeted && !_isTargeted)
         {

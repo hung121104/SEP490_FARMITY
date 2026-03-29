@@ -61,7 +61,7 @@ public class RecipeCatalogService : MonoBehaviour
 
     /// <summary>
     /// Removes recipes that reference deleted items (ingredients or result).
-    /// Called by OrphanedDataCleanupService after all catalogs are loaded.
+    /// Called by CatalogDeleteHandler after a catalog entry is removed.
     /// </summary>
     /// <param name="removedIds">Optional list to collect removed recipe IDs for notifications.</param>
     public int RemoveRecipesWithMissingItems(List<string> removedIds = null)
@@ -75,7 +75,7 @@ public class RecipeCatalogService : MonoBehaviour
 
             // Check result item
             var resultItem = ItemCatalogService.Instance.GetItemData(recipe.resultItemId);
-            if (resultItem == null || resultItem.isFallback)
+            if (resultItem == null)
             {
                 toRemove.Add(kvp.Key);
                 continue;
@@ -88,7 +88,7 @@ public class RecipeCatalogService : MonoBehaviour
                 foreach (var ing in recipe.ingredients)
                 {
                     var ingItem = ItemCatalogService.Instance.GetItemData(ing.itemId);
-                    if (ingItem == null || ingItem.isFallback)
+                    if (ingItem == null)
                     {
                         hasOrphan = true;
                         break;

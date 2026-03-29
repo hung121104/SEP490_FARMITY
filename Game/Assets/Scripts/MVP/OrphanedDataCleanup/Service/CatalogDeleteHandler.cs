@@ -11,8 +11,8 @@ using Photon.Pun;
 /// Clients receive world data changes (FIFO) before CATALOG_CHANGE_EVENT,
 /// so their state is consistent when the catalog entry disappears.
 ///
-/// This class does NOT replace OrphanedDataCleanupService (load-time) or
-/// OrphanedFallbackService (late-join). It handles mid-game deletes only.
+/// This class does NOT replace OrphanedDataCleanupService (load-time).
+/// It handles mid-game admin deletes only.
 /// </summary>
 public static class CatalogDeleteHandler
 {

@@ -76,10 +76,6 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
     /// </summary>
     public void InitializeFromWorld(int worldX, int worldY, StructureData structureData)
     {
-        // Check if this structure's catalog data is a fallback placeholder
-        var itemData = ItemCatalogService.Instance?.GetItemData(structureData.StructureId);
-        _isFallbackStructure = itemData != null && itemData.isFallback;
-
         chestData = new ChestData(worldX, worldY, structureData.StructureLevel);
         SetupStructureInteractionBadge(structureData.StructureId);
 

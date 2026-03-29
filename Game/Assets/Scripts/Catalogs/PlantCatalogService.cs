@@ -366,23 +366,4 @@ public class PlantCatalogService : MonoBehaviour
 
     // ── Fallback Injection (late-join orphaned data) ────────────────────────
 
-    /// <summary>
-    /// Injects a fallback PlantData into the catalog if the ID is not already present.
-    /// Used by OrphanedFallbackService for late-join players.
-    /// </summary>
-    public void InjectFallback(string plantId, PlantData data)
-    {
-        if (!_catalog.ContainsKey(plantId))
-            _catalog[plantId] = data;
-    }
-
-    /// <summary>
-    /// Injects a fallback sprite into the stage sprite cache.
-    /// Key format: "{plantId}_{stageIndex}".
-    /// </summary>
-    public void InjectFallbackStageSprite(string key, Sprite sprite)
-    {
-        if (!_spriteCache.ContainsKey(key))
-            _spriteCache[key] = sprite;
-    }
 }
