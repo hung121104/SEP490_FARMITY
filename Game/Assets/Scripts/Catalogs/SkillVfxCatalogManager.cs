@@ -44,6 +44,34 @@ public class SkillVfxCatalogManager : MonoBehaviour
 
     public IReadOnlyDictionary<string, CombatCatalogEntry> GetAllEntries() => _catalog;
 
+    // ── Real-time Sync (SSE) ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Adds or updates a single combat catalog entry from a JSON string (SSE real-time sync).
+    /// </summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var entry = JsonConvert.DeserializeObject<CombatCatalogEntry>(json);
+            if (entry == null || string.IsNullOrWhiteSpace(entry.configId)) return;
+            _catalog[entry.configId.Trim().ToLowerInvariant()] = entry;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[SkillVfxCatalogManager] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Removes a combat catalog entry by configId (SSE real-time delete).
+    /// </summary>
+    public bool RemoveEntry(string configId)
+    {
+        if (string.IsNullOrWhiteSpace(configId)) return false;
+        return _catalog.Remove(configId.Trim().ToLowerInvariant());
+    }
+
     public bool TryGetPrimaryTint(string configId, out Color tint)
     {
         tint = Color.white;
@@ -68,6 +96,47 @@ public class SkillVfxCatalogManager : MonoBehaviour
         if (!IsReady)
             StartCoroutine(RetryCoroutine());
     }
+
+    /// <summary>
+    /// Swaps catalog atomically. Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
+    {
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/combat-catalogs?type={CatalogType}";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[SkillVfxCatalogManager] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        List<CombatCatalogEntry> entries = null;
+        try
+        {
+            entries = JsonConvert.DeserializeObject<List<CombatCatalogEntry>>(
+                request.downloadHandler.text);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[SkillVfxCatalogManager] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (entries == null) yield break;
+
+        _catalog.Clear();
+        foreach (var entry in entries)
+        {
+            if (entry != null && !string.IsNullOrWhiteSpace(entry.configId))
+                _catalog[entry.configId.Trim().ToLowerInvariant()] = entry;
+        }
+
+        Debug.Log($"[SkillVfxCatalogManager] SafeRefetch complete — {_catalog.Count} entry(ies).");
+    }
+
 
     private IEnumerator RetryCoroutine()
     {

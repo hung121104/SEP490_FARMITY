@@ -23,12 +23,6 @@ public class CraftingModel
             return;
         }
 
-        if (recipes.ContainsKey(recipeData.recipeID))
-        {
-            Debug.LogWarning($"[CraftingModel] Recipe '{recipeData.recipeID}' already exists — skipping.");
-            return;
-        }
-
         recipes[recipeData.recipeID] = new RecipeModel(recipeData);
     }
 

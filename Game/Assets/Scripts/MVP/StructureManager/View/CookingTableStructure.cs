@@ -68,9 +68,6 @@ public class CookingTableStructure : InteractableStructureBase, IWorldStructure
 
     public void InitializeFromWorld(int worldX, int worldY, StructureData structureData)
     {
-        var itemData = ItemCatalogService.Instance?.GetItemData(structureData.StructureId);
-        _isFallbackStructure = itemData != null && itemData.isFallback;
-
         this.worldX = worldX;
         this.worldY = worldY;
         cookingLevel = structureData.StructureLevel;

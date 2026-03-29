@@ -63,6 +63,69 @@ public class QuestCatalogService : MonoBehaviour
         StartCoroutine(FetchCatalog());
     }
 
+    // ── Catalog Sync (real-time updates from CatalogSyncManager) ───────────
+
+    /// <summary>Adds or replaces a quest in the catalog from a JSON string.</summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var quest = JsonConvert.DeserializeObject<QuestCatalogData>(json);
+            if (quest == null || string.IsNullOrWhiteSpace(quest.questId)) return;
+            _catalog[quest.questId] = quest;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[QuestCatalogService] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Removes a quest from the catalog.</summary>
+    public bool RemoveQuest(string questId)
+    {
+        return _catalog.Remove(questId);
+    }
+
+    /// <summary>
+    /// Swaps catalog atomically. Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
+    {
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/quests/catalog";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[QuestCatalogService] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        QuestCatalogResponse response = null;
+        try
+        {
+            response = JsonConvert.DeserializeObject<QuestCatalogResponse>(
+                request.downloadHandler.text);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[QuestCatalogService] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (response?.quests == null) yield break;
+
+        _catalog.Clear();
+        foreach (var quest in response.quests)
+        {
+            if (quest != null && !string.IsNullOrWhiteSpace(quest.questId))
+                _catalog[quest.questId] = quest;
+        }
+
+        Debug.Log($"[QuestCatalogService] SafeRefetch complete — {_catalog.Count} quest(s).");
+    }
+
     // ── Loading ───────────────────────────────────────────────────────────────
     private IEnumerator FetchCatalog()
     {

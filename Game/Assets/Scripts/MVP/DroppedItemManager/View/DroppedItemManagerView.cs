@@ -30,8 +30,10 @@ public class DroppedItemManagerView : MonoBehaviour
     [SerializeField] private InventoryDropZone[] inventoryDropZones = new InventoryDropZone[0];
 
     [Header("Settings")]
-    [Tooltip("Offset applied to player position when dropping an item.")]
-    [SerializeField] private Vector2 dropOffset = new Vector2(0f, 0f);
+    [Tooltip("Radius around the player where items will drop randomly.")]
+    [SerializeField] private float dropRadius = 1.5f;
+    [Tooltip("Minimum distance from player to prevent dropping exactly on top of them.")]
+    [SerializeField] private float dropMinRadius = 0.5f;
 
     [Tooltip("Enable debug logging.")]
     [SerializeField] private bool showDebugLogs = true;
@@ -228,7 +230,13 @@ public class DroppedItemManagerView : MonoBehaviour
             return;
         }
 
-        presenter.RequestDropItem(item, _localPlayerTransform.position, dropOffset);
+        // Generate a random direction and a distance between min and max radius
+        Vector2 randomDir = UnityEngine.Random.insideUnitCircle.normalized;
+        if (randomDir == Vector2.zero) randomDir = Vector2.up; // Edge case fallback
+        float distance = UnityEngine.Random.Range(dropMinRadius, dropRadius);
+        Vector2 randomOffset = randomDir * distance;
+
+        presenter.RequestDropItem(item, _localPlayerTransform.position, randomOffset);
     }
 
     /// <summary>
