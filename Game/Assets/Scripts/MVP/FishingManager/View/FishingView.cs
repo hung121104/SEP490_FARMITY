@@ -79,14 +79,14 @@ public class FishingView : MonoBehaviourPun, IFishingView
     }
 
 
-    public void StartMiniGame(Vector3 targetPosition)
+    public void StartMiniGame(Vector3 targetPosition, float timerMultiplier)
     {
         SetPlayerMovementState(false);
         if (castRoutine != null) StopCoroutine(castRoutine);
-        castRoutine = StartCoroutine(CastRodRoutine(targetPosition));
+        castRoutine = StartCoroutine(CastRodRoutine(targetPosition, timerMultiplier));
     }
 
-    private IEnumerator CastRodRoutine(Vector3 targetPosition)
+    private IEnumerator CastRodRoutine(Vector3 targetPosition, float timerMultiplier)
     {
         isWaitingForFish = false; 
         PlayerMovement localPlayer = GetLocalPlayer();
@@ -132,7 +132,7 @@ public class FishingView : MonoBehaviourPun, IFishingView
         // --- 3. OPEN MINIGAME ---
         Debug.Log("[FishingView] catching! Open UI MiniGame!");
         miniGameView.gameObject.SetActive(true);
-        miniGameView.StartMiniGame();
+        miniGameView.StartMiniGame(timerMultiplier);
     }
 
     public void ShowCannotFishWarning()
