@@ -71,6 +71,12 @@ namespace CombatManager.Service
         [Tooltip("Maximum enemy dematerializations processed per refresh tick.")]
         [SerializeField] private int maxDematerializePerRefresh = 32;
 
+        [Header("Out of Range Behavior")]
+        [Tooltip("Seconds enemy stays visible after leaving detection range before despawn.")]
+        [SerializeField] private float dematerializeGraceSeconds = 1.5f;
+        [Tooltip("Seconds out of detection range before snapping runtime data back to guard/home anchor.")]
+        [SerializeField] private float forceReturnToGuardAfterUndetectedSeconds = 8f;
+
         private readonly Dictionary<string, EnemySpawnTypeMapping> mappingByEnemyId =
             new Dictionary<string, EnemySpawnTypeMapping>(System.StringComparer.OrdinalIgnoreCase);
 
@@ -95,6 +101,7 @@ namespace CombatManager.Service
             public string enemyId;
             public Vector3 position;
             public bool isMaterialized;
+            public float outOfRangeSince;
         }
 
         private struct PendingRespawnEntry
@@ -489,17 +496,51 @@ namespace CombatManager.Service
                 }
 
                 bool shouldMaterialize = ShouldMaterializeAtPosition(record.position);
-                if (shouldMaterialize && !record.isMaterialized)
+                if (shouldMaterialize)
                 {
-                    if (materializedCount >= Mathf.Max(1, maxMaterializePerRefresh))
+                    if (record.outOfRangeSince >= 0f)
+                    {
+                        record.outOfRangeSince = -1f;
+                        activeByRuntimeId[runtimeId] = record;
+                    }
+
+                    if (!record.isMaterialized)
+                    {
+                        if (materializedCount >= Mathf.Max(1, maxMaterializePerRefresh))
+                            continue;
+
+                        MaterializeRuntime(runtimeId);
+                        materializedCount++;
+                        changed = true;
+                    }
+                }
+                else
+                {
+                    if (record.outOfRangeSince < 0f)
+                    {
+                        record.outOfRangeSince = Time.time;
+                        activeByRuntimeId[runtimeId] = record;
+                    }
+
+                    float outOfRangeDuration = Time.time - record.outOfRangeSince;
+
+                    if (outOfRangeDuration >= Mathf.Max(0f, forceReturnToGuardAfterUndetectedSeconds) &&
+                        enemyDataManager != null &&
+                        enemyDataManager.TryGetOriginalSpawnPosition(runtimeId, out Vector3 guardPos) &&
+                        record.position != guardPos)
+                    {
+                        record.position = guardPos;
+                        activeByRuntimeId[runtimeId] = record;
+                        enemyDataManager.UpdateRuntimePosition(runtimeId, guardPos);
+                        changed = true;
+                    }
+
+                    if (!record.isMaterialized)
                         continue;
 
-                    MaterializeRuntime(runtimeId);
-                    materializedCount++;
-                    changed = true;
-                }
-                else if (!shouldMaterialize && record.isMaterialized)
-                {
+                    if (outOfRangeDuration < Mathf.Max(0f, dematerializeGraceSeconds))
+                        continue;
+
                     if (dematerializedCount >= Mathf.Max(1, maxDematerializePerRefresh))
                         continue;
 
@@ -517,6 +558,9 @@ namespace CombatManager.Service
         {
             if (!activeByRuntimeId.TryGetValue(runtimeId, out EnemyRuntimeSpawnRecord record))
                 return;
+
+            record.outOfRangeSince = -1f;
+            activeByRuntimeId[runtimeId] = record;
 
             BroadcastSpawn(record.enemyId, record.runtimeId, record.position);
         }
@@ -585,6 +629,7 @@ namespace CombatManager.Service
                 enemyId = enemyId,
                 position = position,
                 isMaterialized = isMaterialized,
+                outOfRangeSince = -1f,
             };
 
             if (!alreadyExists && incrementIfNew)
