@@ -116,7 +116,6 @@ public class NPCInteractionPresenter
         playerInRange = false;
         dialogueView?.Hide();
         view.EnableHotbar(true);
-        view.UnlockPlayer();
         playerMovement = null;
         currentState = NPCInteractionState.Idle;
     }
@@ -188,7 +187,6 @@ public class NPCInteractionPresenter
         if (InputManager.Instance.Interact.WasPressedThisFrame())
         {
             dialogueView.Hide();
-            view.UnlockPlayer();
             currentState = NPCInteractionState.Idle;
             blockInteractOnce = true;
         }
@@ -200,7 +198,6 @@ public class NPCInteractionPresenter
         {
             dialogueView.Hide();
             view.EnableHotbar(true);
-            view.UnlockPlayer();
             currentState = NPCInteractionState.Idle;
             blockInteractOnce = true;
             return;
@@ -278,8 +275,6 @@ public class NPCInteractionPresenter
             if (slotAction != null && slotAction.WasPressedThisFrame())
             {
                 dialoguePresenter.SelectOption(i);
-                if (!dialoguePresenter.IsDialogueActive())
-                    view.UnlockPlayer();
                 break;
             }
         }
@@ -293,7 +288,6 @@ public class NPCInteractionPresenter
     private void HandleQuestAccepted()
     {
         dialogueView.Hide();
-        view.UnlockPlayer();
         currentState = NPCInteractionState.Idle;
         blockInteractOnce = true; // prevent immediate re-trigger on next frame
     }
@@ -371,7 +365,6 @@ public class NPCInteractionPresenter
             return;
         }
 
-        view.LockPlayer();
         view.EnableHotbar(false);
         view.SetInventoryMenuRoot(true);
         view.CloseInventory();
@@ -430,7 +423,6 @@ public class NPCInteractionPresenter
 
         view.CloseInventory();
         view.EnableHotbar(true);
-        view.UnlockPlayer();
 
         currentState = NPCInteractionState.Idle;
         blockInteractOnce = true;
@@ -443,7 +435,6 @@ public class NPCInteractionPresenter
 
     private void ShowInteractionMenu()
     {
-        view.LockPlayer();
         view.EnableHotbar(false);
         currentState = NPCInteractionState.InteractionMenu;
         dialogueView.ShowNode(dialogueModel.npcName, interactionNode, dialogueModel.avatar);
