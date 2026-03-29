@@ -15,6 +15,7 @@ public class QuestLogController : MonoBehaviour
 
         // View subscribes to Presenter event — Presenter never calls View directly.
         presenter.OnItemsRefreshed += view.ShowQuestList;
+        presenter.OnPinnedQuestChanged += view.ShowPinnedQuest;
 
         // View calls Presenter (and handles its own toggle).
         questButton.onClick.AddListener(() =>
@@ -33,6 +34,9 @@ public class QuestLogController : MonoBehaviour
     private void OnDestroy()
     {
         if (presenter != null)
+        {
             presenter.OnItemsRefreshed -= view.ShowQuestList;
+            presenter.OnPinnedQuestChanged -= view.ShowPinnedQuest;
+        }
     }
 }

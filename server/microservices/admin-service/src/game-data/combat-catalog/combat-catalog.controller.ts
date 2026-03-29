@@ -2,6 +2,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CombatCatalogService } from './combat-catalog.service';
 import { CreateCombatCatalogDto } from './dto/create-combat-catalog.dto';
+import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class CombatCatalogController {
@@ -13,8 +14,13 @@ export class CombatCatalogController {
   }
 
   @MessagePattern('create-combat-catalog')
-  async create(@Payload() dto: CreateCombatCatalogDto) {
-    return this.combatCatalogService.create(dto);
+  async create(@Payload() dto: CreateCombatCatalogDto): Promise<CatalogChange> {
+    const data = await this.combatCatalogService.create(dto);
+    return {
+      data,
+      changeType: 'create',
+      entityType: 'combat-catalog',
+    };
   }
 
   @MessagePattern('update-combat-catalog')
@@ -29,13 +35,25 @@ export class CombatCatalogController {
       colorIntensity?: number;
       tintAlpha?: number;
     },
-  ) {
+  ): Promise<CatalogChange> {
     const { configId, ...patch } = payload;
-    return this.combatCatalogService.update(configId, patch);
+    const data = await this.combatCatalogService.update(configId, patch);
+    return {
+      data,
+      changeType: 'update',
+      entityType: 'combat-catalog',
+    };
   }
 
   @MessagePattern('delete-combat-catalog')
-  async remove(@Payload() payload: { configId: string }) {
-    return this.combatCatalogService.remove(payload.configId);
+  async remove(
+    @Payload() payload: { configId: string },
+  ): Promise<CatalogChange> {
+    const data = await this.combatCatalogService.remove(payload.configId);
+    return {
+      data,
+      changeType: 'delete',
+      entityType: 'combat-catalog',
+    };
   }
 }

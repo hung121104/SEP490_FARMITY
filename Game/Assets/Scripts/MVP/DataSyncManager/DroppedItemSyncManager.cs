@@ -144,6 +144,37 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
+    /// Master-only: directly spawn a dropped item in the world without a client request.
+    /// Used by CatalogDeleteHandler to drop chest contents when a structure is admin-deleted.
+    /// Assigns dropId, timestamps, chunk coordinates, then broadcasts ITEM_SPAWNED.
+    /// </summary>
+    public void MasterSpawnDroppedItem(DroppedItemData item)
+    {
+        if (!PhotonNetwork.IsMasterClient || item == null) return;
+
+        item.dropId           = Guid.NewGuid().ToString();
+        item.roomName         = PhotonNetwork.CurrentRoom?.Name ?? "";
+        item.droppedByActorId = 0; // system drop, no player
+        item.droppedAt        = DateTime.UtcNow.ToString("o");
+        item.expireAt         = DateTime.UtcNow.AddSeconds(360).ToString("o");
+
+        if (WorldDataManager.Instance != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(
+                new Vector3(item.worldX, item.worldY, 0));
+            item.chunkX = chunkPos.x;
+            item.chunkY = chunkPos.y;
+        }
+
+        byte[] payload = SerializeSingleItem(item);
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.All };
+        PhotonNetwork.RaiseEvent(ITEM_SPAWNED, payload, opts, SendOptions.SendReliable);
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemSync] Master: system-spawned dropId={item.dropId} ({item.itemId} x{item.quantity}) at ({item.worldX},{item.worldY})");
+    }
+
+    /// <summary>
     /// Master broadcasts despawn notification (item TTL expired).
     /// Only call from Master.
     /// </summary>

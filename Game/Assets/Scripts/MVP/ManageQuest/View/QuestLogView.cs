@@ -11,14 +11,43 @@ public class QuestLogItemData
 
 public class QuestLogView : MonoBehaviour
 {
-    [Header("UI")]
+    [Header("Quest Log Panel")]
     [SerializeField] private GameObject panelRoot;
     [SerializeField] private Transform questListContainer;
     [SerializeField] private GameObject questItemPrefab;
 
+    [Header("Pinned Quest Panel")]
+    [SerializeField] private GameObject pinnedPanelRoot;
+    [SerializeField] private TMP_Text pinnedObjectiveText;
+
+    private void Awake()
+    {
+        if (pinnedPanelRoot != null)
+            pinnedPanelRoot.SetActive(false);
+    }
+
     public void TogglePanel()
     {
         panelRoot.SetActive(!panelRoot.activeSelf);
+    }
+
+    /// <summary>Called by QuestLogController when Presenter fires OnPinnedQuestChanged.</summary>
+    public void ShowPinnedQuest(QuestLogItemData data)
+    {
+        if (pinnedPanelRoot == null) return;
+
+        if (data == null)
+        {
+            pinnedPanelRoot.SetActive(false);
+            return;
+        }
+
+        pinnedPanelRoot.SetActive(true);
+
+        if (pinnedObjectiveText != null)
+            pinnedObjectiveText.text = data.objectiveTexts != null && data.objectiveTexts.Count > 0
+                ? string.Join("\n", data.objectiveTexts)
+                : string.Empty;
     }
 
     public void ShowQuestList(List<QuestLogItemData> items)

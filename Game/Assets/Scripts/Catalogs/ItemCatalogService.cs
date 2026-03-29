@@ -113,6 +113,67 @@ public class ItemCatalogService : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Swaps catalog atomically; only downloads sprites for new entries.
+    /// Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
+    {
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/items/catalog";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[ItemCatalogService] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        ItemCatalogResponse response = null;
+        try
+        {
+            response = JsonConvert.DeserializeObject<ItemCatalogResponse>(
+                request.downloadHandler.text, _jsonSettings);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[ItemCatalogService] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (response?.items == null) yield break;
+
+        var newCatalog = new Dictionary<string, ItemData>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in response.items)
+        {
+            if (item != null && !string.IsNullOrWhiteSpace(item.itemID))
+                newCatalog[item.itemID] = item;
+        }
+
+        // Atomic swap — keep IsReady true
+        _catalog.Clear();
+        foreach (var kvp in newCatalog)
+            _catalog[kvp.Key] = kvp.Value;
+
+        // Download only missing sprites
+        foreach (var item in newCatalog.Values)
+        {
+            if (!string.IsNullOrEmpty(item.iconUrl) && !_spriteCache.ContainsKey(item.itemID))
+                yield return DownloadSprite(item.itemID, item.iconUrl);
+
+            if (item is StructureItemData structItem
+                && !string.IsNullOrEmpty(structItem.structureInteractionSpriteUrl)
+                && !_structureInteractionSpriteCache.ContainsKey(item.itemID))
+            {
+                yield return DownloadSprite(item.itemID, structItem.structureInteractionSpriteUrl,
+                    _structureInteractionSpriteCache);
+            }
+        }
+
+        Debug.Log($"[ItemCatalogService] SafeRefetch complete — {_catalog.Count} item(s).");
+    }
+
     private IEnumerator FetchCatalog()
     {
         IsReady = false;
@@ -236,24 +297,42 @@ public class ItemCatalogService : MonoBehaviour
         Debug.Log($"[ItemCatalogService] Sprite ready for '{itemId}'.");
     }
 
-    // ── Fallback Injection (late-join orphaned data) ────────────────────────
+    // ── Catalog Sync (real-time updates from CatalogSyncManager) ───────────
 
     /// <summary>
-    /// Injects a fallback ItemData into the catalog if the ID is not already present.
-    /// Used by OrphanedFallbackService for late-join players.
+    /// Adds or replaces an item in the catalog from a JSON string.
+    /// Starts sprite download asynchronously.
     /// </summary>
-    public void InjectFallback(string itemId, ItemData data)
+    public void AddOrUpdateFromJson(string json)
     {
-        if (!_catalog.ContainsKey(itemId))
-            _catalog[itemId] = data;
+        try
+        {
+            var item = JsonConvert.DeserializeObject<ItemData>(json, _jsonSettings);
+            if (item == null || string.IsNullOrWhiteSpace(item.itemID)) return;
+
+            _catalog[item.itemID] = item;
+
+            if (!string.IsNullOrEmpty(item.iconUrl))
+                StartCoroutine(DownloadSprite(item.itemID, item.iconUrl));
+
+            if (item is StructureItemData structItem
+                && !string.IsNullOrEmpty(structItem.structureInteractionSpriteUrl))
+            {
+                StartCoroutine(DownloadSprite(item.itemID, structItem.structureInteractionSpriteUrl,
+                    _structureInteractionSpriteCache));
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[ItemCatalogService] AddOrUpdateFromJson failed: {ex.Message}");
+        }
     }
 
-    /// <summary>
-    /// Injects a fallback sprite into the icon cache if the ID is not already present.
-    /// </summary>
-    public void InjectFallbackSprite(string itemId, Sprite sprite)
+    /// <summary>Removes an item and its cached sprites from the catalog.</summary>
+    public bool RemoveItem(string itemId)
     {
-        if (!_spriteCache.ContainsKey(itemId))
-            _spriteCache[itemId] = sprite;
+        _spriteCache.Remove(itemId);
+        _structureInteractionSpriteCache.Remove(itemId);
+        return _catalog.Remove(itemId);
     }
 }

@@ -35,10 +35,6 @@ public class ItemData
     public bool isArtifact  = false;
     public bool isRareItem  = false;
 
-    /// <summary>True for fallback placeholder items injected by OrphanedFallbackService (late-join only).</summary>
-    [Newtonsoft.Json.JsonIgnore]
-    public bool isFallback = false;
-
     /// <summary>
     /// SkinCatalogManager configId for this item's spritesheet (e.g. "gold_hoe",
     /// "copper_watering_can"). Used by DynamicSpriteSwapper to show the correct

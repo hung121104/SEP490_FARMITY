@@ -6,9 +6,11 @@ import {
 } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { GatewayController } from './gateway.controller';
+import { CatalogSseController } from './catalog-sse.controller';
 import { AuthorizationMiddleware } from './authorization.middleware';
 import { AuthenticationMiddleware } from './authentication.middleware';
 import { GatewayCloudinaryService } from './cloudinary.service';
+import { CatalogSseService } from './catalog-sse.service';
 
 @Module({
   imports: [
@@ -30,8 +32,8 @@ import { GatewayCloudinaryService } from './cloudinary.service';
       },
     ]),
   ],
-  controllers: [GatewayController],
-  providers: [GatewayCloudinaryService],
+  controllers: [GatewayController, CatalogSseController],
+  providers: [GatewayCloudinaryService, CatalogSseService],
 })
 export class GatewayModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

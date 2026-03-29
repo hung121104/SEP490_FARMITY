@@ -272,6 +272,23 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
         SendSlotRequest(OP_CLEAR_SLOT, slotIndex, null, 0, 0);
     }
 
+    /// <summary>
+    /// Master-only: broadcast a clear-slot for a specific character.
+    /// </summary>
+    public void BroadcastClearSlot(string charId, byte slotIndex)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        byte[] payload = EncodeSlotRequest(charId, OP_CLEAR_SLOT, slotIndex, null, 0, 0);
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(SLOT_BROADCAST, payload, opts, SendOptions.SendReliable);
+
+        OnInventoryChanged?.Invoke();
+
+        if (showDebugLogs)
+            Debug.Log($"[InvSync] BroadcastClearSlot: char={charId} slot={slotIndex}");
+    }
+
     /// <summary>Request Master to add quantity to a slot.</summary>
     public void RequestAddQuantity(byte slotIndex, string itemId, ushort amount)
     {
@@ -493,13 +510,11 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
         if (showDebugLogs)
             Debug.Log($"[InvSync] ✓ Inventory sync complete! {totalInventories} inventories loaded");
 
-        // --- Orphaned inventory handling for late-join player ---
+        // ── Orphaned inventory cleanup for late-join ──────────────────
         if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
             && WorldDataManager.Instance?.InventoryData != null)
         {
-            int handled = 0;
-            var placeholder = FallbackConfig.Instance?.PlaceholderSprite
-                ?? FallbackDataFactory.CreatePlaceholderSprite();
+            int cleared = 0;
 
             foreach (var charId in WorldDataManager.Instance.InventoryData.GetAllCharacterIds())
             {
@@ -509,16 +524,15 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
                         && !slot.IsEmpty
                         && ItemCatalogService.Instance.GetItemData(slot.ItemId) == null)
                     {
-                        // Inject fallback instead of clearing — keeps the slot visible with placeholder.
-                        ItemCatalogService.Instance.InjectFallback(
-                            slot.ItemId, FallbackDataFactory.CreateFallbackItemData(slot.ItemId));
-                        ItemCatalogService.Instance.InjectFallbackSprite(slot.ItemId, placeholder);
-                        handled++;
+                        // Item not in catalog → admin-deleted, clear locally.
+                        WorldDataManager.Instance.InventoryData.ClearSlot(charId, i);
+                        cleared++;
                     }
                 }
             }
-            if (handled > 0)
-                Debug.LogWarning($"[InvSync] Late-join fallback: injected placeholder for {handled} orphaned inventory slot(s)");
+
+            if (cleared > 0)
+                Debug.LogWarning($"[InvSync] Late-join: cleared {cleared} orphaned inventory slot(s) for deleted catalog entries.");
         }
 
         OnInventoryChanged?.Invoke();

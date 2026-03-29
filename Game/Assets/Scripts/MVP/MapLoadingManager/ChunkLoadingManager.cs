@@ -306,34 +306,26 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
             {
                 PlantData plantData   = GetPlantData(tile.Crop.PlantId);
                 Sprite    stageSprite = null;
-                bool      isFallback  = false;
 
                 if (plantData == null)
                 {
-                    var fallback = FallbackConfig.Instance?.PlaceholderSprite;
-                    if (fallback != null) { stageSprite = fallback; isFallback = true; }
-                    else
-                    {
-                        if (showDebugLogs)
-                            Debug.LogWarning($"[ChunkLoading] No plant data for '{tile.Crop.PlantId}' at ({tile.WorldX},{tile.WorldY})");
-                        goto NextTile;
-                    }
+                    if (showDebugLogs)
+                        Debug.LogWarning($"[ChunkLoading] No plant data for '{tile.Crop.PlantId}' at ({tile.WorldX},{tile.WorldY})");
+                    goto NextTile;
                 }
-                else
+
+                if (!plantData.isHybrid && tile.Crop.CropStage >= plantData.growthStages.Count)
                 {
-                    if (!plantData.isHybrid && tile.Crop.CropStage >= plantData.growthStages.Count)
-                    {
-                        if (showDebugLogs)
-                            Debug.LogWarning($"[ChunkLoading] Invalid stage {tile.Crop.CropStage} for {plantData.plantName}");
-                        goto NextTile;
-                    }
-                    stageSprite = PlantCatalogService.Instance?.GetStageSprite(tile.Crop.PlantId, tile.Crop.CropStage);
-                    if (stageSprite == null)
-                    {
-                        if (showDebugLogs)
-                            Debug.LogWarning($"[ChunkLoading] Null sprite for {plantData.plantName} stage {tile.Crop.CropStage}");
-                        goto NextTile;
-                    }
+                    if (showDebugLogs)
+                        Debug.LogWarning($"[ChunkLoading] Invalid stage {tile.Crop.CropStage} for {plantData.plantName}");
+                    goto NextTile;
+                }
+                stageSprite = PlantCatalogService.Instance?.GetStageSprite(tile.Crop.PlantId, tile.Crop.CropStage);
+                if (stageSprite == null)
+                {
+                    if (showDebugLogs)
+                        Debug.LogWarning($"[ChunkLoading] Null sprite for {plantData.plantName} stage {tile.Crop.CropStage}");
+                    goto NextTile;
                 }
 
                 if (_cachedCropPool == null)
@@ -345,9 +337,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
                 else if (cropVisualPrefab != null)      visual = Instantiate(cropVisualPrefab, pos3, Quaternion.identity);
                 else                                    visual = new GameObject { transform = { position = pos3 } };
 
-                visual.name = isFallback
-                    ? $"Crop_Fallback_{tile.Crop.PlantId}_{tile.WorldX}_{tile.WorldY}"
-                    : $"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}";
+                visual.name = $"Crop_{plantData.plantName}_{tile.WorldX}_{tile.WorldY}";
 
                 SpriteRenderer sr = CropPool.GetSourceRenderer(visual) ?? visual.AddComponent<SpriteRenderer>();
                 if (_cachedCropPool == null) sr.sortingLayerName = "WalkInfront";
@@ -412,19 +402,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
                     }
                     else
                     {
-                        var fallback = FallbackConfig.Instance?.PlaceholderSprite;
-                        if (fallback != null)
-                        {
-                            var ph = new GameObject($"Structure_Fallback_{tile.Structure.StructureId}_{tile.WorldX}_{tile.WorldY}");
-                            ph.transform.position = new Vector3(tile.WorldX + 0.5f, tile.WorldY + 0.25f, 0f);
-                            var sr = ph.AddComponent<SpriteRenderer>();
-                            sr.sprite = fallback;
-                            sr.sortingLayerName = "WalkInfront";
-                            if (!_model.StructureVisuals.ContainsKey(chunkPos))
-                                _model.StructureVisuals[chunkPos] = new List<(string, GameObject)>();
-                            _model.StructureVisuals[chunkPos].Add((tile.Structure.StructureId, ph));
-                        }
-                        else if (showDebugLogs)
+                        if (showDebugLogs)
                             Debug.LogWarning($"[ChunkLoading] No structure data for '{tile.Structure.StructureId}' at ({tile.WorldX},{tile.WorldY})");
                     }
                 }
