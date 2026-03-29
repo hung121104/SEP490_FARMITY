@@ -201,7 +201,7 @@ namespace CombatManager.Service
         {
             if (activeTileWindows.Count == 0)
             {
-                if (followChunkLoadingManager && chunkLoadingManager != null)
+                if (ShouldApplyChunkLoaderRestriction())
                     return false;
 
                 return true;
@@ -223,7 +223,7 @@ namespace CombatManager.Service
             if (!inAnyTileWindow)
                 return false;
 
-            if (followChunkLoadingManager && chunkLoadingManager != null)
+            if (ShouldApplyChunkLoaderRestriction())
                 return chunkLoadingManager.IsChunkLoaded(ResolveChunk(worldPosition));
 
             return activeChunks.Contains(ResolveChunk(worldPosition));
@@ -249,10 +249,23 @@ namespace CombatManager.Service
 
             // Optionally constrain by currently loaded map chunks to keep enemy visibility
             // in sync with world chunk load/unload.
-            if (followChunkLoadingManager && chunkLoadingManager != null)
+            if (ShouldApplyChunkLoaderRestriction())
             {
                 FilterActiveChunksByLoadedChunks();
             }
+        }
+
+        private bool ShouldApplyChunkLoaderRestriction()
+        {
+            if (!followChunkLoadingManager || chunkLoadingManager == null)
+                return false;
+
+            // In multiplayer, host must materialize by proximity of all players,
+            // not only by the host-local chunk visuals.
+            if (PhotonNetwork.IsConnected)
+                return false;
+
+            return true;
         }
 
         private void FilterActiveChunksByLoadedChunks()
