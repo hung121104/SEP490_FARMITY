@@ -76,18 +76,27 @@ public class NPCInteractionPresenter
         else
             Debug.LogError($"[NPCInteractionPresenter] InventoryService on {dialogueModel.npcName} is null!");
 
-        questService = QuestManager.QuestService;
+        questService = QuestManager.Instance.QuestService;
 
         questPresenter = new QuestPresenter(
-            questView,
             questService,
             inventoryService,
             dialogueModel.npcName,
             dialogueModel.avatar
         );
 
+        // View subscribes to Presenter event — Presenter fires data, View renders itself.
+        questPresenter.OnQuestDataReady += questView.Render;
+
+        // Wire UI button events: View → Presenter (not Presenter → View).
+        questView.OnAccept += () => questPresenter.HandleAccept();
+        questView.OnBack   += () => { questPresenter.CancelQuest(); ShowInteractionMenu(); };
+
+        // Subscribe to QuestPresenter's result event — Presenter notifies us when done.
+        questPresenter.OnQuestAccepted += HandleQuestAccepted;
+
         INPCDialogueService dialogueService = new NPCDialogueService(dialogueModel);
-        dialoguePresenter = new NPCDialoguePresenter(dialogueService, dialogueView, questPresenter);
+        dialoguePresenter = new NPCDialoguePresenter(dialogueService, dialogueView, questView);
 
         CreateInteractionNode();
     }
@@ -248,13 +257,12 @@ public class NPCInteractionPresenter
         {
             if (InputManager.Instance.GetHotbarSlotAction(0).WasPressedThisFrame()) // Accept
             {
-                questPresenter.AcceptQuest();
-                dialogueView.Hide();
-                view.UnlockPlayer();
-                currentState = NPCInteractionState.Idle;
+                // View calls Presenter directly — no indirection through questView.Accept().
+                questPresenter.HandleAccept();
             }
             else if (InputManager.Instance.GetHotbarSlotAction(1).WasPressedThisFrame()) // Back
             {
+                questPresenter.CancelQuest();
                 ShowInteractionMenu();
             }
             return;
@@ -281,6 +289,15 @@ public class NPCInteractionPresenter
     // Quest logic
     // ─────────────────────────────────────────────────────────────────
 
+    /// <summary>Called by questPresenter.OnQuestAccepted — closes UI and resets state.</summary>
+    private void HandleQuestAccepted()
+    {
+        dialogueView.Hide();
+        view.UnlockPlayer();
+        currentState = NPCInteractionState.Idle;
+        blockInteractOnce = true; // prevent immediate re-trigger on next frame
+    }
+
     private void HandleQuestInteraction()
     {
         UpdateQuestObjectives();
@@ -296,7 +313,7 @@ public class NPCInteractionPresenter
                 if (questService.SubmitQuestItems(activeQuest.questId, inventory))
                 {
                     lastCompletedQuestId = activeQuest.questId;
-                    questService.GiveReward(activeQuest.questId, inventory);
+                    questService.GiveReward(activeQuest.reward, inventory);
                     questService.CompleteQuest(activeQuest.questId);
 
                     var reward = activeQuest.reward;
@@ -315,9 +332,8 @@ public class NPCInteractionPresenter
         }
         else
         {
-            if (questPresenter.TryPickRandomQuest(lastCompletedQuestId))
+            if (questPresenter.LoadAndDisplay(lastCompletedQuestId))
             {
-                questPresenter.ShowQuest();
                 currentState = NPCInteractionState.Quest;
             }
             else
@@ -337,7 +353,7 @@ public class NPCInteractionPresenter
             foreach (var obj in quest.objectives)
             {
                 int count = inventory.GetItemCount(obj.itemId);
-                questService.UpdateObjective(obj.objectiveId, count);
+                questService.UpdateObjective(quest.questId, obj.objectiveId, count);
             }
         }
     }

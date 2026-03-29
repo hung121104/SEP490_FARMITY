@@ -75,7 +75,7 @@ public class CraftingTableStructure : InteractableStructureBase, IWorldStructure
         this.worldY = worldY;
         craftingLevel = structureData.StructureLevel;
 
-        SetupStructureInteractionBadge(structureData.StructureId, worldX, worldY);
+        SetupStructureInteractionBadge(structureData.StructureId);
     }
 
     // ── Badge (Open/Close Notifications) ─────────────────────────────────

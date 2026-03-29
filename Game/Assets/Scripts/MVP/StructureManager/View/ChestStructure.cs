@@ -81,7 +81,7 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
         _isFallbackStructure = itemData != null && itemData.isFallback;
 
         chestData = new ChestData(worldX, worldY, structureData.StructureLevel);
-        SetupStructureInteractionBadge(structureData.StructureId, worldX, worldY);
+        SetupStructureInteractionBadge(structureData.StructureId);
 
         WorldDataManager.Instance?.RegisterChest(
             (short)worldX,

@@ -21,7 +21,7 @@ public class FishingBootstrapper : MonoBehaviour
 
         if (inventoryManager == null)
         {
-            Debug.LogError("[FishingBootstrapper] Cant Find InventoryGameView!");
+            Debug.LogError("[FishingBootstrapper] Cant find InventoryGameView! ");
             return;
         }
 
@@ -35,6 +35,7 @@ public class FishingBootstrapper : MonoBehaviour
         service = new FishingService(fishDatabase, globalInventory, model);
         presenter = new FishingPresenter(fishingView, service, model);
 
+        
     }
 
     private void OnEnable()

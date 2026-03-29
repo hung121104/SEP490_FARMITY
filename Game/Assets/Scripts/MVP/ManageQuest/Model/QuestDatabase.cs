@@ -1,6 +1,7 @@
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "QuestDatabase", menuName = "Game/Quest Database")]
+[System.Obsolete("QuestDatabase is superseded by QuestCatalogService (runtime backend data). Do not use.")]
 public class QuestDatabase : ScriptableObject
 {
     public QuestModel[] quests;

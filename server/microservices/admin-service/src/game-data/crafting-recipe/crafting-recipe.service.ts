@@ -89,8 +89,8 @@ export class CraftingRecipeService {
   async update(recipeID: string, dto: UpdateCraftingRecipeDto): Promise<CraftingRecipe> {
     // Validate item IDs only when they appear in the update payload
     const idsToCheck: string[] = [];
-    if (dto.resultItemId) idsToCheck.push(dto.resultItemId);
-    if (dto.ingredients?.length) idsToCheck.push(...dto.ingredients.map(i => i.itemId));
+    if (dto.resultItemId !== undefined) idsToCheck.push(dto.resultItemId);
+    if (dto.ingredients !== undefined) idsToCheck.push(...dto.ingredients.map(i => i.itemId));
     if (idsToCheck.length > 0) await this.validateItemIds(idsToCheck);
 
     const updated = await this.recipeModel

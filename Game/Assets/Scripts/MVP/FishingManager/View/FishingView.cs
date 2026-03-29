@@ -74,7 +74,7 @@ public class FishingView : MonoBehaviourPun, IFishingView
         }
         else
         {
-            Debug.LogWarning("[FishingView] Cant finnd PlayerMovement!");
+            Debug.LogWarning("[FishingView] Không tìm thấy PlayerMovement của máy này trong scene!");
         }
     }
 

@@ -20,7 +20,7 @@ public class FishingService : IFishingService
         GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
         if (player == null)
         {
-            Debug.LogError("[FishingService]Can find Player!");
+            Debug.LogError("[FishingService] Cant find Player!");
             return false;
         }
 
@@ -51,7 +51,7 @@ public class FishingService : IFishingService
         }
 
        
-        Debug.LogWarning($"[FishingService] Its not Water {bobberLandingPos}. Cant fishing here!");
+        Debug.LogWarning($"[FishingService] {bobberLandingPos}. Cant fishing here!");
         return false;
     }
     public bool CatchFish()

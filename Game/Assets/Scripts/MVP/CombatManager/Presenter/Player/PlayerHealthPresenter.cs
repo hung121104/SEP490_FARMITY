@@ -34,8 +34,14 @@ namespace CombatManager.Presenter
             StartCoroutine(DelayedInitialize());
         }
 
+        private void OnEnable()
+        {
+            PlayerRegistry.OnLocalPlayerSpawned += HandleLocalPlayerSpawned;
+        }
+
         private void OnDisable()
         {
+            PlayerRegistry.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
             UnregisterActorBinding();
         }
 
@@ -76,15 +82,11 @@ namespace CombatManager.Presenter
             GameObject playerObj = FindLocalPlayerEntity();
             if (playerObj == null)
             {
-                Debug.LogError("[PlayerHealthPresenter] Local player entity not found!");
-                enabled = false;
+                Debug.LogWarning("[PlayerHealthPresenter] Local player entity not found yet. Waiting for spawn event.");
                 return;
             }
 
-            // Initialize service
-            service = new PlayerHealthService(model);
-            service.Initialize(playerObj.transform, statsService);
-            RegisterActorBinding(playerObj);
+            BindToPlayer(playerObj);
 
             // Notify view
             NotifyViewUpdate();
@@ -176,6 +178,8 @@ namespace CombatManager.Presenter
             if (playerObj == null)
                 return;
 
+            UnregisterActorBinding();
+
             PhotonView pv = playerObj.GetComponent<PhotonView>();
             if (pv == null || pv.OwnerActorNr <= 0)
                 return;
@@ -193,6 +197,33 @@ namespace CombatManager.Presenter
                 PresentersByActor.Remove(registeredActorNumber);
 
             registeredActorNumber = -1;
+        }
+
+        private void HandleLocalPlayerSpawned(Transform playerTransform)
+        {
+            if (playerTransform == null)
+                return;
+
+            if (statsService == null)
+            {
+                // Initialization not finished yet; delayed init will bind later.
+                return;
+            }
+
+            BindToPlayer(playerTransform.gameObject);
+        }
+
+        private void BindToPlayer(GameObject playerObj)
+        {
+            if (playerObj == null)
+                return;
+
+            if (service == null)
+                service = new PlayerHealthService(model);
+
+            service.Initialize(playerObj.transform, statsService);
+            RegisterActorBinding(playerObj);
+            NotifyViewUpdate();
         }
 
         #endregion

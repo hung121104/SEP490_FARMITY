@@ -4,6 +4,7 @@ using UnityEngine.UI;
 
 public class FishingMiniGameView : MonoBehaviour
 {
+    
     public event Action OnMiniGameWon;
 
     public event Action OnMiniGameLost;
