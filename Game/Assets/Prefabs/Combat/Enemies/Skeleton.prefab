@@ -172,6 +172,7 @@ GameObject:
   - component: {fileID: 3690947730565931198}
   - component: {fileID: 4053751365945816196}
   - component: {fileID: 4329647503656962591}
+  - component: {fileID: 3379734232486599463}
   m_Layer: 0
   m_Name: Skeleton
   m_TagString: Enemy
@@ -480,3 +481,24 @@ PolygonCollider2D:
       - {x: 1.0960371, y: -0.16881877}
       - {x: 0.5192884, y: 0.9536309}
   m_UseDelaunayMesh: 0
+--- !u!114 &3379734232486599463
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7112447425611430327}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d21390a9985520846b30d1c8b5e34844, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  config: {fileID: 11400000, guid: 232020088ed16f34685dac7e342470ba, type: 2}
+  shadowMaterial: {fileID: 2100000, guid: 5065e639b7f36c946ac54ccb8cd9d343, type: 2}
+  sourceRenderer: {fileID: 2810710232376351494}
+  shadowColor: {r: 0.02, g: 0.02, b: 0.08, a: 0.45}
+  shadowSortingLayer: Ground
+  shadowSortingOrder: 100
+  shadowLengthScale: 1
+  shadowFlattenY: 0.5
+  showDebugLogs: 0
