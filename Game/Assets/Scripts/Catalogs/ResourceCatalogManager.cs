@@ -194,6 +194,4 @@ public class ResourceCatalogManager : MonoBehaviour
         return _resourceConfigs.Remove(resourceId);
     }
 
-    // ── Fallback Injection (late-join orphaned data) ────────────────────────
-
 }

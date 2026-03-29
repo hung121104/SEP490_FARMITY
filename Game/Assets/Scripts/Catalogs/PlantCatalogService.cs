@@ -364,6 +364,4 @@ public class PlantCatalogService : MonoBehaviour
         return _catalog.Remove(plantId);
     }
 
-    // ── Fallback Injection (late-join orphaned data) ────────────────────────
-
 }

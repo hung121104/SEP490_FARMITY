@@ -33,7 +33,7 @@ public interface IInventoryService
     void              SortInventory();
     int               GetAddableQuantity(ItemData itemData, int quantity, Quality quality = Quality.Normal);
 
-    //Remote Sync
+    // Remote Sync
     void ApplyRemoteInventoryState(CharacterInventory remoteInventory, int maxSlots);
+    void NotifyInventoryChangedExternal();
 }
-

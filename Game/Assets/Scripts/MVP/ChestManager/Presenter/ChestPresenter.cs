@@ -350,6 +350,7 @@ public class ChestPresenter
                 RefreshChestSlot(targetSlot);
                 SyncChestSlot(draggedSlot);
                 SyncChestSlot(targetSlot);
+                chestInventoryService.NotifyInventoryChangedExternal();
             }
         }
         else
@@ -362,6 +363,9 @@ public class ChestPresenter
             SyncPlayerSlot(draggedSlot);
             RefreshPlayerSlot(draggedSlot);
             RefreshChestSlot(targetSlot);
+
+            chestInventoryService.NotifyInventoryChangedExternal();
+            playerInventoryService.NotifyInventoryChangedExternal();
 
             // Release target lock after sync is sent
             sync?.NotifySlotDragEnd(chestData.ChestId, (byte)targetSlot);
@@ -400,6 +404,9 @@ public class ChestPresenter
             // Refresh both views
             RefreshChestSlot(draggedSlot);
             RefreshPlayerSlot(targetSlot);
+
+            chestInventoryService.NotifyInventoryChangedExternal();
+            playerInventoryService.NotifyInventoryChangedExternal();
         }
 
         chestView?.HideDragPreview();

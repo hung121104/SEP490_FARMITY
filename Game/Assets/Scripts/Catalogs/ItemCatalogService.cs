@@ -335,7 +335,4 @@ public class ItemCatalogService : MonoBehaviour
         _structureInteractionSpriteCache.Remove(itemId);
         return _catalog.Remove(itemId);
     }
-
-    // ── Fallback Injection (late-join orphaned data) ────────────────────────
-
 }
