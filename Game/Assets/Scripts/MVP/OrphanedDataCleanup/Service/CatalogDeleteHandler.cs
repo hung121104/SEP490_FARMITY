@@ -159,8 +159,8 @@ public static class CatalogDeleteHandler
             foreach (var slotIndex in slotsToClear)
             {
                 invModule.ClearSlot(charId, slotIndex);
-                // Broadcast to clients via InventorySyncManager
-                syncManager?.RequestClearSlot(slotIndex);
+                // Broadcast with the CORRECT charId so the owning client clears its own slot
+                syncManager?.BroadcastClearSlot(charId, slotIndex);
                 count++;
             }
         }
@@ -233,7 +233,8 @@ public static class CatalogDeleteHandler
         return count;
     }
 
-    /// <summary>Scan all chunks, remove structures with matching structureId.</summary>
+    /// <summary>Scan all chunks, remove structures with matching structureId.
+    /// If the structure is a chest (Storage), drop its contents as world items first.</summary>
     private static int CleanStructures(WorldDataManager wdm, string structureId)
     {
         var structureModule = wdm.StructureData;
@@ -252,17 +253,78 @@ public static class CatalogDeleteHandler
                 var structures = chunk.GetAllStructures();
                 foreach (var slot in structures)
                 {
-                    if (slot.Structure.StructureId == structureId)
-                    {
-                        chunk.RemoveStructure(slot.WorldX, slot.WorldY);
-                        chunkSync?.BroadcastStructureRemoved(slot.WorldX, slot.WorldY);
-                        count++;
-                    }
+                    if (slot.Structure.StructureId != structureId) continue;
+
+                    // Drop chest contents before removing the structure
+                    DropChestContents(wdm, (short)slot.WorldX, (short)slot.WorldY);
+                    wdm.UnregisterChest((short)slot.WorldX, (short)slot.WorldY);
+
+                    chunk.RemoveStructure(slot.WorldX, slot.WorldY);
+                    chunkSync?.BroadcastStructureRemoved(slot.WorldX, slot.WorldY);
+                    count++;
                 }
             }
         }
 
         return count;
+    }
+
+    /// <summary>
+    /// Drop all items in a chest at (tx, ty) as world dropped items.
+    /// Master-only. Uses DroppedItemSyncManager.MasterSpawnDroppedItem to broadcast.
+    /// </summary>
+    private static void DropChestContents(WorldDataManager wdm, short tx, short ty)
+    {
+        var chestModule = wdm.ChestData;
+        if (chestModule == null || !chestModule.HasChest(tx, ty)) return;
+
+        var slots = new List<ChestSlotEntry>();
+        chestModule.GetChestSlots(tx, ty, slots);
+        if (slots.Count == 0) return;
+
+        var dropSync = Object.FindAnyObjectByType<DroppedItemSyncManager>();
+        if (dropSync == null)
+        {
+            Debug.LogWarning($"[CatalogDeleteHandler] DroppedItemSyncManager not found — chest items at ({tx},{ty}) will be lost!");
+            return;
+        }
+
+        // Small offset per item so they don't stack on exact same pixel
+        float baseX = tx + 0.5f;
+        float baseY = ty + 0.5f;
+        int dropIndex = 0;
+
+        foreach (var slot in slots)
+        {
+            if (string.IsNullOrEmpty(slot.ItemId) || slot.Quantity <= 0) continue;
+
+            // Skip items whose catalog data has already been removed
+            var itemData = ItemCatalogService.Instance?.GetItemData(slot.ItemId);
+            if (itemData == null) continue;
+
+            float offsetX = (dropIndex % 3 - 1) * 0.4f;
+            float offsetY = (dropIndex / 3) * 0.4f;
+
+            var dropData = new DroppedItemData
+            {
+                itemId      = slot.ItemId,
+                itemName    = itemData.itemName,
+                itemType    = itemData.itemType,
+                itemCategory = itemData.itemCategory,
+                quality     = Quality.Normal,
+                quantity    = slot.Quantity,
+                iconUrl     = itemData.iconUrl,
+                isStackable = itemData.isStackable,
+                worldX      = baseX + offsetX,
+                worldY      = baseY + offsetY
+            };
+
+            dropSync.MasterSpawnDroppedItem(dropData);
+            dropIndex++;
+        }
+
+        if (dropIndex > 0)
+            Debug.Log($"[CatalogDeleteHandler] Dropped {dropIndex} item stack(s) from chest at ({tx},{ty}).");
     }
 
     /// <summary>Scan all chunks, remove resources with matching resourceId.</summary>

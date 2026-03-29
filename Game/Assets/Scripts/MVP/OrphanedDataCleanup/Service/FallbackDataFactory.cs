@@ -57,7 +57,7 @@ public static class FallbackDataFactory
 
     /// <summary>
     /// Creates a fallback StructureItemData for an orphaned structure ID.
-    /// structureInteractionType = 0 (None) to prevent interaction UI.
+    /// structureInteractionType = Decoration (4) to prevent Storage/Crafting interaction UI.
     /// </summary>
     public static StructureItemData CreateFallbackStructureItemData(string structureId)
     {
