@@ -235,8 +235,30 @@ namespace CombatManager.Presenter
             if (service == null || !service.IsInitialized())
                 return;
 
+            int beforeHealth = service.GetCurrentHealth();
             service.ChangeHealth(amount);
+            int afterHealth = service.GetCurrentHealth();
+
+            TrySpawnHealthPopup(afterHealth - beforeHealth);
             NotifyViewUpdate();
+        }
+
+        private void TrySpawnHealthPopup(int healthDelta)
+        {
+            if (healthDelta == 0)
+                return;
+
+            Transform playerEntity = service?.GetPlayerEntity();
+            if (playerEntity == null)
+                return;
+
+            if (healthDelta > 0)
+            {
+                DamagePopupPresenter.Spawn(playerEntity.position, healthDelta, PopupType.Heal);
+                return;
+            }
+
+            DamagePopupPresenter.Spawn(playerEntity.position, Mathf.Abs(healthDelta));
         }
 
         public void RefreshHealthBar()

@@ -56,6 +56,25 @@ export class DeletedChestDto {
   tileY: number;
 }
 
+export class EnemySpawnerActiveEnemyDto {
+  runtimeId: string;
+  enemyId: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export class EnemySpawnerPendingRespawnDto {
+  enemyId: string;
+  dueUnixMs: number;
+}
+
+export class EnemySpawnerStateDto {
+  runtimeSequence?: number;
+  active?: EnemySpawnerActiveEnemyDto[];
+  pending?: EnemySpawnerPendingRespawnDto[];
+}
+
 // ── Main DTO ────────────────────────────────────────────────────────────────
 
 export class UpdateWorldDto {
@@ -103,4 +122,7 @@ export class UpdateWorldDto {
    * Backend deletes the matching documents from the `chests` collection.
    */
   deletedChests?: DeletedChestDto[];
+
+  /** Enemy spawner persistence blob (stored in worldentities collection). */
+  enemySpawnerState?: EnemySpawnerStateDto;
 }

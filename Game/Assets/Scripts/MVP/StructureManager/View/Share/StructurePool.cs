@@ -393,9 +393,6 @@ public class StructurePool : MonoBehaviour, IStructureDataProvider
         var itemData = ItemCatalogService.Instance?.GetItemData(structureId) as StructureItemData;
         if (itemData == null) return null;
 
-        // Block fallback placeholder structures from being resolved into real prefabs.
-        if (itemData.isFallback) return null;
-
         // Resolve interaction type → prefab from StructureView (View-level prefab mapping)
         StructureInteractionType interactionType =
             (StructureInteractionType)itemData.structureInteractionType;

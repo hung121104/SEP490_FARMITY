@@ -3,6 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CraftingRecipeService } from './crafting-recipe.service';
 import { CreateCraftingRecipeDto } from './dto/create-crafting-recipe.dto';
 import { UpdateCraftingRecipeDto } from './dto/update-crafting-recipe.dto';
+import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class CraftingRecipeController {
@@ -11,8 +12,15 @@ export class CraftingRecipeController {
   /** Create a new crafting recipe.
    *  Validates that resultItemId and all ingredient itemIds exist in the DB. */
   @MessagePattern('create-crafting-recipe')
-  async createCraftingRecipe(@Payload() dto: CreateCraftingRecipeDto) {
-    return this.craftingRecipeService.create(dto);
+  async createCraftingRecipe(
+    @Payload() dto: CreateCraftingRecipeDto,
+  ): Promise<CatalogChange> {
+    const data = await this.craftingRecipeService.create(dto);
+    return {
+      data,
+      changeType: 'create',
+      entityType: 'recipe',
+    };
   }
 
   /** Return full catalog: { recipes: [...] } — consumed by Unity client */
@@ -44,13 +52,28 @@ export class CraftingRecipeController {
   @MessagePattern('update-crafting-recipe')
   async updateCraftingRecipe(
     @Payload() payload: { recipeID: string; dto: UpdateCraftingRecipeDto },
-  ) {
-    return this.craftingRecipeService.update(payload.recipeID, payload.dto);
+  ): Promise<CatalogChange> {
+    const data = await this.craftingRecipeService.update(
+      payload.recipeID,
+      payload.dto,
+    );
+    return {
+      data,
+      changeType: 'update',
+      entityType: 'recipe',
+    };
   }
 
   /** Delete a crafting recipe by game-side recipeID string */
   @MessagePattern('delete-crafting-recipe')
-  async deleteCraftingRecipe(@Payload() recipeID: string) {
-    return this.craftingRecipeService.delete(recipeID);
+  async deleteCraftingRecipe(
+    @Payload() recipeID: string,
+  ): Promise<CatalogChange> {
+    const data = await this.craftingRecipeService.delete(recipeID);
+    return {
+      data,
+      changeType: 'delete',
+      entityType: 'recipe',
+    };
   }
 }

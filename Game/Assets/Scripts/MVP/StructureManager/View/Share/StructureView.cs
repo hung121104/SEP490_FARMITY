@@ -139,7 +139,7 @@ public class StructureView : MonoBehaviourPunCallbacks
         var currentItemModel = hotbarView?.GetCurrentItem();
         var currentItem      = currentItemModel?.ItemData;
 
-        if (currentItem != null && currentItem.itemType == ItemType.Structure && !currentItem.isFallback)
+        if (currentItem != null && currentItem.itemType == ItemType.Structure)
         {
             // Delegate data-building to Presenter
             var data = presenter.GetStructureData(currentItem.itemID, GetDefaultPrefab);

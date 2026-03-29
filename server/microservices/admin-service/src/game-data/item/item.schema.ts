@@ -215,7 +215,7 @@ export class Item {
 
   // ── itemType: 13 – Structure ──────────────────────────────────────────────
 
-  @Prop({ default: 5 })
+  @Prop({ default: 0 })
   structureInteractionType?: number;
 
   @Prop({ default: 0 })

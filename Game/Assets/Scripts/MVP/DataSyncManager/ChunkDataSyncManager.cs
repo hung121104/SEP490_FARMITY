@@ -11,6 +11,19 @@ using ExitGames.Client.Photon;
 /// </summary>
 public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 {
+    public static ChunkDataSyncManager Instance { get; private set; }
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
     [Header("Sync Settings")]
     [Tooltip("Maximum chunks to sync per batch (to avoid packet size limits)")]
     public int chunksPerBatch = 10;
@@ -475,38 +488,6 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     /// </summary>
     private void HandleWorldSyncComplete()
     {
-        // --- Orphaned data handling for late-join player ---
-        // Note: This method is only called by non-MasterClient (see WORLD_SYNC_COMPLETE_EVENT guard).
-        // MasterClient cleanup happens in WorldDataBootstrapper.
-        if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
-            && WorldDataManager.Instance != null)
-        {
-            // Late-join player: inject fallback placeholders instead of removing.
-            var fallbackService = new OrphanedFallbackService(
-                ItemCatalogService.Instance,
-                PlantCatalogService.Instance,
-                ResourceCatalogManager.Instance,
-                RecipeCatalogService.Instance,
-                WorldDataManager.Instance,
-                FallbackConfig.Instance?.PlaceholderSprite);
-            var report = fallbackService.InjectFallbacks();
-
-            if (report.TotalCleaned > 0)
-            {
-                Debug.LogWarning($"[ChunkSync] Orphaned data handled: " +
-                    $"crops={report.OrphanedCrops}, structures={report.OrphanedStructures}, " +
-                    $"resources={report.OrphanedResources}, inventory={report.OrphanedInventorySlots}, " +
-                    $"chests={report.OrphanedChestSlots}, recipes={report.OrphanedRecipes}");
-
-                var notificationView = UnityEngine.Object.FindAnyObjectByType<CleanupNotificationView>();
-                if (notificationView != null)
-                {
-                    var presenter = new CleanupNotificationPresenter(notificationView);
-                    presenter.NotifyCleanup(report);
-                }
-            }
-        }
-
         int totalCrops = (int)WorldDataManager.Instance.GetStats().TotalCrops;
 
         if (showDebugLogs)

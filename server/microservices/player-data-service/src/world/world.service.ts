@@ -8,6 +8,7 @@ import { CreateWorldDto } from './dto/create-world.dto';
 import { GetWorldDto } from './dto/get-world.dto';
 import { UpdateWorldDto, ChunkDeltaDto, ChestDeltaDto, DeletedChestDto } from './dto/update-world.dto';
 import { ChestInventory, ChestInventoryDocument } from './chest-inventory.schema';
+import { WorldEntities, WorldEntitiesDocument } from './world-entities.schema';
 import { CharacterService } from '../character/character.service';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class WorldService {
     @InjectModel(World.name) private worldModel: Model<WorldDocument>,
     @InjectModel(Chunk.name) private chunkModel: Model<ChunkDocument>,
     @InjectModel(ChestInventory.name) private chestInventoryModel: Model<ChestInventoryDocument>,
+    @InjectModel(WorldEntities.name) private worldEntitiesModel: Model<WorldEntitiesDocument>,
     @InjectConnection() private readonly connection: Connection,
     private readonly characterService: CharacterService,
   ) {}
@@ -110,6 +112,33 @@ export class WorldService {
 
     // Convert to plain object so we can attach extra properties
     const result: any = world.toObject();
+
+    // Enemy spawner state now lives in WorldEntities instead of World.
+    try {
+      const entities = await this.worldEntitiesModel
+        .findOne({ worldId: world._id })
+        .lean()
+        .exec();
+
+      if (entities && Object.prototype.hasOwnProperty.call(entities, 'enemySpawnerState')) {
+        result.enemySpawnerState = (entities as any).enemySpawnerState;
+      } else {
+        const legacyState = await this.getLegacyEnemySpawnerState(world._id as Types.ObjectId);
+        if (legacyState !== undefined) {
+          result.enemySpawnerState = legacyState;
+
+          // Best-effort migration for existing worlds that still have legacy data on World.
+          await this.upsertEnemySpawnerState(world._id as Types.ObjectId, legacyState);
+          await this.worldModel.collection.updateOne(
+            { _id: world._id },
+            { $unset: { enemySpawnerState: 1 } },
+          );
+        }
+      }
+    } catch (err) {
+      console.error('[WorldService] Failed to fetch enemy spawner state for world', err);
+      result.enemySpawnerState = null;
+    }
 
     // Fetch all characters associated with this world
     try {
@@ -226,6 +255,10 @@ export class WorldService {
       ? await this.worldModel.findByIdAndUpdate(dto.worldId, { $set: worldUpdate }, { new: true }).exec()
       : world;
 
+    if (dto.enemySpawnerState !== undefined) {
+      await this.upsertEnemySpawnerState(new Types.ObjectId(dto.worldId), dto.enemySpawnerState);
+    }
+
     // Upsert up to 4 characters
     const charactersResult: any[] = [];
     if (dto.characters && dto.characters.length > 0) {
@@ -242,6 +275,9 @@ export class WorldService {
     }
 
     const result: any = (updatedWorld as any).toObject ? (updatedWorld as any).toObject() : { ...(updatedWorld || {}) };
+    if (dto.enemySpawnerState !== undefined) {
+      result.enemySpawnerState = dto.enemySpawnerState;
+    }
     result.characters = charactersResult;
     return result;
   }
@@ -295,6 +331,10 @@ export class WorldService {
           { $set: worldUpdate },
           { new: true, ...opts },
         ).exec();
+      }
+
+      if (dto.enemySpawnerState !== undefined) {
+        await this.upsertEnemySpawnerState(worldOid, dto.enemySpawnerState, opts);
       }
 
       // 2. Overwrite character positions (full replace of each character's position)
@@ -494,6 +534,34 @@ export class WorldService {
     }
   }
 
+  private async upsertEnemySpawnerState(
+    worldOid: Types.ObjectId,
+    state: UpdateWorldDto['enemySpawnerState'],
+    opts: object = {},
+  ): Promise<void> {
+    await this.worldEntitiesModel.findOneAndUpdate(
+      { worldId: worldOid },
+      {
+        $set: { enemySpawnerState: state ?? null },
+        $setOnInsert: { worldId: worldOid },
+      },
+      { upsert: true, new: true, ...opts },
+    ).exec();
+  }
+
+  private async getLegacyEnemySpawnerState(worldOid: Types.ObjectId): Promise<any | undefined> {
+    const raw = await this.worldModel.collection.findOne(
+      { _id: worldOid },
+      { projection: { enemySpawnerState: 1 } },
+    );
+
+    if (!raw || !Object.prototype.hasOwnProperty.call(raw, 'enemySpawnerState')) {
+      return undefined;
+    }
+
+    return (raw as any).enemySpawnerState;
+  }
+
   async deleteWorld(getWorldDto: GetWorldDto): Promise<World | null> {
     if (!getWorldDto._id) throw new RpcException({ status: 400, message: '_id required' });
     const world = await this.worldModel.findById(getWorldDto._id).exec();       
@@ -522,7 +590,11 @@ export class WorldService {
         .exec();
       console.log(`[WorldService] Deleted ${deletedChunksResult.deletedCount} chunk(s) for world ${getWorldDto._id}`);
 
-      return this.worldModel.findByIdAndDelete(getWorldDto._id, opts).exec();   
+      await this.worldEntitiesModel
+        .deleteOne({ worldId: world._id }, opts)
+        .exec();
+
+      return this.worldModel.findByIdAndDelete(getWorldDto._id, opts).exec();
     };
 
     // ── try with transaction first ──

@@ -172,7 +172,8 @@ GameObject:
   - component: {fileID: 3690947730565931198}
   - component: {fileID: 4053751365945816196}
   - component: {fileID: 4329647503656962591}
-  m_Layer: 7
+  - component: {fileID: 3245964666432305101}
+  m_Layer: 0
   m_Name: Slime
   m_TagString: Enemy
   m_Icon: {fileID: 0}
@@ -236,8 +237,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: -247455135
-  m_SortingLayer: 4
+  m_SortingLayerID: 1697184185
+  m_SortingLayer: 3
   m_SortingOrder: 0
   m_Sprite: {fileID: 4723107735738678597, guid: 68167aab8fca85940b69701c2b1bd634, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -314,6 +315,13 @@ MonoBehaviour:
   model:
     currentHealth: 10
     maxHealth: 10
+    lastHitAt: -999
+    regenProgress: 0
+    enableOutOfCombatRegen: 1
+    regenDelaySeconds: 10
+    regenHpPerSecond: 2
+    regenRequireNearGuardAnchor: 1
+    regenGuardProximity: 1.5
     currentState: 0
     isAlerted: 0
     alertTimer: 0
@@ -456,7 +464,7 @@ PolygonCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 0.8125}
+    oldSize: {x: 2, y: 2}
     newSize: {x: 0.875, y: 1.375}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -472,3 +480,24 @@ PolygonCollider2D:
       - {x: 0.5, y: 0.28125}
       - {x: 0.3125, y: 0.40625}
   m_UseDelaunayMesh: 0
+--- !u!114 &3245964666432305101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7112447425611430327}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d21390a9985520846b30d1c8b5e34844, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  config: {fileID: 11400000, guid: 232020088ed16f34685dac7e342470ba, type: 2}
+  shadowMaterial: {fileID: 2100000, guid: 5065e639b7f36c946ac54ccb8cd9d343, type: 2}
+  sourceRenderer: {fileID: 2810710232376351494}
+  shadowColor: {r: 0.02, g: 0.02, b: 0.08, a: 0.45}
+  shadowSortingLayer: Ground
+  shadowSortingOrder: 100
+  shadowLengthScale: 1
+  shadowFlattenY: 0.5
+  showDebugLogs: 0

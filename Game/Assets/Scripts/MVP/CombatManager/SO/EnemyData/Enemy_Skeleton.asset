@@ -17,9 +17,15 @@ MonoBehaviour:
   enemyDescription: 
   enemyIcon: {fileID: 2753929369098120370, guid: 67988ffd729503c4d8b9bf2cc7590f4a, type: 3}
   enemyPrefab: {fileID: 7112447425611430327, guid: 6a5f774100a7d9e4a9b412b637dfa288, type: 3}
-  maxHealth: 500
-  damageAmount: 5
+  respawnDelaySeconds: 50
+  maxHealth: 100
+  damageAmount: 1
   knockbackForce: 10
+  enableOutOfCombatRegen: 1
+  regenDelaySeconds: 10
+  regenHpPerSecond: 2
+  regenRequireNearGuardAnchor: 1
+  regenGuardProximity: 1.5
   moveSpeed: 2
   chaseSpeed: 3
   wanderSpeed: 1
@@ -27,7 +33,7 @@ MonoBehaviour:
   enableSeparation: 1
   separationRadius: 0.8
   separationForce: 2.5
-  detectionRange: 8
+  detectionRange: 5
   attackRange: 1.5
   fieldOfViewAngle: 120
   guardDuration: 2

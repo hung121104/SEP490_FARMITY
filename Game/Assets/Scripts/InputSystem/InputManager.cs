@@ -24,6 +24,14 @@ public class InputManager : MonoBehaviour
     public InputAction OpenInventory => _actions.Player.OpenInventory;
     public InputAction Attack        => _actions.Player.Attack;
     public InputAction UseSkill      => _actions.Player.UseSkill;
+    public InputAction SkillConfirm  => _actions.Player.SkillConfirm;
+    public InputAction SkillCancel   => _actions.Player.SkillCancel;
+    public InputAction WeaponSkillTrigger => _actions.Player.WeaponSkillTrigger;
+    public InputAction SkillManagementToggle => _actions.Player.SkillManagementToggle;
+    public InputAction SkillSlot1    => _actions.Player.SkillSlot1;
+    public InputAction SkillSlot2    => _actions.Player.SkillSlot2;
+    public InputAction SkillSlot3    => _actions.Player.SkillSlot3;
+    public InputAction SkillSlot4    => _actions.Player.SkillSlot4;
     public InputAction OpenChat      => _actions.Player.OpenChat;
     public InputAction Sprint        => _actions.Player.Sprint;
 
@@ -57,6 +65,22 @@ public class InputManager : MonoBehaviour
             6 => HotbarSlot7,
             7 => HotbarSlot8,
             8 => HotbarSlot9,
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Returns the SkillSlotN action for a 0-based index (0 -> SkillSlot1, etc.).
+    /// Returns null if index is out of range.
+    /// </summary>
+    public InputAction GetSkillSlotAction(int index)
+    {
+        return index switch
+        {
+            0 => SkillSlot1,
+            1 => SkillSlot2,
+            2 => SkillSlot3,
+            3 => SkillSlot4,
             _ => null
         };
     }
