@@ -51,10 +51,7 @@ export class QuestController {
   async updateQuest(
     @Payload() payload: { questId: string; dto: UpdateQuestDto },
   ): Promise<CatalogChange> {
-    const data = await this.questService.update(
-      payload.questId,
-      payload.dto,
-    );
+    const data = await this.questService.update(payload.questId, payload.dto);
     return {
       data,
       changeType: 'update',

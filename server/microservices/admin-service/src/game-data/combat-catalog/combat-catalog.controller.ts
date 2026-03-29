@@ -14,9 +14,7 @@ export class CombatCatalogController {
   }
 
   @MessagePattern('create-combat-catalog')
-  async create(
-    @Payload() dto: CreateCombatCatalogDto,
-  ): Promise<CatalogChange> {
+  async create(@Payload() dto: CreateCombatCatalogDto): Promise<CatalogChange> {
     const data = await this.combatCatalogService.create(dto);
     return {
       data,

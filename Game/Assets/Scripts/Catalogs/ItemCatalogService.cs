@@ -113,11 +113,65 @@ public class ItemCatalogService : MonoBehaviour
         }
     }
 
-    /// <summary>Forces a full catalog refetch regardless of current state.</summary>
-    public void ForceRefetch()
+    /// <summary>
+    /// Swaps catalog atomically; only downloads sprites for new entries.
+    /// Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
     {
-        IsReady = false;
-        StartCoroutine(FetchCatalog());
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/items/catalog";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[ItemCatalogService] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        ItemCatalogResponse response = null;
+        try
+        {
+            response = JsonConvert.DeserializeObject<ItemCatalogResponse>(
+                request.downloadHandler.text, _jsonSettings);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[ItemCatalogService] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (response?.items == null) yield break;
+
+        var newCatalog = new Dictionary<string, ItemData>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in response.items)
+        {
+            if (item != null && !string.IsNullOrWhiteSpace(item.itemID))
+                newCatalog[item.itemID] = item;
+        }
+
+        // Atomic swap — keep IsReady true
+        _catalog.Clear();
+        foreach (var kvp in newCatalog)
+            _catalog[kvp.Key] = kvp.Value;
+
+        // Download only missing sprites
+        foreach (var item in newCatalog.Values)
+        {
+            if (!string.IsNullOrEmpty(item.iconUrl) && !_spriteCache.ContainsKey(item.itemID))
+                yield return DownloadSprite(item.itemID, item.iconUrl);
+
+            if (item is StructureItemData structItem
+                && !string.IsNullOrEmpty(structItem.structureInteractionSpriteUrl)
+                && !_structureInteractionSpriteCache.ContainsKey(item.itemID))
+            {
+                yield return DownloadSprite(item.itemID, structItem.structureInteractionSpriteUrl,
+                    _structureInteractionSpriteCache);
+            }
+        }
+
+        Debug.Log($"[ItemCatalogService] SafeRefetch complete — {_catalog.Count} item(s).");
     }
 
     private IEnumerator FetchCatalog()

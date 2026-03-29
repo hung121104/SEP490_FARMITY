@@ -97,12 +97,46 @@ public class SkillVfxCatalogManager : MonoBehaviour
             StartCoroutine(RetryCoroutine());
     }
 
-    /// <summary>Forces a full catalog refetch regardless of current state.</summary>
-    public void ForceRefetch()
+    /// <summary>
+    /// Swaps catalog atomically. Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
     {
-        IsReady = false;
-        StartCoroutine(RetryCoroutine());
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/combat-catalogs?type={CatalogType}";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[SkillVfxCatalogManager] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        List<CombatCatalogEntry> entries = null;
+        try
+        {
+            entries = JsonConvert.DeserializeObject<List<CombatCatalogEntry>>(
+                request.downloadHandler.text);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[SkillVfxCatalogManager] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (entries == null) yield break;
+
+        _catalog.Clear();
+        foreach (var entry in entries)
+        {
+            if (entry != null && !string.IsNullOrWhiteSpace(entry.configId))
+                _catalog[entry.configId.Trim().ToLowerInvariant()] = entry;
+        }
+
+        Debug.Log($"[SkillVfxCatalogManager] SafeRefetch complete — {_catalog.Count} entry(ies).");
     }
+
 
     private IEnumerator RetryCoroutine()
     {

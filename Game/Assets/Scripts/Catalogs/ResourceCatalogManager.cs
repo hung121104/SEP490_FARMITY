@@ -50,11 +50,44 @@ public class ResourceCatalogManager : MonoBehaviour
         }
     }
 
-    /// <summary>Forces a full catalog refetch regardless of current state.</summary>
-    public void ForceRefetch()
+    /// <summary>
+    /// Swaps catalog atomically. Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
     {
-        IsReady = false;
-        StartCoroutine(FetchCatalog());
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/resource-configs/catalog";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[ResourceCatalogManager] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        ResourceCatalogResponse response = null;
+        try
+        {
+            response = JsonConvert.DeserializeObject<ResourceCatalogResponse>(
+                request.downloadHandler.text);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[ResourceCatalogManager] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (response?.resources == null) yield break;
+
+        _resourceConfigs.Clear();
+        foreach (var config in response.resources)
+        {
+            if (config != null && !string.IsNullOrWhiteSpace(config.resourceId))
+                _resourceConfigs[config.resourceId] = config;
+        }
+
+        Debug.Log($"[ResourceCatalogManager] SafeRefetch complete — {_resourceConfigs.Count} resource(s).");
     }
 
     private IEnumerator FetchCatalog()

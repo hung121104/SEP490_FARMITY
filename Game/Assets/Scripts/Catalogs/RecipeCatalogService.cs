@@ -25,7 +25,7 @@ public class RecipeCatalogService : MonoBehaviour
     
     public static event Action<string> OnRecipeRemoved;
 
-    /// <summary>Fired after the full catalog is loaded or reloaded (ForceRefetch).</summary>
+    /// <summary>Fired after the full catalog is loaded or reloaded.</summary>
     public static event Action OnCatalogReloaded;
 
     /// <summary>True once the catalog JSON is fully parsed and ready to query.</summary>
@@ -158,11 +158,44 @@ public class RecipeCatalogService : MonoBehaviour
         }
     }
 
-    /// <summary>Forces a full catalog refetch regardless of current state.</summary>
-    public void ForceRefetch()
+    /// <summary>
+    /// Swaps catalog atomically. Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
     {
-        IsReady = false;
-        StartCoroutine(FetchCatalog());
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/crafting-recipes/catalog";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[RecipeCatalogService] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        RecipeCatalogResponse response = null;
+        try
+        {
+            response = JsonConvert.DeserializeObject<RecipeCatalogResponse>(
+                request.downloadHandler.text);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[RecipeCatalogService] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (response?.recipes == null) yield break;
+
+        _catalog.Clear();
+        foreach (var recipe in response.recipes)
+        {
+            if (recipe != null && !string.IsNullOrWhiteSpace(recipe.recipeID) && recipe.IsValid())
+                _catalog[recipe.recipeID] = recipe;
+        }
+
+        Debug.Log($"[RecipeCatalogService] SafeRefetch complete — {_catalog.Count} recipe(s).");
     }
 
     private IEnumerator FetchCatalog()

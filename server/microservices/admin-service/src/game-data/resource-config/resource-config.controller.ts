@@ -49,9 +49,7 @@ export class ResourceConfigController {
   async remove(
     @Payload() payload: { resourceId: string },
   ): Promise<CatalogChange> {
-    const data = await this.resourceConfigService.remove(
-      payload.resourceId,
-    );
+    const data = await this.resourceConfigService.remove(payload.resourceId);
     return {
       data,
       changeType: 'delete',

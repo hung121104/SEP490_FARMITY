@@ -97,11 +97,73 @@ public class PlantCatalogService : MonoBehaviour
         }
     }
 
-    /// <summary>Forces a full catalog refetch regardless of current state.</summary>
-    public void ForceRefetch()
+    /// <summary>
+    /// Swaps catalog atomically; only downloads sprites for new entries.
+    /// Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
     {
-        IsReady = false;
-        StartCoroutine(FetchCatalog());
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/plants/catalog";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[PlantCatalogService] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        PlantCatalogResponse response = null;
+        try
+        {
+            response = JsonConvert.DeserializeObject<PlantCatalogResponse>(
+                request.downloadHandler.text);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PlantCatalogService] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (response?.plants == null) yield break;
+
+        var newCatalog = new Dictionary<string, PlantData>();
+        foreach (var plant in response.plants)
+        {
+            if (plant != null && !string.IsNullOrWhiteSpace(plant.plantId))
+                newCatalog[plant.plantId] = plant;
+        }
+
+        // Atomic swap — keep IsReady true
+        _catalog.Clear();
+        foreach (var kvp in newCatalog)
+            _catalog[kvp.Key] = kvp.Value;
+
+        // Download only missing sprites
+        foreach (var plant in newCatalog.Values)
+        {
+            for (int i = 0; i < plant.growthStages.Count; i++)
+            {
+                string key = $"{plant.plantId}_{i}";
+                var stage = plant.growthStages[i];
+                if (!string.IsNullOrEmpty(stage.stageIconUrl) && !_spriteCache.ContainsKey(key))
+                    yield return DownloadSprite(key, stage.stageIconUrl);
+            }
+
+            if (plant.isHybrid)
+            {
+                string flowerKey = $"{plant.plantId}_hybrid_flower";
+                if (!string.IsNullOrEmpty(plant.hybridFlowerIconUrl) && !_spriteCache.ContainsKey(flowerKey))
+                    yield return DownloadSprite(flowerKey, plant.hybridFlowerIconUrl);
+
+                string matureKey = $"{plant.plantId}_hybrid_mature";
+                if (!string.IsNullOrEmpty(plant.hybridMatureIconUrl) && !_spriteCache.ContainsKey(matureKey))
+                    yield return DownloadSprite(matureKey, plant.hybridMatureIconUrl);
+            }
+        }
+
+        Debug.Log($"[PlantCatalogService] SafeRefetch complete — {_catalog.Count} plant(s).");
     }
 
     private IEnumerator FetchCatalog()

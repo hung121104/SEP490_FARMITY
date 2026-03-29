@@ -23,9 +23,7 @@ export class SkinConfigController {
    * Payload: CreateSkinConfigDto
    */
   @MessagePattern('create-skin-config')
-  async create(
-    @Payload() dto: CreateSkinConfigDto,
-  ): Promise<CatalogChange> {
+  async create(@Payload() dto: CreateSkinConfigDto): Promise<CatalogChange> {
     const data = await this.skinConfigService.create(dto);
     return {
       data,

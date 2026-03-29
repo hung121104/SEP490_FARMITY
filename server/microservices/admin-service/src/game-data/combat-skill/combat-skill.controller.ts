@@ -10,9 +10,7 @@ export class CombatSkillController {
   constructor(private readonly combatSkillService: CombatSkillService) {}
 
   @MessagePattern('create-combat-skill')
-  async create(
-    @Payload() dto: CreateCombatSkillDto,
-  ): Promise<CatalogChange> {
+  async create(@Payload() dto: CreateCombatSkillDto): Promise<CatalogChange> {
     const data = await this.combatSkillService.create(dto);
     return {
       data,

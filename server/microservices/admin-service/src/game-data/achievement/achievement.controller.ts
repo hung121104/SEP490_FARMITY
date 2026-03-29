@@ -32,7 +32,10 @@ export class AchievementController {
   @MessagePattern('update-achievement')
   async update(
     @Payload()
-    payload: { achievementId: string; dto: UpdateAchievementDto },
+    payload: {
+      achievementId: string;
+      dto: UpdateAchievementDto;
+    },
   ): Promise<CatalogChange> {
     const data = await this.achievementService.update(
       payload.achievementId,

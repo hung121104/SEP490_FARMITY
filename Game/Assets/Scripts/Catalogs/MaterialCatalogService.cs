@@ -83,13 +83,6 @@ public class MaterialCatalogService : MonoBehaviour
         }
     }
 
-    /// <summary>Forces a full catalog refetch regardless of current state.</summary>
-    public void ForceRefetch()
-    {
-        IsReady = false;
-        StartCoroutine(RetryCoroutine());
-    }
-
     private IEnumerator RetryCoroutine()
     {
         while (SkinCatalogManager.Instance == null)
