@@ -178,6 +178,79 @@ public enum CleanupNotificationType
 {
     Info,
     Warning
+}
 
+// ==================== AUDIO MANAGEMENT ====================
+
+/// <summary>
+/// Identifies a logical sound effect. Maps to one or more AudioClips via SoundLibrary SO.
+/// </summary>
+public enum SoundId
+{
+    None = 0,
+
+    // ── UI ──
+    UIButtonClick,
+    UIButtonHover,
+    UIPanelOpen,
+    UIPanelClose,
+    UIError,
+    UIConfirm,
+    UICancel,
+
+    // ── Player Actions ──
+    FootstepGrass,
+    FootstepDirt,
+    ToolSwing,
+    PlowSuccess,
+    ChopSuccess,
+    PickaxeSuccess,
+    Watering,
+    PlantSeed,
+    HarvestCrop,
+    HarvestPollen,
+    FishingCast,
+    FishingReel,
+    FishingCatch,
+    EatFood,
+    Sprint,
+
+    // ── Combat ──
+    SwordSwing,
+    SwordHit,
+    EnemyHurt,
+    EnemyDeath,
+    PlayerHurt,
+
+    // ── World / Items ──
+    ItemPickup,
+    ItemDrop,
+    TreeFall,
+    RockBreak,
+    CraftSuccess,
+    CookSuccess,
+    ChestOpen,
+    ChestClose,
+    DoorOpen,
+    DoorClose,
+
+    // ── Ambient (loops) ──
+    AmbientDayBirds,
+    AmbientDayWind,
+    AmbientNightCrickets,
+    AmbientSeaside,
+    AmbientRain,
+    AmbientForest,
+}
+
+/// <summary>
+/// Ambient zone type for AmbientSoundPlayer biome detection.
+/// </summary>
+public enum AmbientZoneType
+{
+    Default,
+    Seaside,
+    Forest,
+    Cave,
 }
 

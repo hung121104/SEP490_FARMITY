@@ -282,10 +282,14 @@ namespace CombatManager.Presenter
 
         private void HandleInput()
         {
-            if (Input.GetKeyDown(model.toggleKey))
+            InputManager inputManager = InputManager.Instance;
+            if (inputManager == null)
+                return;
+
+            if (inputManager.SkillManagementToggle.WasPressedThisFrame())
                 TogglePanel();
 
-            if (Input.GetKeyDown(KeyCode.Escape) && service.IsAnySkillDragging())
+            if (inputManager.SkillCancel.WasPressedThisFrame() && service.IsAnySkillDragging())
                 CancelAllDrags();
         }
 

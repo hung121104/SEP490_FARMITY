@@ -54,16 +54,16 @@ namespace CombatManager.Presenter
             if (model == null || !model.isInitialized || model.isDestroyed)
                 return;
 
-            if ((model.enemyLayers.value & (1 << other.gameObject.layer)) == 0)
+            if (IsIgnoredEnemyCollider(other))
                 return;
 
-            if (IsIgnoredEnemyCollider(other))
+            if (!TryResolveEnemyPresenter(other, out EnemyPresenter enemyPresenter))
                 return;
 
             if (alreadyHit.Contains(other)) return;
             alreadyHit.Add(other);
 
-            if (HitEnemy(other))
+            if (HitEnemy(other, enemyPresenter))
                 DestroyProjectile();
         }
 
@@ -92,10 +92,8 @@ namespace CombatManager.Presenter
 
         #region Hit & Destroy
 
-        private bool HitEnemy(Collider2D enemy)
+        private bool HitEnemy(Collider2D enemy, EnemyPresenter enemyPresenter)
         {
-            EnemyPresenter enemyPresenter = enemy.GetComponent<EnemyPresenter>()
-                ?? enemy.GetComponentInParent<EnemyPresenter>();
             if (enemyPresenter != null)
             {
                 Vector3 ownerPosition = model.playerTransform != null
@@ -111,10 +109,19 @@ namespace CombatManager.Presenter
                     model.knockbackForce);
                 return true;
             }
-
-            Debug.LogWarning($"[ProjectilePresenter] Hit {enemy.name} " +
-                             $"but no EnemyPresenter found!");
             return false;
+        }
+
+        private static bool TryResolveEnemyPresenter(Collider2D col, out EnemyPresenter enemyPresenter)
+        {
+            enemyPresenter = null;
+            if (col == null)
+                return false;
+
+            enemyPresenter = col.GetComponent<EnemyPresenter>()
+                             ?? col.GetComponentInParent<EnemyPresenter>()
+                             ?? col.GetComponentInChildren<EnemyPresenter>();
+            return enemyPresenter != null;
         }
 
         private static bool IsIgnoredEnemyCollider(Collider2D col)

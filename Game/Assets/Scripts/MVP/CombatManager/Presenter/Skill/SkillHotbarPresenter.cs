@@ -25,7 +25,6 @@ namespace CombatManager.Presenter
         [Header("Weapon Skill Slot")]
         [SerializeField] private Transform weaponSkillSection;
         [SerializeField] private GameObject weaponSkillSlotPrefab;
-        [SerializeField] private KeyCode weaponSkillKey = KeyCode.R;
 
         [Header("Default Skill IDs (Optional)")]
         [SerializeField] private string[] defaultSkillIds = new string[4];
@@ -71,7 +70,6 @@ namespace CombatManager.Presenter
             }
             Instance = this;
             service = new SkillHotbarService(model);
-            EnsureActivationKeys();
 
             SkillLoadoutSyncService syncComponent = GetComponent<SkillLoadoutSyncService>();
             if (syncComponent == null)
@@ -79,41 +77,6 @@ namespace CombatManager.Presenter
                 syncComponent = gameObject.AddComponent<SkillLoadoutSyncService>();
             }
             loadoutSyncService = syncComponent;
-        }
-
-        private void EnsureActivationKeys()
-        {
-            if (model == null)
-                return;
-
-            KeyCode[] desired =
-            {
-                KeyCode.Z,
-                KeyCode.X,
-                KeyCode.C,
-                KeyCode.V,
-            };
-
-            if (model.activationKeys == null || model.activationKeys.Length != desired.Length)
-            {
-                model.activationKeys = desired;
-                return;
-            }
-
-            bool alreadyDesired = true;
-            for (int i = 0; i < desired.Length; i++)
-            {
-                if (model.activationKeys[i] != desired[i])
-                {
-                    alreadyDesired = false;
-                    break;
-                }
-            }
-
-            if (!alreadyDesired)
-            {
-                model.activationKeys = desired;
-            }
         }
 
         private void Start()
@@ -349,9 +312,14 @@ namespace CombatManager.Presenter
         {
             if (!CombatModePresenter.Instance?.IsCombatModeActive() ?? true) return;
 
-            for (int i = 0; i < model.activationKeys.Length && i < slots.Count; i++)
+            InputManager inputManager = InputManager.Instance;
+            if (inputManager == null)
+                return;
+
+            for (int i = 0; i < slots.Count; i++)
             {
-                if (Input.GetKeyDown(model.activationKeys[i]))
+                UnityEngine.InputSystem.InputAction slotAction = inputManager.GetSkillSlotAction(i);
+                if (slotAction != null && slotAction.WasPressedThisFrame())
                     TriggerSlot(i);
             }
         }
@@ -637,7 +605,9 @@ namespace CombatManager.Presenter
 
         private void HandleWeaponSkillInput()
         {
-            if (!Input.GetKeyDown(weaponSkillKey)) return;
+            InputManager inputManager = InputManager.Instance;
+            if (inputManager == null) return;
+            if (!inputManager.WeaponSkillTrigger.WasPressedThisFrame()) return;
             if (CombatModePresenter.Instance == null ||
                 !CombatModePresenter.Instance.IsCombatModeActive()) return;
             if (WeaponEquipPresenter.Instance == null ||
