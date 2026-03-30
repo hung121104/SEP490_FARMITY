@@ -14,68 +14,22 @@ namespace CombatManager.View
         [Header("Presenter Reference")]
         [SerializeField] private StatsPresenter presenter;
 
-        [Header("UI References")]
-        [SerializeField] private TextMeshProUGUI strengthText;
-        [SerializeField] private TextMeshProUGUI vitalityText;
-        [SerializeField] private TextMeshProUGUI pointsText;
-        [SerializeField] private GameObject statsPanel;
+        [Header("Progression UI")]
+        [SerializeField] private Slider expSlider;
+        [SerializeField] private TextMeshProUGUI levelText;
+        [SerializeField] private TextMeshProUGUI expText;
 
-        [Header("Input")]
-        [SerializeField] private KeyCode toggleStatsKey = KeyCode.C;
-
-        [Header("Buttons")]
-        [SerializeField] private Button increaseStrengthButton;
-        [SerializeField] private Button decreaseStrengthButton;
-        [SerializeField] private Button increaseVitalityButton;
-        [SerializeField] private Button decreaseVitalityButton;
-        [SerializeField] private Button applyButton;
-        [SerializeField] private Button cancelButton;
+        [Header("Stats UI")]
+        [SerializeField] private TextMeshProUGUI strText;
+        [SerializeField] private TextMeshProUGUI vitText;
+        [SerializeField] private TextMeshProUGUI strNumber;
+        [SerializeField] private TextMeshProUGUI vitNumber;
 
         #region Unity Lifecycle
 
         private void Start()
         {
-            InitializeButtons();
-            
-            if (statsPanel != null)
-                statsPanel.SetActive(false);
-
             UpdateDisplay();
-        }
-
-        private void Update()
-        {
-            if (Input.GetKeyDown(toggleStatsKey))
-            {
-                ToggleStatsPanel();
-            }
-        }
-
-        #endregion
-
-        #region Initialization
-
-        private void InitializeButtons()
-        {
-            if (increaseStrengthButton != null)
-                increaseStrengthButton.onClick.AddListener(() => presenter.OnIncreaseStrength());
-
-            if (decreaseStrengthButton != null)
-                decreaseStrengthButton.onClick.AddListener(() => presenter.OnDecreaseStrength());
-
-            if (increaseVitalityButton != null)
-                increaseVitalityButton.onClick.AddListener(() => presenter.OnIncreaseVitality());
-
-            if (decreaseVitalityButton != null)
-                decreaseVitalityButton.onClick.AddListener(() => presenter.OnDecreaseVitality());
-
-            if (applyButton != null)
-                applyButton.onClick.AddListener(() => presenter.OnApplyStats());
-
-            if (cancelButton != null)
-                cancelButton.onClick.AddListener(() => presenter.OnCancelStats());
-
-            Debug.Log("[StatsView] Buttons initialized");
         }
 
         #endregion
@@ -84,44 +38,29 @@ namespace CombatManager.View
 
         public void UpdateDisplay()
         {
-            UpdateStatTexts();
-            UpdatePointsText();
-        }
-
-        private void UpdateStatTexts()
-        {
-            if (strengthText != null && presenter != null)
-                strengthText.text = $"STR: {presenter.GetTempStrength()}";
-
-            if (vitalityText != null && presenter != null)
-                vitalityText.text = $"VIT: {presenter.GetTempVitality()}";
-        }
-
-        private void UpdatePointsText()
-        {
-            if (pointsText != null && presenter != null)
-                pointsText.text = $"Points: {presenter.GetCurrentPoints()}";
-        }
-
-        #endregion
-
-        #region Panel Management
-
-        private void ToggleStatsPanel()
-        {
-            if (statsPanel == null)
+            if (presenter == null)
                 return;
 
-            bool isActive = statsPanel.activeSelf;
+            if (expSlider != null)
+                expSlider.value = presenter.GetExpProgress01();
 
-            if (isActive)
-            {
-                // Cancel any pending changes when closing
-                presenter.OnCancelStats();
-            }
+            if (levelText != null)
+                levelText.text = $"Lv. {presenter.GetLevel()}";
 
-            statsPanel.SetActive(!isActive);
-            Debug.Log($"[StatsView] Stats panel toggled: {!isActive}");
+            if (expText != null)
+                expText.text = $"{presenter.GetCurrentExp()}/{presenter.GetExpToNextLevel()} EXP";
+
+            if (strText != null)
+                strText.text = "STR";
+
+            if (vitText != null)
+                vitText.text = "VIT";
+
+            if (strNumber != null)
+                strNumber.text = presenter.GetStrength().ToString();
+
+            if (vitNumber != null)
+                vitNumber.text = presenter.GetVitality().ToString();
         }
 
         #endregion

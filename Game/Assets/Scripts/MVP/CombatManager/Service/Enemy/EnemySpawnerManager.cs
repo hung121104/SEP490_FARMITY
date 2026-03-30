@@ -29,6 +29,12 @@ namespace CombatManager.Service
 
         [Tooltip("If false, this type will not respawn after death.")]
         public bool respawnEnabled = true;
+
+        [Tooltip("Minimum runtime level assigned on spawn for this area/type.")]
+        public int minSpawnLevel = 1;
+
+        [Tooltip("Maximum runtime level assigned on spawn for this area/type.")]
+        public int maxSpawnLevel = 1;
     }
 
     /// <summary>
@@ -100,6 +106,8 @@ namespace CombatManager.Service
             public string runtimeId;
             public string enemyId;
             public Vector3 position;
+            public int enemyLevel;
+            public int baseExp;
             public bool isMaterialized;
             public float outOfRangeSince;
         }
@@ -126,6 +134,8 @@ namespace CombatManager.Service
             public float x;
             public float y;
             public float z;
+            public int enemyLevel;
+            public int baseExp;
         }
 
         [System.Serializable]
@@ -166,6 +176,8 @@ namespace CombatManager.Service
                     x = record.position.x,
                     y = record.position.y,
                     z = record.position.z,
+                    enemyLevel = record.enemyLevel,
+                    baseExp = record.baseExp,
                 });
             }
 
@@ -318,7 +330,7 @@ namespace CombatManager.Service
             if (photonEvent.Code != ENEMY_SPAWN_EVENT)
                 return;
 
-            if (photonEvent.CustomData is not object[] payload || payload.Length < 5)
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 7)
                 return;
 
             string enemyId = payload[0] as string ?? string.Empty;
@@ -328,10 +340,12 @@ namespace CombatManager.Service
 
             if (!TryGetFloat(payload, 2, out float posX) ||
                 !TryGetFloat(payload, 3, out float posY) ||
-                !TryGetFloat(payload, 4, out float posZ))
+                !TryGetFloat(payload, 4, out float posZ) ||
+                !TryGetInt(payload, 5, out int enemyLevel) ||
+                !TryGetInt(payload, 6, out int baseExp))
                 return;
 
-            SpawnEnemyInstance(enemyId, new Vector3(posX, posY, posZ), runtimeId);
+            SpawnEnemyInstance(enemyId, new Vector3(posX, posY, posZ), runtimeId, enemyLevel, baseExp);
         }
 
         private void BuildMappingLookup()
@@ -392,6 +406,9 @@ namespace CombatManager.Service
             if (activeByRuntimeId.Remove(runtimeId))
                 DecrementActiveCount(enemyId);
 
+            if (EnemySyncManager.Instance != null)
+                EnemySyncManager.Instance.ClearEnemyRuntimeTracking(runtimeId);
+
             if (enemyDataManager != null)
                 enemyDataManager.RemoveRuntimeData(runtimeId);
 
@@ -448,7 +465,9 @@ namespace CombatManager.Service
             }
 
             string runtimeId = BuildRuntimeEnemyId(enemyId);
-            RegisterOrUpdateRuntimeState(runtimeId, enemyId, spawnPos, false, true, false);
+            int enemyLevel = ResolveSpawnLevel(mapping);
+            int baseExp = Mathf.Max(1, mapping.enemyData.baseExp);
+            RegisterOrUpdateRuntimeState(runtimeId, enemyId, spawnPos, enemyLevel, baseExp, false, true, false);
 
             if (ShouldMaterializeAtPosition(spawnPos))
                 MaterializeRuntime(runtimeId);
@@ -562,27 +581,27 @@ namespace CombatManager.Service
             record.outOfRangeSince = -1f;
             activeByRuntimeId[runtimeId] = record;
 
-            BroadcastSpawn(record.enemyId, record.runtimeId, record.position);
+            BroadcastSpawn(record.enemyId, record.runtimeId, record.position, record.enemyLevel, record.baseExp);
         }
 
-        private void BroadcastSpawn(string enemyId, string runtimeId, Vector3 spawnPos)
+        private void BroadcastSpawn(string enemyId, string runtimeId, Vector3 spawnPos, int enemyLevel, int baseExp)
         {
             if (!PhotonNetwork.IsConnected)
             {
-                SpawnEnemyInstance(enemyId, spawnPos, runtimeId);
+                SpawnEnemyInstance(enemyId, spawnPos, runtimeId, enemyLevel, baseExp);
                 return;
             }
 
-            object[] payload = { enemyId, runtimeId, spawnPos.x, spawnPos.y, spawnPos.z };
+            object[] payload = { enemyId, runtimeId, spawnPos.x, spawnPos.y, spawnPos.z, enemyLevel, baseExp };
             RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.All };
             PhotonNetwork.RaiseEvent(ENEMY_SPAWN_EVENT, payload, opts, SendOptions.SendReliable);
         }
 
-        private void SpawnEnemyInstance(string enemyId, Vector3 spawnPos, string runtimeId)
+        private void SpawnEnemyInstance(string enemyId, Vector3 spawnPos, string runtimeId, int enemyLevel, int baseExp)
         {
             if (EnemyWithRuntimeIdExists(runtimeId))
             {
-                RegisterOrUpdateRuntimeState(runtimeId, enemyId, spawnPos, true, true, false);
+                RegisterOrUpdateRuntimeState(runtimeId, enemyId, spawnPos, enemyLevel, baseExp, true, true, false);
                 return;
             }
 
@@ -600,6 +619,7 @@ namespace CombatManager.Service
             if (presenter != null)
             {
                 presenter.SetRuntimeEnemyId(runtimeId);
+                presenter.SetRuntimeProgression(enemyLevel, baseExp);
 
                 if (enemyDataManager != null && enemyDataManager.TryGetOriginalSpawnPosition(runtimeId, out Vector3 originalSpawnPos))
                     presenter.SetGuardAnchor(originalSpawnPos);
@@ -607,7 +627,7 @@ namespace CombatManager.Service
                     presenter.SetGuardAnchor(spawnPos);
             }
 
-            RegisterOrUpdateRuntimeState(runtimeId, enemyId, spawnPos, true, true, false);
+            RegisterOrUpdateRuntimeState(runtimeId, enemyId, spawnPos, enemyLevel, baseExp, true, true, false);
             LogDebug($"Spawned enemy '{enemyId}' runtime '{runtimeId}' at {spawnPos}.");
         }
 
@@ -615,6 +635,8 @@ namespace CombatManager.Service
             string runtimeId,
             string enemyId,
             Vector3 position,
+            int enemyLevel,
+            int baseExp,
             bool isMaterialized,
             bool incrementIfNew,
             bool persistState = true)
@@ -628,6 +650,8 @@ namespace CombatManager.Service
                 runtimeId = runtimeId,
                 enemyId = enemyId,
                 position = position,
+                enemyLevel = Mathf.Max(1, enemyLevel),
+                baseExp = Mathf.Max(1, baseExp),
                 isMaterialized = isMaterialized,
                 outOfRangeSince = -1f,
             };
@@ -720,7 +744,15 @@ namespace CombatManager.Service
                 if (data == null || string.IsNullOrWhiteSpace(data.enemyId) || string.IsNullOrWhiteSpace(runtimeId))
                     continue;
 
-                RegisterOrUpdateRuntimeState(runtimeId, data.enemyId, enemy.transform.position, true, true, false);
+                RegisterOrUpdateRuntimeState(
+                    runtimeId,
+                    data.enemyId,
+                    enemy.transform.position,
+                    enemy.GetEnemyLevel(),
+                    enemy.GetBaseExp(),
+                    true,
+                    true,
+                    false);
             }
         }
 
@@ -746,6 +778,8 @@ namespace CombatManager.Service
                     x = entry.position.x,
                     y = entry.position.y,
                     z = entry.position.z,
+                    enemyLevel = entry.enemyLevel,
+                    baseExp = entry.baseExp,
                 });
             }
 
@@ -903,6 +937,8 @@ namespace CombatManager.Service
                         active.runtimeId,
                         active.enemyId,
                         new Vector3(active.x, active.y, active.z),
+                        Mathf.Max(1, active.enemyLevel),
+                        Mathf.Max(1, active.baseExp),
                         false,
                         true,
                         false);
@@ -1051,6 +1087,8 @@ namespace CombatManager.Service
                     record.position.x,
                     record.position.y,
                     record.position.z,
+                    record.enemyLevel,
+                    record.baseExp,
                 };
 
                 RaiseEventOptions opts = new RaiseEventOptions { TargetActors = new[] { actorNumber } };
@@ -1096,6 +1134,37 @@ namespace CombatManager.Service
             }
 
             return false;
+        }
+
+        private static bool TryGetInt(object[] payload, int index, out int value)
+        {
+            value = 0;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            if (payload[index] is float f)
+            {
+                value = Mathf.RoundToInt(f);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static int ResolveSpawnLevel(EnemySpawnTypeMapping mapping)
+        {
+            if (mapping == null)
+                return 1;
+
+            int minLevel = Mathf.Max(1, mapping.minSpawnLevel);
+            int maxLevel = Mathf.Max(minLevel, mapping.maxSpawnLevel);
+            return UnityEngine.Random.Range(minLevel, maxLevel + 1);
         }
 
         private void LogDebug(string message)

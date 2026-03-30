@@ -120,6 +120,10 @@ namespace CombatManager.Model
         public int attackSequence = 0;
         public float attackTimeoutAt = 0f;
 
+        [Header("Progression")]
+        public int enemyLevel = 1;
+        public int baseExp = 10;
+
         #endregion
 
         #region Runtime References

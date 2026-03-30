@@ -1,4 +1,5 @@
 using UnityEngine;
+using CombatManager.SO;
 
 namespace CombatManager.Model
 {
@@ -9,16 +10,17 @@ namespace CombatManager.Model
     [System.Serializable]
     public class StatsModel
     {
-        #region Core Stats
+        [Header("Progression")]
+        public int level = 1;
+        public int currentExp = 0;
+        public int expToNextLevel = 100;
 
         [Header("Core Stats")]
         public int strength = 10;
         public int vitality = 10;
 
-        public int tempStrength = 10;
-        public int tempVitality = 10;
-
-        #endregion
+        [Header("Growth Source")]
+        public LevelGrowthProfile growthProfile;
 
         #region Combat Stats
 
@@ -36,14 +38,6 @@ namespace CombatManager.Model
 
         #endregion
 
-        #region Point System
-
-        [Header("Point System")]
-        public int currentPoints = 0;
-        public int pointsSpentThisSession = 0;
-
-        #endregion
-
         #region Derived Stats (Private)
 
         private int baseDamage = 1;
@@ -56,8 +50,7 @@ namespace CombatManager.Model
 
         public StatsModel()
         {
-            tempStrength = strength;
-            tempVitality = vitality;
+            RecalculateExpRequirement();
             InitializeDerivedStats();
         }
 
@@ -68,6 +61,14 @@ namespace CombatManager.Model
         public int GetBaseDamage() => baseDamage;
         public int GetAttackDamage() => baseDamage + strength / 2;
         public int GetMaxHealth() => baseDamage * 10 + vitality * 5;
+
+        public float GetExpProgress01()
+        {
+            if (expToNextLevel <= 0)
+                return 0f;
+
+            return Mathf.Clamp01((float)currentExp / expToNextLevel);
+        }
 
         public int CurrentHealth
         {
@@ -93,12 +94,29 @@ namespace CombatManager.Model
 
         #endregion
 
-        #region Reset Methods
+        #region Progression
 
-        public void ResetTempStats()
+        public int CalculateExpToNextForLevel(int targetLevel)
         {
-            tempStrength = strength;
-            tempVitality = vitality;
+            int safeLevel = Mathf.Max(1, targetLevel);
+            return Mathf.Max(1, Mathf.FloorToInt(100f * Mathf.Pow(safeLevel, 1.4f)));
+        }
+
+        public void RecalculateExpRequirement()
+        {
+            expToNextLevel = CalculateExpToNextForLevel(level);
+        }
+
+        public void ApplyGrowthForLevel()
+        {
+            if (growthProfile != null)
+            {
+                growthProfile.Evaluate(level, out strength, out vitality);
+                return;
+            }
+
+            strength = 10 + Mathf.Max(0, level - 1) * 2;
+            vitality = 10 + Mathf.Max(0, level - 1) * 2;
         }
 
         #endregion

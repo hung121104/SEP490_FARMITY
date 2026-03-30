@@ -120,6 +120,11 @@ export class CharacterService implements OnModuleInit {
     if (dto.regenBoostRemaining     !== undefined) update.regenBoostRemaining     = dto.regenBoostRemaining;
     if (dto.toolEfficiencyReduction !== undefined) update.toolEfficiencyReduction = dto.toolEfficiencyReduction;
     if (dto.toolEfficiencyRemaining !== undefined) update.toolEfficiencyRemaining = dto.toolEfficiencyRemaining;
+    if (dto.level !== undefined) update.level = dto.level;
+    if (dto.currentExp !== undefined) update.currentExp = dto.currentExp;
+    if (dto.expToNextLevel !== undefined) update.expToNextLevel = dto.expToNextLevel;
+    if (dto.baseStrength !== undefined) update.baseStrength = dto.baseStrength;
+    if (dto.baseVitality !== undefined) update.baseVitality = dto.baseVitality;
 
     const setOnInsert: Record<string, any> = {
       worldId: worldOid,
@@ -135,6 +140,11 @@ export class CharacterService implements OnModuleInit {
     if (dto.regenBoostRemaining     === undefined) setOnInsert.regenBoostRemaining     = 0;
     if (dto.toolEfficiencyReduction === undefined) setOnInsert.toolEfficiencyReduction = 0;
     if (dto.toolEfficiencyRemaining === undefined) setOnInsert.toolEfficiencyRemaining = 0;
+    if (dto.level === undefined) setOnInsert.level = 1;
+    if (dto.currentExp === undefined) setOnInsert.currentExp = 0;
+    if (dto.expToNextLevel === undefined) setOnInsert.expToNextLevel = 100;
+    if (dto.baseStrength === undefined) setOnInsert.baseStrength = 10;
+    if (dto.baseVitality === undefined) setOnInsert.baseVitality = 10;
 
     const result = await this.characterModel.findOneAndUpdate(
       { worldId: worldOid, accountId: accountOid },
@@ -198,6 +208,95 @@ export class CharacterService implements OnModuleInit {
       worldId: worldOid.toString(),
       accountId: accountOid.toString(),
       playerSkillSlotIds: normalized,
+    };
+  }
+
+  async getCharacterProgression(
+    worldId: string | Types.ObjectId,
+    accountId: string | Types.ObjectId,
+  ): Promise<{
+    worldId: string;
+    accountId: string;
+    level: number;
+    currentExp: number;
+    expToNextLevel: number;
+    baseStrength: number;
+    baseVitality: number;
+  }> {
+    const worldOid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
+    const accountOid = typeof accountId === 'string' ? new Types.ObjectId(accountId) : accountId;
+
+    const character = await this.characterModel
+      .findOne({ worldId: worldOid, accountId: accountOid })
+      .lean()
+      .exec();
+
+    return {
+      worldId: worldOid.toString(),
+      accountId: accountOid.toString(),
+      level: Math.max(1, Number(character?.level ?? 1)),
+      currentExp: Math.max(0, Number(character?.currentExp ?? 0)),
+      expToNextLevel: Math.max(1, Number(character?.expToNextLevel ?? 100)),
+      baseStrength: Math.max(1, Number(character?.baseStrength ?? 10)),
+      baseVitality: Math.max(1, Number(character?.baseVitality ?? 10)),
+    };
+  }
+
+  async updateCharacterProgression(
+    worldId: string | Types.ObjectId,
+    accountId: string | Types.ObjectId,
+    level: number,
+    currentExp: number,
+    expToNextLevel: number,
+    baseStrength: number,
+    baseVitality: number,
+  ): Promise<{
+    worldId: string;
+    accountId: string;
+    level: number;
+    currentExp: number;
+    expToNextLevel: number;
+    baseStrength: number;
+    baseVitality: number;
+  }> {
+    const worldOid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
+    const accountOid = typeof accountId === 'string' ? new Types.ObjectId(accountId) : accountId;
+
+    const normalizedLevel = Math.max(1, Number(level || 1));
+    const normalizedCurrentExp = Math.max(0, Number(currentExp || 0));
+    const normalizedExpToNext = Math.max(1, Number(expToNextLevel || 1));
+    const normalizedBaseStrength = Math.max(1, Number(baseStrength || 1));
+    const normalizedBaseVitality = Math.max(1, Number(baseVitality || 1));
+
+    await this.characterModel.findOneAndUpdate(
+      { worldId: worldOid, accountId: accountOid },
+      {
+        $set: {
+          level: normalizedLevel,
+          currentExp: normalizedCurrentExp,
+          expToNextLevel: normalizedExpToNext,
+          baseStrength: normalizedBaseStrength,
+          baseVitality: normalizedBaseVitality,
+        },
+        $setOnInsert: {
+          worldId: worldOid,
+          accountId: accountOid,
+          positionX: 0,
+          positionY: 0,
+          sectionIndex: 0,
+        },
+      },
+      { upsert: true, new: true },
+    );
+
+    return {
+      worldId: worldOid.toString(),
+      accountId: accountOid.toString(),
+      level: normalizedLevel,
+      currentExp: normalizedCurrentExp,
+      expToNextLevel: normalizedExpToNext,
+      baseStrength: normalizedBaseStrength,
+      baseVitality: normalizedBaseVitality,
     };
   }
 

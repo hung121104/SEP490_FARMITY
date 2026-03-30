@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
@@ -16,6 +17,8 @@ namespace CombatManager.Presenter
         [SerializeField] private StatsModel model = new StatsModel();
 
         private IStatsService service;
+        private IPlayerProgressionSyncService progressionSyncService;
+        private bool suppressDirtySync;
 
         #region Unity Lifecycle
 
@@ -23,69 +26,18 @@ namespace CombatManager.Presenter
         {
             // Initialize service with model
             service = new StatsService(model);
+
+            PlayerProgressionSyncService syncComponent = GetComponent<PlayerProgressionSyncService>();
+            if (syncComponent == null)
+                syncComponent = gameObject.AddComponent<PlayerProgressionSyncService>();
+            progressionSyncService = syncComponent;
+
             Debug.Log("[StatsPresenter] Initialized");
         }
 
-        #endregion
-
-        #region Public API for View
-
-        // Called by View buttons
-        public void OnIncreaseStrength()
+        private void Start()
         {
-            if (service.IncreaseTempStrength())
-            {
-                NotifyViewUpdate();
-            }
-        }
-
-        public void OnDecreaseStrength()
-        {
-            if (service.DecreaseTempStrength())
-            {
-                NotifyViewUpdate();
-            }
-        }
-
-        public void OnIncreaseVitality()
-        {
-            if (service.IncreaseTempVitality())
-            {
-                NotifyViewUpdate();
-            }
-        }
-
-        public void OnDecreaseVitality()
-        {
-            if (service.DecreaseTempVitality())
-            {
-                NotifyViewUpdate();
-            }
-        }
-
-        public void OnApplyStats()
-        {
-            service.ApplyStats();
-            NotifyViewUpdate();
-            
-            // ===== NEW: Notify PlayerHealth to refresh =====
-            PlayerHealthPresenter healthPresenter = FindObjectOfType<PlayerHealthPresenter>();
-            if (healthPresenter != null)
-            {
-                healthPresenter.RefreshHealthBar();
-            }
-        }
-
-        public void OnCancelStats()
-        {
-            service.CancelStats();
-            NotifyViewUpdate();
-        }
-
-        public void OnAddPoints(int amount)
-        {
-            service.AddPoints(amount);
-            NotifyViewUpdate();
+            StartCoroutine(InitializeProgressionFromServer());
         }
 
         #endregion
@@ -100,17 +52,56 @@ namespace CombatManager.Presenter
             {
                 view.UpdateDisplay();
             }
+
+            if (suppressDirtySync)
+                return;
+
+            MarkProgressionDirty();
         }
 
         #endregion
 
         #region Getters for View
 
-        public int GetTempStrength() => service.GetTempStrength();
-        public int GetTempVitality() => service.GetTempVitality();
-        public int GetCurrentPoints() => service.GetCurrentPoints();
+        public int GetStrength() => service.GetStrength();
+        public int GetVitality() => service.GetVitality();
+        public int GetLevel() => service.GetLevel();
+        public int GetCurrentExp() => service.GetCurrentExp();
+        public int GetExpToNextLevel() => service.GetExpToNextLevel();
+        public float GetExpProgress01() => service.GetExpProgress01();
         public int GetAttackDamage() => service.GetAttackDamage();
         public int GetMaxHealth() => service.GetMaxHealth();
+
+        #endregion
+
+        #region Progression API
+
+        public int AddExperienceFromHost(int amount)
+        {
+            int levelsGained = service.AddExperience(amount);
+            if (levelsGained > 0)
+            {
+                GameEventBus.FireLevelReached(service.GetLevel(), levelsGained);
+
+                PlayerHealthPresenter healthPresenter = FindObjectOfType<PlayerHealthPresenter>();
+                if (healthPresenter != null)
+                {
+                    healthPresenter.RefreshHealthBar();
+                }
+            }
+
+            NotifyViewUpdate();
+            return levelsGained;
+        }
+
+        public void SetProgressionFromSave(int level, int currentExp, int expToNextLevel, int baseStrength, int baseVitality)
+        {
+            suppressDirtySync = true;
+            service.SetProgressionState(level, currentExp, expToNextLevel);
+            service.SetBaseStats(baseStrength, baseVitality);
+            NotifyViewUpdate();
+            suppressDirtySync = false;
+        }
 
         #endregion
 
@@ -120,13 +111,38 @@ namespace CombatManager.Presenter
 
         #endregion
 
-        // For testing
-        private void Update()
+        private IEnumerator InitializeProgressionFromServer()
         {
-            if (Input.GetKeyDown(KeyCode.P))
+            if (progressionSyncService == null)
+                yield break;
+
+            yield return progressionSyncService.InitializeAndFetch(
+                (snapshot) =>
+                {
+                    SetProgressionFromSave(
+                        snapshot.level,
+                        snapshot.currentExp,
+                        snapshot.expToNextLevel,
+                        snapshot.baseStrength,
+                        snapshot.baseVitality);
+                },
+                (error) => Debug.LogWarning($"[StatsPresenter] Progression fetch failed: {error}")
+            );
+        }
+
+        private void MarkProgressionDirty()
+        {
+            if (progressionSyncService == null || !progressionSyncService.IsInitialized)
+                return;
+
+            progressionSyncService.SetRuntimeSnapshot(new PlayerProgressionSnapshot
             {
-                OnAddPoints(5);
-            }
+                level = service.GetLevel(),
+                currentExp = service.GetCurrentExp(),
+                expToNextLevel = service.GetExpToNextLevel(),
+                baseStrength = service.GetStrength(),
+                baseVitality = service.GetVitality(),
+            }, true);
         }
     }
 }

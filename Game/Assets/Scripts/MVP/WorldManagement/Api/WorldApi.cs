@@ -110,6 +110,8 @@ public static class WorldApi
         [JsonProperty("x")] public float x;
         [JsonProperty("y")] public float y;
         [JsonProperty("z")] public float z;
+        [JsonProperty("enemyLevel")] public int enemyLevel;
+        [JsonProperty("baseExp")] public int baseExp;
     }
 
     [Serializable]

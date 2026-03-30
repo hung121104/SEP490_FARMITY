@@ -18,4 +18,10 @@ export class UpsertCharacterDto {
   regenBoostRemaining?: number;
   toolEfficiencyReduction?: number;
   toolEfficiencyRemaining?: number;
+
+  level?: number;
+  currentExp?: number;
+  expToNextLevel?: number;
+  baseStrength?: number;
+  baseVitality?: number;
 }

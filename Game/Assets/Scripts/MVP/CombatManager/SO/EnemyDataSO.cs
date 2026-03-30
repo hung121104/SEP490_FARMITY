@@ -24,6 +24,7 @@ namespace CombatManager.SO
         [Header("Stats")]
         public int maxHealth = 10;
         public int damageAmount = 1;
+        public int baseExp = 10;
         public float knockbackForce = 30f;
 
         [Header("Out of Combat Regeneration")]

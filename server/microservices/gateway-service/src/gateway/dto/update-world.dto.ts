@@ -53,6 +53,11 @@ export class UpsertCharacterInWorldDto {
   regenBoostRemaining?: number;
   toolEfficiencyReduction?: number;
   toolEfficiencyRemaining?: number;
+  level?: number;
+  currentExp?: number;
+  expToNextLevel?: number;
+  baseStrength?: number;
+  baseVitality?: number;
 }
 
 export class UpdateWorldDto {
@@ -93,6 +98,8 @@ export class UpdateWorldDto {
       x: number;
       y: number;
       z: number;
+      enemyLevel?: number;
+      baseExp?: number;
     }>;
     pending?: Array<{
       enemyId: string;

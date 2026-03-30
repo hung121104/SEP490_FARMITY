@@ -20,6 +20,7 @@ MonoBehaviour:
   respawnDelaySeconds: 50
   maxHealth: 100
   damageAmount: 1
+  baseExp: 50
   knockbackForce: 10
   enableOutOfCombatRegen: 1
   regenDelaySeconds: 10

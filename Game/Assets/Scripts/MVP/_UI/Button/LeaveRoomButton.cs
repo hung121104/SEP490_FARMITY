@@ -50,6 +50,19 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
                 Debug.LogWarning("[LeaveRoomButton] Skill loadout flush timed out — continuing leave flow.");
         }
 
+        IPlayerProgressionSyncService progressionSync = FindObjectOfType<PlayerProgressionSyncService>();
+        if (progressionSync != null)
+        {
+            bool progressionSaved = false;
+            yield return progressionSync.FlushNow(
+                timeoutSeconds: 6f,
+                onCompleted: (success) => progressionSaved = success
+            );
+
+            if (!progressionSaved)
+                Debug.LogWarning("[LeaveRoomButton] Progression flush timed out — continuing leave flow.");
+        }
+
         // Non-master: push final position + stamina state to master via RPC
         // so it can be saved even if this GO is destroyed before BuildPayload runs.
         if (!PhotonNetwork.IsMasterClient)
