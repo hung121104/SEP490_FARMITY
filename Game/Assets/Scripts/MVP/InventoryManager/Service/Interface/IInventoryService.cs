@@ -13,7 +13,6 @@ public interface IInventoryService
     event Action                 OnInventoryChanged;
 
     // Core Operations
-    bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null);
     bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null);
     bool RemoveItem(string itemId, int quantity, Quality? quality = null);
     bool RemoveItemFromSlot(int slotIndex, int quantity);

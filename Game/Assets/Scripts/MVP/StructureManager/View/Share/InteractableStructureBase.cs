@@ -179,7 +179,8 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         bool foundPlayer = false;
         foreach (var col in results)
         {
-            if (col.CompareTag("PlayerEntity")) { foundPlayer = true; break; }
+            if (col is CapsuleCollider2D && col.CompareTag("PlayerEntity")) 
+            { foundPlayer = true; break; }
         }
 
         if (foundPlayer != _playerInRange)
@@ -216,6 +217,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     }
 
     // ── Input ────────────────────────────────────────────────────────────
+    private static int _lastInteractFrame = -1;
 
     private void SubscribeInput()
     {
@@ -237,10 +239,15 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     {
         if (!CanInteract()) return;
 
+        if (Time.frameCount == _lastInteractFrame) return;
+
         if (IsUIOpen())
         {
             if (IsPlayerInRange)
+            {
+                _lastInteractFrame = Time.frameCount;
                 CloseUI();
+            }
             return;
         }
 
@@ -249,7 +256,10 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
             return;
 
         if (_isTargeted)
+        {
+            _lastInteractFrame = Time.frameCount;
             Interact();
+        }
     }
 
     // ── Target Evaluation ────────────────────────────────────────────────

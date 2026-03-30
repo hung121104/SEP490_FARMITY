@@ -496,11 +496,6 @@ public class InventoryPresenter
         return service.AddItem(itemId, quantity, quality);
     }
 
-    public bool TryAddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal)
-    {
-        return service.AddItem(itemData, quantity, quality);
-    }
-
     public bool TryRemoveItem(string itemId, int quantity, Quality? quality = null)
     {
         return service.RemoveItem(itemId, quantity, quality);

@@ -126,7 +126,7 @@ public class ShopPresenter
         {
             bool isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             int amountToReturn = isShiftHeld ? cartItem.Quantity : 1;
-            _playerInventory.AddItem(itemData, amountToReturn);
+            _playerInventory.AddItem(itemData.itemID, amountToReturn);
 
             if (cartItem.Quantity > amountToReturn)
             {
@@ -174,7 +174,7 @@ public class ShopPresenter
             foreach (var item in _sellCart)
             {
                 var itemData = ItemCatalogService.Instance.GetItemData(item.ItemId);
-                if (itemData != null) _playerInventory.AddItem(itemData, item.Quantity);
+                if (itemData != null) _playerInventory.AddItem(itemData.itemID, item.Quantity);
             }
         }
 

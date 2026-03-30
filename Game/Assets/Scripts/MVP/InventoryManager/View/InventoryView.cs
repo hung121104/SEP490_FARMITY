@@ -437,6 +437,16 @@ public class InventoryView : MonoBehaviour, IInventoryView
     }
 
     /// <summary>
+    /// Checks if the inventory is currently reparented to another UI container.
+    /// </summary>
+    public bool IsReparented()
+    {
+        RectTransform root = inventoryRoot != null ? inventoryRoot : (inventoryPanel != null ? inventoryPanel.GetComponent<RectTransform>() : null);
+        if (root == null || originalParent == null) return false;
+        return root.parent != originalParent;
+    }
+
+    /// <summary>
     /// Show the inventory panel without changing its position.
     /// Used for default inventory opening via hotkey.
     /// </summary>
