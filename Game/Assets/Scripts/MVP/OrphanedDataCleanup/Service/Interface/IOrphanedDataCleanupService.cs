@@ -1,2 +1,4 @@
-// IOrphanedDataCleanupService has been removed.
-// OrphanedDataCleanupService (load-time cleanup) was deleted.
+public interface IOrphanedDataCleanupService
+{
+    CleanupReport RunCleanup();
+}
