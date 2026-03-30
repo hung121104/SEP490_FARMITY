@@ -491,9 +491,9 @@ public class InventoryPresenter
 
     #region Public API for external systems
 
-    public bool TryAddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal)
+    public bool TryAddItem(string itemId, int quantity = 1)
     {
-        return service.AddItem(itemId, quantity, quality);
+        return service.AddItem(itemId, quantity);
     }
 
     public bool TryRemoveItem(string itemId, int quantity, Quality? quality = null)
@@ -509,6 +509,11 @@ public class InventoryPresenter
     public int GetItemCount(string itemId)
     {
         return service.GetItemCount(itemId);
+    }
+
+    public int GetAddableQuantity(ItemData itemData, int quantity)
+    {
+        return service.GetAddableQuantity(itemData, quantity);
     }
 
     public void CancelAllActions()
