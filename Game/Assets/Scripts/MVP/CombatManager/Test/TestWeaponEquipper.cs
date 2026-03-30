@@ -39,7 +39,7 @@ namespace CombatManager.Test
             int failed = 0;
             for (int i = 0; i < weapons.Count; i++)
             {
-                bool ok = inventory.AddItem(weapons[i], 1);
+                bool ok = inventory.AddItem(weapons[i].itemID, 1);
                 if (ok) added++;
                 else failed++;
             }

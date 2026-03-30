@@ -70,7 +70,7 @@ public class InventoryService : IInventoryService
         return AddItem(data, quantity, quality, dropOffset);
     }
 
-    public bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
+    private bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
     {
         if (itemData == null || quantity <= 0)
             return false;
