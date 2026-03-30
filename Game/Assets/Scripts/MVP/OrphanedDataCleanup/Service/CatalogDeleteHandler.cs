@@ -159,6 +159,7 @@ public static class CatalogDeleteHandler
             foreach (var slotIndex in slotsToClear)
             {
                 invModule.ClearSlot(charId, slotIndex);
+                inventory.IsDirty = true;
                 // Broadcast with the CORRECT charId so the owning client clears its own slot
                 syncManager?.BroadcastClearSlot(charId, slotIndex);
                 count++;
@@ -192,6 +193,7 @@ public static class CatalogDeleteHandler
                 if (slot.ItemId == itemId)
                 {
                     chestModule.ClearSlot(tx, ty, slot.SlotIndex);
+                    chestModule.MarkChestDirty(tx, ty);
                     syncManager?.RequestClearSlot(chestId, slot.SlotIndex);
                     count++;
                 }
@@ -223,6 +225,7 @@ public static class CatalogDeleteHandler
                     if (slot.Crop.PlantId == plantId)
                     {
                         chunk.RemoveCrop(slot.WorldX, slot.WorldY);
+                        WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
                         chunkSync?.BroadcastCropRemoved(slot.WorldX, slot.WorldY);
                         count++;
                     }
@@ -260,6 +263,7 @@ public static class CatalogDeleteHandler
                     wdm.UnregisterChest((short)slot.WorldX, (short)slot.WorldY);
 
                     chunk.RemoveStructure(slot.WorldX, slot.WorldY);
+                    WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
                     chunkSync?.BroadcastStructureRemoved(slot.WorldX, slot.WorldY);
                     count++;
                 }
@@ -273,20 +277,20 @@ public static class CatalogDeleteHandler
     /// Drop all items in a chest at (tx, ty) as world dropped items.
     /// Master-only. Uses DroppedItemSyncManager.MasterSpawnDroppedItem to broadcast.
     /// </summary>
-    private static void DropChestContents(WorldDataManager wdm, short tx, short ty)
+    public static int DropChestContents(WorldDataManager wdm, short tx, short ty)
     {
         var chestModule = wdm.ChestData;
-        if (chestModule == null || !chestModule.HasChest(tx, ty)) return;
+        if (chestModule == null || !chestModule.HasChest(tx, ty)) return 0;
 
         var slots = new List<ChestSlotEntry>();
         chestModule.GetChestSlots(tx, ty, slots);
-        if (slots.Count == 0) return;
+        if (slots.Count == 0) return 0;
 
         var dropSync = Object.FindAnyObjectByType<DroppedItemSyncManager>();
         if (dropSync == null)
         {
             Debug.LogWarning($"[CatalogDeleteHandler] DroppedItemSyncManager not found — chest items at ({tx},{ty}) will be lost!");
-            return;
+            return 0;
         }
 
         // Small offset per item so they don't stack on exact same pixel
@@ -325,6 +329,8 @@ public static class CatalogDeleteHandler
 
         if (dropIndex > 0)
             Debug.Log($"[CatalogDeleteHandler] Dropped {dropIndex} item stack(s) from chest at ({tx},{ty}).");
+
+        return dropIndex;
     }
 
     /// <summary>Scan all chunks, remove resources with matching resourceId.</summary>
@@ -348,6 +354,7 @@ public static class CatalogDeleteHandler
                     if (slot.Resource.ResourceId == resourceId)
                     {
                         chunk.RemoveResource(slot.WorldX, slot.WorldY);
+                        WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
                         count++;
                     }
                 }
