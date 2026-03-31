@@ -256,9 +256,9 @@ public class InventoryGameView : MonoBehaviour
 
     #region Public API for Player/Other Systems
 
-    public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal)
+    public bool AddItem(string itemId, int quantity = 1)
     {
-        return presenter.TryAddItem(itemId, quantity, quality);
+        return presenter.TryAddItem(itemId, quantity);
     }
 
     public bool RemoveItem(string itemId, int quantity)
@@ -274,6 +274,11 @@ public class InventoryGameView : MonoBehaviour
     public int GetItemCount(string itemId)
     {
         return presenter.GetItemCount(itemId);
+    }
+
+    public int GetAddableQuantity(ItemData itemData, int quantity)
+    {
+        return presenter.GetAddableQuantity(itemData, quantity);
     }
 
     public IInventoryService GetInventoryService() => service;
