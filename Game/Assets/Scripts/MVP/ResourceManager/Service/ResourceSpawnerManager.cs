@@ -38,6 +38,9 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     [Header("Spawn Rules")]
     public int maxResourcesPerChunk = 40;
     public int dailySpawnRate = 5;
+    [Min(1)]
+    [Tooltip("Small spawnable patches still get at least this many total nodes if they have valid tiles.")]
+    public int minResourcesPerSpawnableChunk = 1;
 
     [Header("Harvest Settings")]
     [Min(0.1f)]
@@ -107,10 +110,47 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         var dict = new Dictionary<string, ResourceTypeMapping>(System.StringComparer.OrdinalIgnoreCase);
         foreach (var mapping in resourceTypeMappings)
         {
-            if (string.IsNullOrEmpty(mapping.resourceType)) continue;
-            dict[mapping.resourceType.ToLower()] = mapping;
+            string typeKey = NormalizeResourceType(mapping.resourceType, string.Empty);
+            if (string.IsNullOrEmpty(typeKey)) continue;
+            dict[typeKey] = mapping;
         }
         return dict;
+    }
+
+    private static string NormalizeResourceType(string rawType, string fallback = "tree")
+    {
+        string normalized = rawType?.Trim().ToLowerInvariant();
+        if (!string.IsNullOrEmpty(normalized))
+            return normalized;
+
+        return fallback?.Trim().ToLowerInvariant() ?? string.Empty;
+    }
+
+    private List<ResourceTypeMapping> BuildShuffledMappings()
+    {
+        var mappings = new List<ResourceTypeMapping>();
+        if (resourceTypeMappings == null)
+            return mappings;
+
+        foreach (var mapping in resourceTypeMappings)
+        {
+            if (mapping == null)
+                continue;
+
+            string typeKey = NormalizeResourceType(mapping.resourceType, string.Empty);
+            if (string.IsNullOrEmpty(typeKey))
+                continue;
+
+            mappings.Add(mapping);
+        }
+
+        for (int i = mappings.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            (mappings[i], mappings[j]) = (mappings[j], mappings[i]);
+        }
+
+        return mappings;
     }
 
     private void Awake()
@@ -275,6 +315,115 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         return false;
     }
 
+    private int CountSpawnableTilesInChunk(int chunkX, int chunkY, int chunkSize)
+    {
+        int spawnableTiles = 0;
+        int totalTiles = chunkSize * chunkSize;
+
+        for (int tileIndex = 0; tileIndex < totalTiles; tileIndex++)
+        {
+            if (IsValidSpawnTile(chunkX, chunkY, tileIndex))
+                spawnableTiles++;
+        }
+
+        return spawnableTiles;
+    }
+
+    private int CalculateChunkResourceCapacity(int chunkX, int chunkY, int chunkSize)
+    {
+        int totalTiles = chunkSize * chunkSize;
+        if (totalTiles <= 0)
+            return 0;
+
+        int spawnableTiles = CountSpawnableTilesInChunk(chunkX, chunkY, chunkSize);
+        if (spawnableTiles <= 0)
+            return 0;
+
+        float density = maxResourcesPerChunk / (float)totalTiles;
+        int scaledCapacity = Mathf.CeilToInt(spawnableTiles * density);
+        scaledCapacity = Mathf.Clamp(scaledCapacity, Mathf.Min(minResourcesPerSpawnableChunk, spawnableTiles), spawnableTiles);
+        return scaledCapacity;
+    }
+
+    private bool IsTileAvailableForResourceSpawn(UnifiedChunkData chunk, int worldX, int worldY)
+    {
+        if (chunk.IsTilled(worldX, worldY)) return false;
+        if (chunk.HasCrop(worldX, worldY)) return false;
+        if (chunk.HasStructure(worldX, worldY)) return false;
+        if (chunk.HasResource(worldX, worldY)) return false;
+        return true;
+    }
+
+    private List<int> FindCandidateTilesForChunk(UnifiedChunkData chunk, int chunkSize, bool applyNoise)
+    {
+        var candidates = new List<int>();
+        int totalTiles = chunkSize * chunkSize;
+
+        for (int tileIndex = 0; tileIndex < totalTiles; tileIndex++)
+        {
+            if (!IsValidSpawnTile(chunk.ChunkX, chunk.ChunkY, tileIndex))
+                continue;
+
+            Vector2Int worldTile = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
+            if (!IsTileAvailableForResourceSpawn(chunk, worldTile.x, worldTile.y))
+                continue;
+
+            if (applyNoise)
+            {
+                float sampleX = (worldTile.x + 0.5f) * noiseScale + _dailyNoiseOffsetX;
+                float sampleY = (worldTile.y + 0.5f) * noiseScale + _dailyNoiseOffsetY;
+                if (Mathf.PerlinNoise(sampleX, sampleY) < noiseThreshold)
+                    continue;
+            }
+
+            candidates.Add(tileIndex);
+        }
+
+        Shuffle(candidates);
+        return candidates;
+    }
+
+    private List<string> GetEligibleResourceIdsForTile(
+        int chunkX,
+        int chunkY,
+        int tileIndex,
+        Dictionary<string, List<string>> resourceIdsByType)
+    {
+        var eligible = new List<string>();
+        var dedupe = new HashSet<string>(System.StringComparer.Ordinal);
+
+        foreach (var mapping in resourceTypeMappings)
+        {
+            if (mapping == null)
+                continue;
+
+            string typeKey = NormalizeResourceType(mapping.resourceType, string.Empty);
+            if (string.IsNullOrEmpty(typeKey))
+                continue;
+
+            if (mapping.maxOnMap > 0)
+            {
+                _worldResourceCounts.TryGetValue(typeKey, out int currentTypeCount);
+                if (currentTypeCount >= mapping.maxOnMap)
+                    continue;
+            }
+
+            if (!IsValidSpawnTileForType(chunkX, chunkY, tileIndex, mapping.allowedTilemaps))
+                continue;
+
+            if (!resourceIdsByType.TryGetValue(typeKey, out var idsForType) || idsForType.Count == 0)
+                continue;
+
+            foreach (string resourceId in idsForType)
+            {
+                if (!string.IsNullOrEmpty(resourceId) && dedupe.Add(resourceId))
+                    eligible.Add(resourceId);
+            }
+        }
+
+        return eligible;
+    }
+
     public void TriggerNewDaySpawning()
     {
         LogDebug($"OnDayChanged received. IsMasterClient={PhotonNetwork.IsMasterClient}, InRoom={PhotonNetwork.InRoom}");
@@ -336,101 +485,64 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
                 if (chunk == null) continue;
                 chunksLoaded++;
 
+                int chunkCapacity = CalculateChunkResourceCapacity(chunk.ChunkX, chunk.ChunkY, chunkSize);
+                if (chunkCapacity <= 0)
+                    continue;
+
                 int currentResources = chunk.GetResourceCount();
-                if (currentResources >= maxResourcesPerChunk)
+                if (currentResources >= chunkCapacity)
                 {
                     chunksAtCapacity++;
                     continue;
                 }
 
                 // Shared budget for this chunk across all types this day.
-                int chunkBudget = Mathf.Min(dailySpawnRate, maxResourcesPerChunk - currentResources);
+                int chunkBudget = Mathf.Min(dailySpawnRate, chunkCapacity - currentResources);
                 if (chunkBudget <= 0)
                 {
                     chunksNoSpawnBudget++;
                     continue;
                 }
 
-                // Per-type spawn: each type uses its own tilemap set and respects the global cap.
-                foreach (var mapping in resourceTypeMappings)
+                List<int> candidateTiles = FindCandidateTilesForChunk(chunk, chunkSize, applyNoise: true);
+                totalValidTilesFound += candidateTiles.Count;
+
+                for (int i = 0; i < candidateTiles.Count && chunkBudget > 0; i++)
                 {
-                    if (chunkBudget <= 0) break;
+                    int tileIndex = candidateTiles[i];
+                    List<string> eligibleIds = GetEligibleResourceIdsForTile(
+                        chunk.ChunkX,
+                        chunk.ChunkY,
+                        tileIndex,
+                        resourceIdsByType);
 
-                    string typeKey = mapping.resourceType?.ToLower() ?? "";
-                    if (string.IsNullOrEmpty(typeKey)) continue;
-
-                    // Skip if this type has reached its world cap.
-                    if (mapping.maxOnMap > 0)
-                    {
-                        _worldResourceCounts.TryGetValue(typeKey, out int currentTypeCount);
-                        if (currentTypeCount >= mapping.maxOnMap)
-                        {
-                            LogDebug($"  Type '{typeKey}' at world cap ({currentTypeCount}/{mapping.maxOnMap}), skipping.");
-                            continue;
-                        }
-                    }
-
-                    if (!resourceIdsByType.TryGetValue(typeKey, out var idsForType) || idsForType.Count == 0)
-                    {
-                        LogDebug($"  Type '{typeKey}' has no matching resourceIds in catalog. Catalog types: [{string.Join(", ", resourceIdsByType.Keys)}]");
+                    if (eligibleIds.Count == 0)
                         continue;
-                    }
 
-                    TileScanStats scanStats;
-                    List<int> validTiles = FindValidTilesForType(chunk, chunkSize, mapping.allowedTilemaps, out scanStats);
-                    if (validTiles.Count == 0)
-                    {
-                        LogDebug($"  Type '{typeKey}' chunk({chunk.ChunkX},{chunk.ChunkY}): 0 valid tiles. " +
-                            $"Checked={scanStats.TotalTilesChecked}, InvalidTilemap={scanStats.InvalidSpawnMask}, " +
-                            $"Tilled={scanStats.BlockedByTilled}, Crop={scanStats.BlockedByCrop}, " +
-                            $"Structure={scanStats.BlockedByStructure}, Resource={scanStats.BlockedByResource}, " +
-                            $"Tilemaps={mapping.allowedTilemaps?.Count ?? 0}");
+                    string pickedId = PickWeightedResource(eligibleIds, catalog);
+                    if (pickedId == null)
                         continue;
-                    }
 
-                    totalValidTilesFound += validTiles.Count;
+                    ResourceConfigData configData = catalog.GetResourceConfig(pickedId);
+                    if (configData == null)
+                        continue;
 
-                    var noisePassedTiles = new List<int>();
-                    foreach (int tileIndex in validTiles)
-                    {
-                        Vector2Int worldTile = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
-                        float sampleX = (worldTile.x + 0.5f) * noiseScale + _dailyNoiseOffsetX;
-                        float sampleY = (worldTile.y + 0.5f) * noiseScale + _dailyNoiseOffsetY;
-                        if (Mathf.PerlinNoise(sampleX, sampleY) >= noiseThreshold)
-                            noisePassedTiles.Add(tileIndex);
-                    }
-                    Shuffle(noisePassedTiles);
+                    Vector2Int worldTile = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
+                    bool placed = chunk.PlaceResource(pickedId, Mathf.Max(1, configData.maxHp), worldTile.x, worldTile.y);
+                    if (!placed)
+                        continue;
 
-                    int typeGlobalBudget = mapping.maxOnMap > 0
-                        ? mapping.maxOnMap - (_worldResourceCounts.TryGetValue(typeKey, out int tc) ? tc : 0)
-                        : int.MaxValue;
+                    totalSpawned++;
+                    chunkBudget--;
 
-                    int spawnCount = Mathf.Min(chunkBudget, Mathf.Min(noisePassedTiles.Count, typeGlobalBudget));
+                    string typeKey = NormalizeResourceType(configData.resourceType);
+                    _worldResourceCounts.TryGetValue(typeKey, out int typeCount);
+                    _worldResourceCounts[typeKey] = typeCount + 1;
 
-                    for (int i = 0; i < spawnCount; i++)
-                    {
-                        int tileIndex = noisePassedTiles[i];
-                        string pickedId = PickWeightedResource(idsForType, catalog);
-                        if (pickedId == null) continue;
-
-                        ResourceConfigData configData = catalog.GetResourceConfig(pickedId);
-                        if (configData == null) continue;
-
-                        Vector2Int worldTile = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
-                        bool placed = chunk.PlaceResource(pickedId, Mathf.Max(1, configData.maxHp), worldTile.x, worldTile.y);
-                        if (!placed) continue;
-
-                        totalSpawned++;
-                        chunkBudget--;
-
-                        _worldResourceCounts.TryGetValue(typeKey, out int typeCount);
-                        _worldResourceCounts[typeKey] = typeCount + 1;
-
-                        chunk.IsDirty = true;
-                        WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
-                        syncManager?.BroadcastResourceSpawned(worldTile.x, worldTile.y, pickedId, Mathf.Max(1, configData.maxHp));
-                        SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, tileIndex, pickedId);
-                    }
+                    chunk.IsDirty = true;
+                    WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
+                    syncManager?.BroadcastResourceSpawned(worldTile.x, worldTile.y, pickedId, Mathf.Max(1, configData.maxHp));
+                    SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, tileIndex, pickedId);
                 }
             }
             }
@@ -467,7 +579,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         GameObject prefabToUse = treePrefab; // Default fallback
         if (!string.IsNullOrEmpty(configData.resourceType))
         {
-            switch (configData.resourceType.ToLower())
+            switch (NormalizeResourceType(configData.resourceType))
             {
                 case "tree": prefabToUse = treePrefab; break;
                 case "rock": prefabToUse = rockPrefab; break;
@@ -487,7 +599,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         visual.name = $"Resource_{resourceId}_{chunkX}_{chunkY}_{tileIndex}";
         _spawnedVisuals[visualKey] = visual;
         _baseVisualScales[visualKey] = visual.transform.localScale;
-        _visualKeyToResourceType[visualKey] = (configData.resourceType ?? "tree").ToLower();
+        _visualKeyToResourceType[visualKey] = NormalizeResourceType(configData.resourceType);
 
         if (string.IsNullOrEmpty(configData.spriteUrl))
         {
@@ -821,7 +933,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         var result = new Dictionary<string, List<string>>(System.StringComparer.OrdinalIgnoreCase);
         foreach (var kvp in catalog.resourceConfigs)
         {
-            string type = (kvp.Value?.resourceType ?? "tree").ToLower();
+            string type = NormalizeResourceType(kvp.Value?.resourceType);
             if (!result.TryGetValue(type, out var list))
                 result[type] = list = new List<string>();
             list.Add(kvp.Key);
@@ -876,7 +988,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
                 {
                     var config = catalog.GetResourceConfig(tile.Resource.ResourceId);
                     if (config == null) continue;
-                    string type = (config.resourceType ?? "tree").ToLower();
+                    string type = NormalizeResourceType(config.resourceType);
                     _worldResourceCounts.TryGetValue(type, out int count);
                     _worldResourceCounts[type] = count + 1;
                 }
@@ -961,64 +1073,57 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
                 continue;
             }
 
-            int chunkBudget = maxResourcesPerChunk - chunk.GetResourceCount();
+            int chunkCapacity = CalculateChunkResourceCapacity(chunk.ChunkX, chunk.ChunkY, chunkSize);
+            if (chunkCapacity <= 0)
+            {
+                chunksProcessed++;
+                if (chunksProcessed % chunksPerFrame == 0)
+                    yield return null;
+                continue;
+            }
+
+            int chunkBudget = chunkCapacity - chunk.GetResourceCount();
 
             if (chunkBudget > 0)
             {
-                foreach (var mapping in resourceTypeMappings)
+                List<int> candidateTiles = FindCandidateTilesForChunk(chunk, chunkSize, applyNoise: false);
+
+                for (int i = 0; i < candidateTiles.Count && chunkBudget > 0; i++)
                 {
-                    if (chunkBudget <= 0) break;
+                    int tileIndex = candidateTiles[i];
+                    List<string> eligibleIds = GetEligibleResourceIdsForTile(
+                        chunk.ChunkX,
+                        chunk.ChunkY,
+                        tileIndex,
+                        resourceIdsByType);
 
-                    string typeKey = mapping.resourceType?.ToLower() ?? "";
-                    if (string.IsNullOrEmpty(typeKey)) continue;
-
-                    if (mapping.maxOnMap > 0)
-                    {
-                        _worldResourceCounts.TryGetValue(typeKey, out int currentTypeCount);
-                        if (currentTypeCount >= mapping.maxOnMap) continue;
-                    }
-
-                    if (!resourceIdsByType.TryGetValue(typeKey, out var idsForType) || idsForType.Count == 0)
+                    if (eligibleIds.Count == 0)
                         continue;
 
-                    TileScanStats scanStats;
-                    var validTiles = FindValidTilesForType(chunk, chunkSize, mapping.allowedTilemaps, out scanStats);
-                    if (validTiles.Count == 0) continue;
+                    string pickedId = PickWeightedResource(eligibleIds, catalog);
+                    if (pickedId == null)
+                        continue;
 
-                    // Initial fill: skip noise filter so every valid tile is a candidate,
-                    // allowing the world to reach maxResourcesPerChunk / maxOnMap caps.
-                    Shuffle(validTiles);
+                    ResourceConfigData configData = catalog.GetResourceConfig(pickedId);
+                    if (configData == null)
+                        continue;
 
-                    int typeGlobalBudget = mapping.maxOnMap > 0
-                        ? mapping.maxOnMap - (_worldResourceCounts.TryGetValue(typeKey, out int tc) ? tc : 0)
-                        : int.MaxValue;
+                    Vector2Int wt2 = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
+                    bool placed = chunk.PlaceResource(pickedId, Mathf.Max(1, configData.maxHp), wt2.x, wt2.y);
+                    if (!placed)
+                        continue;
 
-                    int spawnCount = Mathf.Min(chunkBudget, Mathf.Min(validTiles.Count, typeGlobalBudget));
+                    totalSpawned++;
+                    chunkBudget--;
 
-                    for (int i = 0; i < spawnCount; i++)
-                    {
-                        int tileIndex = validTiles[i];
-                        string pickedId = PickWeightedResource(idsForType, catalog);
-                        if (pickedId == null) continue;
+                    string typeKey = NormalizeResourceType(configData.resourceType);
+                    _worldResourceCounts.TryGetValue(typeKey, out int typeCount);
+                    _worldResourceCounts[typeKey] = typeCount + 1;
 
-                        ResourceConfigData configData = catalog.GetResourceConfig(pickedId);
-                        if (configData == null) continue;
-
-                        Vector2Int wt2 = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
-                        bool placed = chunk.PlaceResource(pickedId, Mathf.Max(1, configData.maxHp), wt2.x, wt2.y);
-                        if (!placed) continue;
-
-                        totalSpawned++;
-                        chunkBudget--;
-
-                        _worldResourceCounts.TryGetValue(typeKey, out int typeCount);
-                        _worldResourceCounts[typeKey] = typeCount + 1;
-
-                        chunk.IsDirty = true;
-                        WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
-                        syncManager?.BroadcastResourceSpawned(wt2.x, wt2.y, pickedId, Mathf.Max(1, configData.maxHp));
-                        SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, tileIndex, pickedId);
-                    }
+                    chunk.IsDirty = true;
+                    WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
+                    syncManager?.BroadcastResourceSpawned(wt2.x, wt2.y, pickedId, Mathf.Max(1, configData.maxHp));
+                    SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, tileIndex, pickedId);
                 }
             }
 
