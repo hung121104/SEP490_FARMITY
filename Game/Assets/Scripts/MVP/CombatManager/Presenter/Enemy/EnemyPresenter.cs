@@ -645,6 +645,13 @@ namespace CombatManager.Presenter
 
         // ✅ NEW: Get enemy ID
         public string GetEnemyId() => enemyId;
+        public string GetEnemyDisplayName()
+        {
+            if (enemyData != null && !string.IsNullOrWhiteSpace(enemyData.enemyName))
+                return enemyData.enemyName;
+
+            return string.IsNullOrWhiteSpace(enemyId) ? "Enemy" : enemyId;
+        }
         public string GetRuntimeEnemyId() => model.runtimeEnemyId;
         public EnemyDataSO GetEnemyData() => enemyData;
         public int GetEnemyLevel() => model.enemyLevel;

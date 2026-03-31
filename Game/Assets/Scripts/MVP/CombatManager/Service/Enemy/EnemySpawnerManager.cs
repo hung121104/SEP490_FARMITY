@@ -30,10 +30,33 @@ namespace CombatManager.Service
         [Tooltip("If false, this type will not respawn after death.")]
         public bool respawnEnabled = true;
 
-        [Tooltip("Minimum runtime level assigned on spawn for this area/type.")]
+        [Header("Host-Level Spawn Scaling")]
+        [Tooltip("Minimum levels below host level used to build randomized spawn range.")]
+        public int minLevelsBelowHost = 2;
+
+        [Tooltip("Maximum levels below host level used to build randomized spawn range.")]
+        public int maxLevelsBelowHost = 4;
+
+        [Tooltip("Minimum levels above host level used to build randomized spawn range.")]
+        public int minLevelsAboveHost = 3;
+
+        [Tooltip("Maximum levels above host level used to build randomized spawn range.")]
+        public int maxLevelsAboveHost = 4;
+
+        [Tooltip("Small chance (0-100) to spawn a rare enemy far above host level.")]
+        [Range(0f, 100f)] public float rareOverlevelSpawnChancePercent = 3f;
+
+        [Tooltip("Minimum extra levels above host for rare overleveled spawns.")]
+        public int rareMinExtraLevels = 8;
+
+        [Tooltip("Maximum extra levels above host for rare overleveled spawns.")]
+        public int rareMaxExtraLevels = 14;
+
+        [Header("Fallback (No Host Level Available)")]
+        [Tooltip("Fallback minimum runtime level if host level cannot be resolved.")]
         public int minSpawnLevel = 1;
 
-        [Tooltip("Maximum runtime level assigned on spawn for this area/type.")]
+        [Tooltip("Fallback maximum runtime level if host level cannot be resolved.")]
         public int maxSpawnLevel = 1;
     }
 
@@ -98,6 +121,7 @@ namespace CombatManager.Service
         private float initStartRealtime;
         private float nextMaterializationRefreshAt;
         private EnemyDataManager enemyDataManager;
+        private StatsPresenter cachedHostStatsPresenter;
 
         private bool IsAuthoritative => !PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient;
 
@@ -1157,14 +1181,53 @@ namespace CombatManager.Service
             return false;
         }
 
-        private static int ResolveSpawnLevel(EnemySpawnTypeMapping mapping)
+        private int ResolveSpawnLevel(EnemySpawnTypeMapping mapping)
         {
             if (mapping == null)
                 return 1;
 
-            int minLevel = Mathf.Max(1, mapping.minSpawnLevel);
-            int maxLevel = Mathf.Max(minLevel, mapping.maxSpawnLevel);
+            int fallbackMinLevel = Mathf.Max(1, mapping.minSpawnLevel);
+            int fallbackMaxLevel = Mathf.Max(fallbackMinLevel, mapping.maxSpawnLevel);
+
+            int hostLevel = ResolveHostCombatLevel();
+            if (hostLevel <= 0)
+                return UnityEngine.Random.Range(fallbackMinLevel, fallbackMaxLevel + 1);
+
+            int minBelow = Mathf.Max(0, mapping.minLevelsBelowHost);
+            int maxBelow = Mathf.Max(minBelow, mapping.maxLevelsBelowHost);
+            int minAbove = Mathf.Max(0, mapping.minLevelsAboveHost);
+            int maxAbove = Mathf.Max(minAbove, mapping.maxLevelsAboveHost);
+
+            float rareChance = Mathf.Clamp(mapping.rareOverlevelSpawnChancePercent, 0f, 100f);
+            bool spawnRareOverlevel = rareChance > 0f && UnityEngine.Random.Range(0f, 100f) < rareChance;
+            if (spawnRareOverlevel)
+            {
+                int minExtra = Mathf.Max(1, mapping.rareMinExtraLevels);
+                int maxExtra = Mathf.Max(minExtra, mapping.rareMaxExtraLevels);
+                int extraLevels = UnityEngine.Random.Range(minExtra, maxExtra + 1);
+                return Mathf.Max(1, hostLevel + extraLevels);
+            }
+
+            int levelsBelowHost = UnityEngine.Random.Range(minBelow, maxBelow + 1);
+            int levelsAboveHost = UnityEngine.Random.Range(minAbove, maxAbove + 1);
+
+            int minLevel = Mathf.Max(1, hostLevel - levelsBelowHost);
+            int maxLevel = Mathf.Max(minLevel, hostLevel + levelsAboveHost);
             return UnityEngine.Random.Range(minLevel, maxLevel + 1);
+        }
+
+        private int ResolveHostCombatLevel()
+        {
+            if (!IsAuthoritative)
+                return -1;
+
+            if (cachedHostStatsPresenter == null)
+                cachedHostStatsPresenter = FindObjectOfType<StatsPresenter>();
+
+            if (cachedHostStatsPresenter == null)
+                return -1;
+
+            return Mathf.Max(1, cachedHostStatsPresenter.GetLevel());
         }
 
         private void LogDebug(string message)
