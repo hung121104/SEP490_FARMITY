@@ -23,6 +23,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor, FileFieldsInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { firstValueFrom } from 'rxjs';
+import { CatalogSseService, CatalogChange } from './catalog-sse.service';
 import { Response, Request } from 'express';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
@@ -59,12 +60,22 @@ const FERTILIZER_ITEM_TYPE = 14;
 
 @Controller()
 export class GatewayController {
+  private static readonly WORLD_NAME_REGEX = /^[A-Za-z1-9 ]+$/;
+
   constructor(
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
     @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
     private readonly cloudinaryService: GatewayCloudinaryService,
+    private readonly catalogSseService: CatalogSseService,
   ) {}
+
+  /** Unpack a CatalogChange wrapper from admin-service CUD responses.
+   *  Emits an SSE event and returns only the data payload (preserves API contract). */
+  private unpackCatalogChange(result: CatalogChange): any {
+    this.catalogSseService.emit(result);
+    return result.data;
+  }
 
   /** Extract a well-formed HttpException from an RPC error payload */
   private rpcError(err: any): HttpException {
@@ -308,12 +319,21 @@ export class GatewayController {
     const ownerIdRaw = req['user']?.sub;
     const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
+
+    const rawWorldName = typeof body?.worldName === 'string' ? body.worldName.trim() : '';
+    if (!rawWorldName) {
+      throw new HttpException('World name cannot be empty.', 400);
+    }
+    if (!GatewayController.WORLD_NAME_REGEX.test(rawWorldName)) {
+      throw new HttpException('World name must contain only alphabet letters and spaces.', 400);
+    }
+
     // forward optional _id for update, otherwise create
     try {
       return await firstValueFrom(
         this.playerDataClient.send('create-world', {
           _id: body._id,
-          worldName: body.worldName,
+          worldName: rawWorldName,
           ownerId,
         }),
       );
@@ -815,9 +835,10 @@ export class GatewayController {
         dto.dropTable = [];
       }
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-resource-config', dto),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -862,9 +883,10 @@ export class GatewayController {
         }
       }
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-resource-config', { resourceId, dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -874,9 +896,10 @@ export class GatewayController {
   @Delete('game-data/resource-configs/:resourceId')
   async deleteResourceConfig(@Param('resourceId') resourceId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-resource-config', { resourceId }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -927,7 +950,8 @@ export class GatewayController {
 
       const dto = this.buildCreateItemDto(body, iconUrl, undefined, structureInteractionSpriteUrl);
 
-      return await firstValueFrom(this.adminClient.send('create-item', dto));
+      const result = await firstValueFrom(this.adminClient.send('create-item', dto));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1020,9 +1044,10 @@ export class GatewayController {
 
       const dto = this.buildUpdateItemDto(body, iconUrl, undefined, structureInteractionSpriteUrl);
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-item', { itemID, dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1033,7 +1058,8 @@ export class GatewayController {
   @Delete('game-data/items/:itemID')
   async deleteItem(@Param('itemID') itemID: string) {
     try {
-      return await firstValueFrom(this.adminClient.send('delete-item', itemID));
+      const result = await firstValueFrom(this.adminClient.send('delete-item', itemID));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1098,9 +1124,10 @@ export class GatewayController {
       );
       const dto = this.buildCreateCombatSkillDto(body, iconUrl);
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-combat-skill', dto),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1128,9 +1155,10 @@ export class GatewayController {
 
       const dto = this.buildUpdateCombatSkillDto(patch, iconUrl);
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-combat-skill', { skillId, ...dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1141,9 +1169,10 @@ export class GatewayController {
   @Delete('game-data/combat-skills/:skillId')
   async deleteCombatSkill(@Param('skillId') skillId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-combat-skill', { skillId }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1169,9 +1198,10 @@ export class GatewayController {
       );
       const dto = this.buildCreateItemDto(body, iconUrl, FERTILIZER_ITEM_TYPE);
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-fertilizer', dto),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1246,9 +1276,10 @@ export class GatewayController {
         FERTILIZER_ITEM_TYPE,
       );
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-fertilizer', { itemID, dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1258,9 +1289,10 @@ export class GatewayController {
   @Delete('game-data/fertilizers/:itemID')
   async deleteFertilizer(@Param('itemID') itemID: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-fertilizer', itemID),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1388,7 +1420,8 @@ export class GatewayController {
         }),
       };
 
-      return await firstValueFrom(this.adminClient.send('create-plant', dto));
+      const result = await firstValueFrom(this.adminClient.send('create-plant', dto));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1531,9 +1564,10 @@ export class GatewayController {
           hybridMatureFile.originalname.replace(/\.[^.]+$/, ''),
         );
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-plant', { plantId, dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1544,9 +1578,10 @@ export class GatewayController {
   @Delete('game-data/plants/:plantId')
   async deletePlant(@Param('plantId') plantId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-plant', plantId),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1558,9 +1593,10 @@ export class GatewayController {
   @Post('game-data/crafting-recipes/create')
   async createCraftingRecipe(@Body() body: CreateCraftingRecipeDto) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-crafting-recipe', body),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1622,12 +1658,13 @@ export class GatewayController {
     @Body() body: UpdateCraftingRecipeDto,
   ) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-crafting-recipe', {
           recipeID,
           dto: body,
         }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1638,9 +1675,10 @@ export class GatewayController {
   @Delete('game-data/crafting-recipes/:recipeID')
   async deleteCraftingRecipe(@Param('recipeID') recipeID: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-crafting-recipe', recipeID),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1750,7 +1788,8 @@ export class GatewayController {
   @Post('game-data/achievements/create')
   async createAchievement(@Body() dto: CreateAchievementDto) {
     try {
-      return await firstValueFrom(this.adminClient.send('create-achievement', dto));
+      const result = await firstValueFrom(this.adminClient.send('create-achievement', dto));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1783,9 +1822,10 @@ export class GatewayController {
     @Body() dto: any,
   ) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-achievement', { achievementId, dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1795,9 +1835,10 @@ export class GatewayController {
   @Delete('game-data/achievements/:achievementId')
   async deleteAchievement(@Param('achievementId') achievementId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-achievement', achievementId),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1953,9 +1994,10 @@ export class GatewayController {
         cellSize: body.cellSize !== undefined ? Number(body.cellSize) : undefined,
         layer: body.layer,
       };
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-skin-config', dto),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1991,9 +2033,10 @@ export class GatewayController {
         );
       }
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-skin-config', { configId, ...patch }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -2006,9 +2049,10 @@ export class GatewayController {
   @Delete('game-data/skin-configs/:configId')
   async deleteSkinConfig(@Param('configId') configId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-skin-config', { configId }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -2056,9 +2100,10 @@ export class GatewayController {
           body.tintAlpha !== undefined ? Number(body.tintAlpha) : undefined,
       };
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-combat-catalog', dto),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -2092,9 +2137,10 @@ export class GatewayController {
       if (body.tintAlpha !== undefined)
         patch.tintAlpha = Number(body.tintAlpha);
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-combat-catalog', { configId, ...patch }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -2107,9 +2153,10 @@ export class GatewayController {
   @Delete('game-data/combat-catalogs/:configId')
   async deleteCombatCatalog(@Param('configId') configId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-combat-catalog', { configId }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -2194,9 +2241,10 @@ export class GatewayController {
         cellSize:      body.cellSize      !== undefined ? Number(body.cellSize)      : undefined,
         description:   body.description,
       };
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-material', dto),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -2233,9 +2281,10 @@ export class GatewayController {
         );
       }
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-material', patch),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -2248,9 +2297,10 @@ export class GatewayController {
   @Delete('game-data/materials/:materialId')
   async deleteMaterial(@Param('materialId') materialId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-material', { materialId }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -2262,7 +2312,8 @@ export class GatewayController {
   @Post('game-data/quests')
   async createQuest(@Body() body: CreateQuestDto) {
     try {
-      return await firstValueFrom(this.adminClient.send('create-quest', body));
+      const result = await firstValueFrom(this.adminClient.send('create-quest', body));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -2313,9 +2364,10 @@ export class GatewayController {
   @Put('game-data/quests/:questId')
   async updateQuest(@Param('questId') questId: string, @Body() body: UpdateQuestDto) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-quest', { questId, dto: body }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -2326,7 +2378,8 @@ export class GatewayController {
   @Delete('game-data/quests/:questId')
   async deleteQuest(@Param('questId') questId: string) {
     try {
-      return await firstValueFrom(this.adminClient.send('delete-quest', questId));
+      const result = await firstValueFrom(this.adminClient.send('delete-quest', questId));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }

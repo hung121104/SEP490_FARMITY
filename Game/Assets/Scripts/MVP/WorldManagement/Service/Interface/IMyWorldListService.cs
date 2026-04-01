@@ -13,4 +13,9 @@ public interface IMyWorldListService
     /// Create a new world with given name
     /// </summary>
     Task<WorldResponse> CreateWorld(string worldName);
+
+    /// <summary>
+    /// Delete a world by id for the authenticated owner.
+    /// </summary>
+    Task<(bool success, string message)> DeleteWorld(string worldId);
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using Photon.Pun;
 
@@ -37,9 +38,6 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private bool _isTargeted = false;
     private bool _inputSubscribed = false;
     private bool _isBeingPooled = false;
-
-    /// <summary>True if this structure's catalog data is a fallback placeholder (orphaned/deleted).</summary>
-    protected bool _isFallbackStructure = false;
 
     // ── Structure Interaction Badge ───────────────────────────────────────
     private GameObject _structureInteractionBadge;
@@ -181,7 +179,8 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         bool foundPlayer = false;
         foreach (var col in results)
         {
-            if (col.CompareTag("PlayerEntity")) { foundPlayer = true; break; }
+            if (col is CapsuleCollider2D && col.CompareTag("PlayerEntity")) 
+            { foundPlayer = true; break; }
         }
 
         if (foundPlayer != _playerInRange)
@@ -218,6 +217,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     }
 
     // ── Input ────────────────────────────────────────────────────────────
+    private static int _lastInteractFrame = -1;
 
     private void SubscribeInput()
     {
@@ -237,25 +237,36 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     private void OnInteract(InputAction.CallbackContext ctx)
     {
-        if (_isFallbackStructure) return;
         if (!CanInteract()) return;
+
+        if (Time.frameCount == _lastInteractFrame) return;
 
         if (IsUIOpen())
         {
             if (IsPlayerInRange)
+            {
+                _lastInteractFrame = Time.frameCount;
                 CloseUI();
+            }
             return;
         }
 
+        // Block interaction when the pointer is over a UI element
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return;
+
         if (_isTargeted)
+        {
+            _lastInteractFrame = Time.frameCount;
             Interact();
+        }
     }
 
     // ── Target Evaluation ────────────────────────────────────────────────
 
     private void EvaluateTargetState()
     {
-        bool shouldBeTargeted = _playerInRange && _isMouseHovering && !_isFallbackStructure;
+        bool shouldBeTargeted = _playerInRange && _isMouseHovering;
 
         if (shouldBeTargeted && !_isTargeted)
         {

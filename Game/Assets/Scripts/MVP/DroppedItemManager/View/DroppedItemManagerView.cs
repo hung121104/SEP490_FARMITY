@@ -30,8 +30,10 @@ public class DroppedItemManagerView : MonoBehaviour
     [SerializeField] private InventoryDropZone[] inventoryDropZones = new InventoryDropZone[0];
 
     [Header("Settings")]
-    [Tooltip("Offset applied to player position when dropping an item.")]
-    [SerializeField] private Vector2 dropOffset = new Vector2(0f, 0f);
+    [Tooltip("Radius around the player where items will drop randomly.")]
+    [SerializeField] private float dropRadius = 1.5f;
+    [Tooltip("Minimum distance from player to prevent dropping exactly on top of them.")]
+    [SerializeField] private float dropMinRadius = 0.5f;
 
     [Tooltip("Enable debug logging.")]
     [SerializeField] private bool showDebugLogs = true;
@@ -228,7 +230,13 @@ public class DroppedItemManagerView : MonoBehaviour
             return;
         }
 
-        presenter.RequestDropItem(item, _localPlayerTransform.position, dropOffset);
+        // Generate a random direction and a distance between min and max radius
+        Vector2 randomDir = UnityEngine.Random.insideUnitCircle.normalized;
+        if (randomDir == Vector2.zero) randomDir = Vector2.up; // Edge case fallback
+        float distance = UnityEngine.Random.Range(dropMinRadius, dropRadius);
+        Vector2 randomOffset = randomDir * distance;
+
+        presenter.RequestDropItem(item, _localPlayerTransform.position, randomOffset);
     }
 
     /// <summary>
@@ -240,20 +248,16 @@ public class DroppedItemManagerView : MonoBehaviour
     {
         if (presenter == null) return false;
         
-        var allItems = presenter.GetAllDroppedItems();
-        DroppedItemData data = null;
-        foreach (var item in allItems) { if (item.dropId == dropId) { data = item; break; } }
-        
+        DroppedItemData data = presenter.GetDroppedItem(dropId);
         if (data == null) return false;
-
+        
         var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
         if (inventoryGameView != null)
         {
             var itemData = ItemCatalogService.Instance?.GetItemData(data.itemId);
             if (itemData != null)
             {
-                var invService = inventoryGameView.GetInventoryService();
-                int addable = invService.GetAddableQuantity(itemData, data.quantity, data.quality);
+                int addable = inventoryGameView.GetAddableQuantity(itemData, data.quantity);
 
                 if (addable <= 0)
                 {
@@ -264,13 +268,15 @@ public class DroppedItemManagerView : MonoBehaviour
                 {
                     if (showDebugLogs) Debug.Log($"[DroppedItemManagerView] Partial pickup: can fit {addable} out of {data.quantity}");
                     if (syncManager == null) return false;
-                    syncManager.SendPartialPickupRequest(dropId, addable);
+                    presenter.SendPartialPickupRequest(dropId, addable);
+                    return true;
+                }else{
+                    presenter.RequestPickupItem(dropId);
                     return true;
                 }
             }
         }
 
-        if (presenter == null) return false;
         presenter.RequestPickupItem(dropId);
         return true;
     }
@@ -283,6 +289,12 @@ public class DroppedItemManagerView : MonoBehaviour
     {
         return presenter?.GetAllDroppedItems()
             ?? (IReadOnlyCollection<DroppedItemData>)new List<DroppedItemData>().AsReadOnly();
+    }
+
+    /// <summary>Get a specific dropped item by its ID.</summary>
+    public DroppedItemData GetDroppedItem(string dropId)
+    {
+        return presenter?.GetDroppedItem(dropId);
     }
 
     /// <summary>
@@ -485,7 +497,7 @@ public class DroppedItemManagerView : MonoBehaviour
             return;
         }
 
-        bool added = inventoryGameView.AddItem(data.itemId, amount, data.quality);
+        bool added = inventoryGameView.AddItem(data.itemId, amount);
 
         if (showDebugLogs)
             Debug.Log($"[DroppedItemManagerView] Added to inventory: {data.itemName} x{amount} (quality={data.quality}) — success={added}");

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using System;
 
 
@@ -34,9 +35,12 @@ public class MouseHoverTrigger : MonoBehaviour
     private void Update()
     {
         if (_collider == null || Camera.main == null) return;
-        
+
+        // Block hover detection when the pointer is over a UI element
+        bool pointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+
         Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        bool currentlyHovering = _collider.OverlapPoint(mousePos);
+        bool currentlyHovering = !pointerOverUI && _collider.OverlapPoint(mousePos);
 
         if (currentlyHovering && !_isHovering)
         {

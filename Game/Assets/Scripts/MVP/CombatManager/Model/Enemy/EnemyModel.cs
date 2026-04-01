@@ -14,6 +14,15 @@ namespace CombatManager.Model
         [Header("Health")]
         public int currentHealth = 10;
         public int maxHealth = 10;
+        public float lastHitAt = -999f;
+        public float regenProgress = 0f;
+
+        [Header("Out of Combat Regeneration")]
+        public bool enableOutOfCombatRegen = true;
+        public float regenDelaySeconds = 10f;
+        public float regenHpPerSecond = 2f;
+        public bool regenRequireNearGuardAnchor = true;
+        public float regenGuardProximity = 1.5f;
 
         #endregion
 

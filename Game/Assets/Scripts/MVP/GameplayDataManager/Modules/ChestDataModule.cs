@@ -509,6 +509,16 @@ public class ChestDataModule : IWorldDataModule
     // DIRTY TRACKING
     // ══════════════════════════════════════════════════════════════════════
 
+    public void MarkChestDirty(short tileX, short tileY)
+    {
+        int key = PackKey(tileX, tileY);
+        if (chestIndex.TryGetValue(key, out var header))
+        {
+            header.IsDirty = true;
+            chestIndex[key] = header;
+        }
+    }
+
     public List<string> GetDirtyChestIds()
     {
         var dirty = new List<string>();

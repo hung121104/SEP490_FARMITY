@@ -79,6 +79,10 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     // Fast lookup built from resourceTypeMappings: lowercase resourceType → ResourceTypeMapping.
     private Dictionary<string, ResourceTypeMapping> _spawnMappingLookup;
 
+    // Captured in OnEnable (before any Start() runs) to avoid race with LoadPlayerData.Start()
+    // which clears WorldSelectionManager.IsNewWorld before HandleWorldDataReady fires.
+    private bool _isNewWorld;
+
     [Header("Debug")]
     public bool showDebugLogs = true;
 
@@ -139,6 +143,9 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
     private void OnEnable()
     {
+        // Capture before LoadPlayerData.Start() clears it during the same frame's Start phase.
+        _isNewWorld = WorldSelectionManager.Instance != null && WorldSelectionManager.Instance.IsNewWorld;
+
         PhotonNetwork.AddCallbackTarget(this);
 
         TryBindTimeManager();
@@ -453,23 +460,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         ResourceConfigData configData = ResourceCatalogManager.Instance?.GetResourceConfig(resourceId);
         if (configData == null)
         {
-            // No catalog data — spawn placeholder if available (orphaned data from late-join)
-            var fallbackSprite = FallbackConfig.Instance?.PlaceholderSprite;
-            if (fallbackSprite != null)
-            {
-                Vector3 worldPosPlaceholder = TileIndexToWorldPosition(chunkX, chunkY, tileIndex);
-                var placeholderObj = new GameObject($"Resource_Fallback_{resourceId}_{chunkX}_{chunkY}_{tileIndex}");
-                placeholderObj.transform.position = worldPosPlaceholder;
-                var sr = placeholderObj.AddComponent<SpriteRenderer>();
-                sr.sprite = fallbackSprite;
-                sr.sortingLayerName = "WalkInfront";
-                _spawnedVisuals[visualKey] = placeholderObj;
-                _baseVisualScales[visualKey] = placeholderObj.transform.localScale;
-            }
-            else
-            {
-                Debug.LogWarning($"[ResourceSpawnerManager] Missing config data for resource '{resourceId}'.");
-            }
+            Debug.LogWarning($"[ResourceSpawnerManager] Missing config data for resource '{resourceId}'.");
             return;
         }
 
@@ -653,6 +644,15 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         {
             int j = Random.Range(0, i + 1);
             (values[i], values[j]) = (values[j], values[i]);
+        }
+    }
+
+    private static void ShuffleChunks(List<(int sectionId, Vector2Int pos)> chunks)
+    {
+        for (int i = chunks.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            (chunks[i], chunks[j]) = (chunks[j], chunks[i]);
         }
     }
 
@@ -897,8 +897,9 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
         if (!PhotonNetwork.IsMasterClient) return;
 
-        // If this is a brand-new world (flag set by CreateWorld.LoadCreatedWorld), fill it now.
-        if (WorldSelectionManager.Instance != null && WorldSelectionManager.Instance.IsNewWorld)
+        // Use the flag captured in OnEnable — IsNewWorld is already cleared by
+        // LoadPlayerData.Start() before this callback fires.
+        if (_isNewWorld)
             StartCoroutine(RunInitialWorldFill());
     }
 
@@ -930,94 +931,100 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         int chunksProcessed = 0;
         const int chunksPerFrame = 3;
 
-        _dailyNoiseOffsetX = Random.Range(100000f, 200000f) + 1000000f;
-        _dailyNoiseOffsetY = Random.Range(300000f, 400000f) + 1000000f;
-
+        // Collect all chunk references into a flat list
+        var chunksToProcess = new List<(int sectionId, Vector2Int pos)>();
         foreach (var sectionConfig in worldData.sectionConfigs)
         {
             if (!sectionConfig.IsActive) continue;
             for (int cx = sectionConfig.ChunkStartX; cx < sectionConfig.ChunkStartX + sectionConfig.ChunksWidth; cx++)
             {
-            for (int cy = sectionConfig.ChunkStartY; cy < sectionConfig.ChunkStartY + sectionConfig.ChunksHeight; cy++)
-            {
-                var chunkPos = new Vector2Int(cx, cy);
-                UnifiedChunkData chunk = worldData.GetChunk(sectionConfig.SectionId, chunkPos);
-                if (chunk == null) { chunksProcessed++; goto YieldCheck; }
-
-                int chunkBudget = maxResourcesPerChunk - chunk.GetResourceCount();
-
-                if (chunkBudget > 0)
+                for (int cy = sectionConfig.ChunkStartY; cy < sectionConfig.ChunkStartY + sectionConfig.ChunksHeight; cy++)
                 {
-                    foreach (var mapping in resourceTypeMappings)
-                    {
-                        if (chunkBudget <= 0) break;
-
-                        string typeKey = mapping.resourceType?.ToLower() ?? "";
-                        if (string.IsNullOrEmpty(typeKey)) continue;
-
-                        if (mapping.maxOnMap > 0)
-                        {
-                            _worldResourceCounts.TryGetValue(typeKey, out int currentTypeCount);
-                            if (currentTypeCount >= mapping.maxOnMap) continue;
-                        }
-
-                        if (!resourceIdsByType.TryGetValue(typeKey, out var idsForType) || idsForType.Count == 0)
-                            continue;
-
-                        TileScanStats scanStats;
-                        var validTiles = FindValidTilesForType(chunk, chunkSize, mapping.allowedTilemaps, out scanStats);
-                        if (validTiles.Count == 0) continue;
-
-                        var noisePassedTiles = new List<int>();
-                        foreach (int tileIndex in validTiles)
-                        {
-                            Vector2Int wt = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
-                            float sX = (wt.x + 0.5f) * noiseScale + _dailyNoiseOffsetX;
-                            float sY = (wt.y + 0.5f) * noiseScale + _dailyNoiseOffsetY;
-                            if (Mathf.PerlinNoise(sX, sY) >= noiseThreshold)
-                                noisePassedTiles.Add(tileIndex);
-                        }
-                        Shuffle(noisePassedTiles);
-
-                        int typeGlobalBudget = mapping.maxOnMap > 0
-                            ? mapping.maxOnMap - (_worldResourceCounts.TryGetValue(typeKey, out int tc) ? tc : 0)
-                            : int.MaxValue;
-
-                        int spawnCount = Mathf.Min(chunkBudget, Mathf.Min(noisePassedTiles.Count, typeGlobalBudget));
-
-                        for (int i = 0; i < spawnCount; i++)
-                        {
-                            int tileIndex = noisePassedTiles[i];
-                            string pickedId = PickWeightedResource(idsForType, catalog);
-                            if (pickedId == null) continue;
-
-                            ResourceConfigData configData = catalog.GetResourceConfig(pickedId);
-                            if (configData == null) continue;
-
-                            Vector2Int wt2 = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
-                            bool placed = chunk.PlaceResource(pickedId, Mathf.Max(1, configData.maxHp), wt2.x, wt2.y);
-                            if (!placed) continue;
-
-                            totalSpawned++;
-                            chunkBudget--;
-
-                            _worldResourceCounts.TryGetValue(typeKey, out int typeCount);
-                            _worldResourceCounts[typeKey] = typeCount + 1;
-
-                            chunk.IsDirty = true;
-                            WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
-                            syncManager?.BroadcastResourceSpawned(wt2.x, wt2.y, pickedId, Mathf.Max(1, configData.maxHp));
-                            SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, tileIndex, pickedId);
-                        }
-                    }
+                    chunksToProcess.Add((sectionConfig.SectionId, new Vector2Int(cx, cy)));
                 }
+            }
+        }
 
+        // Shuffle the chunk list to ensure uniform distribution across the entire map
+        ShuffleChunks(chunksToProcess);
+        LogDebug($"Total chunks to process: {chunksToProcess.Count}");
+
+        // Process chunks in randomized order — prevents bottom-left resource bias
+        foreach (var (sectionId, chunkPos) in chunksToProcess)
+        {
+            UnifiedChunkData chunk = worldData.GetChunk(sectionId, chunkPos);
+            if (chunk == null)
+            {
                 chunksProcessed++;
-                YieldCheck:
                 if (chunksProcessed % chunksPerFrame == 0)
                     yield return null;
+                continue;
             }
+
+            int chunkBudget = maxResourcesPerChunk - chunk.GetResourceCount();
+
+            if (chunkBudget > 0)
+            {
+                foreach (var mapping in resourceTypeMappings)
+                {
+                    if (chunkBudget <= 0) break;
+
+                    string typeKey = mapping.resourceType?.ToLower() ?? "";
+                    if (string.IsNullOrEmpty(typeKey)) continue;
+
+                    if (mapping.maxOnMap > 0)
+                    {
+                        _worldResourceCounts.TryGetValue(typeKey, out int currentTypeCount);
+                        if (currentTypeCount >= mapping.maxOnMap) continue;
+                    }
+
+                    if (!resourceIdsByType.TryGetValue(typeKey, out var idsForType) || idsForType.Count == 0)
+                        continue;
+
+                    TileScanStats scanStats;
+                    var validTiles = FindValidTilesForType(chunk, chunkSize, mapping.allowedTilemaps, out scanStats);
+                    if (validTiles.Count == 0) continue;
+
+                    // Initial fill: skip noise filter so every valid tile is a candidate,
+                    // allowing the world to reach maxResourcesPerChunk / maxOnMap caps.
+                    Shuffle(validTiles);
+
+                    int typeGlobalBudget = mapping.maxOnMap > 0
+                        ? mapping.maxOnMap - (_worldResourceCounts.TryGetValue(typeKey, out int tc) ? tc : 0)
+                        : int.MaxValue;
+
+                    int spawnCount = Mathf.Min(chunkBudget, Mathf.Min(validTiles.Count, typeGlobalBudget));
+
+                    for (int i = 0; i < spawnCount; i++)
+                    {
+                        int tileIndex = validTiles[i];
+                        string pickedId = PickWeightedResource(idsForType, catalog);
+                        if (pickedId == null) continue;
+
+                        ResourceConfigData configData = catalog.GetResourceConfig(pickedId);
+                        if (configData == null) continue;
+
+                        Vector2Int wt2 = TileIndexToWorldTile(chunk.ChunkX, chunk.ChunkY, tileIndex);
+                        bool placed = chunk.PlaceResource(pickedId, Mathf.Max(1, configData.maxHp), wt2.x, wt2.y);
+                        if (!placed) continue;
+
+                        totalSpawned++;
+                        chunkBudget--;
+
+                        _worldResourceCounts.TryGetValue(typeKey, out int typeCount);
+                        _worldResourceCounts[typeKey] = typeCount + 1;
+
+                        chunk.IsDirty = true;
+                        WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
+                        syncManager?.BroadcastResourceSpawned(wt2.x, wt2.y, pickedId, Mathf.Max(1, configData.maxHp));
+                        SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, tileIndex, pickedId);
+                    }
+                }
             }
+
+            chunksProcessed++;
+            if (chunksProcessed % chunksPerFrame == 0)
+                yield return null;
         }
 
         LogDebug($"Initial world fill complete. Spawned={totalSpawned}.");

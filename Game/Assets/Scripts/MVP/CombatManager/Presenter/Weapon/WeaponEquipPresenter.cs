@@ -80,6 +80,14 @@ namespace CombatManager.Presenter
                 return;
             }
 
+            // Ignore duplicate equip calls for the same weapon (common when attack shares click input).
+            if (isWeaponEquipped && currentWeapon != null && currentWeapon.itemID == weaponData.itemID)
+            {
+                if (CombatModePresenter.Instance != null && !CombatModePresenter.Instance.IsCombatModeActive())
+                    CombatModePresenter.Instance.SetCombatMode(true);
+                return;
+            }
+
             // Unequip current weapon first if any
             if (isWeaponEquipped && currentWeapon != null)
             {

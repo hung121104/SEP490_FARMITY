@@ -1,285 +1,193 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
-/// <summary>
-/// Validates all world data references against loaded catalogs and removes
-/// entries whose catalog data no longer exists (e.g. admin hard-deleted an item).
-/// Plain C# class — injected via constructor, following project MVP conventions.
-///
-/// Performance notes:
-/// - Runs ONCE at load time (WorldDataBootstrapper / late-join sync), NOT per-frame.
-/// - All catalog lookups are O(1) dictionary reads.
-/// - GetAllCrops/Structures/Resources return snapshot lists (safe to iterate while removing).
-/// - Log messages are batched per category (not per-item) to avoid string allocation spam.
-/// </summary>
-public class OrphanedDataCleanupService : IOrphanedDataCleanupService
+public class OrphanedDataCleanupService : MonoBehaviour, IOrphanedDataCleanupService
 {
-    private readonly ItemCatalogService itemCatalog;
-    private readonly PlantCatalogService plantCatalog;
-    private readonly ResourceCatalogManager resourceCatalog;
-    private readonly RecipeCatalogService recipeCatalog;
-    private readonly WorldDataManager worldData;
-
-    /// <summary>
-    /// Fired for each valid item that should be dropped from an orphaned chest structure.
-    /// Parameters: itemId, quantity, worldPosition.
-    /// </summary>
-    public event Action<string, int, Vector3> OnChestItemDrop;
-
-    // Shared buffer for chest slot iteration — avoids allocation per chest.
-    private readonly List<ChestSlotEntry> chestSlotBuffer = new List<ChestSlotEntry>(36);
-
-    public OrphanedDataCleanupService(
-        ItemCatalogService itemCatalog,
-        PlantCatalogService plantCatalog,
-        ResourceCatalogManager resourceCatalog,
-        RecipeCatalogService recipeCatalog,
-        WorldDataManager worldData)
+    private void Awake()
     {
-        this.itemCatalog     = itemCatalog;
-        this.plantCatalog    = plantCatalog;
-        this.resourceCatalog = resourceCatalog;
-        this.recipeCatalog   = recipeCatalog;
-        this.worldData       = worldData;
+        WorldDataBootstrapper.OnWorldDataReady += HandleWorldDataReady;
+    }
+
+    private void OnDestroy()
+    {
+        WorldDataBootstrapper.OnWorldDataReady -= HandleWorldDataReady;
+    }
+
+    private void HandleWorldDataReady()
+    {
+        // Only run on MasterClient as WorldDataBootstrapper already restricts to master, but double check
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        RunCleanup();
     }
 
     public CleanupReport RunCleanup()
     {
-        var removedItemIds = new List<string>();
         var report = new CleanupReport
         {
-            RemovedCropIds        = new List<string>(),
-            RemovedStructureIds   = new List<string>(),
-            RemovedResourceIds    = new List<string>(),
-            RemovedItemIds        = removedItemIds,
-            RemovedRecipeIds      = new List<string>()
+            RemovedCropIds = new List<string>(),
+            RemovedStructureIds = new List<string>(),
+            RemovedResourceIds = new List<string>(),
+            RemovedItemIds = new List<string>(),
+            RemovedRecipeIds = new List<string>()
         };
 
-        report.OrphanedCrops          = CleanOrphanedCrops(report.RemovedCropIds);
-        report.OrphanedStructures     = CleanOrphanedStructures(out int droppedChestItems, report.RemovedStructureIds);
-        report.DroppedChestItems      = droppedChestItems;
-        report.OrphanedResources      = CleanOrphanedResources(report.RemovedResourceIds);
-        report.OrphanedInventorySlots = CleanOrphanedInventorySlots(removedItemIds);
-        report.OrphanedChestSlots     = CleanOrphanedChestSlots(removedItemIds);
-        report.OrphanedRecipes        = CleanOrphanedRecipes(report.RemovedRecipeIds);
+        var wdm = WorldDataManager.Instance;
+        if (wdm == null) return report;
 
-        return report;
-    }
-
-    // ── Crops ────────────────────────────────────────────────────────────
-
-    private int CleanOrphanedCrops(List<string> removedIds)
-    {
-        if (plantCatalog == null || worldData == null) return 0;
-
-        int removed = 0;
-        foreach (var config in worldData.sectionConfigs)
+        // 1. Scan inventory slots
+        var invModule = wdm.InventoryData;
+        if (invModule != null)
         {
-            var section = worldData.CropData?.GetSection(config.SectionId);
-            if (section == null) continue;
-
-            foreach (var kvp in section)
+            foreach (var charId in invModule.GetAllCharacterIds())
             {
-                var chunk = kvp.Value;
-                var crops = chunk.GetAllCrops(); // snapshot list — safe to iterate while removing
-                foreach (var slot in crops)
+                var inventory = invModule.GetInventory(charId);
+                if (inventory == null) continue;
+
+                var slotsToClear = new List<byte>();
+                foreach (var slot in inventory.GetAllSlots())
                 {
-                    string plantId = slot.Crop.PlantId;
-                    if (plantCatalog.GetPlantData(plantId) == null)
+                    if (ItemCatalogService.Instance?.GetItemData(slot.ItemId) == null)
                     {
-                        chunk.RemoveCrop(slot.WorldX, slot.WorldY);
-                        WorldSaveManager.TryMarkChunkDirty(kvp.Key.x, kvp.Key.y, config.SectionId);
-                        if (!removedIds.Contains(plantId))
-                            removedIds.Add(plantId);
-                        removed++;
+                        slotsToClear.Add(slot.SlotIndex);
+                        if (!report.RemovedItemIds.Contains(slot.ItemId))
+                            report.RemovedItemIds.Add(slot.ItemId);
+                    }
+                }
+
+                foreach (var slotIndex in slotsToClear)
+                {
+                    invModule.ClearSlot(charId, slotIndex);
+                    inventory.IsDirty = true;
+                    report.OrphanedInventorySlots++;
+                }
+            }
+        }
+
+        // 2. Scan chest slots
+        var chestModule = wdm.ChestData;
+        if (chestModule != null)
+        {
+            var chestIds = chestModule.GetAllChestIds();
+            var slotsBuffer = new List<ChestSlotEntry>();
+
+            foreach (var chestId in chestIds)
+            {
+                if (!ChestDataModule.TryParseChestId(chestId, out short tx, out short ty))
+                    continue;
+
+                chestModule.GetChestSlots(tx, ty, slotsBuffer);
+
+                foreach (var slot in slotsBuffer)
+                {
+                    if (ItemCatalogService.Instance?.GetItemData(slot.ItemId) == null)
+                    {
+                        chestModule.ClearSlot(tx, ty, slot.SlotIndex);
+                        chestModule.MarkChestDirty(tx, ty);
+                        report.OrphanedChestSlots++;
+                        
+                        if (!report.RemovedItemIds.Contains(slot.ItemId))
+                            report.RemovedItemIds.Add(slot.ItemId);
                     }
                 }
             }
         }
 
-        if (removed > 0)
-            Debug.LogWarning($"[OrphanedDataCleanup] Removed {removed} orphaned crop(s).");
+        // 3. Scan crops, structures, resources
+        var cropModule = wdm.CropData;
+        var structureModule = wdm.StructureData;
 
-        return removed;
-    }
-
-    // ── Structures ───────────────────────────────────────────────────────
-
-    private int CleanOrphanedStructures(out int droppedChestItems, List<string> removedIds)
-    {
-        droppedChestItems = 0;
-        if (itemCatalog == null || worldData == null) return 0;
-
-        int removed = 0;
-        var chestModule = worldData.ChestData;
-
-        foreach (var config in worldData.sectionConfigs)
+        foreach (var config in wdm.sectionConfigs)
         {
-            var section = worldData.CropData?.GetSection(config.SectionId);
-            if (section == null) continue;
-
-            foreach (var kvp in section)
+            // Crops & Resources
+            if (cropModule != null)
             {
-                var chunk = kvp.Value;
-                var structures = chunk.GetAllStructures();
-                foreach (var slot in structures)
+                var section = cropModule.GetSection(config.SectionId);
+                if (section != null)
                 {
-                    string structId = slot.Structure.StructureId;
-                    if (itemCatalog.GetItemData<StructureItemData>(structId) != null) continue;
-
-                    // If structure is a chest, drop valid items before removing
-                    if (chestModule != null)
+                    foreach (var chunk in section.Values)
                     {
-                        short tx = (short)slot.WorldX;
-                        short ty = (short)slot.WorldY;
-
-                        if (chestModule.HasChest(tx, ty))
+                        // Crops
+                        var crops = chunk.GetAllCrops();
+                        foreach (var slot in crops)
                         {
-                            droppedChestItems += DropChestContents(tx, ty, slot.WorldX, slot.WorldY);
-                            chestModule.UnregisterChest(tx, ty);
+                            if (PlantCatalogService.Instance?.GetPlantData(slot.Crop.PlantId) == null)
+                            {
+                                if (!report.RemovedCropIds.Contains(slot.Crop.PlantId))
+                                    report.RemovedCropIds.Add(slot.Crop.PlantId);
+
+                                chunk.RemoveCrop(slot.WorldX, slot.WorldY);
+                                WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
+                                report.OrphanedCrops++;
+                            }
+                        }
+
+                        // Resources
+                        var resources = chunk.GetAllResources();
+                        foreach (var slot in resources)
+                        {
+                            if (ResourceCatalogManager.Instance?.GetResourceConfig(slot.Resource.ResourceId) == null)
+                            {
+                                if (!report.RemovedResourceIds.Contains(slot.Resource.ResourceId))
+                                    report.RemovedResourceIds.Add(slot.Resource.ResourceId);
+
+                                chunk.RemoveResource(slot.WorldX, slot.WorldY);
+                                WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
+                                report.OrphanedResources++;
+                            }
                         }
                     }
-
-                    chunk.RemoveStructure(slot.WorldX, slot.WorldY);
-                    WorldSaveManager.TryMarkChunkDirty(kvp.Key.x, kvp.Key.y, config.SectionId);
-                    if (!removedIds.Contains(structId))
-                        removedIds.Add(structId);
-                    removed++;
                 }
             }
-        }
 
-        if (removed > 0)
-            Debug.LogWarning($"[OrphanedDataCleanup] Removed {removed} orphaned structure(s), dropped {droppedChestItems} chest item stack(s).");
-
-        return removed;
-    }
-
-    private int DropChestContents(short tileX, short tileY, int worldX, int worldY)
-    {
-        var chestModule = worldData.ChestData;
-        chestModule.GetChestSlots(tileX, tileY, chestSlotBuffer); // reuses buffer
-
-        int dropped = 0;
-        Vector3 chestWorldPos = new Vector3(worldX, worldY, 0f);
-
-        foreach (var entry in chestSlotBuffer)
-        {
-            if (string.IsNullOrEmpty(entry.ItemId) || entry.Quantity <= 0) continue;
-            if (itemCatalog.GetItemData(entry.ItemId) == null) continue;
-
-            OnChestItemDrop?.Invoke(entry.ItemId, entry.Quantity, chestWorldPos);
-            dropped++;
-        }
-
-        return dropped;
-    }
-
-    // ── Resources ────────────────────────────────────────────────────────
-
-    private int CleanOrphanedResources(List<string> removedIds)
-    {
-        if (resourceCatalog == null || worldData == null) return 0;
-
-        int removed = 0;
-        foreach (var config in worldData.sectionConfigs)
-        {
-            var section = worldData.CropData?.GetSection(config.SectionId);
-            if (section == null) continue;
-
-            foreach (var kvp in section)
+            // Structures
+            if (structureModule != null)
             {
-                var chunk = kvp.Value;
-                var resources = chunk.GetAllResources();
-                foreach (var slot in resources)
+                var section = structureModule.GetSection(config.SectionId);
+                if (section != null)
                 {
-                    string resourceId = slot.Resource.ResourceId;
-                    if (resourceCatalog.GetResourceConfig(resourceId) == null)
+                    foreach (var chunk in section.Values)
                     {
-                        chunk.RemoveResource(slot.WorldX, slot.WorldY);
-                        WorldSaveManager.TryMarkChunkDirty(kvp.Key.x, kvp.Key.y, config.SectionId);
-                        if (!removedIds.Contains(resourceId))
-                            removedIds.Add(resourceId);
-                        removed++;
+                        var structures = chunk.GetAllStructures();
+                        foreach (var slot in structures)
+                        {
+                            if (ItemCatalogService.Instance?.GetItemData(slot.Structure.StructureId) == null)
+                            {
+                                if (!report.RemovedStructureIds.Contains(slot.Structure.StructureId))
+                                    report.RemovedStructureIds.Add(slot.Structure.StructureId);
+
+                                report.DroppedChestItems += CatalogDeleteHandler.DropChestContents(wdm, (short)slot.WorldX, (short)slot.WorldY);
+
+                                wdm.UnregisterChest((short)slot.WorldX, (short)slot.WorldY);
+                                chunk.RemoveStructure(slot.WorldX, slot.WorldY);
+                                WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, chunk.SectionId);
+                                report.OrphanedStructures++;
+                            }
+                        }
                     }
                 }
             }
         }
 
-        if (removed > 0)
-            Debug.LogWarning($"[OrphanedDataCleanup] Removed {removed} orphaned resource(s).");
-
-        return removed;
-    }
-
-    // ── Inventory Slots ──────────────────────────────────────────────────
-
-    private int CleanOrphanedInventorySlots(List<string> removedItemIds)
-    {
-        if (itemCatalog == null || worldData?.InventoryData == null) return 0;
-
-        int removed = 0;
-        foreach (var charId in worldData.InventoryData.GetAllCharacterIds())
+        // 4. Cascade recipes
+        if (RecipeCatalogService.Instance != null)
         {
-            for (byte i = 0; i < 36; i++)
-            {
-                if (!worldData.InventoryData.TryGetSlot(charId, i, out var slot)) continue;
-                if (slot.IsEmpty) continue;
-                if (itemCatalog.GetItemData(slot.ItemId) != null) continue;
+            report.OrphanedRecipes = RecipeCatalogService.Instance.RemoveRecipesWithMissingItems(report.RemovedRecipeIds);
+        }
 
-                if (!removedItemIds.Contains(slot.ItemId))
-                    removedItemIds.Add(slot.ItemId);
-                worldData.InventoryData.ClearSlot(charId, i);
-                removed++;
+        // 5. Notification
+        if (report.TotalCleaned > 0)
+        {
+            Debug.Log($"[OrphanedDataCleanup] Cleaned {report.TotalCleaned} orphaned entries on world load.");
+            var cleanupView = Object.FindAnyObjectByType<CleanupNotificationView>();
+            if (cleanupView != null)
+            {
+                var presenter = new CleanupNotificationPresenter(cleanupView);
+                presenter.NotifyCleanup(report);
             }
         }
 
-        if (removed > 0)
-            Debug.LogWarning($"[OrphanedDataCleanup] Removed {removed} orphaned inventory slot(s).");
-
-        return removed;
-    }
-
-    // ── Chest Slots ──────────────────────────────────────────────────────
-
-    private int CleanOrphanedChestSlots(List<string> removedItemIds)
-    {
-        if (itemCatalog == null || worldData?.ChestData == null) return 0;
-
-        int removed = 0;
-        var chestIds = worldData.ChestData.GetAllChestIds();
-
-        foreach (var chestId in chestIds)
-        {
-            var parts = chestId.Split('_');
-            if (parts.Length != 2) continue;
-            if (!short.TryParse(parts[0], out short tx) || !short.TryParse(parts[1], out short ty)) continue;
-
-            worldData.ChestData.GetChestSlots(tx, ty, chestSlotBuffer); // reuses buffer
-            foreach (var entry in chestSlotBuffer)
-            {
-                if (string.IsNullOrEmpty(entry.ItemId) || entry.Quantity <= 0) continue;
-                if (itemCatalog.GetItemData(entry.ItemId) != null) continue;
-
-                if (!removedItemIds.Contains(entry.ItemId))
-                    removedItemIds.Add(entry.ItemId);
-                worldData.ChestData.ClearSlot(tx, ty, entry.SlotIndex);
-                removed++;
-            }
-        }
-
-        if (removed > 0)
-            Debug.LogWarning($"[OrphanedDataCleanup] Removed {removed} orphaned chest slot(s).");
-
-        return removed;
-    }
-
-    // ── Recipes ──────────────────────────────────────────────────────────
-
-    private int CleanOrphanedRecipes(List<string> removedIds)
-    {
-        if (recipeCatalog == null) return 0;
-        return recipeCatalog.RemoveRecipesWithMissingItems(removedIds);
+        return report;
     }
 }

@@ -3,6 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MaterialService } from './material.service';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { UpdateMaterialDto } from './dto/update-material.dto';
+import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class MaterialController {
@@ -28,20 +29,39 @@ export class MaterialController {
 
   /** Admin — create a new material. */
   @MessagePattern('create-material')
-  create(@Payload() dto: CreateMaterialDto) {
-    return this.materialService.create(dto);
+  async create(@Payload() dto: CreateMaterialDto): Promise<CatalogChange> {
+    const data = await this.materialService.create(dto);
+    return {
+      data,
+      changeType: 'create',
+      entityType: 'material',
+    };
   }
 
   /** Admin — update an existing material. */
   @MessagePattern('update-material')
-  update(@Payload() payload: { materialId: string } & UpdateMaterialDto) {
+  async update(
+    @Payload() payload: { materialId: string } & UpdateMaterialDto,
+  ): Promise<CatalogChange> {
     const { materialId, ...dto } = payload;
-    return this.materialService.update(materialId, dto);
+    const data = await this.materialService.update(materialId, dto);
+    return {
+      data,
+      changeType: 'update',
+      entityType: 'material',
+    };
   }
 
   /** Admin — delete a material. */
   @MessagePattern('delete-material')
-  remove(@Payload() payload: { materialId: string }) {
-    return this.materialService.remove(payload.materialId);
+  async remove(
+    @Payload() payload: { materialId: string },
+  ): Promise<CatalogChange> {
+    const data = await this.materialService.remove(payload.materialId);
+    return {
+      data,
+      changeType: 'delete',
+      entityType: 'material',
+    };
   }
 }

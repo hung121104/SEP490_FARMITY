@@ -100,6 +100,35 @@ public static class WorldApi
         [JsonProperty("tileY")] public int tileY;
     }
 
+    // ── Enemy spawner persistence DTOs ───────────────────────────────────────
+
+    [Serializable]
+    public class EnemySpawnerActiveEnemyDto
+    {
+        [JsonProperty("runtimeId")] public string runtimeId;
+        [JsonProperty("enemyId")] public string enemyId;
+        [JsonProperty("x")] public float x;
+        [JsonProperty("y")] public float y;
+        [JsonProperty("z")] public float z;
+    }
+
+    [Serializable]
+    public class EnemySpawnerPendingRespawnDto
+    {
+        [JsonProperty("enemyId")] public string enemyId;
+        [JsonProperty("dueUnixMs")] public long dueUnixMs;
+    }
+
+    [Serializable]
+    public class EnemySpawnerStateDto
+    {
+        [JsonProperty("runtimeSequence")] public int runtimeSequence;
+        [JsonProperty("active", NullValueHandling = NullValueHandling.Ignore)]
+        public List<EnemySpawnerActiveEnemyDto> active;
+        [JsonProperty("pending", NullValueHandling = NullValueHandling.Ignore)]
+        public List<EnemySpawnerPendingRespawnDto> pending;
+    }
+
     // -------------------------------------------------------------------------
     //  Request model
     // -------------------------------------------------------------------------
@@ -109,6 +138,9 @@ public static class WorldApi
     {
         [JsonProperty("worldId")]
         public string worldId;
+
+        [JsonProperty("worldName", NullValueHandling = NullValueHandling.Ignore)]
+        public string worldName;
 
         [JsonProperty("day",    NullValueHandling = NullValueHandling.Ignore)] public int? day;
         [JsonProperty("month",  NullValueHandling = NullValueHandling.Ignore)] public int? month;
@@ -146,6 +178,9 @@ public static class WorldApi
         /// </summary>
         [JsonProperty("deletedChests", NullValueHandling = NullValueHandling.Ignore)]
         public List<DeletedChest> deletedChests;
+
+        [JsonProperty("enemySpawnerState", NullValueHandling = NullValueHandling.Ignore)]
+        public EnemySpawnerStateDto enemySpawnerState;
 
         public class CharacterUpdate
         {

@@ -58,18 +58,37 @@ namespace CombatManager.View
                 canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
             // Set hotkey label
-            if (hotkeyLabel != null && index < hotbarModel.activationKeys.Length)
-                hotkeyLabel.text = FormatHotkeyLabel(hotbarModel.activationKeys[index]);
+            if (hotkeyLabel != null)
+                hotkeyLabel.text = GetHotkeyLabelForSlot(index);
 
             SetEmptyVisual();
         }
 
         #endregion
 
-        private static string FormatHotkeyLabel(KeyCode key)
+        private static string GetHotkeyLabelForSlot(int index)
         {
-            string raw = key.ToString();
-            return raw.StartsWith("Alpha") ? raw.Substring("Alpha".Length) : raw;
+            InputManager inputManager = InputManager.Instance;
+            if (inputManager != null)
+            {
+                UnityEngine.InputSystem.InputAction action = inputManager.GetSkillSlotAction(index);
+                if (action != null && action.bindings.Count > 0)
+                {
+                    string path = action.bindings[0].effectivePath;
+                    if (string.IsNullOrWhiteSpace(path))
+                        path = action.bindings[0].path;
+
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        int slashIndex = path.LastIndexOf('/');
+                        string key = slashIndex >= 0 ? path.Substring(slashIndex + 1) : path;
+                        if (!string.IsNullOrWhiteSpace(key))
+                            return key.ToUpperInvariant();
+                    }
+                }
+            }
+
+            return (index + 1).ToString();
         }
 
         #region Display

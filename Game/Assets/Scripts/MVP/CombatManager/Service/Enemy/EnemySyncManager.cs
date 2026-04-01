@@ -94,6 +94,26 @@ namespace CombatManager.Service
                 enemiesByRuntimeId.Remove(runtimeId);
         }
 
+        public bool TryGetEnemyByRuntimeId(string runtimeId, out EnemyPresenter enemy)
+        {
+            enemy = null;
+            if (string.IsNullOrWhiteSpace(runtimeId))
+                return false;
+
+            if (enemiesByRuntimeId.TryGetValue(runtimeId, out EnemyPresenter cached) && cached != null)
+            {
+                enemy = cached;
+                return true;
+            }
+
+            EnemyPresenter resolved = ResolveEnemy(runtimeId);
+            if (resolved == null)
+                return false;
+
+            enemy = resolved;
+            return true;
+        }
+
         public void RequestEnemyHit(EnemyPresenter enemy, int damage, Vector2 knockbackDir, float knockbackForce)
         {
             if (enemy == null || damage <= 0)

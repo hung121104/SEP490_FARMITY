@@ -70,7 +70,7 @@ public class InventoryService : IInventoryService
         return AddItem(data, quantity, quality, dropOffset);
     }
 
-    public bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
+    private bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
     {
         if (itemData == null || quantity <= 0)
             return false;
@@ -132,7 +132,11 @@ public class InventoryService : IInventoryService
 
     private void HandleRemainingItemDrop(ItemData itemData, Quality quality, int quantity, Vector2? dropOffset)
     {
-        Vector2 finalOffset = dropOffset ?? new Vector2(1f, 1f);
+        Vector2 randomDir = UnityEngine.Random.insideUnitCircle.normalized;
+        if (randomDir == Vector2.zero) randomDir = Vector2.up;
+        float distance = UnityEngine.Random.Range(0.5f, 1.5f);
+
+        Vector2 finalOffset = dropOffset ?? (randomDir * distance);
         
         var sync = UnityEngine.Object.FindAnyObjectByType<DroppedItemSyncManager>();
         if (sync != null)

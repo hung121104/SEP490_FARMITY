@@ -67,9 +67,6 @@ public class ResourceHarvestingService : IResourceHarvestingService
         ResourceConfigData configData = ResourceCatalogManager.Instance?.GetResourceConfig(tileData.ResourceId);
         if (configData == null) return false;
 
-        // Block interaction with fallback placeholder resources (late-join orphaned data).
-        if (configData.isFallback) return false;
-
         // Ensure tool matches the required tool type and has sufficient power.
         if (tool.toolType != configData.requiredToolType || tool.toolPower < configData.minToolPower)
         {
@@ -161,9 +158,8 @@ public class ResourceHarvestingService : IResourceHarvestingService
             if (chance <= drop.dropChance)
             {
                 int amount = Random.Range(Mathf.Max(1, drop.minAmount), Mathf.Max(1, drop.maxAmount) + 1);
-                Quality qualityOverride = Quality.Normal;
 
-                bool added = inventoryView.AddItem(drop.itemId, amount, qualityOverride);
+                bool added = inventoryView.AddItem(drop.itemId, amount);
                 if (!added)
                 {
                     Debug.LogWarning(
@@ -172,7 +168,7 @@ public class ResourceHarvestingService : IResourceHarvestingService
                 }
                 else
                 {
-                    Debug.Log($"[ResourceHarvestingService] Looted {amount}x {drop.itemId} from resource (Quality: {qualityOverride}).");
+                    Debug.Log($"[ResourceHarvestingService] Looted {amount}x {drop.itemId} from resource.");
                 }
             }
         }

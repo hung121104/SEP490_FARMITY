@@ -10,10 +10,9 @@ namespace CombatManager.Test
     /// </summary>
     public class TestWeaponEquipper : MonoBehaviour
     {
-        [SerializeField] private KeyCode unequipKey = KeyCode.Alpha8;
-
         private string lastResult = "";
 
+        [ContextMenu("Add All Weapons To Inventory")]
         private void AddAllWeaponsToInventory()
         {
             if (ItemCatalogService.Instance == null || !ItemCatalogService.Instance.IsReady)
@@ -40,7 +39,7 @@ namespace CombatManager.Test
             int failed = 0;
             for (int i = 0; i < weapons.Count; i++)
             {
-                bool ok = inventory.AddItem(weapons[i], 1);
+                bool ok = inventory.AddItem(weapons[i].itemID, 1);
                 if (ok) added++;
                 else failed++;
             }
@@ -49,24 +48,12 @@ namespace CombatManager.Test
             Debug.Log($"[TestWeaponEquipper] {lastResult}");
         }
 
-        private void OnGUI()
+        [ContextMenu("Force Unequip Weapon")]
+        private void ForceUnequipWeapon()
         {
-            GUILayout.BeginArea(new Rect(10, 10, 420, 140));
-            GUILayout.Label("=== WEAPON DEBUG (ITEM-DRIVEN) ===");
-            GUILayout.Label("Select a weapon in hotbar to auto-activate it.");
-            if (GUILayout.Button("Add all weapon items to inventory", GUILayout.Height(24)))
-            {
-                AddAllWeaponsToInventory();
-            }
-            if (GUILayout.Button($"Force unequip [{unequipKey}]", GUILayout.Height(24)))
-            {
-                WeaponEquipPresenter.Instance?.UnequipWeapon();
-            }
-            if (!string.IsNullOrEmpty(lastResult))
-            {
-                GUILayout.Label(lastResult);
-            }
-            GUILayout.EndArea();
+            WeaponEquipPresenter.Instance?.UnequipWeapon();
+            lastResult = "Force unequip requested.";
+            Debug.Log($"[TestWeaponEquipper] {lastResult}");
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
+using Photon.Pun;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -49,6 +50,7 @@ namespace CombatManager.Service
             string jwt = SessionManager.Instance?.JwtToken;
             if (string.IsNullOrEmpty(worldId) || string.IsNullOrEmpty(jwt))
             {
+                Debug.LogWarning("[SkillLoadoutSyncService] InitializeAndFetch skipped: missing worldId or JWT token.");
                 onError?.Invoke("Missing worldId or JWT token");
                 onLoaded?.Invoke(CreateEmptySlotArray(slotCount));
                 yield break;
@@ -102,10 +104,47 @@ namespace CombatManager.Service
             RestartDebounce(debounceDelay);
         }
 
+        public IEnumerator FlushNow(float timeoutSeconds = 5f, Action<bool> onCompleted = null)
+        {
+            if (!IsInitialized || !isDirty)
+            {
+                onCompleted?.Invoke(true);
+                yield break;
+            }
+
+            if (debounceCoroutine != null)
+            {
+                StopCoroutine(debounceCoroutine);
+                debounceCoroutine = null;
+            }
+
+            float remaining = Mathf.Max(0.1f, timeoutSeconds);
+            float started = Time.realtimeSinceStartup;
+
+            if (isFlushing)
+            {
+                while (isFlushing && (Time.realtimeSinceStartup - started) < remaining)
+                    yield return null;
+            }
+
+            remaining = Mathf.Max(0f, timeoutSeconds - (Time.realtimeSinceStartup - started));
+            if (remaining > 0f && isDirty)
+                yield return TryFlushPending("manual");
+
+            while ((isFlushing || isDirty) && (Time.realtimeSinceStartup - started) < timeoutSeconds)
+                yield return null;
+
+            bool success = !isDirty;
+            if (!success)
+                Debug.LogWarning("[SkillLoadoutSyncService] FlushNow timed out before loadout was persisted.");
+
+            onCompleted?.Invoke(success);
+        }
+
         public void ForceFlush()
         {
             if (!IsInitialized || !isDirty) return;
-            StartCoroutine(TryFlushPending("force"));
+            StartCoroutine(FlushNow(5f, null));
         }
 
         private void OnApplicationPause(bool paused)
@@ -185,6 +224,7 @@ namespace CombatManager.Service
             string jwt = SessionManager.Instance?.JwtToken;
             if (string.IsNullOrEmpty(worldId) || string.IsNullOrEmpty(jwt))
             {
+                Debug.LogWarning("[SkillLoadoutSyncService] TryFlushPending skipped: missing worldId or JWT token.");
                 yield break;
             }
 
@@ -270,9 +310,25 @@ namespace CombatManager.Service
 
         private string ResolveCurrentWorldId()
         {
-            return WorldSelectionManager.Instance != null
-                ? WorldSelectionManager.Instance.SelectedWorldId
-                : null;
+            if (WorldSelectionManager.Instance != null &&
+                !string.IsNullOrEmpty(WorldSelectionManager.Instance.SelectedWorldId))
+            {
+                return WorldSelectionManager.Instance.SelectedWorldId;
+            }
+
+            if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
+            {
+                string roomWorldId = WorldRoomProperties.GetString(
+                    PhotonNetwork.CurrentRoom.CustomProperties,
+                    WorldRoomProperties.WorldId,
+                    PhotonNetwork.CurrentRoom.Name);
+
+                return string.IsNullOrWhiteSpace(roomWorldId)
+                    ? null
+                    : roomWorldId.Trim();
+            }
+
+            return null;
         }
 
         [Serializable]

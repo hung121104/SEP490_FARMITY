@@ -160,6 +160,11 @@ public class InventoryGameView : MonoBehaviour
         HandleRemoteInventoryChanged();
     }
 
+    public bool IsInventoryInUseByOtherUI()
+    {
+        return inventoryView != null && inventoryView.IsReparented();
+    }
+
     /// <summary>
     /// Opens the main inventory at its default position.
     /// Used by hotkeys or tab generic switches.
@@ -251,14 +256,9 @@ public class InventoryGameView : MonoBehaviour
 
     #region Public API for Player/Other Systems
 
-    public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal)
+    public bool AddItem(string itemId, int quantity = 1)
     {
-        return presenter.TryAddItem(itemId, quantity, quality);
-    }
-
-    public bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal)
-    {
-        return presenter.TryAddItem(itemData, quantity, quality);
+        return presenter.TryAddItem(itemId, quantity);
     }
 
     public bool RemoveItem(string itemId, int quantity)
@@ -274,6 +274,11 @@ public class InventoryGameView : MonoBehaviour
     public int GetItemCount(string itemId)
     {
         return presenter.GetItemCount(itemId);
+    }
+
+    public int GetAddableQuantity(ItemData itemData, int quantity)
+    {
+        return presenter.GetAddableQuantity(itemData, quantity);
     }
 
     public IInventoryService GetInventoryService() => service;

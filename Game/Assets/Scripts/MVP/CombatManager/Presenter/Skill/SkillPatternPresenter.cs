@@ -39,10 +39,6 @@ namespace CombatManager.Presenter
         [Header("Combat Settings")]
         [SerializeField] public LayerMask enemyLayers;
 
-        [Header("Input Settings")]
-        [SerializeField] protected KeyCode confirmKey = KeyCode.E;
-        [SerializeField] protected KeyCode cancelKey  = KeyCode.Q;
-
         #endregion
 
         #region Services
@@ -80,6 +76,16 @@ namespace CombatManager.Presenter
             OnStart();
         }
 
+        protected virtual void OnEnable()
+        {
+            PlayerRegistry.OnLocalPlayerSpawned += HandleLocalPlayerSpawned;
+        }
+
+        protected virtual void OnDisable()
+        {
+            PlayerRegistry.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
+        }
+
         protected virtual void Update()
         {
             skillService?.UpdateCooldown(Time.deltaTime);
@@ -99,8 +105,6 @@ namespace CombatManager.Presenter
             model.skillTier          = skillTier;
             model.skillMultiplier    = skillMultiplier;
             model.enemyLayers        = enemyLayers;
-            model.confirmKey         = confirmKey;
-            model.cancelKey          = cancelKey;
         }
 
         private void InitializeServices()
@@ -183,6 +187,14 @@ namespace CombatManager.Presenter
             Debug.Log($"[{GetType().Name}] Player references set from: {playerGO.name}");
         }
 
+        private void HandleLocalPlayerSpawned(Transform playerTransform)
+        {
+            if (playerTransform == null)
+                return;
+
+            SetupPlayerReferences(playerTransform.gameObject);
+        }
+
         #endregion
 
         #region Input Handling
@@ -192,9 +204,13 @@ namespace CombatManager.Presenter
             if (!model.IsWaitingConfirm) return;
             if (!IsCombatModeActive()) return;
 
-            if (Input.GetKeyDown(model.confirmKey))
+            InputManager inputManager = InputManager.Instance;
+            if (inputManager == null)
+                return;
+
+            if (inputManager.SkillConfirm.WasPressedThisFrame())
                 ConfirmSkill();
-            else if (Input.GetKeyDown(model.cancelKey))
+            else if (inputManager.SkillCancel.WasPressedThisFrame())
                 CancelSkill();
         }
 
@@ -291,7 +307,6 @@ namespace CombatManager.Presenter
             while (model.IsWaitingConfirm && model.isExecuting)
                 yield return null;
 
-            DisablePlayerSystems();
             HideIndicator();
             DiceDisplayPresenter.Hide();
         }

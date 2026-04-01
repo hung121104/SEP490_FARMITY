@@ -21,13 +21,13 @@ export class World {
   @Prop({ default: 0 })
   year: number;
 
-  @Prop({ default: 0 })
+  @Prop({ default: 7 })
   hour: number;
 
   @Prop({ default: 0 })
   minute: number;
 
-  @Prop({ type: Number, default: 0 })
+  @Prop({ type: Number, default: 500 })
   gold: number;
 
   @Prop({ type: Number, default: 0 })

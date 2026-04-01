@@ -80,6 +80,7 @@ public class ShopView : MonoBehaviour, IShopView, IDropHandler
         {
             var itemModel = items[i];
             var data = ItemCatalogService.Instance.GetItemData(itemModel.ItemId);
+            if (data == null) continue; // item removed from catalog mid-game
             var icon = ItemCatalogService.Instance.GetCachedSprite(itemModel.ItemId);
 
             ShopSlotView newSlot = Instantiate(shopSlotPrefab, buyContentContainer);

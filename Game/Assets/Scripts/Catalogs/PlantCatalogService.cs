@@ -97,6 +97,75 @@ public class PlantCatalogService : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Swaps catalog atomically; only downloads sprites for new entries.
+    /// Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
+    {
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/plants/catalog";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[PlantCatalogService] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        PlantCatalogResponse response = null;
+        try
+        {
+            response = JsonConvert.DeserializeObject<PlantCatalogResponse>(
+                request.downloadHandler.text);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PlantCatalogService] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (response?.plants == null) yield break;
+
+        var newCatalog = new Dictionary<string, PlantData>();
+        foreach (var plant in response.plants)
+        {
+            if (plant != null && !string.IsNullOrWhiteSpace(plant.plantId))
+                newCatalog[plant.plantId] = plant;
+        }
+
+        // Atomic swap — keep IsReady true
+        _catalog.Clear();
+        foreach (var kvp in newCatalog)
+            _catalog[kvp.Key] = kvp.Value;
+
+        // Download only missing sprites
+        foreach (var plant in newCatalog.Values)
+        {
+            for (int i = 0; i < plant.growthStages.Count; i++)
+            {
+                string key = $"{plant.plantId}_{i}";
+                var stage = plant.growthStages[i];
+                if (!string.IsNullOrEmpty(stage.stageIconUrl) && !_spriteCache.ContainsKey(key))
+                    yield return DownloadSprite(key, stage.stageIconUrl);
+            }
+
+            if (plant.isHybrid)
+            {
+                string flowerKey = $"{plant.plantId}_hybrid_flower";
+                if (!string.IsNullOrEmpty(plant.hybridFlowerIconUrl) && !_spriteCache.ContainsKey(flowerKey))
+                    yield return DownloadSprite(flowerKey, plant.hybridFlowerIconUrl);
+
+                string matureKey = $"{plant.plantId}_hybrid_mature";
+                if (!string.IsNullOrEmpty(plant.hybridMatureIconUrl) && !_spriteCache.ContainsKey(matureKey))
+                    yield return DownloadSprite(matureKey, plant.hybridMatureIconUrl);
+            }
+        }
+
+        Debug.Log($"[PlantCatalogService] SafeRefetch complete — {_catalog.Count} plant(s).");
+    }
+
     private IEnumerator FetchCatalog()
     {
         IsReady = false;
@@ -240,25 +309,59 @@ public class PlantCatalogService : MonoBehaviour
         Debug.Log($"[PlantCatalogService] Sprite ready for '{key}'.");
     }
 
-    // ── Fallback Injection (late-join orphaned data) ────────────────────────
+    // ── Catalog Sync (real-time updates from CatalogSyncManager) ───────────
 
     /// <summary>
-    /// Injects a fallback PlantData into the catalog if the ID is not already present.
-    /// Used by OrphanedFallbackService for late-join players.
+    /// Adds or replaces a plant in the catalog from a JSON string.
+    /// Starts sprite download asynchronously.
     /// </summary>
-    public void InjectFallback(string plantId, PlantData data)
+    public void AddOrUpdateFromJson(string json)
     {
-        if (!_catalog.ContainsKey(plantId))
-            _catalog[plantId] = data;
+        try
+        {
+            var plant = JsonConvert.DeserializeObject<PlantData>(json);
+            if (plant == null || string.IsNullOrWhiteSpace(plant.plantId)) return;
+
+            _catalog[plant.plantId] = plant;
+
+            // Download stage sprites
+            for (int i = 0; i < plant.growthStages.Count; i++)
+            {
+                var stage = plant.growthStages[i];
+                if (!string.IsNullOrEmpty(stage.stageIconUrl))
+                    StartCoroutine(DownloadSprite($"{plant.plantId}_{i}", stage.stageIconUrl));
+            }
+
+            if (plant.isHybrid)
+            {
+                if (!string.IsNullOrEmpty(plant.hybridFlowerIconUrl))
+                    StartCoroutine(DownloadSprite($"{plant.plantId}_hybrid_flower", plant.hybridFlowerIconUrl));
+                if (!string.IsNullOrEmpty(plant.hybridMatureIconUrl))
+                    StartCoroutine(DownloadSprite($"{plant.plantId}_hybrid_mature", plant.hybridMatureIconUrl));
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PlantCatalogService] AddOrUpdateFromJson failed: {ex.Message}");
+        }
     }
 
-    /// <summary>
-    /// Injects a fallback sprite into the stage sprite cache.
-    /// Key format: "{plantId}_{stageIndex}".
-    /// </summary>
-    public void InjectFallbackStageSprite(string key, Sprite sprite)
+    /// <summary>Removes a plant and its cached sprites from the catalog.</summary>
+    public bool RemovePlant(string plantId)
     {
-        if (!_spriteCache.ContainsKey(key))
-            _spriteCache[key] = sprite;
+        if (!_catalog.TryGetValue(plantId, out var plant))
+            return false;
+
+        // Remove all cached sprites for this plant
+        if (plant.growthStages != null)
+        {
+            for (int i = 0; i < plant.growthStages.Count; i++)
+                _spriteCache.Remove($"{plantId}_{i}");
+        }
+        _spriteCache.Remove($"{plantId}_hybrid_flower");
+        _spriteCache.Remove($"{plantId}_hybrid_mature");
+
+        return _catalog.Remove(plantId);
     }
+
 }

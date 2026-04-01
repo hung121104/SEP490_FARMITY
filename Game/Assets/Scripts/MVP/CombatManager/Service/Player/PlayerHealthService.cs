@@ -1,4 +1,5 @@
 using UnityEngine;
+using Photon.Pun;
 using CombatManager.Model;
 
 namespace CombatManager.Service
@@ -33,6 +34,7 @@ namespace CombatManager.Service
             model.maxHealth = maxHealth;
             model.currentHealth = maxHealth;
             model.targetHealthValue = maxHealth;
+            model.deathHandled = false;
 
             // Update StatsService's current health
             statsService.SetCurrentHealth(maxHealth);
@@ -82,9 +84,14 @@ namespace CombatManager.Service
             Debug.Log($"[PlayerHealthService] Health changed by {amount}. Current: {model.currentHealth}/{model.maxHealth}");
 
             // Handle death
-            if (model.IsDead())
+            if (model.IsDead() && !model.deathHandled)
             {
+                model.deathHandled = true;
                 HandleDeath();
+            }
+            else if (!model.IsDead())
+            {
+                model.deathHandled = false;
             }
         }
 
@@ -133,6 +140,7 @@ namespace CombatManager.Service
             model.currentHealth = health;
             model.ClampHealth();
             model.targetHealthValue = model.currentHealth;
+            model.deathHandled = model.currentHealth <= 0;
 
             if (statsService != null)
             {
@@ -180,6 +188,15 @@ namespace CombatManager.Service
             
             if (model.playerEntity != null)
             {
+                PhotonView ownerView = model.playerEntity.GetComponent<PhotonView>()
+                    ?? model.playerEntity.GetComponentInParent<PhotonView>();
+
+                if (PhotonNetwork.IsConnected && ownerView != null && ownerView.IsMine)
+                {
+                    PhotonNetwork.Destroy(ownerView.gameObject);
+                    return;
+                }
+
                 model.playerEntity.gameObject.SetActive(false);
             }
         }

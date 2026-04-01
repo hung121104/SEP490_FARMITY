@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 6834932070776856297}
   - component: {fileID: 1285027981637607636}
   - component: {fileID: 6019287765743746139}
-  m_Layer: 11
+  m_Layer: 0
   m_Name: Skill_Projectile
   m_TagString: Bullet
   m_Icon: {fileID: 0}
@@ -80,7 +80,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1697184185
   m_SortingLayer: 3
-  m_SortingOrder: 200
+  m_SortingOrder: 0
   m_Sprite: {fileID: -2937912103407283272, guid: 2e3333a7ab081c144a7221cd637cbca7, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -129,7 +129,7 @@ Animator:
   m_GameObject: {fileID: 2996777577814843754}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 8e4ad24f8a64b1041b5ef6d9e8b38511, type: 2}
+  m_Controller: {fileID: 9100000, guid: f68a7a91331df4b48be282d70cc97194, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0

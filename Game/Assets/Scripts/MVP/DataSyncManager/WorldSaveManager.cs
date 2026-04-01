@@ -337,6 +337,9 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             weatherTomorrow = wdm?.WeatherTomorrow,
         };
 
+        if (CombatManager.Service.EnemySpawnerManager.Instance != null)
+            request.enemySpawnerState = CombatManager.Service.EnemySpawnerManager.Instance.BuildPersistentStateForSave();
+
         // ── Characters — read live positions from PlayerEntity GameObjects ──
         var characters = new List<WorldApi.UpdateWorldRequest.CharacterUpdate>();
         foreach (var go in GameObject.FindGameObjectsWithTag("PlayerEntity"))

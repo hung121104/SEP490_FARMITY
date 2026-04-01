@@ -54,14 +54,17 @@ namespace CombatManager.Presenter
             if (model == null || !model.isInitialized || model.isDestroyed)
                 return;
 
-            if ((model.enemyLayers.value & (1 << other.gameObject.layer)) == 0)
+            if (IsIgnoredEnemyCollider(other))
+                return;
+
+            if (!TryResolveEnemyPresenter(other, out EnemyPresenter enemyPresenter))
                 return;
 
             if (alreadyHit.Contains(other)) return;
             alreadyHit.Add(other);
 
-            HitEnemy(other);
-            DestroyProjectile();
+            if (HitEnemy(other, enemyPresenter))
+                DestroyProjectile();
         }
 
         #endregion
@@ -89,9 +92,8 @@ namespace CombatManager.Presenter
 
         #region Hit & Destroy
 
-        private void HitEnemy(Collider2D enemy)
+        private bool HitEnemy(Collider2D enemy, EnemyPresenter enemyPresenter)
         {
-            EnemyPresenter enemyPresenter = enemy.GetComponent<EnemyPresenter>();
             if (enemyPresenter != null)
             {
                 Vector3 ownerPosition = model.playerTransform != null
@@ -105,11 +107,32 @@ namespace CombatManager.Presenter
                     model.damage,
                     knockbackDir,
                     model.knockbackForce);
-                return;
+                return true;
             }
+            return false;
+        }
 
-            Debug.LogWarning($"[ProjectilePresenter] Hit {enemy.name} " +
-                             $"but no EnemyPresenter found!");
+        private static bool TryResolveEnemyPresenter(Collider2D col, out EnemyPresenter enemyPresenter)
+        {
+            enemyPresenter = null;
+            if (col == null)
+                return false;
+
+            enemyPresenter = col.GetComponent<EnemyPresenter>()
+                             ?? col.GetComponentInParent<EnemyPresenter>()
+                             ?? col.GetComponentInChildren<EnemyPresenter>();
+            return enemyPresenter != null;
+        }
+
+        private static bool IsIgnoredEnemyCollider(Collider2D col)
+        {
+            if (col == null)
+                return true;
+
+            if (col.GetComponent<EnemyAttackHitbox>() != null)
+                return true;
+
+            return false;
         }
 
         private void DestroyProjectile()

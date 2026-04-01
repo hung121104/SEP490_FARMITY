@@ -3,14 +3,20 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AchievementService } from './achievement.service';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementDto } from './dto/update-achievement.dto';
+import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class AchievementController {
   constructor(private readonly achievementService: AchievementService) {}
 
   @MessagePattern('create-achievement')
-  async create(@Payload() dto: CreateAchievementDto) {
-    return this.achievementService.create(dto);
+  async create(@Payload() dto: CreateAchievementDto): Promise<CatalogChange> {
+    const data = await this.achievementService.create(dto);
+    return {
+      data,
+      changeType: 'create',
+      entityType: 'achievement',
+    };
   }
 
   @MessagePattern('get-all-achievements')
@@ -24,12 +30,31 @@ export class AchievementController {
   }
 
   @MessagePattern('update-achievement')
-  async update(@Payload() payload: { achievementId: string; dto: UpdateAchievementDto }) {
-    return this.achievementService.update(payload.achievementId, payload.dto);
+  async update(
+    @Payload()
+    payload: {
+      achievementId: string;
+      dto: UpdateAchievementDto;
+    },
+  ): Promise<CatalogChange> {
+    const data = await this.achievementService.update(
+      payload.achievementId,
+      payload.dto,
+    );
+    return {
+      data,
+      changeType: 'update',
+      entityType: 'achievement',
+    };
   }
 
   @MessagePattern('delete-achievement')
-  async delete(@Payload() achievementId: string) {
-    return this.achievementService.delete(achievementId);
+  async delete(@Payload() achievementId: string): Promise<CatalogChange> {
+    const data = await this.achievementService.delete(achievementId);
+    return {
+      data,
+      changeType: 'delete',
+      entityType: 'achievement',
+    };
   }
 }
