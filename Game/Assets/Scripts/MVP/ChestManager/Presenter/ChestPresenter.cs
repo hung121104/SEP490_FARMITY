@@ -296,7 +296,8 @@ public class ChestPresenter
     private void HandleDropChestItemToWorld(int slotIndex)
     {
         var item = chestInventoryService.GetItemAtSlot(slotIndex);
-        if (item != null && !item.IsQuestItem)
+        // if (item != null && !item.IsQuestItem)
+        if (item != null)
         {
             OnItemDropped?.Invoke(item);
             chestInventoryService.RemoveItemFromSlot(slotIndex, item.Quantity);
@@ -444,11 +445,11 @@ public class ChestPresenter
         }
 
         // Prevent deletion of quest items
-        if (item.IsQuestItem)
-        {
-            Debug.LogWarning($"[ChestPresenter] Cannot delete quest item: {item.ItemName}");
-            return;
-        }
+        // if (item.IsQuestItem)
+        // {
+        //     Debug.LogWarning($"[ChestPresenter] Cannot delete quest item: {item.ItemName}");
+        //     return;
+        // }
 
         int quantity = item.Quantity;
         string itemName = item.ItemName;
