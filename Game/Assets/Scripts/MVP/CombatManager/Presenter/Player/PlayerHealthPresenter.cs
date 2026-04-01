@@ -45,6 +45,15 @@ namespace CombatManager.Presenter
             UnregisterActorBinding();
         }
 
+        private void Update()
+        {
+            if (service == null || !service.IsInitialized())
+                return;
+
+            if (service.TickPassiveRegeneration(Time.deltaTime))
+                NotifyViewUpdate();
+        }
+
         #endregion
 
         #region Initialization
