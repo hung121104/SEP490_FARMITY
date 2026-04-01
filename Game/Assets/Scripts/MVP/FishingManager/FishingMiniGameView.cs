@@ -51,12 +51,12 @@ public class FishingMiniGameView : MonoBehaviour
             miniGamePanel.SetActive(false); 
         }
     }   
-    public void StartMiniGame()
+    public void StartMiniGame(float timerMultiplier = 3f)
     {
-        
+        timerMutilicator = timerMultiplier;
+
         miniGamePanel.SetActive(true);
 
-        
         hookProgress = 0f;
         hookPosition = 0.5f;
         fishPosition = 0.5f;
