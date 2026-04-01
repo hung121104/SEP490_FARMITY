@@ -43,6 +43,7 @@ public class PlayerDataManager : MonoBehaviour
 				toolConfigId   = c.toolConfigId,
 				currentStamina = c.currentStamina,
 				viableStamina  = c.viableStamina,
+				currentHealth  = c.currentHealth,
 				regenBoostMultiplier    = c.regenBoostMultiplier,
 				regenBoostRemaining     = c.regenBoostRemaining,
 				toolEfficiencyReduction = c.toolEfficiencyReduction,

@@ -202,6 +202,9 @@ public static class WorldApi
             [JsonProperty("viableStamina", NullValueHandling = NullValueHandling.Ignore)]
             public float? viableStamina;
 
+            [JsonProperty("currentHealth", NullValueHandling = NullValueHandling.Ignore)]
+            public float? currentHealth;
+
             [JsonProperty("regenBoostMultiplier", NullValueHandling = NullValueHandling.Ignore)]
             public float? regenBoostMultiplier;
 

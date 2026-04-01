@@ -52,6 +52,7 @@ public class WorldApiResponse
 
         public float currentStamina;
         public float viableStamina;
+        public float currentHealth;
 
         public float regenBoostMultiplier;
         public float regenBoostRemaining;

@@ -48,6 +48,7 @@ import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
 import { UpdateSkillLoadoutDto } from './dto/update-skill-loadout.dto';
 import { UpdateCharacterProgressionDto } from './dto/update-character-progression.dto';
+import { UpdateCharacterHealthDto } from './dto/update-character-health.dto';
 import {
   UpdateWorldBlacklistDto,
   WorldBlacklistQueryDto,
@@ -1985,6 +1986,48 @@ export class GatewayController {
           expToNextLevel: dto.expToNextLevel,
           baseStrength: dto.baseStrength,
           baseVitality: dto.baseVitality,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /player-data/combat/health?worldId=... — get this player's persisted current health for a world */
+  @Get('player-data/combat/health')
+  async getCharacterHealth(@Query('worldId') worldId: string, @Req() req: Request) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    if (!worldId) throw new BadRequestException('worldId is required');
+
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('get-character-health', {
+          worldId,
+          accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/combat/health — update this player's persisted current health */
+  @Put('player-data/combat/health')
+  async updateCharacterHealth(
+    @Body() dto: UpdateCharacterHealthDto,
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    if (!dto?.worldId) throw new BadRequestException('worldId is required');
+
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('update-character-health', {
+          worldId: dto.worldId,
+          accountId: String(accountId),
+          currentHealth: dto.currentHealth,
         }),
       );
     } catch (err) {

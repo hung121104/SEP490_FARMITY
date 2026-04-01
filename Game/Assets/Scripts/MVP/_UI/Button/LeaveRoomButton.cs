@@ -63,12 +63,28 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
                 Debug.LogWarning("[LeaveRoomButton] Progression flush timed out — continuing leave flow.");
         }
 
+        IPlayerHealthSyncService healthSync = FindObjectOfType<PlayerHealthSyncService>();
+        if (healthSync != null)
+        {
+            bool healthSaved = false;
+            yield return healthSync.FlushNow(
+                timeoutSeconds: 6f,
+                onCompleted: (success) => healthSaved = success
+            );
+
+            if (!healthSaved)
+                Debug.LogWarning("[LeaveRoomButton] Health flush timed out — continuing leave flow.");
+        }
+
         // Non-master: push final position + stamina state to master via RPC
         // so it can be saved even if this GO is destroyed before BuildPayload runs.
         if (!PhotonNetwork.IsMasterClient)
         {
             var stamina = StaminaView.FindLocal();
             stamina?.PushFinalStateToMaster();
+
+            var health = CombatManager.Presenter.PlayerHealthPresenter.FindLocal();
+            health?.PushFinalStateToMaster();
             // Wait one frame so the RPC is flushed to the master before leaving.
             yield return null;
         }

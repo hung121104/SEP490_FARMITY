@@ -199,6 +199,8 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                         pd.currentStamina = charUpdate.currentStamina.Value;
                     if (charUpdate.viableStamina.HasValue)
                         pd.viableStamina = charUpdate.viableStamina.Value;
+                    if (charUpdate.currentHealth.HasValue)
+                        pd.currentHealth = charUpdate.currentHealth.Value;
                     if (charUpdate.regenBoostMultiplier.HasValue)
                         pd.regenBoostMultiplier = charUpdate.regenBoostMultiplier.Value;
                     if (charUpdate.regenBoostRemaining.HasValue)
@@ -357,6 +359,15 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                 positionY = go.transform.position.y,
             };
 
+            if (CombatManager.Presenter.PlayerHealthPresenter.TryGetCachedHealthForActor(pv.OwnerActorNr, out int currentHealth))
+                charUpdate.currentHealth = currentHealth;
+            else if (PlayerDataManager.Instance != null)
+            {
+                int pdIndex = PlayerDataManager.Instance.players.FindIndex(p => p.accountId == accountId);
+                if (pdIndex >= 0)
+                    charUpdate.currentHealth = PlayerDataManager.Instance.players[pdIndex].currentHealth;
+            }
+
             // Include appearance configIds if PlayerAppearanceSync is present
             var appearance = go.GetComponent<PlayerAppearanceSync>();
             if (appearance != null)
@@ -414,6 +425,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     toolConfigId   = pd.toolConfigId   ?? string.Empty,
                     currentStamina = pd.currentStamina,
                     viableStamina  = pd.viableStamina,
+                    currentHealth  = pd.currentHealth,
                 };
                 if (pd.regenBoostRemaining > 0f)
                 {

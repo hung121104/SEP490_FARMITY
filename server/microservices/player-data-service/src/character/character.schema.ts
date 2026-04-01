@@ -69,6 +69,9 @@ export class Character {
   @Prop({ default: 200 })
   viableStamina: number;
 
+  @Prop({ default: 0 })
+  currentHealth: number;
+
   @Prop({ default: 1 })
   regenBoostMultiplier: number;
 

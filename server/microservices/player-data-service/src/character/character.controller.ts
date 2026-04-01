@@ -5,6 +5,8 @@ import { GetSkillLoadoutDto } from './dto/get-skill-loadout.dto';
 import { UpdateSkillLoadoutDto } from './dto/update-skill-loadout.dto';
 import { GetCharacterProgressionDto } from './dto/get-character-progression.dto';
 import { UpdateCharacterProgressionDto } from './dto/update-character-progression.dto';
+import { GetCharacterHealthDto } from './dto/get-character-health.dto';
+import { UpdateCharacterHealthDto } from './dto/update-character-health.dto';
 
 @Controller()
 export class CharacterController {
@@ -39,6 +41,20 @@ export class CharacterController {
       dto.expToNextLevel,
       dto.baseStrength,
       dto.baseVitality,
+    );
+  }
+
+  @MessagePattern('get-character-health')
+  async getCharacterHealth(@Body() dto: GetCharacterHealthDto) {
+    return this.characterService.getCharacterHealth(dto.worldId, dto.accountId);
+  }
+
+  @MessagePattern('update-character-health')
+  async updateCharacterHealth(@Body() dto: UpdateCharacterHealthDto) {
+    return this.characterService.updateCharacterHealth(
+      dto.worldId,
+      dto.accountId,
+      dto.currentHealth,
     );
   }
 }

@@ -2,6 +2,8 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using Photon.Pun;
+using Photon.Realtime;
+using ExitGames.Client.Photon;
 using CombatManager.Model;
 using CombatManager.Service;
 using CombatManager.View;
@@ -13,8 +15,10 @@ namespace CombatManager.Presenter
     /// Connects PlayerHealthModel and PlayerHealthService to PlayerHealthView.
     /// Handles initialization, health changes, and invulnerability.
     /// </summary>
-    public class PlayerHealthPresenter : MonoBehaviour
+    public class PlayerHealthPresenter : MonoBehaviour, IOnEventCallback
     {
+        private const byte PLAYER_HEALTH_SYNC_EVENT = 176;
+
         [Header("Model")]
         [SerializeField] private PlayerHealthModel model = new PlayerHealthModel();
 
@@ -23,9 +27,18 @@ namespace CombatManager.Presenter
 
         private IPlayerHealthService service;
         private IStatsService statsService;
+        private IPlayerHealthSyncService healthSyncService;
+        private bool suppressDirtySync;
+        private bool healthSyncBootstrapStarted;
 
         private static readonly Dictionary<int, PlayerHealthPresenter> PresentersByActor = new Dictionary<int, PlayerHealthPresenter>();
+        private static readonly Dictionary<int, int> CachedHealthByActor = new Dictionary<int, int>();
         private int registeredActorNumber = -1;
+        private bool healthSyncDirty;
+        private float nextHealthSyncAt;
+
+        [Header("Health Sync")]
+        [SerializeField] private float healthSyncIntervalSeconds = 0.4f;
 
         #region Unity Lifecycle
 
@@ -37,10 +50,14 @@ namespace CombatManager.Presenter
         private void OnEnable()
         {
             PlayerRegistry.OnLocalPlayerSpawned += HandleLocalPlayerSpawned;
+            PhotonNetwork.AddCallbackTarget(this);
         }
 
         private void OnDisable()
         {
+            PushFinalStateToMaster();
+            healthSyncService?.ForceFlush();
+            PhotonNetwork.RemoveCallbackTarget(this);
             PlayerRegistry.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
             UnregisterActorBinding();
         }
@@ -51,7 +68,12 @@ namespace CombatManager.Presenter
                 return;
 
             if (service.TickPassiveRegeneration(Time.deltaTime))
+            {
+                MarkHealthDirty();
                 NotifyViewUpdate();
+            }
+
+            TryFlushHealthSync();
         }
 
         #endregion
@@ -86,6 +108,11 @@ namespace CombatManager.Presenter
                 enabled = false;
                 return;
             }
+
+            PlayerHealthSyncService syncComponent = GetComponent<PlayerHealthSyncService>();
+            if (syncComponent == null)
+                syncComponent = gameObject.AddComponent<PlayerHealthSyncService>();
+            healthSyncService = syncComponent;
 
             // Find local player entity
             GameObject playerObj = FindLocalPlayerEntity();
@@ -182,6 +209,15 @@ namespace CombatManager.Presenter
             return true;
         }
 
+        public static bool TryGetCachedHealthForActor(int actorNumber, out int currentHealth)
+        {
+            currentHealth = 0;
+            if (actorNumber <= 0)
+                return false;
+
+            return CachedHealthByActor.TryGetValue(actorNumber, out currentHealth);
+        }
+
         private void RegisterActorBinding(GameObject playerObj)
         {
             if (playerObj == null)
@@ -195,6 +231,7 @@ namespace CombatManager.Presenter
 
             registeredActorNumber = pv.OwnerActorNr;
             PresentersByActor[registeredActorNumber] = this;
+            CacheCurrentHealth(registeredActorNumber, service?.GetCurrentHealth() ?? 0);
         }
 
         private void UnregisterActorBinding()
@@ -232,7 +269,54 @@ namespace CombatManager.Presenter
 
             service.Initialize(playerObj.transform, statsService);
             RegisterActorBinding(playerObj);
+            MarkHealthDirty();
             NotifyViewUpdate();
+
+            if (!healthSyncBootstrapStarted)
+            {
+                healthSyncBootstrapStarted = true;
+                StartCoroutine(InitializeHealthFromServer());
+            }
+        }
+
+        private IEnumerator InitializeHealthFromServer()
+        {
+            if (healthSyncService == null)
+                yield break;
+
+            bool loadedFromServer = false;
+
+            yield return healthSyncService.InitializeAndFetch(
+                (snapshot) =>
+                {
+                    loadedFromServer = true;
+
+                    if (service == null || !service.IsInitialized())
+                        return;
+
+                    if (snapshot.currentHealth > 0)
+                    {
+                        suppressDirtySync = true;
+                        service.SetCurrentHealth(snapshot.currentHealth);
+                        NotifyViewUpdate();
+                        suppressDirtySync = false;
+                    }
+                    else
+                    {
+                        TryRestoreCurrentHealthFromSavedCharacterData();
+                        NotifyViewUpdate();
+                        MarkHealthDirty();
+                    }
+                },
+                (error) => Debug.LogWarning($"[PlayerHealthPresenter] Health fetch failed: {error}")
+            );
+
+            if (!loadedFromServer)
+            {
+                TryRestoreCurrentHealthFromSavedCharacterData();
+                NotifyViewUpdate();
+                MarkHealthDirty();
+            }
         }
 
         #endregion
@@ -247,6 +331,8 @@ namespace CombatManager.Presenter
             int beforeHealth = service.GetCurrentHealth();
             service.ChangeHealth(amount);
             int afterHealth = service.GetCurrentHealth();
+
+            MarkHealthDirty();
 
             TrySpawnHealthPopup(afterHealth - beforeHealth);
             NotifyViewUpdate();
@@ -276,6 +362,7 @@ namespace CombatManager.Presenter
                 return;
 
             service.RefreshHealthBar();
+            MarkHealthDirty();
             NotifyViewUpdate();
         }
 
@@ -307,6 +394,40 @@ namespace CombatManager.Presenter
             return service != null && service.IsInvulnerable();
         }
 
+        public void PushFinalStateToMaster()
+        {
+            if (service == null || !service.IsInitialized())
+                return;
+
+            if (!IsLocalOwnedPlayer())
+                return;
+
+            string accountId = GetBoundAccountId();
+            int health = service.GetCurrentHealth();
+
+            if (registeredActorNumber > 0)
+                CacheCurrentHealth(registeredActorNumber, health);
+
+            healthSyncService?.SetRuntimeSnapshot(new PlayerHealthSnapshot
+            {
+                currentHealth = health,
+            }, true);
+            healthSyncService?.ForceFlush();
+
+            if (PhotonNetwork.IsMasterClient)
+            {
+                UpdatePlayerDataHealth(accountId, health);
+                healthSyncDirty = false;
+                return;
+            }
+
+            if (!PhotonNetwork.IsConnected)
+                return;
+
+            RaiseHealthSyncEvent(accountId, health);
+            healthSyncDirty = false;
+        }
+
         #endregion
 
         #region View Update Notification
@@ -335,6 +456,195 @@ namespace CombatManager.Presenter
         #region Public API for Other Systems
 
         public IPlayerHealthService GetService() => service;
+
+        public void OnEvent(EventData photonEvent)
+        {
+            if (photonEvent == null || photonEvent.Code != PLAYER_HEALTH_SYNC_EVENT)
+                return;
+
+            if (!PhotonNetwork.IsMasterClient)
+                return;
+
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 2)
+                return;
+
+            string accountId = payload[0] as string ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(accountId) || !TryGetInt(payload, 1, out int currentHealth))
+                return;
+
+            Player sender = PhotonNetwork.CurrentRoom?.GetPlayer(photonEvent.Sender);
+            if (sender == null)
+                return;
+
+            if (sender.CustomProperties.TryGetValue("accountId", out object raw) && raw is string senderAccountId &&
+                !string.IsNullOrWhiteSpace(senderAccountId) && !string.Equals(senderAccountId, accountId, System.StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            CacheCurrentHealth(sender.ActorNumber, currentHealth);
+            UpdatePlayerDataHealth(accountId, currentHealth);
+        }
+
+        private void TryRestoreCurrentHealthFromSavedCharacterData()
+        {
+            if (service == null || !service.IsInitialized() || PlayerDataManager.Instance == null)
+                return;
+
+            string accountId = GetBoundAccountId();
+            if (string.IsNullOrWhiteSpace(accountId))
+                return;
+
+            List<PlayerData> list = PlayerDataManager.Instance.players;
+            int idx = list.FindIndex(p => p.accountId == accountId);
+            if (idx < 0)
+                return;
+
+            PlayerData data = list[idx];
+            if (data.currentHealth <= 0f)
+                return;
+
+            service.SetCurrentHealth(Mathf.RoundToInt(data.currentHealth));
+        }
+
+        private void MarkHealthDirty()
+        {
+            if (suppressDirtySync)
+                return;
+
+            int currentHealth = service != null ? service.GetCurrentHealth() : 0;
+
+            if (healthSyncService != null && healthSyncService.IsInitialized)
+            {
+                healthSyncService.SetRuntimeSnapshot(new PlayerHealthSnapshot
+                {
+                    currentHealth = currentHealth,
+                }, true);
+            }
+
+            if (registeredActorNumber > 0)
+                CacheCurrentHealth(registeredActorNumber, currentHealth);
+
+            if (PhotonNetwork.IsMasterClient)
+            {
+                UpdatePlayerDataHealth(GetBoundAccountId(), currentHealth);
+                return;
+            }
+
+            healthSyncDirty = true;
+        }
+
+        private void TryFlushHealthSync()
+        {
+            if (!healthSyncDirty)
+                return;
+
+            if (service == null || !service.IsInitialized())
+                return;
+
+            if (!IsLocalOwnedPlayer())
+                return;
+
+            int currentHealth = service.GetCurrentHealth();
+            string accountId = GetBoundAccountId();
+            if (string.IsNullOrWhiteSpace(accountId))
+                return;
+
+            if (!PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient)
+            {
+                UpdatePlayerDataHealth(accountId, currentHealth);
+                healthSyncDirty = false;
+                return;
+            }
+
+            if (Time.time < nextHealthSyncAt)
+                return;
+
+            RaiseHealthSyncEvent(accountId, currentHealth);
+            healthSyncDirty = false;
+            nextHealthSyncAt = Time.time + Mathf.Max(0.1f, healthSyncIntervalSeconds);
+        }
+
+        private static void CacheCurrentHealth(int actorNumber, int currentHealth)
+        {
+            if (actorNumber <= 0)
+                return;
+
+            CachedHealthByActor[actorNumber] = Mathf.Max(0, currentHealth);
+        }
+
+        private void RaiseHealthSyncEvent(string accountId, int currentHealth)
+        {
+            if (!PhotonNetwork.IsConnected)
+                return;
+
+            object[] payload = { accountId, Mathf.Max(0, currentHealth) };
+            RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
+            PhotonNetwork.RaiseEvent(PLAYER_HEALTH_SYNC_EVENT, payload, opts, SendOptions.SendReliable);
+        }
+
+        private bool IsLocalOwnedPlayer()
+        {
+            PhotonView pv = model?.playerEntity != null
+                ? model.playerEntity.GetComponent<PhotonView>() ?? model.playerEntity.GetComponentInParent<PhotonView>()
+                : null;
+
+            if (!PhotonNetwork.IsConnected)
+                return pv == null || pv.IsMine;
+
+            return pv != null && pv.IsMine;
+        }
+
+        private string GetBoundAccountId()
+        {
+            if (model?.playerEntity == null)
+                return null;
+
+            PhotonView pv = model.playerEntity.GetComponent<PhotonView>() ?? model.playerEntity.GetComponentInParent<PhotonView>();
+            if (pv?.Owner == null)
+                return null;
+
+            if (pv.Owner.CustomProperties.TryGetValue("accountId", out object raw) && raw is string accountId && !string.IsNullOrWhiteSpace(accountId))
+                return accountId;
+
+            return string.IsNullOrWhiteSpace(pv.Owner.UserId) ? null : pv.Owner.UserId;
+        }
+
+        private static void UpdatePlayerDataHealth(string accountId, int currentHealth)
+        {
+            if (PlayerDataManager.Instance == null || string.IsNullOrWhiteSpace(accountId))
+                return;
+
+            List<PlayerData> list = PlayerDataManager.Instance.players;
+            int idx = list.FindIndex(p => p.accountId == accountId);
+            if (idx < 0)
+                return;
+
+            PlayerData pd = list[idx];
+            pd.currentHealth = Mathf.Max(0, currentHealth);
+            list[idx] = pd;
+        }
+
+        private static bool TryGetInt(object[] payload, int index, out int value)
+        {
+            value = 0;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            if (payload[index] is float f)
+            {
+                value = Mathf.RoundToInt(f);
+                return true;
+            }
+
+            return false;
+        }
 
         #endregion
     }
