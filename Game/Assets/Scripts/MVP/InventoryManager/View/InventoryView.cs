@@ -56,7 +56,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
     public event Action OnSlotEndDrag;
     public event Action<int> OnSlotDrop;
     public event Action<int> OnUseItemRequested;
-    public event Action<int> OnDropItemRequested;
     public event Action OnSortRequested;
     public event Action<int, Vector2> OnSlotHoverEnter;
     public event Action<int> OnSlotHoverExit;

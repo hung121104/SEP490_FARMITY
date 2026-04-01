@@ -13,7 +13,6 @@ public interface IInventoryView
     event Action OnSlotEndDrag;
     event Action<int> OnSlotDrop;
     event Action<int> OnUseItemRequested;
-    event Action<int> OnDropItemRequested;
     event Action OnSortRequested;
     event Action<int, Vector2> OnSlotHoverEnter;
     event Action<int> OnSlotHoverExit;

@@ -248,20 +248,16 @@ public class DroppedItemManagerView : MonoBehaviour
     {
         if (presenter == null) return false;
         
-        var allItems = presenter.GetAllDroppedItems();
-        DroppedItemData data = null;
-        foreach (var item in allItems) { if (item.dropId == dropId) { data = item; break; } }
-        
+        DroppedItemData data = presenter.GetDroppedItem(dropId);
         if (data == null) return false;
-
+        
         var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
         if (inventoryGameView != null)
         {
             var itemData = ItemCatalogService.Instance?.GetItemData(data.itemId);
             if (itemData != null)
             {
-                var invService = inventoryGameView.GetInventoryService();
-                int addable = invService.GetAddableQuantity(itemData, data.quantity, data.quality);
+                int addable = inventoryGameView.GetAddableQuantity(itemData, data.quantity);
 
                 if (addable <= 0)
                 {
@@ -272,13 +268,15 @@ public class DroppedItemManagerView : MonoBehaviour
                 {
                     if (showDebugLogs) Debug.Log($"[DroppedItemManagerView] Partial pickup: can fit {addable} out of {data.quantity}");
                     if (syncManager == null) return false;
-                    syncManager.SendPartialPickupRequest(dropId, addable);
+                    presenter.SendPartialPickupRequest(dropId, addable);
+                    return true;
+                }else{
+                    presenter.RequestPickupItem(dropId);
                     return true;
                 }
             }
         }
 
-        if (presenter == null) return false;
         presenter.RequestPickupItem(dropId);
         return true;
     }
@@ -291,6 +289,12 @@ public class DroppedItemManagerView : MonoBehaviour
     {
         return presenter?.GetAllDroppedItems()
             ?? (IReadOnlyCollection<DroppedItemData>)new List<DroppedItemData>().AsReadOnly();
+    }
+
+    /// <summary>Get a specific dropped item by its ID.</summary>
+    public DroppedItemData GetDroppedItem(string dropId)
+    {
+        return presenter?.GetDroppedItem(dropId);
     }
 
     /// <summary>
@@ -493,7 +497,7 @@ public class DroppedItemManagerView : MonoBehaviour
             return;
         }
 
-        bool added = inventoryGameView.AddItem(data.itemId, amount, data.quality);
+        bool added = inventoryGameView.AddItem(data.itemId, amount);
 
         if (showDebugLogs)
             Debug.Log($"[DroppedItemManagerView] Added to inventory: {data.itemName} x{amount} (quality={data.quality}) — success={added}");

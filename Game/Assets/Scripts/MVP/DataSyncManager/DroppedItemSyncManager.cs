@@ -322,9 +322,9 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
 
         string dropId = System.Text.Encoding.UTF8.GetString(bytes);
 
-        // Check if item still exists (DroppedItemManagerView manages the service)
+        // Check if item still exists
         var manager = DroppedItemManagerView.Instance;
-        if (manager == null || !manager.HasDroppedItem(dropId))
+        if (manager == null || manager.GetDroppedItem(dropId) == null)
         {
             if (showDebugLogs)
                 Debug.Log($"[DroppedItemSync] Master: PICKUP_REQUEST for '{dropId}' — item not found (race condition), ignoring");
@@ -360,18 +360,14 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
         int amount = BitConverter.ToInt32(bytes, offset);
 
         var manager = DroppedItemManagerView.Instance;
-        if (manager == null || !manager.HasDroppedItem(dropId))
+        DroppedItemData targetItem = manager?.GetDroppedItem(dropId);
+
+        if (targetItem == null)
         {
             if (showDebugLogs)
                 Debug.Log($"[DroppedItemSync] Master: PARTIAL_PICKUP for '{dropId}' not found, ignoring");
             return;
         }
-
-        var itemData = DroppedItemManagerView.Instance.GetAllDroppedItems();
-        DroppedItemData targetItem = null;
-        foreach (var i in itemData) { if (i.dropId == dropId) { targetItem = i; break; } }
-        
-        if (targetItem == null) return;
 
         if (amount >= targetItem.quantity)
         {
