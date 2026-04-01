@@ -106,7 +106,6 @@ public class InventoryPresenter
         view.OnSlotEndDrag += HandleSlotEndDrag;
         view.OnSlotDrop += HandleSlotDrop;
         view.OnUseItemRequested += HandleUseItem;
-        view.OnDropItemRequested += HandleDropItem;
         view.OnSortRequested += HandleSort;
         view.OnSlotHoverEnter += HandleSlotHoverEnter;
         view.OnSlotHoverExit += HandleSlotHoverExit;
@@ -121,7 +120,6 @@ public class InventoryPresenter
         view.OnSlotEndDrag -= HandleSlotEndDrag;
         view.OnSlotDrop -= HandleSlotDrop;
         view.OnUseItemRequested -= HandleUseItem;
-        view.OnDropItemRequested -= HandleDropItem;
         view.OnSortRequested -= HandleSort;
         view.OnSlotHoverEnter -= HandleSlotHoverEnter;
         view.OnSlotHoverExit -= HandleSlotHoverExit;
