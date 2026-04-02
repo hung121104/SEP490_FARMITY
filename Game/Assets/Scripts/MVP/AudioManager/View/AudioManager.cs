@@ -62,6 +62,7 @@ public class AudioManager : MonoBehaviour
         if (soundLibrary != null) soundLibrary.Init();
         InitPool();
         InitUISource();
+        LoadSavedVolumes();
     }
 
     #region Public API
@@ -222,6 +223,15 @@ public class AudioManager : MonoBehaviour
     private void LogPlay(SoundId id, Vector3 pos)
     {
         if (showDebugLogs) Debug.Log($"[AudioManager] Play {id} @ {pos}");
+    }
+
+    /// <summary>Restores volume levels saved by AudioSettingsView on the previous session.</summary>
+    private void LoadSavedVolumes()
+    {
+        SetMasterVolume(PlayerPrefs.GetFloat(AudioSettingsView.KEY_MASTER,  1f));
+        SetSFXVolume(PlayerPrefs.GetFloat(AudioSettingsView.KEY_SFX,        1f));
+        SetUIVolume(PlayerPrefs.GetFloat(AudioSettingsView.KEY_UI,          1f));
+        SetAmbientVolume(PlayerPrefs.GetFloat(AudioSettingsView.KEY_AMBIENT, 1f));
     }
 
     #endregion
