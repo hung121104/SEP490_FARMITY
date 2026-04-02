@@ -567,14 +567,21 @@ public class ChestPresenter
         var itemModel = service.GetItemAtSlot(slotIndex);
         if (itemModel == null || itemDetailView == null) return;
 
-        HideCurrentItemDetail();
-
         currentTooltipSlot = slotIndex;
         tooltipFromChest = isChestSlot;
 
         IItemService itemService = new ItemService(itemModel);
-        currentItemPresenter = new ItemPresenter(itemModel, itemService);
-        currentItemPresenter.SetView(itemDetailView);
+
+        if (currentItemPresenter == null)
+        {
+            currentItemPresenter = new ItemPresenter(itemModel, itemService);
+            currentItemPresenter.SetView(itemDetailView);
+        }
+        else
+        {
+            currentItemPresenter.UpdateModel(itemModel, itemService);
+        }
+
         currentItemPresenter.ShowItemDetailsAtPosition(screenPosition);
     }
 
