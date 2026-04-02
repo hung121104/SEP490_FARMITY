@@ -8,6 +8,8 @@ using Newtonsoft.Json;
 
 public class LoadPlayerData : MonoBehaviourPunCallbacks
 {
+    private const string TRACE = "[HPTRACE]";
+
     void Start()
     {
         StartCoroutine(WaitAndApplyAllPositions());
@@ -92,6 +94,10 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
         targetView.RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
         Debug.Log($"[LoadPlayerData] Applied position for joining player '{playerId}': {loadedPos}");
 
+        int restoredHealth = Mathf.Max(0, Mathf.RoundToInt(data.currentHealth));
+        targetView.RPC("RPC_RestoreHealthFromMaster", targetView.Owner, restoredHealth);
+        Debug.Log($"{TRACE} [LoadPlayerData] Sent health restore RPC to joining player '{playerId}' health={restoredHealth}");
+
         // Restore saved appearance via Custom Properties so all clients see it
         var appearance = targetView.GetComponent<PlayerAppearanceSync>();
         if (appearance != null)
@@ -152,6 +158,10 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
 
             view.RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
             Debug.Log($"[LoadPlayerData] Synced position for {userId}: {loadedPos}");
+
+            int restoredHealth = Mathf.Max(0, Mathf.RoundToInt(data.currentHealth));
+            view.RPC("RPC_RestoreHealthFromMaster", view.Owner, restoredHealth);
+            Debug.Log($"{TRACE} [LoadPlayerData] Sent health restore RPC to '{userId}' health={restoredHealth}");
 
             // Restore saved appearance for this player
             var appearanceSync = player.GetComponent<PlayerAppearanceSync>();
@@ -243,6 +253,18 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
             Vector3 loadedPos = new Vector3(myEntry.positionX, myEntry.positionY, localPlayer.transform.position.z);
             localPlayer.GetComponent<PhotonView>().RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
             Debug.Log($"[LoadPlayerData] Self-loaded position for '{accountId}': {loadedPos}");
+
+            var healthPresenter = localPlayer.GetComponent<CombatManager.Presenter.PlayerHealthPresenter>();
+            int restoredHealth = Mathf.Max(0, Mathf.RoundToInt(myEntry.currentHealth));
+            if (healthPresenter != null && healthPresenter.GetService() != null)
+            {
+                healthPresenter.GetService().SetCurrentHealth(restoredHealth);
+                Debug.Log($"{TRACE} [LoadPlayerData] Self-loaded health for '{accountId}' from world API: {restoredHealth}");
+            }
+            else
+            {
+                Debug.LogWarning($"{TRACE} [LoadPlayerData] Could not self-apply health for '{accountId}' (presenter/service missing). expectedHealth={restoredHealth}");
+            }
 
             // Restore saved appearance — broadcast via Custom Properties
             var appearance = localPlayer.GetComponent<PlayerAppearanceSync>();

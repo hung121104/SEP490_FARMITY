@@ -37,6 +37,8 @@ using UnityEngine;
 /// </summary>
 public class WorldSaveManager : MonoBehaviourPunCallbacks
 {
+    private const string TRACE = "[HPTRACE]";
+
     // ──────────────────────────────────────────────────── Inspector
 
     [Header("Timing")]
@@ -180,6 +182,17 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             payload,
             (success, _) => saved = success
         );
+
+        if (payload.characters != null && ShowDebugLogs)
+        {
+            foreach (var charUpdate in payload.characters)
+            {
+                if (string.IsNullOrEmpty(charUpdate.accountId) || !charUpdate.currentHealth.HasValue)
+                    continue;
+
+                Debug.Log($"{TRACE} [WorldSave] HTTP result={(saved ? "success" : "failed")} accountId='{charUpdate.accountId}' persistedHealthCandidate={charUpdate.currentHealth.Value}");
+            }
+        }
 
         if (saved)
         {
@@ -360,12 +373,20 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             };
 
             if (CombatManager.Presenter.PlayerHealthPresenter.TryGetCachedHealthForActor(pv.OwnerActorNr, out int currentHealth))
+            {
                 charUpdate.currentHealth = currentHealth;
+                if (ShowDebugLogs)
+                    Debug.Log($"{TRACE} [WorldSave] BuildPayload live player accountId='{accountId}' actor={pv.OwnerActorNr} cachedHealth={currentHealth}");
+            }
             else if (PlayerDataManager.Instance != null)
             {
                 int pdIndex = PlayerDataManager.Instance.players.FindIndex(p => p.accountId == accountId);
                 if (pdIndex >= 0)
+                {
                     charUpdate.currentHealth = PlayerDataManager.Instance.players[pdIndex].currentHealth;
+                    if (ShowDebugLogs)
+                        Debug.Log($"{TRACE} [WorldSave] BuildPayload live player accountId='{accountId}' using PlayerData health={charUpdate.currentHealth}");
+                }
             }
 
             // Include appearance configIds if PlayerAppearanceSync is present
@@ -427,6 +448,8 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     viableStamina  = pd.viableStamina,
                     currentHealth  = pd.currentHealth,
                 };
+                if (ShowDebugLogs)
+                    Debug.Log($"{TRACE} [WorldSave] BuildPayload fallback accountId='{pd.accountId}' health={pd.currentHealth}");
                 if (pd.regenBoostRemaining > 0f)
                 {
                     fallback.regenBoostMultiplier = pd.regenBoostMultiplier;

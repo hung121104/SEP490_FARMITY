@@ -303,66 +303,6 @@ export class CharacterService implements OnModuleInit {
     };
   }
 
-  async getCharacterHealth(
-    worldId: string | Types.ObjectId,
-    accountId: string | Types.ObjectId,
-  ): Promise<{
-    worldId: string;
-    accountId: string;
-    currentHealth: number;
-  }> {
-    const worldOid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
-    const accountOid = typeof accountId === 'string' ? new Types.ObjectId(accountId) : accountId;
-
-    const character = await this.characterModel
-      .findOne({ worldId: worldOid, accountId: accountOid })
-      .lean()
-      .exec();
-
-    return {
-      worldId: worldOid.toString(),
-      accountId: accountOid.toString(),
-      currentHealth: Math.max(0, Number(character?.currentHealth ?? 0)),
-    };
-  }
-
-  async updateCharacterHealth(
-    worldId: string | Types.ObjectId,
-    accountId: string | Types.ObjectId,
-    currentHealth: number,
-  ): Promise<{
-    worldId: string;
-    accountId: string;
-    currentHealth: number;
-  }> {
-    const worldOid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
-    const accountOid = typeof accountId === 'string' ? new Types.ObjectId(accountId) : accountId;
-    const normalizedCurrentHealth = Math.max(0, Number(currentHealth || 0));
-
-    await this.characterModel.findOneAndUpdate(
-      { worldId: worldOid, accountId: accountOid },
-      {
-        $set: {
-          currentHealth: normalizedCurrentHealth,
-        },
-        $setOnInsert: {
-          worldId: worldOid,
-          accountId: accountOid,
-          positionX: 0,
-          positionY: 0,
-          sectionIndex: 0,
-        },
-      },
-      { upsert: true, new: true },
-    );
-
-    return {
-      worldId: worldOid.toString(),
-      accountId: accountOid.toString(),
-      currentHealth: normalizedCurrentHealth,
-    };
-  }
-
   // ────────────────────────────────────────────────────────────────────────────
   //  applyInventoryDeltas
   //

@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class StaminaView : MonoBehaviourPun
 {
+    private const string TRACE = "[HPTRACE]";
+
     [Header("Core")]
     [SerializeField] private float maxStamina = 200f;
     [SerializeField] private float passiveDecayFloorPercent = 0.5f;
@@ -354,5 +356,37 @@ public class StaminaView : MonoBehaviourPun
             }
         }
         return null;
+    }
+
+    [PunRPC]
+    private void RPC_RestoreHealthFromMaster(int restoredHealth)
+    {
+        if (!photonView.IsMine)
+            return;
+
+        int normalized = Mathf.Max(0, restoredHealth);
+        Debug.Log($"{TRACE} [StaminaView] RPC_RestoreHealthFromMaster received health={normalized}");
+        StartCoroutine(ApplyRestoredHealthWhenReady(normalized));
+    }
+
+    private System.Collections.IEnumerator ApplyRestoredHealthWhenReady(int restoredHealth)
+    {
+        float deadline = Time.realtimeSinceStartup + 10f;
+
+        while (Time.realtimeSinceStartup < deadline)
+        {
+            var presenter = CombatManager.Presenter.PlayerHealthPresenter.FindLocal();
+            var healthService = presenter?.GetService();
+            if (healthService != null && healthService.IsInitialized())
+            {
+                healthService.SetCurrentHealth(restoredHealth);
+                Debug.Log($"{TRACE} [StaminaView] Applied restored health to local presenter health={restoredHealth}");
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        Debug.LogWarning($"{TRACE} [StaminaView] Timed out waiting to apply restored health={restoredHealth}");
     }
 }

@@ -18,6 +18,7 @@ namespace CombatManager.Presenter
     public class PlayerHealthPresenter : MonoBehaviour, IOnEventCallback
     {
         private const byte PLAYER_HEALTH_SYNC_EVENT = 176;
+        private const string TRACE = "[HPTRACE]";
 
         [Header("Model")]
         [SerializeField] private PlayerHealthModel model = new PlayerHealthModel();
@@ -27,18 +28,22 @@ namespace CombatManager.Presenter
 
         private IPlayerHealthService service;
         private IStatsService statsService;
-        private IPlayerHealthSyncService healthSyncService;
         private bool suppressDirtySync;
-        private bool healthSyncBootstrapStarted;
+        private Coroutine deferredRestoreCoroutine;
+        private bool hasAppliedInitialRestore;
 
         private static readonly Dictionary<int, PlayerHealthPresenter> PresentersByActor = new Dictionary<int, PlayerHealthPresenter>();
         private static readonly Dictionary<int, int> CachedHealthByActor = new Dictionary<int, int>();
         private int registeredActorNumber = -1;
         private bool healthSyncDirty;
         private float nextHealthSyncAt;
+        private bool hasPendingRpcRestoreHealth;
+        private int pendingRpcRestoreHealth;
 
         [Header("Health Sync")]
         [SerializeField] private float healthSyncIntervalSeconds = 0.4f;
+        [SerializeField] private float deferredRestoreMaxSeconds = 8f;
+        [SerializeField] private float deferredRestoreRetryIntervalSeconds = 0.25f;
 
         #region Unity Lifecycle
 
@@ -50,15 +55,21 @@ namespace CombatManager.Presenter
         private void OnEnable()
         {
             PlayerRegistry.OnLocalPlayerSpawned += HandleLocalPlayerSpawned;
+            WorldDataBootstrapper.OnWorldDataReady += HandleWorldDataReady;
             PhotonNetwork.AddCallbackTarget(this);
         }
 
         private void OnDisable()
         {
             PushFinalStateToMaster();
-            healthSyncService?.ForceFlush();
             PhotonNetwork.RemoveCallbackTarget(this);
             PlayerRegistry.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
+            WorldDataBootstrapper.OnWorldDataReady -= HandleWorldDataReady;
+            if (deferredRestoreCoroutine != null)
+            {
+                StopCoroutine(deferredRestoreCoroutine);
+                deferredRestoreCoroutine = null;
+            }
             UnregisterActorBinding();
         }
 
@@ -108,11 +119,6 @@ namespace CombatManager.Presenter
                 enabled = false;
                 return;
             }
-
-            PlayerHealthSyncService syncComponent = GetComponent<PlayerHealthSyncService>();
-            if (syncComponent == null)
-                syncComponent = gameObject.AddComponent<PlayerHealthSyncService>();
-            healthSyncService = syncComponent;
 
             // Find local player entity
             GameObject playerObj = FindLocalPlayerEntity();
@@ -268,55 +274,73 @@ namespace CombatManager.Presenter
                 service = new PlayerHealthService(model);
 
             service.Initialize(playerObj.transform, statsService);
+
+            if (hasPendingRpcRestoreHealth)
+            {
+                Debug.Log($"{TRACE} [PlayerHealthPresenter] Applying pending RPC restore health={pendingRpcRestoreHealth}");
+                suppressDirtySync = true;
+                service.SetCurrentHealth(Mathf.Max(0, pendingRpcRestoreHealth));
+                suppressDirtySync = false;
+                hasPendingRpcRestoreHealth = false;
+                hasAppliedInitialRestore = true;
+            }
+
             RegisterActorBinding(playerObj);
+            bool restored = TryRestoreCurrentHealthFromSavedCharacterData();
+            if (!restored)
+                ScheduleDeferredRestore("bind");
             MarkHealthDirty();
             NotifyViewUpdate();
-
-            if (!healthSyncBootstrapStarted)
-            {
-                healthSyncBootstrapStarted = true;
-                StartCoroutine(InitializeHealthFromServer());
-            }
         }
 
-        private IEnumerator InitializeHealthFromServer()
+        private void HandleWorldDataReady()
         {
-            if (healthSyncService == null)
-                yield break;
+            if (service == null || !service.IsInitialized() || hasAppliedInitialRestore)
+                return;
 
-            bool loadedFromServer = false;
-
-            yield return healthSyncService.InitializeAndFetch(
-                (snapshot) =>
-                {
-                    loadedFromServer = true;
-
-                    if (service == null || !service.IsInitialized())
-                        return;
-
-                    if (snapshot.currentHealth > 0)
-                    {
-                        suppressDirtySync = true;
-                        service.SetCurrentHealth(snapshot.currentHealth);
-                        NotifyViewUpdate();
-                        suppressDirtySync = false;
-                    }
-                    else
-                    {
-                        TryRestoreCurrentHealthFromSavedCharacterData();
-                        NotifyViewUpdate();
-                        MarkHealthDirty();
-                    }
-                },
-                (error) => Debug.LogWarning($"[PlayerHealthPresenter] Health fetch failed: {error}")
-            );
-
-            if (!loadedFromServer)
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] WorldDataReady received. Retrying health restore.");
+            if (TryRestoreCurrentHealthFromSavedCharacterData())
             {
-                TryRestoreCurrentHealthFromSavedCharacterData();
+                hasAppliedInitialRestore = true;
                 NotifyViewUpdate();
                 MarkHealthDirty();
+                return;
             }
+
+            ScheduleDeferredRestore("world-data-ready-event");
+        }
+
+        private void ScheduleDeferredRestore(string reason)
+        {
+            if (hasAppliedInitialRestore || deferredRestoreCoroutine != null)
+                return;
+
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] Scheduling deferred restore. reason={reason}");
+            deferredRestoreCoroutine = StartCoroutine(DeferredRestoreHealthFromPlayerData(reason));
+        }
+
+        private IEnumerator DeferredRestoreHealthFromPlayerData(string reason)
+        {
+            float deadline = Time.realtimeSinceStartup + Mathf.Max(1f, deferredRestoreMaxSeconds);
+            float retryDelay = Mathf.Max(0.05f, deferredRestoreRetryIntervalSeconds);
+
+            while (Time.realtimeSinceStartup < deadline)
+            {
+                if (TryRestoreCurrentHealthFromSavedCharacterData())
+                {
+                    hasAppliedInitialRestore = true;
+                    Debug.Log($"{TRACE} [PlayerHealthPresenter] Deferred restore success. reason={reason}");
+                    NotifyViewUpdate();
+                    MarkHealthDirty();
+                    deferredRestoreCoroutine = null;
+                    yield break;
+                }
+
+                yield return new WaitForSeconds(retryDelay);
+            }
+
+            Debug.LogWarning($"{TRACE} [PlayerHealthPresenter] Deferred restore timed out. reason={reason}");
+            deferredRestoreCoroutine = null;
         }
 
         #endregion
@@ -404,15 +428,10 @@ namespace CombatManager.Presenter
 
             string accountId = GetBoundAccountId();
             int health = service.GetCurrentHealth();
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] PushFinalStateToMaster accountId='{accountId}' health={health} isMaster={PhotonNetwork.IsMasterClient}");
 
             if (registeredActorNumber > 0)
                 CacheCurrentHealth(registeredActorNumber, health);
-
-            healthSyncService?.SetRuntimeSnapshot(new PlayerHealthSnapshot
-            {
-                currentHealth = health,
-            }, true);
-            healthSyncService?.ForceFlush();
 
             if (PhotonNetwork.IsMasterClient)
             {
@@ -472,6 +491,8 @@ namespace CombatManager.Presenter
             if (string.IsNullOrWhiteSpace(accountId) || !TryGetInt(payload, 1, out int currentHealth))
                 return;
 
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] Master received health event senderActor={photonEvent.Sender} accountId='{accountId}' health={currentHealth}");
+
             Player sender = PhotonNetwork.CurrentRoom?.GetPlayer(photonEvent.Sender);
             if (sender == null)
                 return;
@@ -486,25 +507,66 @@ namespace CombatManager.Presenter
             UpdatePlayerDataHealth(accountId, currentHealth);
         }
 
-        private void TryRestoreCurrentHealthFromSavedCharacterData()
+        [PunRPC]
+        private void RPC_RestoreHealthFromMaster(int restoredHealth)
+        {
+            int normalized = Mathf.Max(0, restoredHealth);
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] RPC_RestoreHealthFromMaster received health={normalized} isMine={IsLocalOwnedPlayer()}");
+
+            if (!IsLocalOwnedPlayer())
+                return;
+
+            if (service == null || !service.IsInitialized())
+            {
+                hasPendingRpcRestoreHealth = true;
+                pendingRpcRestoreHealth = normalized;
+                Debug.Log($"{TRACE} [PlayerHealthPresenter] Service not ready; queued RPC health restore={normalized}");
+                return;
+            }
+
+            suppressDirtySync = true;
+            service.SetCurrentHealth(normalized);
+            suppressDirtySync = false;
+            hasAppliedInitialRestore = true;
+            NotifyViewUpdate();
+            MarkHealthDirty();
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] RPC health restore applied health={normalized}");
+        }
+
+        private bool TryRestoreCurrentHealthFromSavedCharacterData()
         {
             if (service == null || !service.IsInitialized() || PlayerDataManager.Instance == null)
-                return;
+            {
+                Debug.LogWarning($"{TRACE} [PlayerHealthPresenter] Fallback skipped: service initialized={service != null && service.IsInitialized()}, hasPlayerDataManager={PlayerDataManager.Instance != null}");
+                return false;
+            }
 
             string accountId = GetBoundAccountId();
             if (string.IsNullOrWhiteSpace(accountId))
-                return;
+            {
+                Debug.LogWarning($"{TRACE} [PlayerHealthPresenter] Fallback skipped: accountId missing.");
+                return false;
+            }
 
             List<PlayerData> list = PlayerDataManager.Instance.players;
             int idx = list.FindIndex(p => p.accountId == accountId);
             if (idx < 0)
-                return;
+            {
+                Debug.LogWarning($"{TRACE} [PlayerHealthPresenter] Fallback skipped: accountId='{accountId}' not found in PlayerDataManager.");
+                return false;
+            }
 
             PlayerData data = list[idx];
             if (data.currentHealth <= 0f)
-                return;
+            {
+                Debug.LogWarning($"{TRACE} [PlayerHealthPresenter] Fallback found accountId='{accountId}' but currentHealth={data.currentHealth} (<=0), keeping current runtime value={service.GetCurrentHealth()}.");
+                return false;
+            }
 
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] Fallback applying PlayerData currentHealth={data.currentHealth} for accountId='{accountId}'.");
             service.SetCurrentHealth(Mathf.RoundToInt(data.currentHealth));
+            hasAppliedInitialRestore = true;
+            return true;
         }
 
         private void MarkHealthDirty()
@@ -513,13 +575,13 @@ namespace CombatManager.Presenter
                 return;
 
             int currentHealth = service != null ? service.GetCurrentHealth() : 0;
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] MarkHealthDirty currentHealth={currentHealth}, isMaster={PhotonNetwork.IsMasterClient}");
 
-            if (healthSyncService != null && healthSyncService.IsInitialized)
+            // Non-host clients must not publish startup max-health before restore is applied.
+            if (!PhotonNetwork.IsMasterClient && !hasAppliedInitialRestore)
             {
-                healthSyncService.SetRuntimeSnapshot(new PlayerHealthSnapshot
-                {
-                    currentHealth = currentHealth,
-                }, true);
+                Debug.Log($"{TRACE} [PlayerHealthPresenter] MarkHealthDirty suppressed on client until initial restore completes. currentHealth={currentHealth}");
+                return;
             }
 
             if (registeredActorNumber > 0)
@@ -560,6 +622,7 @@ namespace CombatManager.Presenter
             if (Time.time < nextHealthSyncAt)
                 return;
 
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] Client relay send -> master accountId='{accountId}' health={currentHealth}");
             RaiseHealthSyncEvent(accountId, currentHealth);
             healthSyncDirty = false;
             nextHealthSyncAt = Time.time + Mathf.Max(0.1f, healthSyncIntervalSeconds);
@@ -613,16 +676,23 @@ namespace CombatManager.Presenter
         private static void UpdatePlayerDataHealth(string accountId, int currentHealth)
         {
             if (PlayerDataManager.Instance == null || string.IsNullOrWhiteSpace(accountId))
+            {
+                Debug.LogWarning($"{TRACE} [PlayerHealthPresenter] UpdatePlayerDataHealth skipped: hasPlayerDataManager={PlayerDataManager.Instance != null}, accountId='{accountId}'");
                 return;
+            }
 
             List<PlayerData> list = PlayerDataManager.Instance.players;
             int idx = list.FindIndex(p => p.accountId == accountId);
             if (idx < 0)
+            {
+                Debug.LogWarning($"{TRACE} [PlayerHealthPresenter] UpdatePlayerDataHealth skipped: accountId='{accountId}' not found in PlayerDataManager.");
                 return;
+            }
 
             PlayerData pd = list[idx];
             pd.currentHealth = Mathf.Max(0, currentHealth);
             list[idx] = pd;
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] UpdatePlayerDataHealth applied accountId='{accountId}' health={pd.currentHealth}");
         }
 
         private static bool TryGetInt(object[] payload, int index, out int value)

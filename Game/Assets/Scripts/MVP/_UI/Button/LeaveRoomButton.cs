@@ -12,6 +12,8 @@ using UnityEngine.UI;
 /// </summary>
 public class LeaveRoomButton : MonoBehaviourPunCallbacks
 {
+    private const string TRACE = "[HPTRACE]";
+
     [SerializeField] private Button leaveButton;
 
     private void Awake()
@@ -63,19 +65,6 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
                 Debug.LogWarning("[LeaveRoomButton] Progression flush timed out — continuing leave flow.");
         }
 
-        IPlayerHealthSyncService healthSync = FindObjectOfType<PlayerHealthSyncService>();
-        if (healthSync != null)
-        {
-            bool healthSaved = false;
-            yield return healthSync.FlushNow(
-                timeoutSeconds: 6f,
-                onCompleted: (success) => healthSaved = success
-            );
-
-            if (!healthSaved)
-                Debug.LogWarning("[LeaveRoomButton] Health flush timed out — continuing leave flow.");
-        }
-
         // Non-master: push final position + stamina state to master via RPC
         // so it can be saved even if this GO is destroyed before BuildPayload runs.
         if (!PhotonNetwork.IsMasterClient)
@@ -84,6 +73,7 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
             stamina?.PushFinalStateToMaster();
 
             var health = CombatManager.Presenter.PlayerHealthPresenter.FindLocal();
+            Debug.Log($"{TRACE} [LeaveRoomButton] Client leaving: pushing final stamina/health to master.");
             health?.PushFinalStateToMaster();
             // Wait one frame so the RPC is flushed to the master before leaving.
             yield return null;
@@ -92,6 +82,7 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
         // Master client: trigger a save and wait for it to finish
         if (PhotonNetwork.IsMasterClient && WorldSaveManager.Instance != null)
         {
+            Debug.Log($"{TRACE} [LeaveRoomButton] Master leaving: ForceSave before LeaveRoom.");
             WorldSaveManager.Instance.ForceSave();
 
             // Wait until the save coroutine finishes (or 10 s timeout)
@@ -108,7 +99,10 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
             if (elapsed >= timeout)
                 Debug.LogWarning("[LeaveRoomButton] Save timed out — leaving room anyway.");
             else
+            {
+                Debug.Log($"{TRACE} [LeaveRoomButton] Master leave ForceSave completed.");
                 Debug.Log("[LeaveRoomButton] Save complete. Leaving room.");
+            }
         }
 
         PhotonNetwork.LeaveRoom();

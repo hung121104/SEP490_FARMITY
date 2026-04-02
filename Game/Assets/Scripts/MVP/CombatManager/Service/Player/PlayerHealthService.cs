@@ -10,6 +10,8 @@ namespace CombatManager.Service
     /// </summary>
     public class PlayerHealthService : IPlayerHealthService
     {
+        private const string TRACE = "[HPTRACE]";
+
         private PlayerHealthModel model;
         private IStatsService statsService;
 
@@ -37,6 +39,8 @@ namespace CombatManager.Service
             model.deathHandled = false;
             model.lastDamageTime = -999f;
             model.regenAccumulator = 0f;
+
+            Debug.Log($"{TRACE} [PlayerHealthService] Initialize set currentHealth=maxHealth={maxHealth} before restore/fetch phase.");
 
             // Update StatsService's current health
             statsService.SetCurrentHealth(maxHealth);
