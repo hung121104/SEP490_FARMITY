@@ -9,7 +9,7 @@ public interface IInventoryService
     event Action<ItemModel, int> OnItemAdded;
     event Action<ItemModel, int> OnItemRemoved;
     event Action<int, int>       OnItemsMoved;
-    event Action<int, int>       OnQuantityChanged;
+    event Action<int>            OnSlotChanged;
     event Action                 OnInventoryChanged;
 
     // Core Operations

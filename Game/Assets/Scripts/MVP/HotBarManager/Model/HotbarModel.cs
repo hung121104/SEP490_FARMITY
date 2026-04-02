@@ -66,6 +66,16 @@ public class HotbarModel
         return hotbarStartIndex + localIndex;
     }
 
+    /// <summary>
+    /// Converts an inventory slot index to a hotbar local index.
+    /// Returns false if the slot is outside the hotbar range.
+    /// </summary>
+    public bool TryGetLocalIndex(int inventoryIndex, out int localIndex)
+    {
+        localIndex = inventoryIndex - hotbarStartIndex;
+        return localIndex >= 0 && localIndex < hotbarSize;
+    }
+
     public void RefreshHotbar()
     {
         OnHotbarRefreshed?.Invoke();

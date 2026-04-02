@@ -135,7 +135,7 @@ public class InventoryPresenter
         service.OnItemAdded += HandleItemAdded;
         service.OnItemRemoved += HandleItemRemoved;
         service.OnItemsMoved += HandleItemsMoved;
-        service.OnQuantityChanged += HandleQuantityChanged;
+        service.OnSlotChanged += HandleSlotChanged;
         service.OnInventoryChanged += HandleInventoryChanged;
     }
 
@@ -144,7 +144,7 @@ public class InventoryPresenter
         service.OnItemAdded -= HandleItemAdded;
         service.OnItemRemoved -= HandleItemRemoved;
         service.OnItemsMoved -= HandleItemsMoved;
-        service.OnQuantityChanged -= HandleQuantityChanged;
+        service.OnSlotChanged -= HandleSlotChanged;
         service.OnInventoryChanged -= HandleInventoryChanged;
     }
 
@@ -173,7 +173,7 @@ public class InventoryPresenter
         view?.UpdateSlot(toSlot, toItem);
     }
 
-    private void HandleQuantityChanged(int slotIndex, int newQuantity)
+    private void HandleSlotChanged(int slotIndex)
     {
         var item = service.GetItemAtSlot(slotIndex);
         view?.UpdateSlot(slotIndex, item);
@@ -287,7 +287,8 @@ public class InventoryPresenter
     {
         ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
-        if (item != null && !item.IsQuestItem)
+        // if (item != null && !item.IsQuestItem)
+        if (item != null)
         {
             OnItemDropped?.Invoke(item);
             // Remove the entire stack from inventory (drop whole stack to world)
@@ -331,11 +332,11 @@ public class InventoryPresenter
         }
 
         // Prevent deletion of quest items and artifacts
-        if (item.IsQuestItem)
-        {
-            Debug.LogWarning($"[InventoryPresenter] Cannot delete quest item: {item.ItemName}");
-            return;
-        }
+        // if (item.IsQuestItem)
+        // {
+        //     Debug.LogWarning($"[InventoryPresenter] Cannot delete quest item: {item.ItemName}");
+        //     return;
+        // }
 
         if (item.IsArtifact)
         {
