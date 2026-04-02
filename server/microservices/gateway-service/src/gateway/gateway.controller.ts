@@ -23,6 +23,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor, FileFieldsInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { firstValueFrom } from 'rxjs';
+import { CatalogSseService, CatalogChange } from './catalog-sse.service';
 import { Response, Request } from 'express';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
@@ -45,23 +46,36 @@ import { GatewayCloudinaryService } from './cloudinary.service';
 import { HttpStatus } from '@nestjs/common';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
+import { UpdateSkillLoadoutDto } from './dto/update-skill-loadout.dto';
 import {
   UpdateWorldBlacklistDto,
   WorldBlacklistQueryDto,
 } from './dto/world-blacklist.dto';
 import { CreateQuestDto } from './dto/create-quest.dto';
 import { UpdateQuestDto } from './dto/update-quest.dto';
+import { GetDashboardAnalyticsQueryDto } from './dto/get-dashboard-analytics-query.dto';
+import { PlayerHeartbeatDto } from './dto/player-heartbeat.dto';
 
 const FERTILIZER_ITEM_TYPE = 14;
 
 @Controller()
 export class GatewayController {
+  private static readonly WORLD_NAME_REGEX = /^[A-Za-z1-9 ]+$/;
+
   constructor(
     @Inject('AUTH_SERVICE') private authClient: ClientProxy,
     @Inject('PLAYER_DATA_SERVICE') private playerDataClient: ClientProxy,
     @Inject('ADMIN_SERVICE') private adminClient: ClientProxy,
     private readonly cloudinaryService: GatewayCloudinaryService,
+    private readonly catalogSseService: CatalogSseService,
   ) {}
+
+  /** Unpack a CatalogChange wrapper from admin-service CUD responses.
+   *  Emits an SSE event and returns only the data payload (preserves API contract). */
+  private unpackCatalogChange(result: CatalogChange): any {
+    this.catalogSseService.emit(result);
+    return result.data;
+  }
 
   /** Extract a well-formed HttpException from an RPC error payload */
   private rpcError(err: any): HttpException {
@@ -159,6 +173,21 @@ export class GatewayController {
     const crossResults = this.parseCrossResults(body.crossResults);
     if (crossResults !== undefined) dto.crossResults = crossResults;
 
+    if (body.damage !== undefined) dto.damage = Number(body.damage);
+    if (body.critChance !== undefined) dto.critChance = Number(body.critChance);
+    if (body.weaponType !== undefined) dto.weaponType = Number(body.weaponType);
+    if (body.tier !== undefined) dto.tier = Number(body.tier);
+    if (body.attackCooldown !== undefined)
+      dto.attackCooldown = Number(body.attackCooldown);
+    if (body.knockbackForce !== undefined)
+      dto.knockbackForce = Number(body.knockbackForce);
+    if (body.projectileSpeed !== undefined)
+      dto.projectileSpeed = Number(body.projectileSpeed);
+    if (body.projectileRange !== undefined)
+      dto.projectileRange = Number(body.projectileRange);
+    if (body.projectileKnockback !== undefined)
+      dto.projectileKnockback = Number(body.projectileKnockback);
+
     return dto;
   }
 
@@ -199,6 +228,89 @@ export class GatewayController {
     const crossResults = this.parseCrossResults(body.crossResults);
     if (crossResults !== undefined) dto.crossResults = crossResults;
 
+    if (body.damage !== undefined) dto.damage = Number(body.damage);
+    if (body.critChance !== undefined) dto.critChance = Number(body.critChance);
+    if (body.weaponType !== undefined) dto.weaponType = Number(body.weaponType);
+    if (body.tier !== undefined) dto.tier = Number(body.tier);
+    if (body.attackCooldown !== undefined)
+      dto.attackCooldown = Number(body.attackCooldown);
+    if (body.knockbackForce !== undefined)
+      dto.knockbackForce = Number(body.knockbackForce);
+    if (body.projectileSpeed !== undefined)
+      dto.projectileSpeed = Number(body.projectileSpeed);
+    if (body.projectileRange !== undefined)
+      dto.projectileRange = Number(body.projectileRange);
+    if (body.projectileKnockback !== undefined)
+      dto.projectileKnockback = Number(body.projectileKnockback);
+
+    return dto;
+  }
+
+  private parseNumericField(value: any): number | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) {
+      throw new BadRequestException(`Invalid numeric value: ${value}`);
+    }
+    return parsed;
+  }
+
+  private buildCreateCombatSkillDto(body: any, iconUrl: string): any {
+    const dto: any = {
+      ...body,
+      iconUrl,
+    };
+
+    const numericFields = [
+      'requiredWeaponType',
+      'cooldown',
+      'skillMultiplier',
+      'projectileSpeed',
+      'projectileRange',
+      'projectileKnockback',
+      'slashVfxDuration',
+      'slashVfxSpawnOffset',
+      'slashVfxPositionOffsetX',
+      'slashVfxPositionOffsetY',
+      'slashKnockbackForce',
+    ];
+
+    for (const field of numericFields) {
+      if (body[field] !== undefined) {
+        dto[field] = this.parseNumericField(body[field]);
+      }
+    }
+
+    return dto;
+  }
+
+  private buildUpdateCombatSkillDto(body: any, iconUrl?: string): any {
+    const dto: any = {
+      ...body,
+    };
+
+    if (iconUrl) dto.iconUrl = iconUrl;
+
+    const numericFields = [
+      'requiredWeaponType',
+      'cooldown',
+      'skillMultiplier',
+      'projectileSpeed',
+      'projectileRange',
+      'projectileKnockback',
+      'slashVfxDuration',
+      'slashVfxSpawnOffset',
+      'slashVfxPositionOffsetX',
+      'slashVfxPositionOffsetY',
+      'slashKnockbackForce',
+    ];
+
+    for (const field of numericFields) {
+      if (body[field] !== undefined) {
+        dto[field] = this.parseNumericField(body[field]);
+      }
+    }
+
     return dto;
   }
 
@@ -207,12 +319,21 @@ export class GatewayController {
     const ownerIdRaw = req['user']?.sub;
     const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
     if (!ownerId) throw new UnauthorizedException('Missing owner');
+
+    const rawWorldName = typeof body?.worldName === 'string' ? body.worldName.trim() : '';
+    if (!rawWorldName) {
+      throw new HttpException('World name cannot be empty.', 400);
+    }
+    if (!GatewayController.WORLD_NAME_REGEX.test(rawWorldName)) {
+      throw new HttpException('World name must contain only alphabet letters and spaces.', 400);
+    }
+
     // forward optional _id for update, otherwise create
     try {
       return await firstValueFrom(
         this.playerDataClient.send('create-world', {
           _id: body._id,
-          worldName: body.worldName,
+          worldName: rawWorldName,
           ownerId,
         }),
       );
@@ -488,6 +609,37 @@ export class GatewayController {
     return req['user'];
   }
 
+  @Post('player-data/heartbeat')
+  async playerHeartbeat(@Req() req: Request, @Body() dto: PlayerHeartbeatDto) {
+    const payload = req['user'];
+    if (!payload?.sid || !payload?.sub) {
+      throw new UnauthorizedException('Missing session context');
+    }
+
+    try {
+      return await firstValueFrom(
+        this.authClient.send('player-heartbeat', {
+          sid: String(payload.sid),
+          sub: String(payload.sub),
+          clientUnixMs: dto?.clientUnixMs,
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Get('admin/analytics/summary')
+  async getAdminAnalyticsSummary(@Query() query: GetDashboardAnalyticsQueryDto) {
+    try {
+      return await firstValueFrom(
+        this.authClient.send('get-dashboard-analytics', query),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   @Post('auth/logout')
   async logout(
     @Headers('authorization') authHeader: string,
@@ -683,9 +835,10 @@ export class GatewayController {
         dto.dropTable = [];
       }
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-resource-config', dto),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -730,9 +883,10 @@ export class GatewayController {
         }
       }
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-resource-config', { resourceId, dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -742,9 +896,10 @@ export class GatewayController {
   @Delete('game-data/resource-configs/:resourceId')
   async deleteResourceConfig(@Param('resourceId') resourceId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-resource-config', { resourceId }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -795,7 +950,8 @@ export class GatewayController {
 
       const dto = this.buildCreateItemDto(body, iconUrl, undefined, structureInteractionSpriteUrl);
 
-      return await firstValueFrom(this.adminClient.send('create-item', dto));
+      const result = await firstValueFrom(this.adminClient.send('create-item', dto));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -888,9 +1044,10 @@ export class GatewayController {
 
       const dto = this.buildUpdateItemDto(body, iconUrl, undefined, structureInteractionSpriteUrl);
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-item', { itemID, dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -901,7 +1058,121 @@ export class GatewayController {
   @Delete('game-data/items/:itemID')
   async deleteItem(@Param('itemID') itemID: string) {
     try {
-      return await firstValueFrom(this.adminClient.send('delete-item', itemID));
+      const result = await firstValueFrom(this.adminClient.send('delete-item', itemID));
+      return this.unpackCatalogChange(result);
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Combat Skills ───────────────────────────────────────────────
+
+  /** GET /game-data/combat-skills/catalog — full catalog { skills: [...] } for Unity client */
+  @Get('game-data/combat-skills/catalog')
+  async getCombatSkillCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-skill-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/combat-skills/all — flat array of all combat skill documents */
+  @Get('game-data/combat-skills/all')
+  async getAllCombatSkills() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-all-combat-skills', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** GET /game-data/combat-skills/by-skill-id/:skillId — find by game-side skillId string */
+  @Get('game-data/combat-skills/by-skill-id/:skillId')
+  async getCombatSkillById(@Param('skillId') skillId: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-skill-by-id', { skillId }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** POST /game-data/combat-skills/create — accepts multipart/form-data with required icon file (admin only) */
+  @Post('game-data/combat-skills/create')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async createCombatSkill(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: any,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'An icon file is required (field name: "icon")',
+      );
+
+    try {
+      const iconUrl = await this.cloudinaryService.uploadFile(
+        file,
+        body.folder || 'skill-icons',
+      );
+      const dto = this.buildCreateCombatSkillDto(body, iconUrl);
+
+      const result = await firstValueFrom(
+        this.adminClient.send('create-combat-skill', dto),
+      );
+      return this.unpackCatalogChange(result);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/combat-skills/:skillId — accepts multipart/form-data; include icon file to replace icon (admin only) */
+  @Put('game-data/combat-skills/:skillId')
+  @UseInterceptors(
+    FileInterceptor('icon', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async updateCombatSkill(
+    @Param('skillId') skillId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() patch: any,
+  ) {
+    try {
+      let iconUrl: string | undefined;
+      if (file) {
+        iconUrl = await this.cloudinaryService.uploadFile(
+          file,
+          patch.folder || 'skill-icons',
+        );
+      }
+
+      const dto = this.buildUpdateCombatSkillDto(patch, iconUrl);
+
+      const result = await firstValueFrom(
+        this.adminClient.send('update-combat-skill', { skillId, ...dto }),
+      );
+      return this.unpackCatalogChange(result);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** DELETE /game-data/combat-skills/:skillId — delete by game-side skillId (admin only) */
+  @Delete('game-data/combat-skills/:skillId')
+  async deleteCombatSkill(@Param('skillId') skillId: string) {
+    try {
+      const result = await firstValueFrom(
+        this.adminClient.send('delete-combat-skill', { skillId }),
+      );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -927,9 +1198,10 @@ export class GatewayController {
       );
       const dto = this.buildCreateItemDto(body, iconUrl, FERTILIZER_ITEM_TYPE);
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-fertilizer', dto),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1004,9 +1276,10 @@ export class GatewayController {
         FERTILIZER_ITEM_TYPE,
       );
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-fertilizer', { itemID, dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1016,9 +1289,10 @@ export class GatewayController {
   @Delete('game-data/fertilizers/:itemID')
   async deleteFertilizer(@Param('itemID') itemID: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-fertilizer', itemID),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1146,7 +1420,8 @@ export class GatewayController {
         }),
       };
 
-      return await firstValueFrom(this.adminClient.send('create-plant', dto));
+      const result = await firstValueFrom(this.adminClient.send('create-plant', dto));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1289,9 +1564,10 @@ export class GatewayController {
           hybridMatureFile.originalname.replace(/\.[^.]+$/, ''),
         );
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-plant', { plantId, dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1302,9 +1578,10 @@ export class GatewayController {
   @Delete('game-data/plants/:plantId')
   async deletePlant(@Param('plantId') plantId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-plant', plantId),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1316,9 +1593,10 @@ export class GatewayController {
   @Post('game-data/crafting-recipes/create')
   async createCraftingRecipe(@Body() body: CreateCraftingRecipeDto) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-crafting-recipe', body),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1380,12 +1658,13 @@ export class GatewayController {
     @Body() body: UpdateCraftingRecipeDto,
   ) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-crafting-recipe', {
           recipeID,
           dto: body,
         }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1396,9 +1675,10 @@ export class GatewayController {
   @Delete('game-data/crafting-recipes/:recipeID')
   async deleteCraftingRecipe(@Param('recipeID') recipeID: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-crafting-recipe', recipeID),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1508,7 +1788,8 @@ export class GatewayController {
   @Post('game-data/achievements/create')
   async createAchievement(@Body() dto: CreateAchievementDto) {
     try {
-      return await firstValueFrom(this.adminClient.send('create-achievement', dto));
+      const result = await firstValueFrom(this.adminClient.send('create-achievement', dto));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1541,9 +1822,10 @@ export class GatewayController {
     @Body() dto: any,
   ) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-achievement', { achievementId, dto }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1553,9 +1835,10 @@ export class GatewayController {
   @Delete('game-data/achievements/:achievementId')
   async deleteAchievement(@Param('achievementId') achievementId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-achievement', achievementId),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1618,6 +1901,50 @@ export class GatewayController {
     }
   }
 
+  /** GET /player-data/combat/skill-loadout?worldId=... — get this player's persisted skill slots for a world */
+  @Get('player-data/combat/skill-loadout')
+  async getSkillLoadout(@Query('worldId') worldId: string, @Req() req: Request) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    if (!worldId) throw new BadRequestException('worldId is required');
+
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('get-character-skill-loadout', {
+          worldId,
+          accountId: String(accountId),
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /player-data/combat/skill-loadout — update this player's persisted skill slots */
+  @Put('player-data/combat/skill-loadout')
+  async updateSkillLoadout(
+    @Body() dto: UpdateSkillLoadoutDto,
+    @Req() req: Request,
+  ) {
+    const accountId = req['user']?.sub;
+    if (!accountId) throw new UnauthorizedException('Missing account');
+    if (!dto?.worldId) throw new BadRequestException('worldId is required');
+
+    try {
+      return await firstValueFrom(
+        this.playerDataClient.send('update-character-skill-loadout', {
+          worldId: dto.worldId,
+          accountId: String(accountId),
+          playerSkillSlotIds: Array.isArray(dto.playerSkillSlotIds)
+            ? dto.playerSkillSlotIds
+            : [],
+        }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
   // ── Skin Catalog (Paper Doll) ──────────────────────────────────────────────
 
   /**
@@ -1667,9 +1994,10 @@ export class GatewayController {
         cellSize: body.cellSize !== undefined ? Number(body.cellSize) : undefined,
         layer: body.layer,
       };
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-skin-config', dto),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1705,9 +2033,10 @@ export class GatewayController {
         );
       }
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-skin-config', { configId, ...patch }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1720,9 +2049,114 @@ export class GatewayController {
   @Delete('game-data/skin-configs/:configId')
   async deleteSkinConfig(@Param('configId') configId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-skin-config', { configId }),
       );
+      return this.unpackCatalogChange(result);
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Combat Catalog ─────────────────────────────────────────────────────────
+
+  /**
+   * GET /game-data/combat-catalogs — public (no auth required).
+   * Query param `type` is optional (e.g. ?type=weapon).
+   */
+  @Get('game-data/combat-catalogs')
+  async getCombatCatalog(@Query('type') type?: string) {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-combat-catalog', { type }),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  /** POST /game-data/combat-catalogs — admin-only (skill_vfx tint configs only). */
+  @Post('game-data/combat-catalogs')
+  async createCombatCatalog(@Body() body: any) {
+    try {
+      const type = (body.type || 'skill_vfx').toString().trim().toLowerCase();
+      if (type !== 'skill_vfx') {
+        throw new BadRequestException(
+          "Combat catalog now supports only type='skill_vfx'.",
+        );
+      }
+
+      const dto = {
+        configId: body.configId,
+        displayName: body.displayName,
+        type,
+        primaryColorHex: body.primaryColorHex,
+        secondaryColorHex: body.secondaryColorHex,
+        colorIntensity:
+          body.colorIntensity !== undefined
+            ? Number(body.colorIntensity)
+            : undefined,
+        tintAlpha:
+          body.tintAlpha !== undefined ? Number(body.tintAlpha) : undefined,
+      };
+
+      const result = await firstValueFrom(
+        this.adminClient.send('create-combat-catalog', dto),
+      );
+      return this.unpackCatalogChange(result);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /** PUT /game-data/combat-catalogs/:configId — admin-only (skill_vfx tint configs only). */
+  @Put('game-data/combat-catalogs/:configId')
+  async updateCombatCatalog(
+    @Param('configId') configId: string,
+    @Body() body: any,
+  ) {
+    try {
+      const patch: Record<string, any> = {};
+      if (body.displayName !== undefined) patch.displayName = body.displayName;
+      if (body.type !== undefined) {
+        const normalizedType = body.type.toString().trim().toLowerCase();
+        if (normalizedType !== 'skill_vfx') {
+          throw new BadRequestException(
+            "Combat catalog now supports only type='skill_vfx'.",
+          );
+        }
+        patch.type = normalizedType;
+      }
+      if (body.primaryColorHex !== undefined)
+        patch.primaryColorHex = body.primaryColorHex;
+      if (body.secondaryColorHex !== undefined)
+        patch.secondaryColorHex = body.secondaryColorHex;
+      if (body.colorIntensity !== undefined)
+        patch.colorIntensity = Number(body.colorIntensity);
+      if (body.tintAlpha !== undefined)
+        patch.tintAlpha = Number(body.tintAlpha);
+
+      const result = await firstValueFrom(
+        this.adminClient.send('update-combat-catalog', { configId, ...patch }),
+      );
+      return this.unpackCatalogChange(result);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw this.rpcError(err);
+    }
+  }
+
+  /**
+   * DELETE /game-data/combat-catalogs/:configId — admin-only.
+   */
+  @Delete('game-data/combat-catalogs/:configId')
+  async deleteCombatCatalog(@Param('configId') configId: string) {
+    try {
+      const result = await firstValueFrom(
+        this.adminClient.send('delete-combat-catalog', { configId }),
+      );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1807,9 +2241,10 @@ export class GatewayController {
         cellSize:      body.cellSize      !== undefined ? Number(body.cellSize)      : undefined,
         description:   body.description,
       };
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('create-material', dto),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1846,9 +2281,10 @@ export class GatewayController {
         );
       }
 
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('update-material', patch),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1861,9 +2297,10 @@ export class GatewayController {
   @Delete('game-data/materials/:materialId')
   async deleteMaterial(@Param('materialId') materialId: string) {
     try {
-      return await firstValueFrom(
+      const result = await firstValueFrom(
         this.adminClient.send('delete-material', { materialId }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1875,7 +2312,8 @@ export class GatewayController {
   @Post('game-data/quests')
   async createQuest(@Body() body: CreateQuestDto) {
     try {
-      return await firstValueFrom(this.playerDataClient.send('create-quest', body));
+      const result = await firstValueFrom(this.adminClient.send('create-quest', body));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1886,7 +2324,7 @@ export class GatewayController {
   @Get('game-data/quests/catalog')
   async getQuestCatalog() {
     try {
-      return await firstValueFrom(this.playerDataClient.send('get-quest-catalog', {}));
+      return await firstValueFrom(this.adminClient.send('get-quest-catalog', {}));
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1896,7 +2334,7 @@ export class GatewayController {
   @Get('game-data/quests/all')
   async getAllQuests() {
     try {
-      return await firstValueFrom(this.playerDataClient.send('get-all-quests', {}));
+      return await firstValueFrom(this.adminClient.send('get-all-quests', {}));
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1906,7 +2344,7 @@ export class GatewayController {
   @Get('game-data/quests/by-quest-id/:questId')
   async getQuestByQuestId(@Param('questId') questId: string) {
     try {
-      return await firstValueFrom(this.playerDataClient.send('get-quest-by-quest-id', questId));
+      return await firstValueFrom(this.adminClient.send('get-quest-by-quest-id', questId));
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1916,7 +2354,7 @@ export class GatewayController {
   @Get('game-data/quests/:id')
   async getQuestById(@Param('id') id: string) {
     try {
-      return await firstValueFrom(this.playerDataClient.send('get-quest-by-id', id));
+      return await firstValueFrom(this.adminClient.send('get-quest-by-id', id));
     } catch (err) {
       throw this.rpcError(err);
     }
@@ -1926,9 +2364,10 @@ export class GatewayController {
   @Put('game-data/quests/:questId')
   async updateQuest(@Param('questId') questId: string, @Body() body: UpdateQuestDto) {
     try {
-      return await firstValueFrom(
-        this.playerDataClient.send('update-quest', { questId, dto: body }),
+      const result = await firstValueFrom(
+        this.adminClient.send('update-quest', { questId, dto: body }),
       );
+      return this.unpackCatalogChange(result);
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw this.rpcError(err);
@@ -1939,7 +2378,8 @@ export class GatewayController {
   @Delete('game-data/quests/:questId')
   async deleteQuest(@Param('questId') questId: string) {
     try {
-      return await firstValueFrom(this.playerDataClient.send('delete-quest', questId));
+      const result = await firstValueFrom(this.adminClient.send('delete-quest', questId));
+      return this.unpackCatalogChange(result);
     } catch (err) {
       throw this.rpcError(err);
     }

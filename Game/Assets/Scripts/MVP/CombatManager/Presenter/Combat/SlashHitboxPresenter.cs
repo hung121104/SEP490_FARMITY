@@ -53,8 +53,6 @@ namespace CombatManager.Presenter
 
             // Start lifecycle
             StartCoroutine(HitboxLifecycle());
-
-            Debug.Log($"[SlashHitboxPresenter] Initialized with damage: {damage}");
         }
 
         #endregion
@@ -80,8 +78,6 @@ namespace CombatManager.Presenter
             // Deactivate and destroy
             service.SetActive(false);
             Destroy(gameObject);
-
-            Debug.Log("[SlashHitboxPresenter] Hitbox destroyed");
         }
 
         #endregion

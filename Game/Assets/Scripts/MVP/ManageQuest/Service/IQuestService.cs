@@ -1,14 +1,16 @@
+using System;
 using System.Collections.Generic;
 
 public interface IQuestService
 {
-    void AcceptQuest(QuestModel quest, IInventoryService inventory);
+    event Action OnQuestUpdated;
+    bool AcceptQuest(QuestModel quest, IInventoryService inventory);
     bool SubmitQuestItems(string questId, IInventoryService inventory);
     QuestModel GetQuest(string questId);
 
     List<QuestModel> GetActiveQuests();
 
-    void UpdateObjective(string objectiveId, int amount);
+    void UpdateObjective(string questId, string objectiveId, int amount);
     void CompleteQuest(string questId);
 
     bool HasQuest(string questId);
@@ -16,6 +18,6 @@ public interface IQuestService
     bool IsQuestActive(string questId);
 
     bool IsQuestCompleted(string questId);
-    void GiveReward(string questId, IInventoryService inventory);
+    void GiveReward(QuestReward reward, IInventoryService inventory);
     bool IsQuestTurnedIn(string questId);
 }

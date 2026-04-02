@@ -50,6 +50,7 @@ public class PlantData
 
     /// <summary>When false, harvest never generates seeds (hybrid only).</summary>
     public bool dropSeeds = false;
+
 }
 
 /// <summary>

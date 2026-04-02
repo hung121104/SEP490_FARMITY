@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.InputSystem;
+using CombatManager.Presenter;
 
 public class HotbarView : MonoBehaviour
 {
@@ -168,7 +169,19 @@ public class HotbarView : MonoBehaviour
     private void OnUseItemPerformed(InputAction.CallbackContext ctx)
     {
         if (!isInitialized) return;
+        if (SkillManagementPresenter.Instance != null && SkillManagementPresenter.Instance.IsPanelOpen()) return;
         if (!enableLeftClick) return;   // suppressed by CropHarvestingView when targeting a crop
+
+        // Left-click is also attack input. If combat mode is active with a weapon selected,
+        // let PlayerAttackPresenter consume the click and skip hotbar item-use.
+        var currentItem = presenter?.GetCurrentItem();
+        if (currentItem?.ItemData is WeaponData &&
+            CombatModePresenter.Instance != null &&
+            CombatModePresenter.Instance.IsCombatModeActive())
+        {
+            return;
+        }
+
         OnUseItemInput?.Invoke();
     }
 

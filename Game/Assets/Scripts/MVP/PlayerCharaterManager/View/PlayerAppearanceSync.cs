@@ -34,6 +34,7 @@ public class PlayerAppearanceSync : MonoBehaviourPunCallbacks
     private const string KEY_OUTFIT = "apOutfit";
     private const string KEY_HAT    = "apHat";
     private const string KEY_TOOL   = "apTool";
+    private const string KEY_WEAPON = "apWeapon";
 
     [SerializeField] private EquipmentManager equipmentManager;
 
@@ -57,6 +58,7 @@ public class PlayerAppearanceSync : MonoBehaviourPunCallbacks
     public void SetOutfit(string configId) => SetProperty(KEY_OUTFIT, configId);
     public void SetHat(string configId)    => SetProperty(KEY_HAT, configId);
     public void SetTool(string configId)   => SetProperty(KEY_TOOL, configId);
+    public void SetWeapon(string itemId)   => SetProperty(KEY_WEAPON, itemId);
 
     /// <summary>
     /// Bulk-set all 4 appearance slots at once. Sends a single Custom Properties
@@ -95,6 +97,17 @@ public class PlayerAppearanceSync : MonoBehaviourPunCallbacks
             props.TryGetValue(KEY_HAT,    out object a) ? a as string ?? string.Empty : string.Empty,
             props.TryGetValue(KEY_TOOL,   out object t) ? t as string ?? string.Empty : string.Empty
         );
+    }
+
+    public string GetCurrentWeaponItemId()
+    {
+        var props = photonView.Owner?.CustomProperties;
+        if (props == null)
+            return string.Empty;
+
+        return props.TryGetValue(KEY_WEAPON, out object w)
+            ? w as string ?? string.Empty
+            : string.Empty;
     }
 
     // ── Photon Callback ─────────────────────────────────────────────────────

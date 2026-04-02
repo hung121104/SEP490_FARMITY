@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using CombatManager.Model;
+using CombatManager.Service;
 using CombatManager.View;
 
 namespace CombatManager.Presenter
@@ -53,14 +54,17 @@ namespace CombatManager.Presenter
             if (model == null || !model.isInitialized || model.isDestroyed)
                 return;
 
-            if ((model.enemyLayers.value & (1 << other.gameObject.layer)) == 0)
+            if (IsIgnoredEnemyCollider(other))
+                return;
+
+            if (!TryResolveEnemyPresenter(other, out EnemyPresenter enemyPresenter))
                 return;
 
             if (alreadyHit.Contains(other)) return;
             alreadyHit.Add(other);
 
-            HitEnemy(other);
-            DestroyProjectile();
+            if (HitEnemy(other, enemyPresenter))
+                DestroyProjectile();
         }
 
         #endregion
@@ -82,38 +86,53 @@ namespace CombatManager.Presenter
                 rb.linearVelocity = Vector2.zero;
                 rb.bodyType = RigidbodyType2D.Kinematic;
             }
-
-            Debug.Log($"[ProjectilePresenter] Initialized → " +
-                      $"Dir: {model.direction} | " +
-                      $"Speed: {model.speed} | " +
-                      $"Range: {model.maxRange} | " +
-                      $"Dmg: {model.damage}");
         }
 
         #endregion
 
         #region Hit & Destroy
 
-        private void HitEnemy(Collider2D enemy)
+        private bool HitEnemy(Collider2D enemy, EnemyPresenter enemyPresenter)
         {
-            EnemyPresenter enemyPresenter = enemy.GetComponent<EnemyPresenter>();
             if (enemyPresenter != null)
             {
-                Vector2 knockbackDir = (enemy.transform.position
-                                       - model.playerTransform.position).normalized;
+                Vector3 ownerPosition = model.playerTransform != null
+                    ? model.playerTransform.position
+                    : transform.position - model.direction;
 
-                enemyPresenter.TakeDamage(
+                Vector2 knockbackDir = (enemy.transform.position - ownerPosition).normalized;
+
+                EnemySyncManager.Instance.RequestEnemyHit(
+                    enemyPresenter,
                     model.damage,
                     knockbackDir,
-                    model.knockbackForce
-                );
-
-                Debug.Log($"[ProjectilePresenter] Hit: {enemy.name} | Damage: {model.damage}");
-                return;
+                    model.knockbackForce);
+                return true;
             }
+            return false;
+        }
 
-            Debug.LogWarning($"[ProjectilePresenter] Hit {enemy.name} " +
-                             $"but no EnemyPresenter found!");
+        private static bool TryResolveEnemyPresenter(Collider2D col, out EnemyPresenter enemyPresenter)
+        {
+            enemyPresenter = null;
+            if (col == null)
+                return false;
+
+            enemyPresenter = col.GetComponent<EnemyPresenter>()
+                             ?? col.GetComponentInParent<EnemyPresenter>()
+                             ?? col.GetComponentInChildren<EnemyPresenter>();
+            return enemyPresenter != null;
+        }
+
+        private static bool IsIgnoredEnemyCollider(Collider2D col)
+        {
+            if (col == null)
+                return true;
+
+            if (col.GetComponent<EnemyAttackHitbox>() != null)
+                return true;
+
+            return false;
         }
 
         private void DestroyProjectile()
@@ -121,7 +140,6 @@ namespace CombatManager.Presenter
             if (model.isDestroyed) return;
             model.isDestroyed = true;
             Destroy(gameObject);
-            Debug.Log("[ProjectilePresenter] Destroyed");
         }
 
         #endregion

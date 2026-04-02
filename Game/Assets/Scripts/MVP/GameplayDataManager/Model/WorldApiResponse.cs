@@ -23,6 +23,7 @@ public class WorldApiResponse
     public int gold;
     public int weatherToday;
     public int weatherTomorrow;
+    public WorldApi.EnemySpawnerStateDto enemySpawnerState;
     public List<CharacterEntry> characters = new List<CharacterEntry>();
 
     /// <summary>Loaded chunk documents — one per saved 30x30 chunk.</summary>
@@ -48,6 +49,14 @@ public class WorldApiResponse
         public string outfitConfigId;
         public string hatConfigId;
         public string toolConfigId;
+
+        public float currentStamina;
+        public float viableStamina;
+
+        public float regenBoostMultiplier;
+        public float regenBoostRemaining;
+        public float toolEfficiencyReduction;
+        public float toolEfficiencyRemaining;
 
         /// <summary>
         /// Saved inventory slots — key = slot index as string ("0"–"35").

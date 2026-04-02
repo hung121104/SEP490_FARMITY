@@ -31,10 +31,6 @@ namespace CombatManager.Model
 
         #region Settings - From Inspector
 
-        [Header("Input Settings")]
-        public KeyCode confirmKey = KeyCode.E;
-        public KeyCode cancelKey = KeyCode.Q;
-
         [Header("Skill Settings")]
         public float skillCooldown = 3f;
         public float chargeDuration = 0.2f;
@@ -59,8 +55,6 @@ namespace CombatManager.Model
             currentDiceRoll = 0;
             targetDirection = Vector3.right;
             skillTimer      = 0f;
-            confirmKey      = KeyCode.E;
-            cancelKey       = KeyCode.Q;
         }
 
         #endregion

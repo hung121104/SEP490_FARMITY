@@ -239,6 +239,18 @@ public class UnifiedChunkData : BaseChunkData
         return false;
     }
 
+    /// <summary>
+    /// Returns the TileSlot at the given world position, or null if no data exists for that tile.
+    /// Used by targeted single-tile visual updates (ChunkLoadingManager.UpdateTileVisual).
+    /// </summary>
+    public TileSlot? GetTile(int worldX, int worldY)
+    {
+        long key = GetKey(worldX, worldY);
+        if (tiles.TryGetValue(key, out TileSlot slot))
+            return slot;
+        return null;
+    }
+
     /// <summary>Returns TileSlots that have a crop, carrying WorldX/WorldY for caller convenience.</summary>
     public List<TileSlot> GetAllCrops()
     {
@@ -627,6 +639,15 @@ public class UnifiedChunkData : BaseChunkData
         }
         resource = default;
         return false;
+    }
+
+    /// <summary>Returns a snapshot list of all tiles that contain a resource (safe to iterate while removing).</summary>
+    public List<TileSlot> GetAllResources()
+    {
+        var list = new List<TileSlot>();
+        foreach (var slot in tiles.Values)
+            if (slot.HasResource) list.Add(slot);
+        return list;
     }
 
     public int GetResourceCount()

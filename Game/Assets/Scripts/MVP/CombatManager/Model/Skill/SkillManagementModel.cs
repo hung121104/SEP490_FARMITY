@@ -1,6 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
-using CombatManager.SO;
+using CombatManager.Model;
 
 namespace CombatManager.Model
 {
@@ -11,9 +11,6 @@ namespace CombatManager.Model
     [System.Serializable]
     public class SkillManagementModel
     {
-        [Header("Settings")]
-        public KeyCode toggleKey = KeyCode.M;
-
         [Header("State")]
         public bool isPanelOpen = false;
         public bool isInitialized = false;

@@ -133,7 +133,7 @@ export class UpdateItemDto {
 
   @IsOptional()
   @IsInt()
-  energyRestore?: number;
+  viableRestore?: number;
 
   @IsOptional()
   @IsInt()
@@ -141,7 +141,15 @@ export class UpdateItemDto {
 
   @IsOptional()
   @IsNumber()
-  bufferDuration?: number;
+  regenBoostMultiplier?: number;
+
+  @IsOptional()
+  @IsNumber()
+  toolEfficiencyReductionPercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  effectDurationSeconds?: number;
 
   // ── Weapon (itemType: 6) ───────────────────────────────────────────────────
 
@@ -154,12 +162,44 @@ export class UpdateItemDto {
   critChance?: number;
 
   @IsOptional()
+  @IsString()
+  weaponMaterialId?: string;
+
+  @IsOptional()
+  @IsInt()
+  weaponType?: number;
+
+  @IsOptional()
+  @IsInt()
+  tier?: number;
+
+  @IsOptional()
   @IsNumber()
-  attackSpeed?: number;
+  attackCooldown?: number;
+
+  @IsOptional()
+  @IsNumber()
+  knockbackForce?: number;
+
+  @IsOptional()
+  @IsNumber()
+  projectileSpeed?: number;
+
+  @IsOptional()
+  @IsNumber()
+  projectileRange?: number;
+
+  @IsOptional()
+  @IsNumber()
+  projectileKnockback?: number;
 
   @IsOptional()
   @IsString()
-  weaponMaterialId?: string;
+  linkedSkillId?: string;
+
+  @IsOptional()
+  @IsString()
+  weaponPrefabKey?: string;
 
   // ── Fish (itemType: 7) ─────────────────────────────────────────────────────
 

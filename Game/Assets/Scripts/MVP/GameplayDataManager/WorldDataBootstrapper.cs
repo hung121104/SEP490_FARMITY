@@ -22,6 +22,13 @@ public class WorldDataBootstrapper : MonoBehaviour
     /// <summary>True once all managers have been populated with API data.</summary>
     public bool IsReady { get; private set; } = false;
 
+    /// <summary>
+    /// Fired on the MasterClient immediately after world data has been fully distributed to all
+    /// managers. Systems that need world data to be ready before running (e.g. ResourceSpawnerManager)
+    /// should subscribe to this instead of polling IsReady.
+    /// </summary>
+    public static event System.Action OnWorldDataReady;
+
     private string _worldId;
     private string _authToken;
 
@@ -61,7 +68,9 @@ public class WorldDataBootstrapper : MonoBehaviour
             if (!string.IsNullOrEmpty(_authToken))
                 req.SetRequestHeader("Authorization", "Bearer " + _authToken);
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             req.certificateHandler = new AcceptAllCertificates();
+#endif
             yield return req.SendWebRequest();
 
 #if UNITY_2020_1_OR_NEWER
@@ -94,6 +103,8 @@ public class WorldDataBootstrapper : MonoBehaviour
                 Debug.LogError("[WorldDataBootstrapper] Deserialized null response.");
                 yield break;
             }
+
+            CombatManager.Service.EnemySpawnerManager.SetBootstrapState(data.enemySpawnerState);
 
             // --- Distribute to managers ---
 
@@ -169,12 +180,15 @@ public class WorldDataBootstrapper : MonoBehaviour
             }
 
             IsReady = true;
+            OnWorldDataReady?.Invoke();
             Debug.Log($"[WorldDataBootstrapper] Ready. World: {data.worldName} | Characters: {data.characters?.Count ?? 0} | Chunks: {data.chunks?.Count ?? 0} | Chests: {data.chests?.Count ?? 0}");
         }
     }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
     private class AcceptAllCertificates : CertificateHandler
     {
         protected override bool ValidateCertificate(byte[] certificateData) => true;
     }
+#endif
 }

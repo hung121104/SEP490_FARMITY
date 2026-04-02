@@ -1,7 +1,10 @@
 using UnityEngine;
 using System.Collections;
+using Photon.Pun;
+using Photon.Realtime;
+using ExitGames.Client.Photon;
 using CombatManager.Model;
-using CombatManager.SO;
+using CombatManager.Model;
 
 namespace CombatManager.Presenter
 {
@@ -12,9 +15,15 @@ namespace CombatManager.Presenter
     /// Attach ONE instance to CombatSystem GameObject.
     /// SkillHotbarPresenter finds this by SkillCategory.Slash.
     /// </summary>
-    public class SlashSkillPresenter : SkillPatternPresenter  // ✅ was SkillPresenter
+    public class SlashSkillPresenter : SkillPatternPresenter, IOnEventCallback
     {
+        private const byte SKILL_SLASH_VFX_EVENT = 163;
+
         public static SlashSkillPresenter Instance { get; private set; }
+
+        [Header("Runtime Prefabs")]
+        [SerializeField] private GameObject baseSlashVfxPrefab;
+        [SerializeField] private GameObject baseDamagePopupPrefab;
 
         // Current skill data being executed (set by SkillHotbarPresenter)
         private SkillData currentSkillData;
@@ -35,6 +44,16 @@ namespace CombatManager.Presenter
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
+        }
+
+        private void OnEnable()
+        {
+            PhotonNetwork.AddCallbackTarget(this);
+        }
+
+        private void OnDisable()
+        {
+            PhotonNetwork.RemoveCallbackTarget(this);
         }
 
         #endregion
@@ -85,6 +104,7 @@ namespace CombatManager.Presenter
             }
 
             SpawnSlashVFX(finalDamage, direction);
+            BroadcastSlashSkillVfx(direction);
             yield return new WaitForSeconds(
                 currentSkillData.slashVFXDuration > 0
                     ? currentSkillData.slashVFXDuration
@@ -98,10 +118,10 @@ namespace CombatManager.Presenter
 
         private void SpawnSlashVFX(int damage, Vector3 direction)
         {
-            if (currentSkillData.slashVFXPrefab == null)
+            if (baseSlashVfxPrefab == null)
             {
                 Debug.LogWarning($"[SlashSkillPresenter] " +
-                                 $"slashVFXPrefab not assigned in {currentSkillData.skillName}!");
+                                 "baseSlashVfxPrefab is not assigned in presenter.");
                 return;
             }
 
@@ -113,15 +133,17 @@ namespace CombatManager.Presenter
 
             Vector3 spawnPos = centerPoint.position
                              + direction * currentSkillData.slashVFXSpawnOffset
-                             + (Vector3)currentSkillData.slashVFXPositionOffset;
+                             + (Vector3)currentSkillData.SlashVfxPositionOffset;
 
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
 
             GameObject vfxObj = Instantiate(
-                currentSkillData.slashVFXPrefab,
+                baseSlashVfxPrefab,
                 spawnPos,
                 Quaternion.Euler(0f, 0f, angle)
             );
+
+            ApplySkillTint(vfxObj, currentSkillData.skillVisualConfigId);
 
             // ✅ Flip fix for left-facing direction
             if (direction.x < 0)
@@ -139,7 +161,7 @@ namespace CombatManager.Presenter
                     currentSkillData.slashKnockbackForce,
                     enemyLayers,
                     playerTransform,
-                    currentSkillData.damagePopupPrefab,
+                    baseDamagePopupPrefab,
                     currentSkillData.slashVFXDuration
                 );
                 Debug.Log($"[SlashSkillPresenter] VFX spawned! " +
@@ -152,6 +174,192 @@ namespace CombatManager.Presenter
             }
 
             Destroy(vfxObj, currentSkillData.slashVFXDuration);
+        }
+
+        private static void ApplySkillTint(GameObject target, string skillVisualConfigId)
+        {
+            if (target == null || string.IsNullOrWhiteSpace(skillVisualConfigId))
+                return;
+
+            SkillVfxCatalogManager catalog = SkillVfxCatalogManager.Instance;
+            if (catalog == null)
+                return;
+
+            if (!catalog.TryGetPrimaryTint(skillVisualConfigId, out Color tint))
+            {
+                Debug.LogWarning(
+                    $"[SlashSkillPresenter] Missing or invalid tint config '{skillVisualConfigId}'.");
+                return;
+            }
+
+            SpriteRenderer[] renderers = target.GetComponentsInChildren<SpriteRenderer>(true);
+            foreach (SpriteRenderer renderer in renderers)
+                renderer.color = tint;
+
+            ParticleSystem[] particles = target.GetComponentsInChildren<ParticleSystem>(true);
+            foreach (ParticleSystem particle in particles)
+            {
+                var main = particle.main;
+                main.startColor = tint;
+            }
+        }
+
+        public void OnEvent(EventData photonEvent)
+        {
+            if (photonEvent.Code != SKILL_SLASH_VFX_EVENT)
+                return;
+
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 9)
+                return;
+
+            if (!TryGetPayloadInt(payload, 0, out int sourceActor) ||
+                !TryGetPayloadFloat(payload, 2, out float posX) ||
+                !TryGetPayloadFloat(payload, 3, out float posY) ||
+                !TryGetPayloadFloat(payload, 4, out float posZ) ||
+                !TryGetPayloadFloat(payload, 5, out float angle) ||
+                !TryGetPayloadBool(payload, 6, out bool flipY) ||
+                !TryGetPayloadFloat(payload, 7, out float duration))
+            {
+                return;
+            }
+
+            if (sourceActor == (PhotonNetwork.LocalPlayer?.ActorNumber ?? -1))
+                return;
+
+            string skillVisualConfigId = payload[1] as string ?? string.Empty;
+            string skillId = payload[8] as string ?? string.Empty;
+
+            SpawnRemoteSlashVfx(
+                new Vector3(posX, posY, posZ),
+                angle,
+                flipY,
+                duration,
+                skillVisualConfigId,
+                skillId);
+        }
+
+        private void BroadcastSlashSkillVfx(Vector3 direction)
+        {
+            if (!PhotonNetwork.IsConnected || currentSkillData == null || centerPoint == null)
+                return;
+
+            int actorNumber = PhotonNetwork.LocalPlayer?.ActorNumber ?? -1;
+            if (actorNumber <= 0)
+                return;
+
+            Vector3 spawnPos = centerPoint.position
+                               + direction * currentSkillData.slashVFXSpawnOffset
+                               + (Vector3)currentSkillData.SlashVfxPositionOffset;
+
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            bool flipY = direction.x < 0f;
+            float duration = Mathf.Max(0.05f, currentSkillData.slashVFXDuration);
+
+            object[] payload =
+            {
+                actorNumber,
+                currentSkillData.skillVisualConfigId ?? string.Empty,
+                spawnPos.x,
+                spawnPos.y,
+                spawnPos.z,
+                angle,
+                flipY,
+                duration,
+                currentSkillData.skillId ?? string.Empty
+            };
+
+            RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+            PhotonNetwork.RaiseEvent(SKILL_SLASH_VFX_EVENT, payload, options, SendOptions.SendUnreliable);
+        }
+
+        private void SpawnRemoteSlashVfx(
+            Vector3 spawnPos,
+            float angle,
+            bool flipY,
+            float duration,
+            string skillVisualConfigId,
+            string skillId)
+        {
+            if (baseSlashVfxPrefab == null)
+                return;
+
+            GameObject vfxObj = Instantiate(
+                baseSlashVfxPrefab,
+                spawnPos,
+                Quaternion.Euler(0f, 0f, angle));
+
+            ApplySkillTint(vfxObj, skillVisualConfigId);
+
+            if (flipY)
+            {
+                Vector3 scale = vfxObj.transform.localScale;
+                scale.y *= -1f;
+                vfxObj.transform.localScale = scale;
+            }
+
+            Destroy(vfxObj, Mathf.Max(0.05f, duration));
+
+            if (!string.IsNullOrWhiteSpace(skillId))
+            {
+                Debug.Log($"[SlashSkillPresenter] Remote slash VFX spawned for skill '{skillId}'.");
+            }
+        }
+
+        private static bool TryGetPayloadInt(object[] payload, int index, out int value)
+        {
+            value = 0;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            if (payload[index] is byte b)
+            {
+                value = b;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetPayloadFloat(object[] payload, int index, out float value)
+        {
+            value = 0f;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is float f)
+            {
+                value = f;
+                return true;
+            }
+
+            if (payload[index] is int i)
+            {
+                value = i;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetPayloadBool(object[] payload, int index, out bool value)
+        {
+            value = false;
+            if (index < 0 || index >= payload.Length || payload[index] == null)
+                return false;
+
+            if (payload[index] is bool b)
+            {
+                value = b;
+                return true;
+            }
+
+            return false;
         }
 
         #endregion

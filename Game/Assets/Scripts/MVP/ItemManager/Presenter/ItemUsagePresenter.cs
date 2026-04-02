@@ -13,8 +13,7 @@ public class ItemUsagePresenter
     public bool UseTool(ItemData item, Vector3 pos)
     {
         Debug.Log("[ItemUsage] use tool");
-        service.UseTool(item, pos);
-        return true;
+        return service.UseTool(item, pos);
     }
 
     public bool UseFertilizer(ItemData item, Vector3 pos)
@@ -47,10 +46,5 @@ public class ItemUsagePresenter
         return service.UsePollen(item, pos);
     }
 
-    public bool UseStructure(ItemData item, Vector3 pos)
-    {
-        Debug.Log("[ItemUsage] UseStructure");
-        return service.UseStructure(item, pos);
-    }
 }
 

@@ -249,6 +249,11 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
             byte[] payload = EncodeRegisterRequest(charId, maxSlots);
             RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
             PhotonNetwork.RaiseEvent(INV_REGISTER, payload, opts, SendOptions.SendReliable);
+
+            // Fire OnInventoryChanged so the UI can load inventory data that was already
+            // synced via REQUEST_INV_SYNC but couldn't be applied because LocalCharacterId
+            // was still null at the time HandleSyncComplete fired.
+            OnInventoryChanged?.Invoke();
         }
 
         if (showDebugLogs)
@@ -265,6 +270,23 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
     public void RequestClearSlot(byte slotIndex)
     {
         SendSlotRequest(OP_CLEAR_SLOT, slotIndex, null, 0, 0);
+    }
+
+    /// <summary>
+    /// Master-only: broadcast a clear-slot for a specific character.
+    /// </summary>
+    public void BroadcastClearSlot(string charId, byte slotIndex)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        byte[] payload = EncodeSlotRequest(charId, OP_CLEAR_SLOT, slotIndex, null, 0, 0);
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
+        PhotonNetwork.RaiseEvent(SLOT_BROADCAST, payload, opts, SendOptions.SendReliable);
+
+        OnInventoryChanged?.Invoke();
+
+        if (showDebugLogs)
+            Debug.Log($"[InvSync] BroadcastClearSlot: char={charId} slot={slotIndex}");
     }
 
     /// <summary>Request Master to add quantity to a slot.</summary>
@@ -487,6 +509,31 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
 
         if (showDebugLogs)
             Debug.Log($"[InvSync] ✓ Inventory sync complete! {totalInventories} inventories loaded");
+
+        // ── Orphaned inventory cleanup for late-join ──────────────────
+        if (ItemCatalogService.Instance != null && ItemCatalogService.Instance.IsReady
+            && WorldDataManager.Instance?.InventoryData != null)
+        {
+            int cleared = 0;
+
+            foreach (var charId in WorldDataManager.Instance.InventoryData.GetAllCharacterIds())
+            {
+                for (byte i = 0; i < 36; i++)
+                {
+                    if (WorldDataManager.Instance.InventoryData.TryGetSlot(charId, i, out var slot)
+                        && !slot.IsEmpty
+                        && ItemCatalogService.Instance.GetItemData(slot.ItemId) == null)
+                    {
+                        // Item not in catalog → admin-deleted, clear locally.
+                        WorldDataManager.Instance.InventoryData.ClearSlot(charId, i);
+                        cleared++;
+                    }
+                }
+            }
+
+            if (cleared > 0)
+                Debug.LogWarning($"[InvSync] Late-join: cleared {cleared} orphaned inventory slot(s) for deleted catalog entries.");
+        }
 
         OnInventoryChanged?.Invoke();
     }

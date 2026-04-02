@@ -26,6 +26,11 @@ public class CraftingSystemManager : MonoBehaviour
     private CraftingPresenter craftingInInventoryPresenter; //For crafting inventory tab
     private CookingPresenter cookingPresenter;
 
+    // Track which station is currently open (for close broadcast)
+    private Vector2Int? activeStationPosition;
+    private ChunkDataSyncManager _syncManager;
+    private ChunkDataSyncManager SyncManager => _syncManager ??= FindAnyObjectByType<ChunkDataSyncManager>();
+
     private void Awake()
     {
         SetupUIStructure();
@@ -93,7 +98,46 @@ public class CraftingSystemManager : MonoBehaviour
         // 8. Connect inventory to sub-UIs (after all systems ready)
         InitializeInventoryForSubUIs();
 
+        // 9. Subscribe to catalog events for real-time sync
+        RecipeCatalogService.OnRecipeRemoved  += HandleOrphanedRecipeRemoved;
+        RecipeCatalogService.OnCatalogReloaded += HandleRecipeCatalogReloaded;
+        CatalogSyncManager.OnCatalogChanged   += HandleCatalogChanged;
+
         Debug.Log("[CraftingSystemManager] System initialized successfully");
+    }
+
+    private void HandleOrphanedRecipeRemoved(string recipeId)
+    {
+        craftingService?.RemoveRecipe(recipeId);
+    }
+
+    /// <summary>Full catalog reload — rebuild CraftingModel from RecipeCatalogService.</summary>
+    private void HandleRecipeCatalogReloaded()
+    {
+        if (RecipeCatalogService.Instance == null) return;
+        var recipes = RecipeCatalogService.Instance.GetAllRecipes();
+        craftingService?.LoadRecipes(recipes);
+        Debug.Log($"[CraftingSystemManager] Catalog reloaded — {recipes.Count} recipe(s) synced.");
+    }
+
+    /// <summary>Real-time single recipe add/update from SSE.</summary>
+    private void HandleCatalogChanged(string changeType, string entityType, string entityName, string typeName)
+    {
+        if (RecipeCatalogService.Instance == null) return;
+
+        if (entityType == "recipe")
+        {
+            // Recipe added, updated, or deleted — reload all recipes into CraftingModel.
+            var recipes = RecipeCatalogService.Instance.GetAllRecipes();
+            craftingService?.LoadRecipes(recipes);
+        }
+        else if (changeType == "delete" && entityType == "item")
+        {
+            // Item deleted → recipes using that item were cascade-removed by
+            // CatalogDeleteHandler.PostItemDelete(). Reload to reflect changes.
+            var recipes = RecipeCatalogService.Instance.GetAllRecipes();
+            craftingService?.LoadRecipes(recipes);
+        }
     }
 
     /// <summary>
@@ -231,12 +275,18 @@ public class CraftingSystemManager : MonoBehaviour
     #region Public API
 
     /// <summary>
-    /// Open crafting UI
+    /// Open crafting UI at a specific station position.
     /// </summary>
-    public void OpenCraftingUI(int stationLevel = 0)
+    public void OpenCraftingUI(int stationLevel = 0, int worldX = int.MinValue, int worldY = int.MinValue)
     {
         craftingPresenter?.OpenCraftingUI(stationLevel);
         inventoryGameView?.OpenCraftingInventory(craftingMainPanel);
+
+        if (worldX != int.MinValue)
+        {
+            activeStationPosition = new Vector2Int(worldX, worldY);
+            SyncManager?.NotifyStationOpened(worldX, worldY);
+        }
     }
 
     /// <summary>
@@ -244,17 +294,24 @@ public class CraftingSystemManager : MonoBehaviour
     /// </summary>
     public void CloseCraftingUI()
     {
+        NotifyStationClosedIfActive();
         craftingPresenter?.CloseCraftingUI();
         inventoryGameView?.CloseInventory();
     }
 
     /// <summary>
-    /// Open cooking UI
+    /// Open cooking UI at a specific station position.
     /// </summary>
-    public void OpenCookingUI(int stationLevel = 0)
+    public void OpenCookingUI(int stationLevel = 0, int worldX = int.MinValue, int worldY = int.MinValue)
     {
         cookingPresenter?.OpenCookingUI(stationLevel);
         inventoryGameView?.OpenCookingInventory(cookingMainPanel);
+
+        if (worldX != int.MinValue)
+        {
+            activeStationPosition = new Vector2Int(worldX, worldY);
+            SyncManager?.NotifyStationOpened(worldX, worldY);
+        }
     }
 
     /// <summary>
@@ -262,6 +319,7 @@ public class CraftingSystemManager : MonoBehaviour
     /// </summary>
     public void CloseCookingUI()
     {
+        NotifyStationClosedIfActive();
         cookingPresenter?.CloseCookingUI();
         inventoryGameView?.CloseInventory();
     }
@@ -319,6 +377,10 @@ public class CraftingSystemManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        RecipeCatalogService.OnRecipeRemoved  -= HandleOrphanedRecipeRemoved;
+        RecipeCatalogService.OnCatalogReloaded -= HandleRecipeCatalogReloaded;
+        CatalogSyncManager.OnCatalogChanged   -= HandleCatalogChanged;
+
         // Cleanup presenters
         if (craftingPresenter != null)
         {
@@ -376,6 +438,17 @@ public class CraftingSystemManager : MonoBehaviour
     private void TestCloseCookingUI()
     {
         CloseCookingUI();
+    }
+
+    #endregion
+
+    #region Station Badge Helper
+
+    private void NotifyStationClosedIfActive()
+    {
+        if (!activeStationPosition.HasValue) return;
+        SyncManager?.NotifyStationClosed(activeStationPosition.Value.x, activeStationPosition.Value.y);
+        activeStationPosition = null;
     }
 
     #endregion

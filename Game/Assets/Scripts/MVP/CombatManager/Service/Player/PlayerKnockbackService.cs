@@ -36,8 +36,6 @@ namespace CombatManager.Service
             }
 
             model.isInitialized = true;
-
-            Debug.Log($"[PlayerKnockbackService] Initialized for {playerEntity.name}");
         }
 
         public bool IsInitialized()
@@ -51,6 +49,17 @@ namespace CombatManager.Service
 
         public void ApplyKnockback(Transform enemyTransform, float knockbackForce)
         {
+            if (enemyTransform == null)
+            {
+                Debug.LogWarning("[PlayerKnockbackService] Enemy transform missing, cannot apply knockback");
+                return;
+            }
+
+            ApplyKnockbackFromPosition(enemyTransform.position, knockbackForce);
+        }
+
+        public void ApplyKnockbackFromPosition(Vector2 sourcePosition, float knockbackForce)
+        {
             if (!model.isInitialized || model.playerEntity == null)
             {
                 Debug.LogWarning("[PlayerKnockbackService] Not initialized, cannot apply knockback");
@@ -58,10 +67,8 @@ namespace CombatManager.Service
             }
 
             // Calculate knockback direction
-            Vector2 direction = (model.playerEntity.position - enemyTransform.position).normalized;
+            Vector2 direction = ((Vector2)model.playerEntity.position - sourcePosition).normalized;
             Vector2 velocity = direction * knockbackForce;
-
-            Debug.Log($"[PlayerKnockbackService] Applying knockback: Direction={direction}, Force={knockbackForce}, Velocity={velocity}");
 
             // Set knockback active flag (used by Presenter to trigger coroutines)
             model.isKnockbackActive = true;

@@ -5,6 +5,9 @@ export type ResourceConfigDocument = ResourceConfig & Document;
 
 @Schema({ _id: false })
 export class ResourceDropEntry {
+  /** itemId (from ItemCatalog) that will drop when this resource is harvested.
+   *  Validated at create/update time — must reference an existing Item document.
+   */
   @Prop({ required: true })
   itemId: string;
 

@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using Photon.Pun;
 
 /// <summary>
 /// Abstract base class for all interactable structures (Chest, CraftingTable, CookingTable, …).
@@ -163,7 +165,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         if (_triggerCollider == null) return;
         if (!gameObject.activeInHierarchy) return;
 
-        GameObject playerObj = GameObject.FindGameObjectWithTag("PlayerEntity");
+        GameObject playerObj = FindLocalPlayer();
         if (playerObj != null)
         {
             var rb = playerObj.GetComponent<Rigidbody2D>();
@@ -177,7 +179,8 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         bool foundPlayer = false;
         foreach (var col in results)
         {
-            if (col.CompareTag("PlayerEntity")) { foundPlayer = true; break; }
+            if (col is CapsuleCollider2D && col.CompareTag("PlayerEntity")) 
+            { foundPlayer = true; break; }
         }
 
         if (foundPlayer != _playerInRange)
@@ -191,7 +194,30 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         }
     }
 
+    private GameObject FindLocalPlayer()
+    {
+        GameObject[] players = GameObject.FindGameObjectsWithTag("PlayerEntity");
+        if (players == null || players.Length == 0)
+            return null;
+
+        // Online: always prefer the locally owned Photon entity.
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
+            return player;
+        }
+
+        // Offline fallback: use the first tagged player entity.
+        if (!PhotonNetwork.IsConnected)
+            return players[0];
+
+        return null;
+    }
+
     // ── Input ────────────────────────────────────────────────────────────
+    private static int _lastInteractFrame = -1;
 
     private void SubscribeInput()
     {
@@ -213,15 +239,27 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     {
         if (!CanInteract()) return;
 
+        if (Time.frameCount == _lastInteractFrame) return;
+
         if (IsUIOpen())
         {
             if (IsPlayerInRange)
+            {
+                _lastInteractFrame = Time.frameCount;
                 CloseUI();
+            }
             return;
         }
 
+        // Block interaction when the pointer is over a UI element
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return;
+
         if (_isTargeted)
+        {
+            _lastInteractFrame = Time.frameCount;
             Interact();
+        }
     }
 
     // ── Target Evaluation ────────────────────────────────────────────────
@@ -266,6 +304,14 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     protected void SetupStructureInteractionBadge(string structureId)
     {
+        // Destroy previous badge to prevent duplicates when reused from pool
+        if (_structureInteractionBadge != null)
+        {
+            Destroy(_structureInteractionBadge);
+            _structureInteractionBadge = null;
+            _structureInteractionRenderer = null;
+        }
+
         var sprite = ItemCatalogService.Instance?.GetCachedStructureInteractionSprite(structureId);
         if (sprite == null) return;
 
@@ -273,7 +319,13 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         _structureInteractionBadge.transform.SetParent(transform);
         _structureInteractionBadge.transform.localPosition = Vector3.zero;
         _structureInteractionRenderer = _structureInteractionBadge.AddComponent<SpriteRenderer>();
-        _structureInteractionRenderer.sprite = sprite;
+        _structureInteractionRenderer.sprite = Sprite.Create(
+            sprite.texture,
+            sprite.rect,
+            new Vector2(0.5f, 0f),
+            sprite.pixelsPerUnit,
+            0,
+            SpriteMeshType.FullRect);
         _structureInteractionRenderer.sortingLayerName = "WalkInfront";
         _structureInteractionRenderer.sortingOrder = 1;
         _structureInteractionBadge.SetActive(false);

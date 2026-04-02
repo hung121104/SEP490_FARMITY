@@ -1,5 +1,5 @@
 using UnityEngine;
-using CombatManager.SO;
+using CombatManager.Model;
 
 namespace CombatManager.Model
 {
@@ -12,13 +12,6 @@ namespace CombatManager.Model
     {
         [Header("Settings")]
         public int slotCount = 4;
-        public KeyCode[] activationKeys = new KeyCode[]
-        {
-            KeyCode.Alpha1,
-            KeyCode.Alpha2,
-            KeyCode.Alpha3,
-            KeyCode.Alpha4
-        };
 
         [Header("Visual")]
         public Color emptySlotColor = new Color(1f, 1f, 1f, 0.3f);

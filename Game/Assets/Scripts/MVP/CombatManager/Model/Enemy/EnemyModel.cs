@@ -14,6 +14,15 @@ namespace CombatManager.Model
         [Header("Health")]
         public int currentHealth = 10;
         public int maxHealth = 10;
+        public float lastHitAt = -999f;
+        public float regenProgress = 0f;
+
+        [Header("Out of Combat Regeneration")]
+        public bool enableOutOfCombatRegen = true;
+        public float regenDelaySeconds = 10f;
+        public float regenHpPerSecond = 2f;
+        public bool regenRequireNearGuardAnchor = true;
+        public float regenGuardProximity = 1.5f;
 
         #endregion
 
@@ -45,6 +54,9 @@ namespace CombatManager.Model
         public float chaseSpeed = 3f;
         public float wanderSpeed = 1f;
         public float wanderRange = 5f;
+        public bool enableSeparation = true;
+        public float separationRadius = 0.8f;
+        public float separationForce = 2.5f;
         public Vector3 startPosition = Vector3.zero;
         public Vector3 wanderTarget = Vector3.zero;
         public Vector2 currentWanderDirection = Vector2.right;
@@ -97,6 +109,16 @@ namespace CombatManager.Model
         public float knockbackForce = 30f;
         public float damageThrottleTime = 0.5f;
         public float lastDamageTime = -999f;
+        public bool useActiveAttack = true;
+        public float attackCooldown = 1.2f;
+        public float attackRecovery = 0.1f;
+        public float attackFrontDotThreshold = 0.25f;
+        public float nextAttackTime = 0f;
+        public bool isAttackAnimating = false;
+        public bool hasAppliedImpactThisAttack = false;
+        public bool pendingAttackTrigger = false;
+        public int attackSequence = 0;
+        public float attackTimeoutAt = 0f;
 
         #endregion
 
@@ -104,9 +126,13 @@ namespace CombatManager.Model
 
         [Header("Runtime References")]
         public Transform playerTransform = null;
+        public Transform currentTarget = null;
         public Rigidbody2D rb = null;
         public Animator animator = null;
         public SpriteRenderer spriteRenderer = null;
+
+        [Header("Network")]
+        public string runtimeEnemyId = "";
 
         #endregion
 

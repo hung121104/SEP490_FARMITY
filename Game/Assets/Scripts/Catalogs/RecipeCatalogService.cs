@@ -22,6 +22,11 @@ public class RecipeCatalogService : MonoBehaviour
 
     // ── Internal State ────────────────────────────────────────────────────────
     private readonly Dictionary<string, RecipeData> _catalog = new();
+    
+    public static event Action<string> OnRecipeRemoved;
+
+    /// <summary>Fired after the full catalog is loaded or reloaded.</summary>
+    public static event Action OnCatalogReloaded;
 
     /// <summary>True once the catalog JSON is fully parsed and ready to query.</summary>
     public bool IsReady { get; private set; }
@@ -54,6 +59,91 @@ public class RecipeCatalogService : MonoBehaviour
     public List<RecipeData> GetAllRecipes()
         => new List<RecipeData>(_catalog.Values);
 
+    /// <summary>
+    /// Removes recipes that reference deleted items (ingredients or result).
+    /// Called by CatalogDeleteHandler after a catalog entry is removed.
+    /// </summary>
+    /// <param name="removedIds">Optional list to collect removed recipe IDs for notifications.</param>
+    public int RemoveRecipesWithMissingItems(List<string> removedIds = null)
+    {
+        if (ItemCatalogService.Instance == null || !ItemCatalogService.Instance.IsReady) return 0;
+
+        var toRemove = new List<string>();
+        foreach (var kvp in _catalog)
+        {
+            var recipe = kvp.Value;
+
+            // Check result item
+            var resultItem = ItemCatalogService.Instance.GetItemData(recipe.resultItemId);
+            if (resultItem == null)
+            {
+                toRemove.Add(kvp.Key);
+                continue;
+            }
+
+            // Check each ingredient
+            if (recipe.ingredients != null)
+            {
+                bool hasOrphan = false;
+                foreach (var ing in recipe.ingredients)
+                {
+                    var ingItem = ItemCatalogService.Instance.GetItemData(ing.itemId);
+                    if (ingItem == null)
+                    {
+                        hasOrphan = true;
+                        break;
+                    }
+                }
+                if (hasOrphan)
+                {
+                    toRemove.Add(kvp.Key);
+                }
+            }
+        }
+
+        foreach (var id in toRemove)
+        {
+            removedIds?.Add(id);
+            _catalog.Remove(id);
+            OnRecipeRemoved?.Invoke(id);
+            Debug.LogWarning($"[RecipeCatalogService] Removed orphaned recipe '{id}'");
+        }
+
+        return toRemove.Count;
+    }
+
+    // ── Catalog Sync (real-time updates from CatalogSyncManager) ───────────
+
+    /// <summary>
+    /// Adds or replaces a recipe in the catalog from a JSON string.
+    /// </summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var recipe = JsonConvert.DeserializeObject<RecipeData>(json);
+            if (recipe == null || string.IsNullOrWhiteSpace(recipe.recipeID)) return;
+            if (!recipe.IsValid()) return;
+
+            _catalog[recipe.recipeID] = recipe;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[RecipeCatalogService] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Removes a recipe from the catalog.</summary>
+    public bool RemoveRecipe(string recipeID)
+    {
+        if (_catalog.Remove(recipeID))
+        {
+            OnRecipeRemoved?.Invoke(recipeID);
+            return true;
+        }
+        return false;
+    }
+
     // ── Loading ───────────────────────────────────────────────────────────────
 
     private const int MAX_RETRIES = 3;
@@ -66,6 +156,46 @@ public class RecipeCatalogService : MonoBehaviour
             CatalogProgressManager.NotifyStarted();
             StartCoroutine(FetchCatalog());
         }
+    }
+
+    /// <summary>
+    /// Swaps catalog atomically. Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
+    {
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/crafting-recipes/catalog";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[RecipeCatalogService] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        RecipeCatalogResponse response = null;
+        try
+        {
+            response = JsonConvert.DeserializeObject<RecipeCatalogResponse>(
+                request.downloadHandler.text);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[RecipeCatalogService] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (response?.recipes == null) yield break;
+
+        _catalog.Clear();
+        foreach (var recipe in response.recipes)
+        {
+            if (recipe != null && !string.IsNullOrWhiteSpace(recipe.recipeID) && recipe.IsValid())
+                _catalog[recipe.recipeID] = recipe;
+        }
+
+        Debug.Log($"[RecipeCatalogService] SafeRefetch complete — {_catalog.Count} recipe(s).");
     }
 
     private IEnumerator FetchCatalog()
@@ -142,5 +272,6 @@ public class RecipeCatalogService : MonoBehaviour
         IsReady = true;
         Debug.Log($"[RecipeCatalogService] Catalog ready with {loaded} recipe(s).");
         CatalogProgressManager.NotifyCompleted();
+        OnCatalogReloaded?.Invoke();
     }
 }

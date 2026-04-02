@@ -37,11 +37,13 @@ public class InventoryGameView : MonoBehaviour
     private void OnEnable()
     {
         InventorySyncManager.OnInventoryChanged += HandleRemoteInventoryChanged;
+        ItemCatalogService.OnItemUpdated += HandleItemDataUpdated;
     }
 
     private void OnDisable()
     {
         InventorySyncManager.OnInventoryChanged -= HandleRemoteInventoryChanged;
+        ItemCatalogService.OnItemUpdated -= HandleItemDataUpdated;
     }
 
     private void OnDestroy()
@@ -117,6 +119,17 @@ public class InventoryGameView : MonoBehaviour
     #endregion
 
     /// <summary>
+    /// Called when admin updates an item in the catalog via SSE.
+    /// Re-binds the stale ItemData reference on affected inventory slots and refreshes
+    /// only those slots in the UI — avoids a full-inventory redraw.
+    /// </summary>
+    private void HandleItemDataUpdated(string itemId)
+    {
+        if (service is InventoryService concreteService)
+            concreteService.RefreshSlotsForItem(itemId);
+    }
+
+    /// <summary>
     /// Called when InventorySyncManager receives a remote slot change.
     /// Reads the authoritative data from InventoryDataModule and refreshes local InventoryModel.
     /// </summary>
@@ -158,6 +171,11 @@ public class InventoryGameView : MonoBehaviour
     {
         yield return new WaitUntil(() => presenter == null || presenter.IsReadyToSync());
         HandleRemoteInventoryChanged();
+    }
+
+    public bool IsInventoryInUseByOtherUI()
+    {
+        return inventoryView != null && inventoryView.IsReparented();
     }
 
     /// <summary>
@@ -251,14 +269,9 @@ public class InventoryGameView : MonoBehaviour
 
     #region Public API for Player/Other Systems
 
-    public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal)
+    public bool AddItem(string itemId, int quantity = 1)
     {
-        return presenter.TryAddItem(itemId, quantity, quality);
-    }
-
-    public bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal)
-    {
-        return presenter.TryAddItem(itemData, quantity, quality);
+        return presenter.TryAddItem(itemId, quantity);
     }
 
     public bool RemoveItem(string itemId, int quantity)
@@ -274,6 +287,11 @@ public class InventoryGameView : MonoBehaviour
     public int GetItemCount(string itemId)
     {
         return presenter.GetItemCount(itemId);
+    }
+
+    public int GetAddableQuantity(ItemData itemData, int quantity)
+    {
+        return presenter.GetAddableQuantity(itemData, quantity);
     }
 
     public IInventoryService GetInventoryService() => service;

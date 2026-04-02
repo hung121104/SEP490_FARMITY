@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
-using CombatManager.SO;
+using CombatManager.Model;
 using CombatManager.Model;
 
 namespace CombatManager.View
@@ -58,13 +58,38 @@ namespace CombatManager.View
                 canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
             // Set hotkey label
-            if (hotkeyLabel != null && index < hotbarModel.activationKeys.Length)
-                hotkeyLabel.text = (index + 1).ToString();
+            if (hotkeyLabel != null)
+                hotkeyLabel.text = GetHotkeyLabelForSlot(index);
 
             SetEmptyVisual();
         }
 
         #endregion
+
+        private static string GetHotkeyLabelForSlot(int index)
+        {
+            InputManager inputManager = InputManager.Instance;
+            if (inputManager != null)
+            {
+                UnityEngine.InputSystem.InputAction action = inputManager.GetSkillSlotAction(index);
+                if (action != null && action.bindings.Count > 0)
+                {
+                    string path = action.bindings[0].effectivePath;
+                    if (string.IsNullOrWhiteSpace(path))
+                        path = action.bindings[0].path;
+
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        int slashIndex = path.LastIndexOf('/');
+                        string key = slashIndex >= 0 ? path.Substring(slashIndex + 1) : path;
+                        if (!string.IsNullOrWhiteSpace(key))
+                            return key.ToUpperInvariant();
+                    }
+                }
+            }
+
+            return (index + 1).ToString();
+        }
 
         #region Display
 
@@ -105,8 +130,9 @@ namespace CombatManager.View
             if (skillIconImage != null)
             {
                 skillIconImage.sprite = skillData.skillIcon;
-                skillIconImage.color = Color.white;
-                skillIconImage.enabled = true;
+                bool hasIcon = skillData.skillIcon != null;
+                skillIconImage.color = hasIcon ? Color.white : Color.clear;
+                skillIconImage.enabled = hasIcon;
             }
 
             // ✅ Don't touch slotBackground color - keep it as designed in prefab

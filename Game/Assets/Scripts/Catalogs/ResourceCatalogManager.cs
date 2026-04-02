@@ -50,6 +50,46 @@ public class ResourceCatalogManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Swaps catalog atomically. Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
+    {
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/resource-configs/catalog";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[ResourceCatalogManager] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        ResourceCatalogResponse response = null;
+        try
+        {
+            response = JsonConvert.DeserializeObject<ResourceCatalogResponse>(
+                request.downloadHandler.text);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[ResourceCatalogManager] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (response?.resources == null) yield break;
+
+        _resourceConfigs.Clear();
+        foreach (var config in response.resources)
+        {
+            if (config != null && !string.IsNullOrWhiteSpace(config.resourceId))
+                _resourceConfigs[config.resourceId] = config;
+        }
+
+        Debug.Log($"[ResourceCatalogManager] SafeRefetch complete — {_resourceConfigs.Count} resource(s).");
+    }
+
     private IEnumerator FetchCatalog()
     {
         IsReady = false;
@@ -125,4 +165,33 @@ public class ResourceCatalogManager : MonoBehaviour
         _resourceConfigs.TryGetValue(resourceId, out ResourceConfigData config);
         return config;
     }
+
+    // ── Real-time Sync (SSE) ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Adds or updates a single resource config from a JSON string (SSE real-time sync).
+    /// </summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var config = JsonConvert.DeserializeObject<ResourceConfigData>(json);
+            if (config == null || string.IsNullOrWhiteSpace(config.resourceId)) return;
+            _resourceConfigs[config.resourceId] = config;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[ResourceCatalogManager] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Removes a resource config by ID (SSE real-time delete).
+    /// </summary>
+    public bool RemoveResource(string resourceId)
+    {
+        if (string.IsNullOrWhiteSpace(resourceId)) return false;
+        return _resourceConfigs.Remove(resourceId);
+    }
+
 }

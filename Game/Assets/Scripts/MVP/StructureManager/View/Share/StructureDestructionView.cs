@@ -16,7 +16,7 @@ public class StructureDestructionView : MonoBehaviour
     public float shakeIntensity = 0.1f;
     public float shakeDuration = 0.2f;
 
-    private StructureDestructionPresenter presenter;
+    private StructurePresenter presenter;
     private ChunkLoadingManager chunkLoadingManager;
     private Transform playerTransform;
 
@@ -26,20 +26,21 @@ public class StructureDestructionView : MonoBehaviour
     private void Start()
     {
         chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
-        
-        // Initialize MVP
+
+        // Initialize MVP — single unified service & presenter
         StructurePool pool = FindAnyObjectByType<StructurePool>();
         ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
-        IStructureDestructionService destService = new StructureDestructionService(pool, syncManager, showDebugLogs);
-        
-        presenter = new StructureDestructionPresenter(this, destService, showDebugLogs);
+        ChunkLoadingManager loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
+
+        IStructureService structureService = new StructureService(syncManager, loadingManager, pool, showDebugLogs);
+        presenter = new StructurePresenter(structureService, this, showDebugLogs);
 
         // Wire static delegate so Service can add items to inventory
         // without depending on InventoryGameView (View class) directly
-        StructureDestructionService.OnAddItemToInventory = (id, qty, quality) =>
+        StructureService.OnAddItemToInventory = (id, qty, quality) =>
         {
             var invView = FindAnyObjectByType<InventoryGameView>();
-            return invView != null && invView.AddItem(id, qty, quality);
+            return invView != null && invView.AddItem(id, qty);
         };
 
         // Subscribe to tool events
@@ -57,7 +58,7 @@ public class StructureDestructionView : MonoBehaviour
         activeRegenTimers.Clear();
 
         // Unwire static delegate
-        StructureDestructionService.OnAddItemToInventory = null;
+        StructureService.OnAddItemToInventory = null;
 
         UseToolService.OnAxeImpactRequested -= HandleToolUse;
         UseToolService.OnPickaxeImpactRequested -= HandleToolUse;
@@ -69,14 +70,36 @@ public class StructureDestructionView : MonoBehaviour
     private void Update()
     {
         if (playerTransform == null)
+            TryResolvePlayerTransform(out playerTransform);
+    }
+
+    private bool TryResolvePlayerTransform(out Transform resolvedTransform)
+    {
+        resolvedTransform = null;
+
+        GameObject[] players = GameObject.FindGameObjectsWithTag("PlayerEntity");
+        if (players == null || players.Length == 0)
+            return false;
+
+        foreach (GameObject player in players)
         {
-            GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
-            if (player != null)
-            {
-                Transform center = player.transform.Find("CenterPoint");
-                playerTransform = center != null ? center : player.transform;
-            }
+            Photon.Pun.PhotonView pv = player.GetComponent<Photon.Pun.PhotonView>();
+            if (Photon.Pun.PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
+
+            Transform center = player.transform.Find("CenterPoint");
+            resolvedTransform = center != null ? center : player.transform;
+            return true;
         }
+
+        if (!Photon.Pun.PhotonNetwork.IsConnected)
+        {
+            Transform center = players[0].transform.Find("CenterPoint");
+            resolvedTransform = center != null ? center : players[0].transform;
+            return true;
+        }
+
+        return false;
     }
 
     private void HandleToolUse(ToolData tool, Vector3 mouseWorldPos)

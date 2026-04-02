@@ -35,8 +35,17 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
                         { ""name"": ""OpenInventory"", ""type"": ""Button"", ""id"": ""44444444-4444-4444-4444-444444444444"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""Attack"",        ""type"": ""Button"", ""id"": ""55555555-5555-5555-5555-555555555555"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""UseSkill"",      ""type"": ""Button"", ""id"": ""66666666-6666-6666-6666-666666666666"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""SkillConfirm"", ""type"": ""Button"", ""id"": ""6a6a6a6a-6a6a-6a6a-6a6a-6a6a6a6a6a6a"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""SkillCancel"", ""type"": ""Button"", ""id"": ""6b6b6b6b-6b6b-6b6b-6b6b-6b6b6b6b6b6b"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""WeaponSkillTrigger"", ""type"": ""Button"", ""id"": ""6c6c6c6c-6c6c-6c6c-6c6c-6c6c6c6c6c6c"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""SkillManagementToggle"", ""type"": ""Button"", ""id"": ""6d6d6d6d-6d6d-6d6d-6d6d-6d6d6d6d6d6d"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""SkillSlot1"", ""type"": ""Button"", ""id"": ""6e6e6e6e-6e6e-6e6e-6e6e-6e6e6e6e6e6e"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""SkillSlot2"", ""type"": ""Button"", ""id"": ""6f6f6f6f-6f6f-6f6f-6f6f-6f6f6f6f6f6f"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""SkillSlot3"", ""type"": ""Button"", ""id"": ""70707070-7070-7070-7070-707070707070"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""SkillSlot4"", ""type"": ""Button"", ""id"": ""71717171-7171-7171-7171-717171717171"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""OpenChat"",      ""type"": ""Button"", ""id"": ""77777777-7777-7777-7777-777777777777"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""ToggleSettings"", ""type"": ""Button"", ""id"": ""88888888-8888-8888-8888-888888888888"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""Sprint"",        ""type"": ""Button"", ""id"": ""99999999-9999-9999-9999-999999999999"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""UseItem"",       ""type"": ""Button"", ""id"": ""aaaa0001-0001-0001-0001-000000000001"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""ScrollItem"",    ""type"": ""Value"",  ""id"": ""aaaa0002-0001-0001-0001-000000000001"", ""expectedControlType"": ""Axis"",    ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""HotbarSlot1"",   ""type"": ""Button"", ""id"": ""bbbb0001-0001-0001-0001-000000000001"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
@@ -65,8 +74,17 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
                         { ""name"": """", ""id"": ""b0000005-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/tab"",            ""action"": ""OpenInventory"", ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000006-0001-0001-0001-000000000001"", ""path"": ""<Mouse>/leftButton"",        ""action"": ""Attack"",        ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/q"",              ""action"": ""UseSkill"",      ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000002"", ""path"": ""<Keyboard>/space"",          ""action"": ""SkillConfirm"",  ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000003"", ""path"": ""<Mouse>/rightButton"",      ""action"": ""SkillCancel"",   ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000004"", ""path"": ""<Keyboard>/r"",              ""action"": ""WeaponSkillTrigger"", ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000005"", ""path"": ""<Keyboard>/m"",              ""action"": ""SkillManagementToggle"", ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000006"", ""path"": ""<Keyboard>/z"",              ""action"": ""SkillSlot1"", ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000007"", ""path"": ""<Keyboard>/x"",              ""action"": ""SkillSlot2"", ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000008"", ""path"": ""<Keyboard>/c"",              ""action"": ""SkillSlot3"", ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000009"", ""path"": ""<Keyboard>/v"",              ""action"": ""SkillSlot4"", ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000008-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/enter"",          ""action"": ""OpenChat"",      ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000009-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/escape"",         ""action"": ""ToggleSettings"", ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000010-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/leftShift"",      ""action"": ""Sprint"",        ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""cc000001-0001-0001-0001-000000000001"", ""path"": ""<Mouse>/leftButton"",        ""action"": ""UseItem"",       ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""cc000002-0001-0001-0001-000000000001"", ""path"": ""<Mouse>/scroll/y"",          ""action"": ""ScrollItem"",    ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""dd000001-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/1"",              ""action"": ""HotbarSlot1"",   ""isComposite"": false, ""isPartOfComposite"": false },
@@ -152,8 +170,17 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
         public InputAction OpenInventory => _wrapper.asset.FindAction("Player/OpenInventory", throwIfNotFound: true);
         public InputAction Attack        => _wrapper.asset.FindAction("Player/Attack",        throwIfNotFound: true);
         public InputAction UseSkill      => _wrapper.asset.FindAction("Player/UseSkill",      throwIfNotFound: true);
+        public InputAction SkillConfirm  => _wrapper.asset.FindAction("Player/SkillConfirm",  throwIfNotFound: true);
+        public InputAction SkillCancel   => _wrapper.asset.FindAction("Player/SkillCancel",   throwIfNotFound: true);
+        public InputAction WeaponSkillTrigger => _wrapper.asset.FindAction("Player/WeaponSkillTrigger", throwIfNotFound: true);
+        public InputAction SkillManagementToggle => _wrapper.asset.FindAction("Player/SkillManagementToggle", throwIfNotFound: true);
+        public InputAction SkillSlot1    => _wrapper.asset.FindAction("Player/SkillSlot1", throwIfNotFound: true);
+        public InputAction SkillSlot2    => _wrapper.asset.FindAction("Player/SkillSlot2", throwIfNotFound: true);
+        public InputAction SkillSlot3    => _wrapper.asset.FindAction("Player/SkillSlot3", throwIfNotFound: true);
+        public InputAction SkillSlot4    => _wrapper.asset.FindAction("Player/SkillSlot4", throwIfNotFound: true);
         public InputAction OpenChat      => _wrapper.asset.FindAction("Player/OpenChat",      throwIfNotFound: true);
         public InputAction ToggleSettings => _wrapper.asset.FindAction("Player/ToggleSettings", throwIfNotFound: true);
+        public InputAction Sprint        => _wrapper.asset.FindAction("Player/Sprint",        throwIfNotFound: true);
 
         // ── Hotbar / Item actions ──
         public InputAction UseItem       => _wrapper.asset.FindAction("Player/UseItem",       throwIfNotFound: true);
