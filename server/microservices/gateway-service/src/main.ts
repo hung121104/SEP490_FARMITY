@@ -1,29 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
 async function bootstrap() {
-  const httpsOptions = {
-    key: fs.readFileSync(
-      path.join(process.cwd(), 'certs', 'localhost-key.pem'),
-    ),
-    cert: fs.readFileSync(path.join(process.cwd(), 'certs', 'localhost.pem')),
-  };
-
-  const app = await NestFactory.create(AppModule, { httpsOptions });
+  const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe());
   app.enableCors({
-    origin: 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
     credentials: true,
   });
-  await app.listen(process.env.PORT || 3000, '0.0.0.0');
-  console.log(
-    `Gateway HTTPS API listening on https://0.0.0.0:${process.env.PORT || 3000}`,
-  );
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Gateway API listening on http://0.0.0.0:${port}`);
 }
 bootstrap();
