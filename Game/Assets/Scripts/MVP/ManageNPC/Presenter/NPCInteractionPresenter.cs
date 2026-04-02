@@ -36,6 +36,9 @@ public class NPCInteractionPresenter
     // ─── Services ───
     private IQuestService questService;
 
+    // ─── Time reference (for day-change quest cache reset) ───
+    private TimeManagerView timeManagerView;
+
     // ─── Interaction menu node ───
     private DialogueNode interactionNode;
 
@@ -95,6 +98,13 @@ public class NPCInteractionPresenter
         // Subscribe to QuestPresenter's result event — Presenter notifies us when done.
         questPresenter.OnQuestAccepted += HandleQuestAccepted;
 
+        // ── Subscribe to day-change event to reset daily quest offer ──────────
+        timeManagerView = UnityEngine.Object.FindFirstObjectByType<TimeManagerView>();
+        if (timeManagerView != null)
+            timeManagerView.OnDayChanged += questPresenter.ClearDailyOffer;
+        else
+            Debug.LogWarning("[NPCInteractionPresenter] TimeManagerView not found — daily quest offer reset disabled.");
+
         INPCDialogueService dialogueService = new NPCDialogueService(dialogueModel);
         dialoguePresenter = new NPCDialoguePresenter(dialogueService, dialogueView, questView);
 
@@ -118,6 +128,13 @@ public class NPCInteractionPresenter
         view.EnableHotbar(true);
         playerMovement = null;
         currentState = NPCInteractionState.Idle;
+    }
+
+    /// <summary>Unsubscribe from TimeManagerView to prevent memory leaks when the NPC is destroyed.</summary>
+    public void Dispose()
+    {
+        if (timeManagerView != null)
+            timeManagerView.OnDayChanged -= questPresenter.ClearDailyOffer;
     }
 
     // ─────────────────────────────────────────────────────────────────
