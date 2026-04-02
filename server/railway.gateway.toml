@@ -1,0 +1,5 @@
+[build]
+buildCommand = "npm install -g pnpm && pnpm install && pnpm --filter gateway-service build"
+
+[deploy]
+startCommand = "node microservices/gateway-service/dist/main"
