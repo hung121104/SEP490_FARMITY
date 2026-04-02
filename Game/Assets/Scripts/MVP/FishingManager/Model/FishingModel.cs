@@ -18,4 +18,8 @@ public class FishingModel
     public string currentRodID;
     public string lastCaughtFishID;
     public bool isFishing = false;
+
+    // Fish that "bit" before the minigame starts
+    public string pendingFishID;
+    public int    pendingFishDifficulty = 1;
 }

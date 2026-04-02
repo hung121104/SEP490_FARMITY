@@ -98,7 +98,7 @@ public class CraftingService : ICraftingService
 
         // Add result item
         int resultAmount = recipe.ResultQuantity * amount;
-        bool added = inventory.AddItem(recipe.ResultItemId, resultAmount, recipe.ResultQuality);
+        bool added = inventory.AddItem(recipe.ResultItemId, resultAmount);
 
         if (!added)
         {

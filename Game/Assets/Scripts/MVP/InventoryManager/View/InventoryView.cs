@@ -56,7 +56,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
     public event Action OnSlotEndDrag;
     public event Action<int> OnSlotDrop;
     public event Action<int> OnUseItemRequested;
-    public event Action<int> OnDropItemRequested;
     public event Action OnSortRequested;
     public event Action<int, Vector2> OnSlotHoverEnter;
     public event Action<int> OnSlotHoverExit;
@@ -434,6 +433,16 @@ public class InventoryView : MonoBehaviour, IInventoryView
             
             Debug.Log("[InventoryView] Returned to original parent.");
         }
+    }
+
+    /// <summary>
+    /// Checks if the inventory is currently reparented to another UI container.
+    /// </summary>
+    public bool IsReparented()
+    {
+        RectTransform root = inventoryRoot != null ? inventoryRoot : (inventoryPanel != null ? inventoryPanel.GetComponent<RectTransform>() : null);
+        if (root == null || originalParent == null) return false;
+        return root.parent != originalParent;
     }
 
     /// <summary>

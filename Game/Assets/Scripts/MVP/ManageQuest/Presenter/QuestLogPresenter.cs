@@ -25,6 +25,7 @@ public class QuestLogPresenter
             .Select(q => new QuestLogItemData
             {
                 questName      = q.questName,
+                npcName        = q.npcName,
                 objectiveTexts = q.objectives
                     .Select(o => $"{o.description} {o.currentAmount}/{o.requiredAmount}")
                     .ToList()

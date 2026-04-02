@@ -45,7 +45,7 @@ public class TestInventory : MonoBehaviour
 
         foreach (var id in testItemIds)
         {
-            bool added = inventorySystem.AddItem(id, quantityPerItem, qualityOverride);
+            bool added = inventorySystem.AddItem(id, quantityPerItem);
             Debug.Log(added
                 ? $"[TestInventory] Added '{id}' x{quantityPerItem}."
                 : $"[TestInventory] Could not add '{id}' (catalog miss or inventory full).");

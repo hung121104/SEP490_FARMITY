@@ -61,6 +61,16 @@ public class ItemModel
     internal void SetQuality(Quality newQuality) => quality = newQuality;
     internal void SetSlotIndex(int slot)       => slotIndex = slot;
 
+    /// <summary>
+    /// Update the cached ItemData reference to the latest catalog entry.
+    /// Called when admin updates an item via SSE — replaces the stale reference
+    /// so all property reads (ItemName, Description, prices, etc.) return fresh data.
+    /// </summary>
+    internal void RefreshItemData(ItemData newData)
+    {
+        if (newData != null) itemData = newData;
+    }
+
     // ── Query Operations ──────────────────────────────────────
     public bool CanStackWith(ItemModel other)
     {

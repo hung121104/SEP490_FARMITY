@@ -171,6 +171,21 @@ public class DroppedItemPresenter
         syncManager?.SendPickupRequest(dropId);
     }
 
+    public void SendPartialPickupRequest(string dropId, int amount)
+    {
+        if (string.IsNullOrEmpty(dropId))
+        {
+            Debug.LogWarning("[DroppedItemPresenter] Cannot pick up item with null/empty dropId.");
+            return;
+        }
+
+        if (showDebugLogs)
+            Debug.Log($"[DroppedItemPresenter] Requesting pickup: {dropId}");
+
+        syncManager?.SendPartialPickupRequest( dropId, amount);
+    }
+
+
     /// <summary>Check if a dropped item exists in the registry.</summary>
     public bool HasDroppedItem(string dropId) => service.HasItem(dropId);
 
@@ -178,6 +193,12 @@ public class DroppedItemPresenter
     public IReadOnlyCollection<DroppedItemData> GetAllDroppedItems()
     {
         return service.GetAllItems().AsReadOnly();
+    }
+
+    /// <summary>Get a specific dropped item by its ID.</summary>
+    public DroppedItemData GetDroppedItem(string dropId)
+    {
+        return service.GetItem(dropId);
     }
 
     /// <summary>

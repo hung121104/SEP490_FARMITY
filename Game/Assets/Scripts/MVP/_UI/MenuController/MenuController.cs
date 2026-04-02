@@ -33,6 +33,13 @@ public class MenuController : MonoBehaviour
         if (menuCanvas == null || hotbarPanel == null || inventoryGameView == null)
             return;
 
+        // Block open main menu when open orther UI Inv
+        if (!menuCanvas.activeSelf && inventoryGameView.IsInventoryInUseByOtherUI())
+        {
+            Debug.Log("[MenuController] Blocked Main Menu toggle because inventory is currently in use by another UI.");
+            return;
+        }
+
         hotbarPanel.SetActive(menuCanvas.activeSelf);
 
         //Force cancel all ongoing actions in inventory when menu is toggled

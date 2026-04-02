@@ -158,9 +158,8 @@ public class ResourceHarvestingService : IResourceHarvestingService
             if (chance <= drop.dropChance)
             {
                 int amount = Random.Range(Mathf.Max(1, drop.minAmount), Mathf.Max(1, drop.maxAmount) + 1);
-                Quality qualityOverride = Quality.Normal;
 
-                bool added = inventoryView.AddItem(drop.itemId, amount, qualityOverride);
+                bool added = inventoryView.AddItem(drop.itemId, amount);
                 if (!added)
                 {
                     Debug.LogWarning(
@@ -169,7 +168,7 @@ public class ResourceHarvestingService : IResourceHarvestingService
                 }
                 else
                 {
-                    Debug.Log($"[ResourceHarvestingService] Looted {amount}x {drop.itemId} from resource (Quality: {qualityOverride}).");
+                    Debug.Log($"[ResourceHarvestingService] Looted {amount}x {drop.itemId} from resource.");
                 }
             }
         }

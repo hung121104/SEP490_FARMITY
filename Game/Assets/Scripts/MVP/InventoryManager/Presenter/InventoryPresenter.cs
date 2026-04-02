@@ -106,7 +106,6 @@ public class InventoryPresenter
         view.OnSlotEndDrag += HandleSlotEndDrag;
         view.OnSlotDrop += HandleSlotDrop;
         view.OnUseItemRequested += HandleUseItem;
-        view.OnDropItemRequested += HandleDropItem;
         view.OnSortRequested += HandleSort;
         view.OnSlotHoverEnter += HandleSlotHoverEnter;
         view.OnSlotHoverExit += HandleSlotHoverExit;
@@ -121,7 +120,6 @@ public class InventoryPresenter
         view.OnSlotEndDrag -= HandleSlotEndDrag;
         view.OnSlotDrop -= HandleSlotDrop;
         view.OnUseItemRequested -= HandleUseItem;
-        view.OnDropItemRequested -= HandleDropItem;
         view.OnSortRequested -= HandleSort;
         view.OnSlotHoverEnter -= HandleSlotHoverEnter;
         view.OnSlotHoverExit -= HandleSlotHoverExit;
@@ -137,7 +135,7 @@ public class InventoryPresenter
         service.OnItemAdded += HandleItemAdded;
         service.OnItemRemoved += HandleItemRemoved;
         service.OnItemsMoved += HandleItemsMoved;
-        service.OnQuantityChanged += HandleQuantityChanged;
+        service.OnSlotChanged += HandleSlotChanged;
         service.OnInventoryChanged += HandleInventoryChanged;
     }
 
@@ -146,7 +144,7 @@ public class InventoryPresenter
         service.OnItemAdded -= HandleItemAdded;
         service.OnItemRemoved -= HandleItemRemoved;
         service.OnItemsMoved -= HandleItemsMoved;
-        service.OnQuantityChanged -= HandleQuantityChanged;
+        service.OnSlotChanged -= HandleSlotChanged;
         service.OnInventoryChanged -= HandleInventoryChanged;
     }
 
@@ -175,7 +173,7 @@ public class InventoryPresenter
         view?.UpdateSlot(toSlot, toItem);
     }
 
-    private void HandleQuantityChanged(int slotIndex, int newQuantity)
+    private void HandleSlotChanged(int slotIndex)
     {
         var item = service.GetItemAtSlot(slotIndex);
         view?.UpdateSlot(slotIndex, item);
@@ -289,7 +287,8 @@ public class InventoryPresenter
     {
         ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
-        if (item != null && !item.IsQuestItem)
+        // if (item != null && !item.IsQuestItem)
+        if (item != null)
         {
             OnItemDropped?.Invoke(item);
             // Remove the entire stack from inventory (drop whole stack to world)
@@ -333,11 +332,11 @@ public class InventoryPresenter
         }
 
         // Prevent deletion of quest items and artifacts
-        if (item.IsQuestItem)
-        {
-            Debug.LogWarning($"[InventoryPresenter] Cannot delete quest item: {item.ItemName}");
-            return;
-        }
+        // if (item.IsQuestItem)
+        // {
+        //     Debug.LogWarning($"[InventoryPresenter] Cannot delete quest item: {item.ItemName}");
+        //     return;
+        // }
 
         if (item.IsArtifact)
         {
@@ -383,9 +382,6 @@ public class InventoryPresenter
         {
             return; // Skip showing tooltip
         }
-
-        var itemModel = service.GetItemAtSlot(slotIndex);
-        if (itemModel == null || itemDetailView == null) return;
 
         ShowTooltipForSlot(slotIndex, screenPosition);
     }
@@ -433,19 +429,20 @@ public class InventoryPresenter
             return;
         }
 
-        // Hide previous tooltip if any
-        if (currentItemPresenter != null)
-        {
-            HideCurrentItemDetail();
-        }
-
         // Track which slot is showing tooltip
         currentTooltipSlot = slotIndex;
 
-        // Create ItemService and ItemPresenter
         IItemService itemService = new ItemService(itemModel);
-        currentItemPresenter = new ItemPresenter(itemModel, itemService);
-        currentItemPresenter.SetView(itemDetailView);
+
+        if (currentItemPresenter == null)
+        {
+            currentItemPresenter = new ItemPresenter(itemModel, itemService);
+            currentItemPresenter.SetView(itemDetailView);
+        }
+        else
+        {
+            currentItemPresenter.UpdateModel(itemModel, itemService);
+        }
 
         // Show details at cursor position
         currentItemPresenter.ShowItemDetailsAtPosition(screenPosition);
@@ -491,14 +488,9 @@ public class InventoryPresenter
 
     #region Public API for external systems
 
-    public bool TryAddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal)
+    public bool TryAddItem(string itemId, int quantity = 1)
     {
-        return service.AddItem(itemId, quantity, quality);
-    }
-
-    public bool TryAddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal)
-    {
-        return service.AddItem(itemData, quantity, quality);
+        return service.AddItem(itemId, quantity);
     }
 
     public bool TryRemoveItem(string itemId, int quantity, Quality? quality = null)
@@ -514,6 +506,11 @@ public class InventoryPresenter
     public int GetItemCount(string itemId)
     {
         return service.GetItemCount(itemId);
+    }
+
+    public int GetAddableQuantity(ItemData itemData, int quantity)
+    {
+        return service.GetAddableQuantity(itemData, quantity);
     }
 
     public void CancelAllActions()

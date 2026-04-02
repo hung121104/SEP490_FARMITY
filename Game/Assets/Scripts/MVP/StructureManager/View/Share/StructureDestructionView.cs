@@ -40,7 +40,7 @@ public class StructureDestructionView : MonoBehaviour
         StructureService.OnAddItemToInventory = (id, qty, quality) =>
         {
             var invView = FindAnyObjectByType<InventoryGameView>();
-            return invView != null && invView.AddItem(id, qty, quality);
+            return invView != null && invView.AddItem(id, qty);
         };
 
         // Subscribe to tool events
