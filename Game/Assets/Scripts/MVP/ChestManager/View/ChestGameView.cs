@@ -49,11 +49,13 @@ public class ChestGameView : MonoBehaviour
     private void OnEnable()
     {
         ChestSyncManager.OnChestChanged += HandleRemoteChestChanged;
+        ItemCatalogService.OnItemUpdated += HandleItemDataUpdated;
     }
 
     private void OnDisable()
     {
         ChestSyncManager.OnChestChanged -= HandleRemoteChestChanged;
+        ItemCatalogService.OnItemUpdated -= HandleItemDataUpdated;
     }
 
     #region Public API
@@ -215,6 +217,16 @@ public class ChestGameView : MonoBehaviour
     #endregion
 
     #region Remote Sync
+
+    /// <summary>
+    /// Called when admin updates an item in the catalog via SSE.
+    /// Refreshes only the chest slots that hold the updated item — chest must be open.
+    /// </summary>
+    private void HandleItemDataUpdated(string itemId)
+    {
+        if (chestService == null) return;
+        chestService.RefreshSlotsForItem(itemId);
+    }
 
     private void HandleRemoteChestChanged(string chestId)
     {

@@ -104,7 +104,7 @@ public class ChestPresenter
         chestInventoryService.OnItemAdded += HandleChestItemAdded;
         chestInventoryService.OnItemRemoved += HandleChestItemRemoved;
         chestInventoryService.OnItemsMoved += HandleChestItemsMoved;
-        chestInventoryService.OnQuantityChanged += HandleChestQuantityChanged;
+        chestInventoryService.OnSlotChanged += HandleChestSlotChanged;
         chestInventoryService.OnInventoryChanged += HandleChestInventoryChanged;
     }
 
@@ -113,7 +113,7 @@ public class ChestPresenter
         chestInventoryService.OnItemAdded -= HandleChestItemAdded;
         chestInventoryService.OnItemRemoved -= HandleChestItemRemoved;
         chestInventoryService.OnItemsMoved -= HandleChestItemsMoved;
-        chestInventoryService.OnQuantityChanged -= HandleChestQuantityChanged;
+        chestInventoryService.OnSlotChanged -= HandleChestSlotChanged;
         chestInventoryService.OnInventoryChanged -= HandleChestInventoryChanged;
     }
 
@@ -126,7 +126,7 @@ public class ChestPresenter
         chestView?.UpdateSlot(fromSlot, fromItem);
         chestView?.UpdateSlot(toSlot, toItem);
     }
-    private void HandleChestQuantityChanged(int slot, int qty)
+    private void HandleChestSlotChanged(int slot)
     {
         var item = chestInventoryService.GetItemAtSlot(slot);
         chestView?.UpdateSlot(slot, item);

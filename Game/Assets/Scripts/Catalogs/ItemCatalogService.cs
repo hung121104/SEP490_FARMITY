@@ -300,6 +300,13 @@ public class ItemCatalogService : MonoBehaviour
     // ── Catalog Sync (real-time updates from CatalogSyncManager) ───────────
 
     /// <summary>
+    /// Fired when an item entry is added or replaced in the catalog at runtime (admin SSE update).
+    /// Subscribers (InventoryGameView, ChestGameView) use this to refresh only affected slots.
+    /// Parameter: itemId of the updated item.
+    /// </summary>
+    public static event Action<string> OnItemUpdated;
+
+    /// <summary>
     /// Adds or replaces an item in the catalog from a JSON string.
     /// Starts sprite download asynchronously.
     /// </summary>
@@ -312,20 +319,32 @@ public class ItemCatalogService : MonoBehaviour
 
             _catalog[item.itemID] = item;
 
-            if (!string.IsNullOrEmpty(item.iconUrl))
-                StartCoroutine(DownloadSprite(item.itemID, item.iconUrl));
-
-            if (item is StructureItemData structItem
-                && !string.IsNullOrEmpty(structItem.structureInteractionSpriteUrl))
-            {
-                StartCoroutine(DownloadSprite(item.itemID, structItem.structureInteractionSpriteUrl,
-                    _structureInteractionSpriteCache));
-            }
+            // Download sprites first, then notify subscribers so UI reads the fresh sprite.
+            StartCoroutine(DownloadThenNotify(item));
         }
         catch (Exception ex)
         {
             Debug.LogWarning($"[ItemCatalogService] AddOrUpdateFromJson failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Downloads icon sprites for the given item, then fires OnItemUpdated
+    /// so subscribers refresh with both updated data AND the new sprite.
+    /// </summary>
+    private IEnumerator DownloadThenNotify(ItemData item)
+    {
+        if (!string.IsNullOrEmpty(item.iconUrl))
+            yield return DownloadSprite(item.itemID, item.iconUrl);
+
+        if (item is StructureItemData structItem
+            && !string.IsNullOrEmpty(structItem.structureInteractionSpriteUrl))
+        {
+            yield return DownloadSprite(item.itemID, structItem.structureInteractionSpriteUrl,
+                _structureInteractionSpriteCache);
+        }
+
+        OnItemUpdated?.Invoke(item.itemID);
     }
 
     /// <summary>Removes an item and its cached sprites from the catalog.</summary>

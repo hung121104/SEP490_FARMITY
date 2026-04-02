@@ -12,7 +12,7 @@ public class InventoryService : IInventoryService
     public event Action<ItemModel, int> OnItemAdded;
     public event Action<ItemModel, int> OnItemRemoved;
     public event Action<int, int> OnItemsMoved;
-    public event Action<int, int> OnQuantityChanged;
+    public event Action<int> OnSlotChanged;
     public event Action OnInventoryChanged;
 
     /// <summary>When true, every successful local change is also sent through InventorySyncManager.</summary>
@@ -58,6 +58,28 @@ public class InventoryService : IInventoryService
         OnInventoryChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Refresh all inventory slots that hold the given itemId after an admin catalog update.
+    /// Updates the stale ItemData reference inside each affected ItemModel, then fires
+    /// OnSlotChanged per slot so the Presenter refreshes only those slots — not the full view.
+    /// </summary>
+    public void RefreshSlotsForItem(string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId)) return;
+
+        var newData = ItemCatalogService.Instance?.GetItemData(itemId);
+        if (newData == null) return;
+
+        var slots = model.GetSlotsWithItem(itemId, null);
+        foreach (int slotIndex in slots)
+        {
+            var item = model.GetItemAtSlot(slotIndex);
+            if (item == null) continue;
+            item.RefreshItemData(newData);
+            OnSlotChanged?.Invoke(slotIndex);
+        }
+    }
+
     #region Add Operations
 
     public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
@@ -93,7 +115,7 @@ public class InventoryService : IInventoryService
                     existingItem.AddQuantity(canAdd);
                     remainingQuantity -= canAdd;
 
-                    OnQuantityChanged?.Invoke(slotIndex, existingItem.Quantity);
+                    OnSlotChanged?.Invoke(slotIndex);
                     OnInventoryChanged?.Invoke();
                     SyncSlotToNetwork(slotIndex);
 
@@ -203,7 +225,7 @@ public class InventoryService : IInventoryService
             }
             else
             {
-                OnQuantityChanged?.Invoke(slotIndex, item.Quantity);
+                OnSlotChanged?.Invoke(slotIndex);
             }
 
             OnInventoryChanged?.Invoke();
@@ -228,7 +250,7 @@ public class InventoryService : IInventoryService
         }
         else
         {
-            OnQuantityChanged?.Invoke(slotIndex, item.Quantity);
+            OnSlotChanged?.Invoke(slotIndex);
         }
 
         OnInventoryChanged?.Invoke();
@@ -277,7 +299,7 @@ public class InventoryService : IInventoryService
                 toItem.AddQuantity(amountToMove);
                 fromItem.AddQuantity(-amountToMove);
 
-                OnQuantityChanged?.Invoke(toSlot, toItem.Quantity);
+                OnSlotChanged?.Invoke(toSlot);
 
                 if (fromItem.Quantity <= 0)
                 {
@@ -286,7 +308,7 @@ public class InventoryService : IInventoryService
                 }
                 else
                 {
-                    OnQuantityChanged?.Invoke(fromSlot, fromItem.Quantity);
+                    OnSlotChanged?.Invoke(fromSlot);
                 }
 
                 OnInventoryChanged?.Invoke();
