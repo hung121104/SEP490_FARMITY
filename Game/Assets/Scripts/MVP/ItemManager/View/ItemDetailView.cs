@@ -24,7 +24,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     [Header("Positioning")]
     [SerializeField] private Vector2 offset = new Vector2(10, -10);
     [SerializeField] private bool followMouse = true;
-    [SerializeField] private bool clampToScreen = true;
 
     private Canvas parentCanvas;
     private Coroutine fadeCoroutine;
@@ -115,23 +114,43 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
         if (panelRectTransform == null || parentCanvas == null || panelRectTransform.parent == null) return;
 
         Camera cam = parentCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? parentCanvas.worldCamera : null;
+        RectTransform parentRect = panelRectTransform.parent as RectTransform;
 
-        // Convert screen position to local position of whatever PARENT it currently belongs to
+        RectTransform detailRect = detailPanel.GetComponent<RectTransform>();
+        Vector2 panelSize = detailRect != null ? detailRect.rect.size : new Vector2(320, 500);
+        Vector2 pivot = detailRect != null ? detailRect.pivot : new Vector2(0.5f, 0.5f);
+        float scale = parentCanvas.scaleFactor;
+
+        // Calculate all 4 edges of the tooltip in screen space
+        // Pivot (0.5, 0.5) means panel extends half size in each direction from offset point
+        float leftEdge   = screenPosition.x + (offset.x - panelSize.x * pivot.x) * scale;
+        float rightEdge  = screenPosition.x + (offset.x + panelSize.x * (1 - pivot.x)) * scale;
+        float bottomEdge = screenPosition.y + (offset.y - panelSize.y * pivot.y) * scale;
+        float topEdge    = screenPosition.y + (offset.y + panelSize.y * (1 - pivot.y)) * scale;
+
+        Vector2 adjustedOffset = offset;
+
+        // Overflow right → flip tooltip to the left of cursor
+        if (rightEdge > Screen.width)
+            adjustedOffset.x = -offset.x;
+
+        // Overflow left → shift right by the overflow amount
+        if (leftEdge < 0)
+            adjustedOffset.x -= leftEdge / scale;
+
+        // Overflow top → shift down by the overflow amount
+        if (topEdge > Screen.height)
+            adjustedOffset.y -= (topEdge - Screen.height) / scale;
+
+        // Overflow bottom → shift up by the overflow amount
+        if (bottomEdge < 0)
+            adjustedOffset.y -= bottomEdge / scale;
+
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            panelRectTransform.parent as RectTransform,
-            screenPosition,
-            cam,
-            out Vector2 localPoint
+            parentRect, screenPosition, cam, out Vector2 localPoint
         );
 
-        // Apply offset
-        localPoint += offset;
-
-        if (clampToScreen)
-        {
-            localPoint = ClampToCanvas(localPoint);
-        }
-
+        localPoint += adjustedOffset;
         panelRectTransform.anchoredPosition = localPoint;
     }
 
@@ -164,36 +183,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
 
     #region Helper Methods
 
-    private Vector2 ClampToCanvas(Vector2 localPoint)
-    {
-        if (parentCanvas == null || panelRectTransform == null || panelRectTransform.parent == null) return localPoint;
-
-        Vector2 pivot = panelRectTransform.pivot;
-        Vector2 size = panelRectTransform.rect.size;
-
-        RectTransform canvasRect = parentCanvas.transform as RectTransform;
-        RectTransform parentRect = panelRectTransform.parent as RectTransform;
-
-        // Find the canvas corners in world space
-        Vector3[] canvasCorners = new Vector3[4];
-        canvasRect.GetWorldCorners(canvasCorners);
-        
-        // Convert bottom-left (0) and top-right (2) corners from world to parent local space
-        Vector3 bottomLeftLocal = parentRect.InverseTransformPoint(canvasCorners[0]);
-        Vector3 topRightLocal = parentRect.InverseTransformPoint(canvasCorners[2]);
-
-        // Calculate bounds in local space relative to the panel's pivot/size
-        float minX = bottomLeftLocal.x + size.x * pivot.x;
-        float maxX = topRightLocal.x - size.x * (1 - pivot.x);
-        float minY = bottomLeftLocal.y + size.y * pivot.y;
-        float maxY = topRightLocal.y - size.y * (1 - pivot.y);
-
-        // Clamp position
-        localPoint.x = Mathf.Clamp(localPoint.x, minX, maxX);
-        localPoint.y = Mathf.Clamp(localPoint.y, minY, maxY);
-
-        return localPoint;
-    }
 
     #endregion
 
