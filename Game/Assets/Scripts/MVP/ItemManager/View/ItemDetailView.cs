@@ -17,9 +17,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     [SerializeField] private TextMeshProUGUI itemDescriptionText;
     [SerializeField] private TextMeshProUGUI itemStatsText;
 
-    [Header("Buttons")]
-    [SerializeField] private Button useButton;
-
     [Header("Animation")]
     [SerializeField] private float fadeInDuration = 0.2f;
     [SerializeField] private float fadeOutDuration = 0.15f;
@@ -33,7 +30,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
     private Coroutine fadeCoroutine;
 
     // Events
-    public event Action OnUseRequested;
     public event Action OnDropRequested;
 
     #region Unity Lifecycle
@@ -48,7 +44,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
         if (panelRectTransform == null && detailPanel != null)
             panelRectTransform = detailPanel.GetComponent<RectTransform>();
 
-        InitializeButtons();
         Hide();
     }
 
@@ -58,16 +53,6 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
         {
             SetPosition(Input.mousePosition);
         }
-    }
-
-    #endregion
-
-    #region Initialization
-
-    private void InitializeButtons()
-    {
-        if (useButton != null)
-            useButton.onClick.AddListener(() => OnUseRequested?.Invoke());
     }
 
     #endregion
@@ -150,46 +135,28 @@ public class ItemDetailView : MonoBehaviour, IItemDetailView
         panelRectTransform.anchoredPosition = localPoint;
     }
 
-    public void SetItemIcon(Sprite icon)
+    public void SetItemDetail(ItemDetailData data)
     {
         if (itemIcon != null)
         {
-            itemIcon.sprite = icon;
-            itemIcon.enabled = icon != null;
+            itemIcon.sprite = data.Icon;
+            itemIcon.enabled = data.Icon != null;
         }
-    }
 
-    public void SetItemName(string itemName, Color qualityColor)
-    {
         if (itemNameText != null)
         {
-            itemNameText.text = itemName;
-            itemNameText.color = qualityColor;
+            itemNameText.text = data.Name;
+            itemNameText.color = data.NameColor;
         }
-    }
 
-    public void SetItemDescription(string description)
-    {
         if (itemDescriptionText != null)
         {
-            itemDescriptionText.text = description;
+            itemDescriptionText.text = data.Description;
         }
-    }
 
-    public void SetItemStats(string stats)
-    {
         if (itemStatsText != null)
         {
-            itemStatsText.text = stats;
-        }
-    }
-
-    public void SetUseButtonState(bool interactable)
-    {
-        if (useButton != null)
-        {
-            useButton.gameObject.SetActive(interactable);
-            useButton.interactable = interactable;
+            itemStatsText.text = data.Stats;
         }
     }
 

@@ -383,9 +383,6 @@ public class InventoryPresenter
             return; // Skip showing tooltip
         }
 
-        var itemModel = service.GetItemAtSlot(slotIndex);
-        if (itemModel == null || itemDetailView == null) return;
-
         ShowTooltipForSlot(slotIndex, screenPosition);
     }
 
@@ -432,19 +429,20 @@ public class InventoryPresenter
             return;
         }
 
-        // Hide previous tooltip if any
-        if (currentItemPresenter != null)
-        {
-            HideCurrentItemDetail();
-        }
-
         // Track which slot is showing tooltip
         currentTooltipSlot = slotIndex;
 
-        // Create ItemService and ItemPresenter
         IItemService itemService = new ItemService(itemModel);
-        currentItemPresenter = new ItemPresenter(itemModel, itemService);
-        currentItemPresenter.SetView(itemDetailView);
+
+        if (currentItemPresenter == null)
+        {
+            currentItemPresenter = new ItemPresenter(itemModel, itemService);
+            currentItemPresenter.SetView(itemDetailView);
+        }
+        else
+        {
+            currentItemPresenter.UpdateModel(itemModel, itemService);
+        }
 
         // Show details at cursor position
         currentItemPresenter.ShowItemDetailsAtPosition(screenPosition);
