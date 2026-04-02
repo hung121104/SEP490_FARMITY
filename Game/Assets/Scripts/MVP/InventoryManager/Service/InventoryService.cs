@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Photon.Pun;
 
 public class InventoryService : IInventoryService
 {
@@ -141,7 +142,13 @@ public class InventoryService : IInventoryService
         var sync = UnityEngine.Object.FindAnyObjectByType<DroppedItemSyncManager>();
         if (sync != null)
         {
-            GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
+            // Find the LOCAL player using PhotonView.IsMine to avoid using Master's position
+            GameObject player = null;
+            foreach (GameObject p in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            {
+                var pv = p.GetComponent<Photon.Pun.PhotonView>();
+                if (pv != null && pv.IsMine) { player = p; break; }
+            }
             Vector3 basePos = player != null ? player.transform.position : Vector3.zero;
             Vector3 dropPos = basePos + new Vector3(finalOffset.x, finalOffset.y, 0f);
 
