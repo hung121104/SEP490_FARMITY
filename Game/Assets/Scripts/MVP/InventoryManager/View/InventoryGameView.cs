@@ -271,7 +271,9 @@ public class InventoryGameView : MonoBehaviour
 
     public bool AddItem(string itemId, int quantity = 1)
     {
-        return presenter.TryAddItem(itemId, quantity);
+        bool added = presenter.TryAddItem(itemId, quantity);
+        if (added) ItemPickupToastView.NotifyItemPickedUp(itemId, quantity);
+        return added;
     }
 
     public bool RemoveItem(string itemId, int quantity)
