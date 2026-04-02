@@ -30,7 +30,10 @@ public class FishingPresenter
         if (service.IsFishingWater(targetPosition))
         {
             model.isFishing = true;
-            
+
+            // Roll which fish bit and calculate difficulty-adjusted timer
+            float timerMult = service.PrepareFish();
+
             GameObject player = GameObject.FindGameObjectWithTag("PlayerEntity");
             if (player != null)
             {
@@ -41,12 +44,12 @@ public class FishingPresenter
                 }
                 Animator anim = player.GetComponent<Animator>();
                 if (anim != null)
-                { 
+                {
                     anim.SetFloat("Speed", 0f);
                     anim.SetBool("IsMoving", false);
                 }
             }
-            view.StartMiniGame(targetPosition);
+            view.StartMiniGame(targetPosition, timerMult);
         }
         else
         {
