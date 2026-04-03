@@ -5,6 +5,7 @@ using UnityEngine;
 public class StaminaView : MonoBehaviourPun
 {
     private const string TRACE = "[HPTRACE]";
+    private const string PROGTRACE = "[PROGTRACE]";
 
     [Header("Core")]
     [SerializeField] private float maxStamina = 200f;
@@ -388,5 +389,56 @@ public class StaminaView : MonoBehaviourPun
         }
 
         Debug.LogWarning($"{TRACE} [StaminaView] Timed out waiting to apply restored health={restoredHealth}");
+    }
+
+    [PunRPC]
+    private void RPC_RestoreProgressionFromMaster(
+        int level,
+        int currentExp,
+        int expToNextLevel,
+        int baseStrength,
+        int baseVitality)
+    {
+        if (!photonView.IsMine)
+            return;
+
+        int safeLevel = Mathf.Max(1, level);
+        int safeCurrentExp = Mathf.Max(0, currentExp);
+        int safeExpToNext = Mathf.Max(1, expToNextLevel);
+        int safeStrength = Mathf.Max(1, baseStrength);
+        int safeVitality = Mathf.Max(1, baseVitality);
+
+        Debug.Log($"{PROGTRACE} [StaminaView] RPC_RestoreProgressionFromMaster received lv={safeLevel} exp={safeCurrentExp}/{safeExpToNext} str={safeStrength} vit={safeVitality}");
+        StartCoroutine(ApplyRestoredProgressionWhenReady(
+            safeLevel,
+            safeCurrentExp,
+            safeExpToNext,
+            safeStrength,
+            safeVitality));
+    }
+
+    private System.Collections.IEnumerator ApplyRestoredProgressionWhenReady(
+        int level,
+        int currentExp,
+        int expToNextLevel,
+        int baseStrength,
+        int baseVitality)
+    {
+        float deadline = Time.realtimeSinceStartup + 10f;
+
+        while (Time.realtimeSinceStartup < deadline)
+        {
+            var statsPresenter = FindObjectOfType<CombatManager.Presenter.StatsPresenter>();
+            if (statsPresenter != null)
+            {
+                statsPresenter.SetProgressionFromSave(level, currentExp, expToNextLevel, baseStrength, baseVitality);
+                Debug.Log($"{PROGTRACE} [StaminaView] Applied restored progression to StatsPresenter lv={level} exp={currentExp}/{expToNextLevel} str={baseStrength} vit={baseVitality}");
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        Debug.LogWarning($"{PROGTRACE} [StaminaView] Timed out waiting to apply restored progression lv={level} exp={currentExp}/{expToNextLevel}");
     }
 }

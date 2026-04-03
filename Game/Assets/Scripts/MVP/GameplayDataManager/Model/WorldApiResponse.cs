@@ -65,6 +65,11 @@ public class WorldApiResponse
         /// Requires Newtonsoft.Json for Dictionary deserialization.
         /// </summary>
         public Dictionary<string, InventorySlotResponse> inventory;
+        public int level;
+        public int currentExp;
+        public int expToNextLevel;
+        public int baseStrength;
+        public int baseVitality;
     }
 }
 

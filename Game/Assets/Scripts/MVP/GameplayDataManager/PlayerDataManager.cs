@@ -48,6 +48,11 @@ public class PlayerDataManager : MonoBehaviour
 				regenBoostRemaining     = c.regenBoostRemaining,
 				toolEfficiencyReduction = c.toolEfficiencyReduction,
 				toolEfficiencyRemaining = c.toolEfficiencyRemaining,
+				level          = c.level,
+				currentExp     = c.currentExp,
+				expToNextLevel = c.expToNextLevel,
+				baseStrength   = c.baseStrength,
+				baseVitality   = c.baseVitality,
 			});
 		}
 		Debug.Log($"[PlayerDataManager] Populated {players.Count} characters.");

@@ -205,6 +205,21 @@ public static class WorldApi
             [JsonProperty("currentHealth", NullValueHandling = NullValueHandling.Ignore)]
             public float? currentHealth;
 
+            [JsonProperty("level", NullValueHandling = NullValueHandling.Ignore)]
+            public int? level;
+
+            [JsonProperty("currentExp", NullValueHandling = NullValueHandling.Ignore)]
+            public int? currentExp;
+
+            [JsonProperty("expToNextLevel", NullValueHandling = NullValueHandling.Ignore)]
+            public int? expToNextLevel;
+
+            [JsonProperty("baseStrength", NullValueHandling = NullValueHandling.Ignore)]
+            public int? baseStrength;
+
+            [JsonProperty("baseVitality", NullValueHandling = NullValueHandling.Ignore)]
+            public int? baseVitality;
+
             [JsonProperty("regenBoostMultiplier", NullValueHandling = NullValueHandling.Ignore)]
             public float? regenBoostMultiplier;
 

@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 public class LoadPlayerData : MonoBehaviourPunCallbacks
 {
     private const string TRACE = "[HPTRACE]";
+    private const string PROGTRACE = "[PROGTRACE]";
 
     void Start()
     {
@@ -98,6 +99,21 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
         targetView.RPC("RPC_RestoreHealthFromMaster", targetView.Owner, restoredHealth);
         Debug.Log($"{TRACE} [LoadPlayerData] Sent health restore RPC to joining player '{playerId}' health={restoredHealth}");
 
+        int restoredLevel = Mathf.Max(1, data.level);
+        int restoredCurrentExp = Mathf.Max(0, data.currentExp);
+        int restoredExpToNext = Mathf.Max(1, data.expToNextLevel);
+        int restoredBaseStrength = Mathf.Max(1, data.baseStrength);
+        int restoredBaseVitality = Mathf.Max(1, data.baseVitality);
+        targetView.RPC(
+            "RPC_RestoreProgressionFromMaster",
+            targetView.Owner,
+            restoredLevel,
+            restoredCurrentExp,
+            restoredExpToNext,
+            restoredBaseStrength,
+            restoredBaseVitality);
+        Debug.Log($"{PROGTRACE} [LoadPlayerData] Sent progression restore RPC to joining player '{playerId}' lv={restoredLevel} exp={restoredCurrentExp}/{restoredExpToNext} str={restoredBaseStrength} vit={restoredBaseVitality}");
+
         // Restore saved appearance via Custom Properties so all clients see it
         var appearance = targetView.GetComponent<PlayerAppearanceSync>();
         if (appearance != null)
@@ -166,6 +182,21 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
             int restoredHealth = Mathf.Max(0, Mathf.RoundToInt(data.currentHealth));
             view.RPC("RPC_RestoreHealthFromMaster", view.Owner, restoredHealth);
             Debug.Log($"{TRACE} [LoadPlayerData] Sent health restore RPC to '{userId}' health={restoredHealth}");
+
+            int restoredLevel = Mathf.Max(1, data.level);
+            int restoredCurrentExp = Mathf.Max(0, data.currentExp);
+            int restoredExpToNext = Mathf.Max(1, data.expToNextLevel);
+            int restoredBaseStrength = Mathf.Max(1, data.baseStrength);
+            int restoredBaseVitality = Mathf.Max(1, data.baseVitality);
+            view.RPC(
+                "RPC_RestoreProgressionFromMaster",
+                view.Owner,
+                restoredLevel,
+                restoredCurrentExp,
+                restoredExpToNext,
+                restoredBaseStrength,
+                restoredBaseVitality);
+            Debug.Log($"{PROGTRACE} [LoadPlayerData] Sent progression restore RPC to '{userId}' lv={restoredLevel} exp={restoredCurrentExp}/{restoredExpToNext} str={restoredBaseStrength} vit={restoredBaseVitality}");
 
             // Restore saved appearance for this player
             var appearanceSync = player.GetComponent<PlayerAppearanceSync>();
@@ -271,6 +302,29 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
                 StartCoroutine(ApplySelfHealthWhenReady(restoredHealth, accountId));
             }
 
+            var statsPresenter = FindObjectOfType<CombatManager.Presenter.StatsPresenter>();
+            if (statsPresenter != null)
+            {
+                statsPresenter.SetProgressionFromSave(
+                    Mathf.Max(1, myEntry.level),
+                    Mathf.Max(0, myEntry.currentExp),
+                    Mathf.Max(1, myEntry.expToNextLevel),
+                    Mathf.Max(1, myEntry.baseStrength),
+                    Mathf.Max(1, myEntry.baseVitality));
+                Debug.Log($"{PROGTRACE} [LoadPlayerData] Self-loaded progression for '{accountId}': lv={myEntry.level} exp={myEntry.currentExp}/{myEntry.expToNextLevel} str={myEntry.baseStrength} vit={myEntry.baseVitality}");
+            }
+            else
+            {
+                Debug.LogWarning($"{PROGTRACE} [LoadPlayerData] StatsPresenter missing for self progression apply '{accountId}'. Queueing retry.");
+                StartCoroutine(ApplySelfProgressionWhenReady(
+                    accountId,
+                    Mathf.Max(1, myEntry.level),
+                    Mathf.Max(0, myEntry.currentExp),
+                    Mathf.Max(1, myEntry.expToNextLevel),
+                    Mathf.Max(1, myEntry.baseStrength),
+                    Mathf.Max(1, myEntry.baseVitality)));
+            }
+
             // Restore saved appearance — broadcast via Custom Properties
             var appearance = localPlayer.GetComponent<PlayerAppearanceSync>();
             if (appearance != null)
@@ -324,5 +378,33 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
         }
 
         Debug.LogWarning($"{TRACE} [LoadPlayerData] Deferred self-apply health timed out for '{accountId}' expectedHealth={restoredHealth}");
+    }
+
+    private IEnumerator ApplySelfProgressionWhenReady(
+        string accountId,
+        int level,
+        int currentExp,
+        int expToNextLevel,
+        int baseStrength,
+        int baseVitality)
+    {
+        float timeout = 10f;
+        float elapsed = 0f;
+
+        while (elapsed < timeout)
+        {
+            var statsPresenter = FindObjectOfType<CombatManager.Presenter.StatsPresenter>();
+            if (statsPresenter != null)
+            {
+                statsPresenter.SetProgressionFromSave(level, currentExp, expToNextLevel, baseStrength, baseVitality);
+                Debug.Log($"{PROGTRACE} [LoadPlayerData] Deferred self-apply progression succeeded for '{accountId}': lv={level} exp={currentExp}/{expToNextLevel} str={baseStrength} vit={baseVitality}");
+                yield break;
+            }
+
+            elapsed += 0.1f;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        Debug.LogWarning($"{PROGTRACE} [LoadPlayerData] Deferred self-apply progression timed out for '{accountId}'. expected lv={level} exp={currentExp}/{expToNextLevel}");
     }
 }
