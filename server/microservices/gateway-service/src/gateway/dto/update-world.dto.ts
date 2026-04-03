@@ -57,8 +57,6 @@ export class UpsertCharacterInWorldDto {
   level?: number;
   currentExp?: number;
   expToNextLevel?: number;
-  baseStrength?: number;
-  baseVitality?: number;
 }
 
 export class UpdateWorldDto {

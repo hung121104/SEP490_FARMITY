@@ -221,10 +221,6 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                         pd.currentExp = charUpdate.currentExp.Value;
                     if (charUpdate.expToNextLevel.HasValue)
                         pd.expToNextLevel = charUpdate.expToNextLevel.Value;
-                    if (charUpdate.baseStrength.HasValue)
-                        pd.baseStrength = charUpdate.baseStrength.Value;
-                    if (charUpdate.baseVitality.HasValue)
-                        pd.baseVitality = charUpdate.baseVitality.Value;
                     if (charUpdate.regenBoostMultiplier.HasValue)
                         pd.regenBoostMultiplier = charUpdate.regenBoostMultiplier.Value;
                     if (charUpdate.regenBoostRemaining.HasValue)
@@ -388,10 +384,8 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                 charUpdate.level = cachedProgression.level;
                 charUpdate.currentExp = cachedProgression.currentExp;
                 charUpdate.expToNextLevel = cachedProgression.expToNextLevel;
-                charUpdate.baseStrength = cachedProgression.baseStrength;
-                charUpdate.baseVitality = cachedProgression.baseVitality;
                 if (ShowDebugLogs)
-                    Debug.Log($"{PROGTRACE} [WorldSave] BuildPayload live accountId='{accountId}' from Stats cache lv={cachedProgression.level} exp={cachedProgression.currentExp}/{cachedProgression.expToNextLevel} str={cachedProgression.baseStrength} vit={cachedProgression.baseVitality}");
+                    Debug.Log($"{PROGTRACE} [WorldSave] BuildPayload live accountId='{accountId}' from Stats cache lv={cachedProgression.level} exp={cachedProgression.currentExp}/{cachedProgression.expToNextLevel}");
             }
             else if (PlayerDataManager.Instance != null)
             {
@@ -402,10 +396,8 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     charUpdate.level = pd.level;
                     charUpdate.currentExp = pd.currentExp;
                     charUpdate.expToNextLevel = pd.expToNextLevel;
-                    charUpdate.baseStrength = pd.baseStrength;
-                    charUpdate.baseVitality = pd.baseVitality;
                     if (ShowDebugLogs)
-                        Debug.Log($"{PROGTRACE} [WorldSave] BuildPayload live accountId='{accountId}' from PlayerData lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel} str={pd.baseStrength} vit={pd.baseVitality}");
+                        Debug.Log($"{PROGTRACE} [WorldSave] BuildPayload live accountId='{accountId}' from PlayerData lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel}");
                 }
             }
 
@@ -487,13 +479,11 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     level          = pd.level,
                     currentExp     = pd.currentExp,
                     expToNextLevel = pd.expToNextLevel,
-                    baseStrength   = pd.baseStrength,
-                    baseVitality   = pd.baseVitality,
                 };
                 if (ShowDebugLogs)
                     Debug.Log($"{TRACE} [WorldSave] BuildPayload fallback accountId='{pd.accountId}' health={pd.currentHealth}");
                 if (ShowDebugLogs)
-                    Debug.Log($"{PROGTRACE} [WorldSave] BuildPayload fallback accountId='{pd.accountId}' lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel} str={pd.baseStrength} vit={pd.baseVitality}");
+                    Debug.Log($"{PROGTRACE} [WorldSave] BuildPayload fallback accountId='{pd.accountId}' lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel}");
                 if (pd.regenBoostRemaining > 0f)
                 {
                     fallback.regenBoostMultiplier = pd.regenBoostMultiplier;

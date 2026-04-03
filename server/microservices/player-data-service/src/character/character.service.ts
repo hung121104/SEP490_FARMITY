@@ -125,8 +125,6 @@ export class CharacterService implements OnModuleInit {
     if (dto.level !== undefined) update.level = dto.level;
     if (dto.currentExp !== undefined) update.currentExp = dto.currentExp;
     if (dto.expToNextLevel !== undefined) update.expToNextLevel = dto.expToNextLevel;
-    if (dto.baseStrength !== undefined) update.baseStrength = dto.baseStrength;
-    if (dto.baseVitality !== undefined) update.baseVitality = dto.baseVitality;
 
     const setOnInsert: Record<string, any> = {
       worldId: worldOid,
@@ -146,8 +144,6 @@ export class CharacterService implements OnModuleInit {
     if (dto.level === undefined) setOnInsert.level = 1;
     if (dto.currentExp === undefined) setOnInsert.currentExp = 0;
     if (dto.expToNextLevel === undefined) setOnInsert.expToNextLevel = 100;
-    if (dto.baseStrength === undefined) setOnInsert.baseStrength = 10;
-    if (dto.baseVitality === undefined) setOnInsert.baseVitality = 10;
 
     const result = await this.characterModel.findOneAndUpdate(
       { worldId: worldOid, accountId: accountOid },

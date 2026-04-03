@@ -5,7 +5,5 @@ namespace CombatManager.Service
         public int level;
         public int currentExp;
         public int expToNextLevel;
-        public int baseStrength;
-        public int baseVitality;
     }
 }

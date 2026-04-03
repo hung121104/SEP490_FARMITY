@@ -21,9 +21,7 @@ public class PlayerCombatRestoreBridgeView : MonoBehaviourPun
     private void RPC_CombatRestoreProgressionFromMaster(
         int level,
         int currentExp,
-        int expToNextLevel,
-        int baseStrength,
-        int baseVitality)
+        int expToNextLevel)
     {
         if (!photonView.IsMine)
             return;
@@ -31,16 +29,12 @@ public class PlayerCombatRestoreBridgeView : MonoBehaviourPun
         int safeLevel = Mathf.Max(1, level);
         int safeCurrentExp = Mathf.Max(0, currentExp);
         int safeExpToNext = Mathf.Max(1, expToNextLevel);
-        int safeStrength = Mathf.Max(1, baseStrength);
-        int safeVitality = Mathf.Max(1, baseVitality);
 
-        Debug.Log($"{PROGTRACE} [PlayerCombatRestoreBridgeView] RPC_CombatRestoreProgressionFromMaster received lv={safeLevel} exp={safeCurrentExp}/{safeExpToNext} str={safeStrength} vit={safeVitality}");
+        Debug.Log($"{PROGTRACE} [PlayerCombatRestoreBridgeView] RPC_CombatRestoreProgressionFromMaster received lv={safeLevel} exp={safeCurrentExp}/{safeExpToNext}");
         StartCoroutine(ApplyRestoredProgressionWhenReady(
             safeLevel,
             safeCurrentExp,
-            safeExpToNext,
-            safeStrength,
-            safeVitality));
+            safeExpToNext));
     }
 
     private System.Collections.IEnumerator ApplyRestoredHealthWhenReady(int restoredHealth)
@@ -66,9 +60,7 @@ public class PlayerCombatRestoreBridgeView : MonoBehaviourPun
     private System.Collections.IEnumerator ApplyRestoredProgressionWhenReady(
         int level,
         int currentExp,
-        int expToNextLevel,
-        int baseStrength,
-        int baseVitality)
+        int expToNextLevel)
     {
         float deadline = Time.realtimeSinceStartup + 10f;
 
@@ -77,8 +69,8 @@ public class PlayerCombatRestoreBridgeView : MonoBehaviourPun
             var statsPresenter = FindObjectOfType<CombatManager.Presenter.StatsPresenter>();
             if (statsPresenter != null)
             {
-                statsPresenter.SetProgressionFromSave(level, currentExp, expToNextLevel, baseStrength, baseVitality);
-                Debug.Log($"{PROGTRACE} [PlayerCombatRestoreBridgeView] Applied restored progression to StatsPresenter lv={level} exp={currentExp}/{expToNextLevel} str={baseStrength} vit={baseVitality}");
+                statsPresenter.SetProgressionFromSave(level, currentExp, expToNextLevel);
+                Debug.Log($"{PROGTRACE} [PlayerCombatRestoreBridgeView] Applied restored progression to StatsPresenter lv={level} exp={currentExp}/{expToNextLevel}");
                 yield break;
             }
 

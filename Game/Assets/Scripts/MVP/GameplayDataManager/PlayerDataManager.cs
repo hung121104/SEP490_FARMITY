@@ -51,8 +51,6 @@ public class PlayerDataManager : MonoBehaviour
 				level          = c.level,
 				currentExp     = c.currentExp,
 				expToNextLevel = c.expToNextLevel,
-				baseStrength   = c.baseStrength,
-				baseVitality   = c.baseVitality,
 			});
 		}
 		Debug.Log($"[PlayerDataManager] Populated {players.Count} characters.");

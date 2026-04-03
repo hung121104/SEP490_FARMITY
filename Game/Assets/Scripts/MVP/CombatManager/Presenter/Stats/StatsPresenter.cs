@@ -130,11 +130,10 @@ namespace CombatManager.Presenter
             return levelsGained;
         }
 
-        public void SetProgressionFromSave(int level, int currentExp, int expToNextLevel, int baseStrength, int baseVitality)
+        public void SetProgressionFromSave(int level, int currentExp, int expToNextLevel)
         {
             suppressDirtySync = true;
             service.SetProgressionState(level, currentExp, expToNextLevel);
-            service.SetBaseStats(baseStrength, baseVitality);
             hasAppliedInitialRestore = true;
             NotifyViewUpdate();
             suppressDirtySync = false;
@@ -157,7 +156,7 @@ namespace CombatManager.Presenter
             }
 
             PlayerProgressionSnapshot snapshot = BuildRuntimeSnapshot();
-            Debug.Log($"{TRACE} [StatsPresenter] PushFinalStateToMaster accountId='{accountId}' isMaster={PhotonNetwork.IsMasterClient} lv={snapshot.level} exp={snapshot.currentExp}/{snapshot.expToNextLevel} str={snapshot.baseStrength} vit={snapshot.baseVitality}");
+            Debug.Log($"{TRACE} [StatsPresenter] PushFinalStateToMaster accountId='{accountId}' isMaster={PhotonNetwork.IsMasterClient} lv={snapshot.level} exp={snapshot.currentExp}/{snapshot.expToNextLevel}");
             CacheProgression(accountId, snapshot);
             UpdatePlayerDataProgression(accountId, snapshot);
 
@@ -191,7 +190,7 @@ namespace CombatManager.Presenter
             if (!PhotonNetwork.IsMasterClient)
                 return;
 
-            if (photonEvent.CustomData is not object[] payload || payload.Length < 6)
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 4)
                 return;
 
             string accountId = payload[0] as string ?? string.Empty;
@@ -200,9 +199,7 @@ namespace CombatManager.Presenter
 
             if (!TryGetInt(payload, 1, out int level) ||
                 !TryGetInt(payload, 2, out int currentExp) ||
-                !TryGetInt(payload, 3, out int expToNextLevel) ||
-                !TryGetInt(payload, 4, out int baseStrength) ||
-                !TryGetInt(payload, 5, out int baseVitality))
+                !TryGetInt(payload, 3, out int expToNextLevel))
                 return;
 
             Player sender = PhotonNetwork.CurrentRoom?.GetPlayer(photonEvent.Sender);
@@ -218,11 +215,9 @@ namespace CombatManager.Presenter
                 level = level,
                 currentExp = currentExp,
                 expToNextLevel = expToNextLevel,
-                baseStrength = baseStrength,
-                baseVitality = baseVitality,
             });
 
-            Debug.Log($"{TRACE} [StatsPresenter] Master received progression event senderActor={photonEvent.Sender} accountId='{accountId}' lv={snapshot.level} exp={snapshot.currentExp}/{snapshot.expToNextLevel} str={snapshot.baseStrength} vit={snapshot.baseVitality}");
+            Debug.Log($"{TRACE} [StatsPresenter] Master received progression event senderActor={photonEvent.Sender} accountId='{accountId}' lv={snapshot.level} exp={snapshot.currentExp}/{snapshot.expToNextLevel}");
 
             CacheProgression(accountId, snapshot);
             UpdatePlayerDataProgression(accountId, snapshot);
@@ -257,14 +252,12 @@ namespace CombatManager.Presenter
             }
 
             var pd = list[idx];
-            Debug.Log($"{TRACE} [StatsPresenter] Restore from PlayerData accountId='{accountId}' lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel} str={pd.baseStrength} vit={pd.baseVitality}");
+            Debug.Log($"{TRACE} [StatsPresenter] Restore from PlayerData accountId='{accountId}' lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel}");
             ApplySnapshotToService(new PlayerProgressionSnapshot
             {
                 level = pd.level,
                 currentExp = pd.currentExp,
                 expToNextLevel = pd.expToNextLevel,
-                baseStrength = pd.baseStrength,
-                baseVitality = pd.baseVitality,
             });
         }
 
@@ -302,14 +295,12 @@ namespace CombatManager.Presenter
                     if (idx >= 0)
                     {
                         var pd = list[idx];
-                        Debug.Log($"{TRACE} [StatsPresenter] Deferred restore hit accountId='{accountId}' lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel} str={pd.baseStrength} vit={pd.baseVitality}");
+                        Debug.Log($"{TRACE} [StatsPresenter] Deferred restore hit accountId='{accountId}' lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel}");
                         ApplySnapshotToService(new PlayerProgressionSnapshot
                         {
                             level = pd.level,
                             currentExp = pd.currentExp,
                             expToNextLevel = pd.expToNextLevel,
-                            baseStrength = pd.baseStrength,
-                            baseVitality = pd.baseVitality,
                         });
                         deferredRestoreCoroutine = null;
                         yield break;
@@ -328,10 +319,9 @@ namespace CombatManager.Presenter
                 return;
 
             PlayerProgressionSnapshot normalized = NormalizeSnapshot(snapshot);
-            Debug.Log($"{TRACE} [StatsPresenter] ApplySnapshotToService lv={normalized.level} exp={normalized.currentExp}/{normalized.expToNextLevel} str={normalized.baseStrength} vit={normalized.baseVitality}");
+            Debug.Log($"{TRACE} [StatsPresenter] ApplySnapshotToService lv={normalized.level} exp={normalized.currentExp}/{normalized.expToNextLevel}");
             suppressDirtySync = true;
             service.SetProgressionState(normalized.level, normalized.currentExp, normalized.expToNextLevel);
-            service.SetBaseStats(normalized.baseStrength, normalized.baseVitality);
             NotifyViewUpdate();
             suppressDirtySync = false;
 
@@ -361,7 +351,7 @@ namespace CombatManager.Presenter
             PlayerProgressionSnapshot snapshot = BuildRuntimeSnapshot();
             CacheProgression(accountId, snapshot);
             UpdatePlayerDataProgression(accountId, snapshot);
-            Debug.Log($"{TRACE} [StatsPresenter] MarkProgressionDirty accountId='{accountId}' isMaster={PhotonNetwork.IsMasterClient} lv={snapshot.level} exp={snapshot.currentExp}/{snapshot.expToNextLevel} str={snapshot.baseStrength} vit={snapshot.baseVitality}");
+            Debug.Log($"{TRACE} [StatsPresenter] MarkProgressionDirty accountId='{accountId}' isMaster={PhotonNetwork.IsMasterClient} lv={snapshot.level} exp={snapshot.currentExp}/{snapshot.expToNextLevel}");
 
             if (PhotonNetwork.IsMasterClient)
                 return;
@@ -388,7 +378,7 @@ namespace CombatManager.Presenter
                 return;
 
             var snapshot = BuildRuntimeSnapshot();
-            Debug.Log($"{TRACE} [StatsPresenter] Client relay send -> master accountId='{accountId}' lv={snapshot.level} exp={snapshot.currentExp}/{snapshot.expToNextLevel} str={snapshot.baseStrength} vit={snapshot.baseVitality}");
+            Debug.Log($"{TRACE} [StatsPresenter] Client relay send -> master accountId='{accountId}' lv={snapshot.level} exp={snapshot.currentExp}/{snapshot.expToNextLevel}");
             RaiseProgressionSyncEvent(accountId, snapshot);
             progressionSyncDirty = false;
             nextProgressionSyncAt = Time.time + Mathf.Max(0.1f, progressionSyncIntervalSeconds);
@@ -401,8 +391,6 @@ namespace CombatManager.Presenter
                 level = service.GetLevel(),
                 currentExp = service.GetCurrentExp(),
                 expToNextLevel = service.GetExpToNextLevel(),
-                baseStrength = service.GetStrength(),
-                baseVitality = service.GetVitality(),
             });
         }
 
@@ -417,8 +405,6 @@ namespace CombatManager.Presenter
                 snapshot.level,
                 snapshot.currentExp,
                 snapshot.expToNextLevel,
-                snapshot.baseStrength,
-                snapshot.baseVitality,
             };
 
             RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
@@ -447,10 +433,8 @@ namespace CombatManager.Presenter
             pd.level = snapshot.level;
             pd.currentExp = snapshot.currentExp;
             pd.expToNextLevel = snapshot.expToNextLevel;
-            pd.baseStrength = snapshot.baseStrength;
-            pd.baseVitality = snapshot.baseVitality;
             list[idx] = pd;
-            Debug.Log($"{TRACE} [StatsPresenter] UpdatePlayerDataProgression applied accountId='{accountId}' lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel} str={pd.baseStrength} vit={pd.baseVitality}");
+            Debug.Log($"{TRACE} [StatsPresenter] UpdatePlayerDataProgression applied accountId='{accountId}' lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel}");
         }
 
         private static PlayerProgressionSnapshot NormalizeSnapshot(PlayerProgressionSnapshot snapshot)
@@ -460,8 +444,6 @@ namespace CombatManager.Presenter
                 level = Mathf.Max(1, snapshot.level),
                 currentExp = Mathf.Max(0, snapshot.currentExp),
                 expToNextLevel = Mathf.Max(1, snapshot.expToNextLevel),
-                baseStrength = Mathf.Max(1, snapshot.baseStrength),
-                baseVitality = Mathf.Max(1, snapshot.baseVitality),
             };
         }
 
