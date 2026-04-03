@@ -67,6 +67,7 @@ MonoBehaviour:
   - RPC_SetSprintIntent
   - RPC_FinalPlayerState
   - RPC_RequestTakeDamage
+  - RPC_RestoreHealthFromMaster
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1
