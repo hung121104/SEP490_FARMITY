@@ -30,9 +30,9 @@ public class HotbarPresenter
         model.OnSlotIndexChanged += view.UpdateSelection;
         model.OnHotbarRefreshed += RefreshAllSlots;
 
-        inventoryService.OnItemAdded += HandleInventoryChanged;
-        inventoryService.OnItemRemoved += HandleInventoryChanged;
-        inventoryService.OnQuantityChanged += HandleInventoryChanged;
+        inventoryService.OnItemAdded += HandleItemAddedOrRemoved;
+        inventoryService.OnItemRemoved += HandleItemAddedOrRemoved;
+        inventoryService.OnSlotChanged += HandleSlotChanged;
         inventoryService.OnInventoryChanged += RefreshAllSlots;
     }
 
@@ -45,9 +45,9 @@ public class HotbarPresenter
         model.OnSlotIndexChanged -= view.UpdateSelection;
         model.OnHotbarRefreshed -= RefreshAllSlots;
 
-        inventoryService.OnItemAdded -= HandleInventoryChanged;
-        inventoryService.OnItemRemoved -= HandleInventoryChanged;
-        inventoryService.OnQuantityChanged -= HandleInventoryChanged;
+        inventoryService.OnItemAdded -= HandleItemAddedOrRemoved;
+        inventoryService.OnItemRemoved -= HandleItemAddedOrRemoved;
+        inventoryService.OnSlotChanged -= HandleSlotChanged;
         inventoryService.OnInventoryChanged -= RefreshAllSlots;
     }
 
@@ -102,14 +102,21 @@ public class HotbarPresenter
         Debug.Log("Consumed " + amount + "x item from hotbar slot " + (localSlotIndex + 1));
     }
 
-    private void HandleInventoryChanged(ItemModel item, int slotIndex)
+    private void HandleItemAddedOrRemoved(ItemModel _,int inventorySlotIndex)
     {
-        RefreshAllSlots();
+        RefreshSlotIfHotbar(inventorySlotIndex);
     }
 
-    private void HandleInventoryChanged(int slotA, int slotB)
+    private void HandleSlotChanged(int inventorySlotIndex)
     {
-        RefreshAllSlots();
+        RefreshSlotIfHotbar(inventorySlotIndex);
+    }
+
+    private void RefreshSlotIfHotbar(int inventorySlotIndex)
+    {
+        if (!model.TryGetLocalIndex(inventorySlotIndex, out int localIndex)) return;
+        var item = model.GetItemAt(localIndex);
+        view.UpdateSlotDisplay(localIndex, item);
     }
 
     private void RefreshAllSlots()

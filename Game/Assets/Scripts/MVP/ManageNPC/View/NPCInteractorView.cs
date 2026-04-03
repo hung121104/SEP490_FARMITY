@@ -101,4 +101,6 @@ public class NPCInteractorView : MonoBehaviour, INPCInteractorView
 
     public void StartPresenterCoroutine(System.Collections.IEnumerator coroutine)
         => StartCoroutine(coroutine);
+
+    private void OnDestroy() => presenter?.Dispose();
 }

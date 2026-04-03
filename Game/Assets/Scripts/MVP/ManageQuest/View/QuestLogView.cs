@@ -1,11 +1,13 @@
 ﻿using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>Render-only DTO for one quest row in the quest log. View never touches QuestModel.</summary>
 public class QuestLogItemData
 {
     public string questName;
+    public string npcName;            // NPC who gave the quest
     public List<string> objectiveTexts; // pre-formatted by Presenter: "desc amount/required"
 }
 
@@ -46,7 +48,7 @@ public class QuestLogView : MonoBehaviour
 
         if (pinnedObjectiveText != null)
             pinnedObjectiveText.text = data.objectiveTexts != null && data.objectiveTexts.Count > 0
-                ? string.Join("\n", data.objectiveTexts)
+                ? string.Join("\n", data.objectiveTexts.Select(t => $"- {data.npcName} : {t}"))
                 : string.Empty;
     }
 

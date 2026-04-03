@@ -3,8 +3,8 @@ using UnityEngine;
 
 public class ItemPresenter
 {
-    private readonly ItemModel model;
-    private readonly IItemService service;
+    private ItemModel model;
+    private IItemService service;
     private IItemDetailView view;
 
     // Events for external systems
@@ -38,19 +38,23 @@ public class ItemPresenter
         }
     }
 
+    public void UpdateModel(ItemModel newModel, IItemService newService)
+    {
+        model = newModel ?? throw new ArgumentNullException(nameof(newModel));
+        service = newService ?? throw new ArgumentNullException(nameof(newService));
+    }
+
     #endregion
 
     #region View Event Subscriptions
 
     private void SubscribeToViewEvents()
     {
-        view.OnUseRequested += HandleUseRequested;
         view.OnDropRequested += HandleDropRequested;
     }
 
     private void UnsubscribeFromViewEvents()
     {
-        view.OnUseRequested -= HandleUseRequested;
         view.OnDropRequested -= HandleDropRequested;
     }
 
@@ -65,13 +69,14 @@ public class ItemPresenter
     {
         if (view == null) return;
 
-        view.SetItemIcon(model.Icon);
-        view.SetItemName(model.ItemName, service.GetQualityColor());
-        view.SetItemDescription(service.GetFormattedDescription());
-        view.SetItemStats(service.GetFormattedStats());
-
-        // Configure buttons based on item capabilities
-        view.SetUseButtonState(service.CanBeUsed());
+        view.SetItemDetail(new ItemDetailData
+        {
+            Icon = model.Icon,
+            Name = model.ItemName,
+            NameColor = service.GetQualityColor(),
+            Description = service.GetFormattedDescription(),
+            Stats = service.GetFormattedStats()
+        });
         view.Show();
     }
 
@@ -104,15 +109,6 @@ public class ItemPresenter
 
     #region Event Handlers
 
-    private void HandleUseRequested()
-    {
-        if (service.CanBeUsed())
-        {
-            OnItemInteracted?.Invoke(model);
-            Debug.Log($"[ItemPresenter] Use requested: {model.ItemName}");
-        }
-    }
-
     private void HandleDropRequested()
     {
         if (!model.IsQuestItem && !model.IsArtifact)
@@ -130,4 +126,13 @@ public class ItemPresenter
     public IItemService GetService() => service;
 
     #endregion
+}
+
+public struct ItemDetailData
+{
+    public Sprite Icon;
+    public string Name;
+    public Color NameColor;
+    public string Description;
+    public string Stats;
 }

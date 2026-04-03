@@ -37,11 +37,13 @@ public class InventoryGameView : MonoBehaviour
     private void OnEnable()
     {
         InventorySyncManager.OnInventoryChanged += HandleRemoteInventoryChanged;
+        ItemCatalogService.OnItemUpdated += HandleItemDataUpdated;
     }
 
     private void OnDisable()
     {
         InventorySyncManager.OnInventoryChanged -= HandleRemoteInventoryChanged;
+        ItemCatalogService.OnItemUpdated -= HandleItemDataUpdated;
     }
 
     private void OnDestroy()
@@ -115,6 +117,17 @@ public class InventoryGameView : MonoBehaviour
         if (showDebugLogs) Debug.Log("[InventoryGameView] Network inventory sync enabled.");
     }
     #endregion
+
+    /// <summary>
+    /// Called when admin updates an item in the catalog via SSE.
+    /// Re-binds the stale ItemData reference on affected inventory slots and refreshes
+    /// only those slots in the UI — avoids a full-inventory redraw.
+    /// </summary>
+    private void HandleItemDataUpdated(string itemId)
+    {
+        if (service is InventoryService concreteService)
+            concreteService.RefreshSlotsForItem(itemId);
+    }
 
     /// <summary>
     /// Called when InventorySyncManager receives a remote slot change.
@@ -258,7 +271,9 @@ public class InventoryGameView : MonoBehaviour
 
     public bool AddItem(string itemId, int quantity = 1)
     {
-        return presenter.TryAddItem(itemId, quantity);
+        bool added = presenter.TryAddItem(itemId, quantity);
+        if (added) ItemPickupToastView.NotifyItemPickedUp(itemId, quantity);
+        return added;
     }
 
     public bool RemoveItem(string itemId, int quantity)

@@ -4,7 +4,6 @@ public class FishingBootstrapper : MonoBehaviour
 {
     [Header("Dependencies ")]
     public FishingView fishingView;
-    public FishDatabase fishDatabase;
 
     private FishingPresenter presenter;
     private FishingModel model;
@@ -32,7 +31,7 @@ public class FishingBootstrapper : MonoBehaviour
             return;
         }
 
-        service = new FishingService(fishDatabase, globalInventory, model);
+        service = new FishingService(globalInventory, model);
         presenter = new FishingPresenter(fishingView, service, model);
 
         
