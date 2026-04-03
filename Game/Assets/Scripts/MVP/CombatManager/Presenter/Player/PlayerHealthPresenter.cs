@@ -507,32 +507,6 @@ namespace CombatManager.Presenter
             UpdatePlayerDataHealth(accountId, currentHealth);
         }
 
-        [PunRPC]
-        private void RPC_RestoreHealthFromMaster(int restoredHealth)
-        {
-            int normalized = Mathf.Max(0, restoredHealth);
-            Debug.Log($"{TRACE} [PlayerHealthPresenter] RPC_RestoreHealthFromMaster received health={normalized} isMine={IsLocalOwnedPlayer()}");
-
-            if (!IsLocalOwnedPlayer())
-                return;
-
-            if (service == null || !service.IsInitialized())
-            {
-                hasPendingRpcRestoreHealth = true;
-                pendingRpcRestoreHealth = normalized;
-                Debug.Log($"{TRACE} [PlayerHealthPresenter] Service not ready; queued RPC health restore={normalized}");
-                return;
-            }
-
-            suppressDirtySync = true;
-            service.SetCurrentHealth(normalized);
-            suppressDirtySync = false;
-            hasAppliedInitialRestore = true;
-            NotifyViewUpdate();
-            MarkHealthDirty();
-            Debug.Log($"{TRACE} [PlayerHealthPresenter] RPC health restore applied health={normalized}");
-        }
-
         private bool TryRestoreCurrentHealthFromSavedCharacterData()
         {
             if (service == null || !service.IsInitialized() || PlayerDataManager.Instance == null)

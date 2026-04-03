@@ -83,8 +83,6 @@ export class GatewayModule implements NestModule {
         { path: 'player-data/achievement/progress/batch', method: RequestMethod.PUT },
         { path: 'player-data/combat/skill-loadout', method: RequestMethod.GET },
         { path: 'player-data/combat/skill-loadout', method: RequestMethod.PUT },
-        { path: 'player-data/combat/progression', method: RequestMethod.GET },
-        { path: 'player-data/combat/progression', method: RequestMethod.PUT },
         { path: 'game-data/achievements/create', method: RequestMethod.POST },
         { path: 'game-data/achievements/:achievementId', method: RequestMethod.PUT },
         { path: 'game-data/achievements/:achievementId', method: RequestMethod.DELETE },

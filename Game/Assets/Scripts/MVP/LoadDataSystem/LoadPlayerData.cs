@@ -96,7 +96,7 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
         Debug.Log($"[LoadPlayerData] Applied position for joining player '{playerId}': {loadedPos}");
 
         int restoredHealth = Mathf.Max(0, Mathf.RoundToInt(data.currentHealth));
-        targetView.RPC("RPC_RestoreHealthFromMaster", targetView.Owner, restoredHealth);
+        targetView.RPC("RPC_CombatRestoreHealthFromMaster", targetView.Owner, restoredHealth);
         Debug.Log($"{TRACE} [LoadPlayerData] Sent health restore RPC to joining player '{playerId}' health={restoredHealth}");
 
         int restoredLevel = Mathf.Max(1, data.level);
@@ -105,7 +105,7 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
         int restoredBaseStrength = Mathf.Max(1, data.baseStrength);
         int restoredBaseVitality = Mathf.Max(1, data.baseVitality);
         targetView.RPC(
-            "RPC_RestoreProgressionFromMaster",
+            "RPC_CombatRestoreProgressionFromMaster",
             targetView.Owner,
             restoredLevel,
             restoredCurrentExp,
@@ -180,7 +180,7 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
             Debug.Log($"[LoadPlayerData] Synced position for {userId}: {loadedPos}");
 
             int restoredHealth = Mathf.Max(0, Mathf.RoundToInt(data.currentHealth));
-            view.RPC("RPC_RestoreHealthFromMaster", view.Owner, restoredHealth);
+            view.RPC("RPC_CombatRestoreHealthFromMaster", view.Owner, restoredHealth);
             Debug.Log($"{TRACE} [LoadPlayerData] Sent health restore RPC to '{userId}' health={restoredHealth}");
 
             int restoredLevel = Mathf.Max(1, data.level);
@@ -189,7 +189,7 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
             int restoredBaseStrength = Mathf.Max(1, data.baseStrength);
             int restoredBaseVitality = Mathf.Max(1, data.baseVitality);
             view.RPC(
-                "RPC_RestoreProgressionFromMaster",
+                "RPC_CombatRestoreProgressionFromMaster",
                 view.Owner,
                 restoredLevel,
                 restoredCurrentExp,

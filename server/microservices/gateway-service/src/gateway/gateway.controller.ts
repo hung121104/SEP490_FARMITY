@@ -47,7 +47,6 @@ import { HttpStatus } from '@nestjs/common';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementProgressDto } from './dto/update-achievement-progress.dto';
 import { UpdateSkillLoadoutDto } from './dto/update-skill-loadout.dto';
-import { UpdateCharacterProgressionDto } from './dto/update-character-progression.dto';
 import {
   UpdateWorldBlacklistDto,
   WorldBlacklistQueryDto,
@@ -1939,52 +1938,6 @@ export class GatewayController {
           playerSkillSlotIds: Array.isArray(dto.playerSkillSlotIds)
             ? dto.playerSkillSlotIds
             : [],
-        }),
-      );
-    } catch (err) {
-      throw this.rpcError(err);
-    }
-  }
-
-  /** GET /player-data/combat/progression?worldId=... — get this player's persisted progression for a world */
-  @Get('player-data/combat/progression')
-  async getCharacterProgression(@Query('worldId') worldId: string, @Req() req: Request) {
-    const accountId = req['user']?.sub;
-    if (!accountId) throw new UnauthorizedException('Missing account');
-    if (!worldId) throw new BadRequestException('worldId is required');
-
-    try {
-      return await firstValueFrom(
-        this.playerDataClient.send('get-character-progression', {
-          worldId,
-          accountId: String(accountId),
-        }),
-      );
-    } catch (err) {
-      throw this.rpcError(err);
-    }
-  }
-
-  /** PUT /player-data/combat/progression — update this player's persisted progression */
-  @Put('player-data/combat/progression')
-  async updateCharacterProgression(
-    @Body() dto: UpdateCharacterProgressionDto,
-    @Req() req: Request,
-  ) {
-    const accountId = req['user']?.sub;
-    if (!accountId) throw new UnauthorizedException('Missing account');
-    if (!dto?.worldId) throw new BadRequestException('worldId is required');
-
-    try {
-      return await firstValueFrom(
-        this.playerDataClient.send('update-character-progression', {
-          worldId: dto.worldId,
-          accountId: String(accountId),
-          level: dto.level,
-          currentExp: dto.currentExp,
-          expToNextLevel: dto.expToNextLevel,
-          baseStrength: dto.baseStrength,
-          baseVitality: dto.baseVitality,
         }),
       );
     } catch (err) {
