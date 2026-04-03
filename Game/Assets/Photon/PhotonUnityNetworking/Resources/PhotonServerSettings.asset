@@ -68,6 +68,9 @@ MonoBehaviour:
   - RPC_FinalPlayerState
   - RPC_RequestTakeDamage
   - RPC_RestoreHealthFromMaster
+  - RPC_RestoreProgressionFromMaster
+  - RPC_CombatRestoreHealthFromMaster
+  - RPC_CombatRestoreProgressionFromMaster
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1
