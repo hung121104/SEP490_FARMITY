@@ -22,7 +22,10 @@ import { CharacterModule } from '../character/character.module';
       {
         name: 'AUTH_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 8877 },
+        options: {
+          host: process.env.AUTH_SERVICE_HOST || 'localhost',
+          port: parseInt(process.env.AUTH_SERVICE_PORT || '8877'),
+        },
       },
     ]),
   ],
