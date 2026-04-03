@@ -25,16 +25,5 @@ public static class WorldDataManagerStructureExtensions
     }
 
     public static bool UpdateStructureHpAtWorldPosition(this WorldDataManager manager, Vector3 worldPos, int newHp)
-    {
-        if (manager.CropData == null) return false;
-        int wx = Mathf.FloorToInt(worldPos.x);
-        int wy = Mathf.FloorToInt(worldPos.y);
-        int sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
-        if (sectionId == -1) return false;
-        var chunkPos = manager.WorldToChunkCoords(worldPos);
-        var chunk = manager.CropData.GetChunk(sectionId, chunkPos);
-        if (chunk == null) return false;
-
-        return chunk.UpdateStructureHp(wx, wy, newHp);
-    }
+        => manager.StructureData?.UpdateStructureHpAtWorldPosition(worldPos, newHp) ?? false;
 }

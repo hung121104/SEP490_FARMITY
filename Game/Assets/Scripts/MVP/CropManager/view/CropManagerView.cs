@@ -214,11 +214,10 @@ public class CropManagerView : MonoBehaviourPunCallbacks
         // Get the SpriteRenderer from the prefab (root or child); add one as fallback.
         var sr = go.GetComponentInChildren<SpriteRenderer>(true);
         if (sr == null)
-        {
             sr = go.AddComponent<SpriteRenderer>();
-            sr.sortingLayerName = "WalkInfront";
-            sr.sortingOrder     = 0;
-        }
+
+        sr.sortingLayerName = stage == 0 ? "Ground" : "WalkInfront";
+        sr.sortingOrder     = stage == 0 ? 5 : 0;
         sr.sprite = PlantCatalogService.Instance?.GetStageSprite(plantId, stage);
 
         cropVisuals[key] = go;

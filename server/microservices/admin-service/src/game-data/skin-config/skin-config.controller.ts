@@ -2,6 +2,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { SkinConfigService } from './skin-config.service';
 import { CreateSkinConfigDto } from './dto/create-skin-config.dto';
+import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class SkinConfigController {
@@ -22,8 +23,13 @@ export class SkinConfigController {
    * Payload: CreateSkinConfigDto
    */
   @MessagePattern('create-skin-config')
-  async create(@Payload() dto: CreateSkinConfigDto) {
-    return this.skinConfigService.create(dto);
+  async create(@Payload() dto: CreateSkinConfigDto): Promise<CatalogChange> {
+    const data = await this.skinConfigService.create(dto);
+    return {
+      data,
+      changeType: 'create',
+      entityType: 'skin-config',
+    };
   }
 
   /**
@@ -41,9 +47,14 @@ export class SkinConfigController {
       displayName?: string;
       layer?: string;
     },
-  ) {
+  ): Promise<CatalogChange> {
     const { configId, ...patch } = payload;
-    return this.skinConfigService.update(configId, patch);
+    const data = await this.skinConfigService.update(configId, patch);
+    return {
+      data,
+      changeType: 'update',
+      entityType: 'skin-config',
+    };
   }
 
   /**
@@ -51,7 +62,14 @@ export class SkinConfigController {
    * Payload: { configId: string }
    */
   @MessagePattern('delete-skin-config')
-  async remove(@Payload() payload: { configId: string }) {
-    return this.skinConfigService.remove(payload.configId);
+  async remove(
+    @Payload() payload: { configId: string },
+  ): Promise<CatalogChange> {
+    const data = await this.skinConfigService.remove(payload.configId);
+    return {
+      data,
+      changeType: 'delete',
+      entityType: 'skin-config',
+    };
   }
 }

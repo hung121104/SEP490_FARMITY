@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using Photon.Pun;
 using CombatManager.Model;
 using CombatManager.Service;
@@ -23,11 +24,25 @@ namespace CombatManager.Presenter
         private IPlayerHealthService service;
         private IStatsService statsService;
 
+        private static readonly Dictionary<int, PlayerHealthPresenter> PresentersByActor = new Dictionary<int, PlayerHealthPresenter>();
+        private int registeredActorNumber = -1;
+
         #region Unity Lifecycle
 
         private void Start()
         {
             StartCoroutine(DelayedInitialize());
+        }
+
+        private void OnEnable()
+        {
+            PlayerRegistry.OnLocalPlayerSpawned += HandleLocalPlayerSpawned;
+        }
+
+        private void OnDisable()
+        {
+            PlayerRegistry.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
+            UnregisterActorBinding();
         }
 
         #endregion
@@ -67,14 +82,11 @@ namespace CombatManager.Presenter
             GameObject playerObj = FindLocalPlayerEntity();
             if (playerObj == null)
             {
-                Debug.LogError("[PlayerHealthPresenter] Local player entity not found!");
-                enabled = false;
+                Debug.LogWarning("[PlayerHealthPresenter] Local player entity not found yet. Waiting for spawn event.");
                 return;
             }
 
-            // Initialize service
-            service = new PlayerHealthService(model);
-            service.Initialize(playerObj.transform, statsService);
+            BindToPlayer(playerObj);
 
             // Notify view
             NotifyViewUpdate();
@@ -111,6 +123,109 @@ namespace CombatManager.Presenter
             return null;
         }
 
+        /// <summary>Returns the local PlayerHealthPresenter (the one tracking this client's player).</summary>
+        public static PlayerHealthPresenter FindLocal()
+        {
+            // FindObjectsByType avoids the obsolete FindObjectsOfType warning.
+            foreach (var presenter in UnityEngine.Object.FindObjectsByType<PlayerHealthPresenter>(
+                         UnityEngine.FindObjectsSortMode.None))
+            {
+                if (presenter.model?.playerEntity != null &&
+                    presenter.model.playerEntity.GetComponent<PhotonView>() is PhotonView pv &&
+                    pv.IsMine)
+                    return presenter;
+            }
+            // Fallback: if only one presenter exists (single-player / host)
+            var all = UnityEngine.Object.FindObjectsByType<PlayerHealthPresenter>(UnityEngine.FindObjectsSortMode.None);
+            return all.Length == 1 ? all[0] : null;
+        }
+
+        public static bool TryApplyDamageForActor(int actorNumber, int damageAmount)
+        {
+            if (damageAmount <= 0)
+                return false;
+
+            PlayerHealthPresenter presenter = null;
+
+            if (PhotonNetwork.IsConnected)
+            {
+                if (actorNumber <= 0)
+                    return false;
+
+                PresentersByActor.TryGetValue(actorNumber, out presenter);
+
+                if (presenter == null || !presenter.IsInitialized())
+                    return false;
+            }
+            else
+            {
+                if (actorNumber > 0)
+                    PresentersByActor.TryGetValue(actorNumber, out presenter);
+
+                if (presenter == null)
+                    presenter = FindLocal();
+
+                if (presenter == null || !presenter.IsInitialized())
+                    return false;
+            }
+
+            presenter.ChangeHealth(-Mathf.Abs(damageAmount));
+            return true;
+        }
+
+        private void RegisterActorBinding(GameObject playerObj)
+        {
+            if (playerObj == null)
+                return;
+
+            UnregisterActorBinding();
+
+            PhotonView pv = playerObj.GetComponent<PhotonView>();
+            if (pv == null || pv.OwnerActorNr <= 0)
+                return;
+
+            registeredActorNumber = pv.OwnerActorNr;
+            PresentersByActor[registeredActorNumber] = this;
+        }
+
+        private void UnregisterActorBinding()
+        {
+            if (registeredActorNumber <= 0)
+                return;
+
+            if (PresentersByActor.TryGetValue(registeredActorNumber, out PlayerHealthPresenter existing) && existing == this)
+                PresentersByActor.Remove(registeredActorNumber);
+
+            registeredActorNumber = -1;
+        }
+
+        private void HandleLocalPlayerSpawned(Transform playerTransform)
+        {
+            if (playerTransform == null)
+                return;
+
+            if (statsService == null)
+            {
+                // Initialization not finished yet; delayed init will bind later.
+                return;
+            }
+
+            BindToPlayer(playerTransform.gameObject);
+        }
+
+        private void BindToPlayer(GameObject playerObj)
+        {
+            if (playerObj == null)
+                return;
+
+            if (service == null)
+                service = new PlayerHealthService(model);
+
+            service.Initialize(playerObj.transform, statsService);
+            RegisterActorBinding(playerObj);
+            NotifyViewUpdate();
+        }
+
         #endregion
 
         #region Public API for External Systems
@@ -120,8 +235,30 @@ namespace CombatManager.Presenter
             if (service == null || !service.IsInitialized())
                 return;
 
+            int beforeHealth = service.GetCurrentHealth();
             service.ChangeHealth(amount);
+            int afterHealth = service.GetCurrentHealth();
+
+            TrySpawnHealthPopup(afterHealth - beforeHealth);
             NotifyViewUpdate();
+        }
+
+        private void TrySpawnHealthPopup(int healthDelta)
+        {
+            if (healthDelta == 0)
+                return;
+
+            Transform playerEntity = service?.GetPlayerEntity();
+            if (playerEntity == null)
+                return;
+
+            if (healthDelta > 0)
+            {
+                DamagePopupPresenter.Spawn(playerEntity.position, healthDelta, PopupType.Heal);
+                return;
+            }
+
+            DamagePopupPresenter.Spawn(playerEntity.position, Mathf.Abs(healthDelta));
         }
 
         public void RefreshHealthBar()

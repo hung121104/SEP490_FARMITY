@@ -33,15 +33,25 @@ export class CreateItemDto {
   crossResults?: { targetPlantId: string; resultPlantId: string }[];
 
   // Consumable / Cooking
-  energyRestore?: number;
+  viableRestore?: number;
   healthRestore?: number;
-  bufferDuration?: number;
+  regenBoostMultiplier?: number;
+  toolEfficiencyReductionPercent?: number;
+  effectDurationSeconds?: number;
 
   // Weapon
   damage?: number;
   critChance?: number;
-  attackSpeed?: number;
   weaponMaterialId?: string;
+  weaponType?: number;
+  tier?: number;
+  attackCooldown?: number;
+  knockbackForce?: number;
+  projectileSpeed?: number;
+  projectileRange?: number;
+  projectileKnockback?: number;
+  linkedSkillId?: string;
+  weaponPrefabKey?: string;
 
   // Fish
   difficulty?: number;
@@ -63,4 +73,9 @@ export class CreateItemDto {
   // Quest
   relatedQuestID?: string;
   autoConsume?: boolean;
+
+  // Structure
+  structureInteractionType?: number;
+  structureLevel?: number;
+  structureInteractionSpriteUrl?: string;
 }

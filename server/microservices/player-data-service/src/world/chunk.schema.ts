@@ -10,10 +10,10 @@ export type ChunkDocument = Chunk & Document;
  */
 @Schema({ _id: false, strict: true })
 export class TileData {
-  /** Tile category: 'empty' | 'tilled' | 'crop' | 'resource' */
+  /** Tile category: 'empty' | 'tilled' | 'crop' | 'resource' | 'structure' */
   @Prop({
     default: 'empty',
-    enum: ['empty', 'tilled', 'crop', 'resource'],
+    enum: ['empty', 'tilled', 'crop', 'resource', 'structure'],
   })
   type: string;
 
@@ -43,6 +43,16 @@ export class TileData {
 
   @Prop({ default: false })
   isPollinated: boolean;
+
+  // ── Structure fields (chests, fences, etc.) ─────────────────────────────────
+
+  /** Catalog ID of the placed structure, e.g. 'chest_wood', 'fence_wood' */
+  @Prop({ default: null })
+  structureId: string | null;
+
+  /** Structure upgrade level (1–3) */
+  @Prop({ default: 0 })
+  structureLevel: number;
 
   // ── Resource fields (trees, rocks, etc.) ─────────────────────────────────
 

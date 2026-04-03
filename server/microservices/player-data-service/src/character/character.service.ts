@@ -52,6 +52,8 @@ export class CharacterService implements OnModuleInit {
       positionX: 0,
       positionY: 0,
       sectionIndex: 0,
+      currentStamina: 200,
+      viableStamina: 200,
     } as Partial<Character>;
 
     // Use array form to support passing session option
@@ -78,9 +80,17 @@ export class CharacterService implements OnModuleInit {
   }
 
   // Delete all characters belonging to a world. Returns number of deleted documents.
-  async deleteByWorldId(worldId: string | Types.ObjectId): Promise<number> {
+  async deleteByWorldId(
+    worldId: string | Types.ObjectId,
+    options?: { session?: ClientSession },
+  ): Promise<number> {
     const oid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
-    const result = await this.characterModel.deleteMany({ worldId: oid });
+    const result = await this.characterModel
+      .deleteMany(
+        { worldId: oid },
+        options?.session ? { session: options.session } : {},
+      )
+      .exec();
     return result.deletedCount ?? 0;
   }
 
@@ -104,13 +114,91 @@ export class CharacterService implements OnModuleInit {
     if (dto.outfitConfigId !== undefined) update.outfitConfigId = dto.outfitConfigId;
     if (dto.hatConfigId    !== undefined) update.hatConfigId    = dto.hatConfigId;
     if (dto.toolConfigId   !== undefined) update.toolConfigId   = dto.toolConfigId;
+    if (dto.currentStamina !== undefined) update.currentStamina = dto.currentStamina;
+    if (dto.viableStamina  !== undefined) update.viableStamina  = dto.viableStamina;
+    if (dto.regenBoostMultiplier    !== undefined) update.regenBoostMultiplier    = dto.regenBoostMultiplier;
+    if (dto.regenBoostRemaining     !== undefined) update.regenBoostRemaining     = dto.regenBoostRemaining;
+    if (dto.toolEfficiencyReduction !== undefined) update.toolEfficiencyReduction = dto.toolEfficiencyReduction;
+    if (dto.toolEfficiencyRemaining !== undefined) update.toolEfficiencyRemaining = dto.toolEfficiencyRemaining;
+
+    const setOnInsert: Record<string, any> = {
+      worldId: worldOid,
+      accountId: accountOid,
+    };
+
+    // Avoid MongoDB path conflicts by only defaulting fields here when they are
+    // not already present in $set for this request.
+    if (dto.sectionIndex === undefined) setOnInsert.sectionIndex = 0;
+    if (dto.currentStamina === undefined) setOnInsert.currentStamina = 200;
+    if (dto.viableStamina === undefined) setOnInsert.viableStamina = 200;
+    if (dto.regenBoostMultiplier    === undefined) setOnInsert.regenBoostMultiplier    = 1;
+    if (dto.regenBoostRemaining     === undefined) setOnInsert.regenBoostRemaining     = 0;
+    if (dto.toolEfficiencyReduction === undefined) setOnInsert.toolEfficiencyReduction = 0;
+    if (dto.toolEfficiencyRemaining === undefined) setOnInsert.toolEfficiencyRemaining = 0;
 
     const result = await this.characterModel.findOneAndUpdate(
       { worldId: worldOid, accountId: accountOid },
-      { $set: update, $setOnInsert: { worldId: worldOid, accountId: accountOid, sectionIndex: dto.sectionIndex ?? 0 } },
+      {
+        $set: update,
+        $setOnInsert: setOnInsert,
+      },
       { upsert: true, new: true, ...(options?.session ? { session: options.session } : {}) },
     );
     return result;
+  }
+
+  async getSkillLoadout(
+    worldId: string | Types.ObjectId,
+    accountId: string | Types.ObjectId,
+  ): Promise<{ worldId: string; accountId: string; playerSkillSlotIds: string[] }> {
+    const worldOid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
+    const accountOid = typeof accountId === 'string' ? new Types.ObjectId(accountId) : accountId;
+
+    const character = await this.characterModel
+      .findOne({ worldId: worldOid, accountId: accountOid })
+      .lean()
+      .exec();
+
+    return {
+      worldId: worldOid.toString(),
+      accountId: accountOid.toString(),
+      playerSkillSlotIds: Array.isArray(character?.playerSkillSlotIds)
+        ? character.playerSkillSlotIds.map((id) => (id ?? '').trim())
+        : [],
+    };
+  }
+
+  async updateSkillLoadout(
+    worldId: string | Types.ObjectId,
+    accountId: string | Types.ObjectId,
+    playerSkillSlotIds: string[],
+  ): Promise<{ worldId: string; accountId: string; playerSkillSlotIds: string[] }> {
+    const worldOid = typeof worldId === 'string' ? new Types.ObjectId(worldId) : worldId;
+    const accountOid = typeof accountId === 'string' ? new Types.ObjectId(accountId) : accountId;
+    const normalized = Array.isArray(playerSkillSlotIds)
+      ? playerSkillSlotIds.map((id) => (typeof id === 'string' ? id.trim() : ''))
+      : [];
+
+    await this.characterModel.findOneAndUpdate(
+      { worldId: worldOid, accountId: accountOid },
+      {
+        $set: { playerSkillSlotIds: normalized },
+        $setOnInsert: {
+          worldId: worldOid,
+          accountId: accountOid,
+          positionX: 0,
+          positionY: 0,
+          sectionIndex: 0,
+        },
+      },
+      { upsert: true, new: true },
+    );
+
+    return {
+      worldId: worldOid.toString(),
+      accountId: accountOid.toString(),
+      playerSkillSlotIds: normalized,
+    };
   }
 
   // ────────────────────────────────────────────────────────────────────────────

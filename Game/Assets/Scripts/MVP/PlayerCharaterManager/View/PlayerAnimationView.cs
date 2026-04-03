@@ -35,6 +35,7 @@ public class PlayerAnimationView : MonoBehaviour
     // ── Runtime refs ──────────────────────────────────────────────────────
     [SerializeField]private Animator    _animator;
     private PhotonView  _photonView;
+    private PlayerSoundPlayer _soundPlayer;
     private ToolData _pendingChopTool;
     private Vector3 _pendingChopTargetPos;
     private bool _hasPendingChopImpact;
@@ -52,6 +53,7 @@ public class PlayerAnimationView : MonoBehaviour
     {
         // _animator   = GetComponent<Animator>();
         _photonView = GetComponent<PhotonView>();
+        _soundPlayer = GetComponent<PlayerSoundPlayer>();
     }
 
     private void OnEnable()
@@ -283,6 +285,7 @@ public class PlayerAnimationView : MonoBehaviour
     {
         _animator?.SetFloat(paramActionX, dirX);
         _animator?.SetTrigger(triggerPlow);
+        _soundPlayer?.PlayRemoteAction(SoundId.ToolSwing);
     }
 
     private void HandleWaterAnimation(ToolData tool, Vector3 targetPos)
@@ -315,6 +318,7 @@ public class PlayerAnimationView : MonoBehaviour
     {
         _animator?.SetFloat(paramActionX, dirX);
         _animator?.SetTrigger(triggerChop);
+        _soundPlayer?.PlayRemoteAction(SoundId.ToolSwing);
     }
 
     // ── Photon sync (locomotion) ───────────────────────────────────────────

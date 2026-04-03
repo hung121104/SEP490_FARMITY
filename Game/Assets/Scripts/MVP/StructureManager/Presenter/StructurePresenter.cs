@@ -1,15 +1,20 @@
 using UnityEngine;
 using System;
+using Photon.Pun;
 
 /// <summary>
-/// Presenter for structure placement / removal following the MVP pattern.
-/// Mediates between StructureView and StructureService.
-/// Mirrors the design of CropPlantingPresenter.
+/// Unified presenter for structure placement, removal, and destruction.
+/// Mediates between StructureView / StructureDestructionView and StructureService.
 /// </summary>
 public class StructurePresenter
 {
     private readonly IStructureService structureService;
     private readonly bool showDebugLogs;
+
+    // View callback for destruction visual effects (optional — only wired by DestructionView)
+    private readonly StructureDestructionView destructionView;
+
+    // ── Constructors ─────────────────────────────────────────────────────
 
     public StructurePresenter(IStructureService structureService, bool showDebugLogs = true)
     {
@@ -17,13 +22,35 @@ public class StructurePresenter
         this.showDebugLogs = showDebugLogs;
     }
 
-    // ── Data Building (moved from View) ───────────────────────────────────
-
     /// <summary>
-    /// Builds a StructureData from raw item data.
-    /// The View passes a <paramref name="getPrefab"/> delegate because prefab selection
-    /// is a visual/Inspector concern that belongs to the View layer.
+    /// Constructor for destruction (used by DestructionView).
     /// </summary>
+    public StructurePresenter(IStructureService structureService,
+                              StructureDestructionView destructionView,
+                              bool showDebugLogs = true)
+    {
+        this.structureService = structureService;
+        this.showDebugLogs = showDebugLogs;
+        this.destructionView = destructionView;
+
+        // Subscribe to HP update events for visual feedback
+        ChunkDataSyncManager.OnStructureHpUpdated += OnStructureHpUpdated;
+
+        // Master: Subscribe to hit requests from clients
+        if (PhotonNetwork.IsMasterClient)
+            ChunkDataSyncManager.OnStructureHitRequest += OnStructureHitRequest;
+    }
+
+    ~StructurePresenter()
+    {
+        ChunkDataSyncManager.OnStructureHpUpdated -= OnStructureHpUpdated;
+
+        if (PhotonNetwork.IsMasterClient)
+            ChunkDataSyncManager.OnStructureHitRequest -= OnStructureHitRequest;
+    }
+
+    // ── Data Building (Placement) ─────────────────────────────────────────
+
     public StructureData BuildStructureData(StructureItemData itemData,
                                             Func<StructureInteractionType, GameObject> getPrefab)
     {
@@ -42,32 +69,19 @@ public class StructurePresenter
         return new StructureData(itemData, prefab);
     }
 
-    /// <summary>
-    /// Resolves StructureData for an item ID using the catalog service.
-    /// The View provides the prefab resolver callback.
-    /// </summary>
     public StructureData GetStructureData(string itemID, Func<StructureInteractionType, GameObject> getPrefab)
     {
         var itemData = ItemCatalogService.Instance?.GetItemData(itemID) as StructureItemData;
         return BuildStructureData(itemData, getPrefab);
     }
 
-    // ── Placement Validation (called every frame during ghost preview) ────
+    // ── Placement ─────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Returns true if the structure can be placed at <paramref name="anchorWorldPos"/>.
-    /// The View uses the result to colour the ghost green/red.
-    /// </summary>
     public bool CanPlace(Vector3 anchorWorldPos, StructureData data)
     {
         return structureService.CanPlaceStructure(anchorWorldPos, data);
     }
 
-    // ── Placement ─────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Attempts to place the structure. Called by the View when the player clicks.
-    /// </summary>
     public bool HandlePlaceStructure(Vector3 anchorWorldPos, StructureData data)
     {
         if (data == null) return false;
@@ -85,11 +99,6 @@ public class StructurePresenter
         return success;
     }
 
-    // ── Removal ───────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Attempts to remove the structure. Called by the View when demolish criteria are met.
-    /// </summary>
     public bool HandleRemoveStructure(Vector3 worldPosition, StructureData data)
     {
         if (data == null) return false;
@@ -103,5 +112,61 @@ public class StructurePresenter
         }
 
         return success;
+    }
+
+    // ── Destruction ───────────────────────────────────────────────────────
+
+    public void HandleToolUse(Vector3 targetWorldPos, ToolData tool)
+    {
+        Vector3Int tilePos = new Vector3Int(
+            Mathf.FloorToInt(targetWorldPos.x),
+            Mathf.FloorToInt(targetWorldPos.y), 0);
+
+        if (structureService.IsStructureAlreadyDestroyed(tilePos))
+        {
+            if (showDebugLogs)
+                Debug.Log($"[StructurePresenter] Structure at {tilePos} already destroyed, ignoring hit");
+            return;
+        }
+
+        structureService.DealDamage(tilePos, tool.toolPower, out bool isRemoved, out string structureId);
+    }
+
+    public void HandleRegenTimerComplete(Vector3Int tilePos)
+    {
+        structureService.RegenerateHP(tilePos);
+    }
+
+    // ── Network Event Handlers (Destruction) ──────────────────────────────
+
+    private void OnStructureHitRequest(int worldX, int worldY, int damage, string playerActorId)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        Vector3Int tilePos = new Vector3Int(worldX, worldY, 0);
+        structureService.ProcessHitRequest(tilePos, damage, playerActorId);
+    }
+
+    private void OnStructureHpUpdated(int worldX, int worldY, int newHp)
+    {
+        if (destructionView == null) return;
+
+        Vector3Int tilePos = new Vector3Int(worldX, worldY, 0);
+
+        if (newHp == -1)
+        {
+            destructionView.PlayHitEffect(tilePos);
+            destructionView.StartRegenTimer(tilePos);
+            return;
+        }
+
+        if (structureService.IsStructureFullHp(tilePos, newHp))
+            return;
+
+        if (newHp <= 0)
+            return;
+
+        destructionView.PlayHitEffect(tilePos);
+        destructionView.StartRegenTimer(tilePos);
     }
 }

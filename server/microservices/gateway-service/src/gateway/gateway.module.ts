@@ -6,9 +6,11 @@ import {
 } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { GatewayController } from './gateway.controller';
+import { CatalogSseController } from './catalog-sse.controller';
 import { AuthorizationMiddleware } from './authorization.middleware';
 import { AuthenticationMiddleware } from './authentication.middleware';
 import { GatewayCloudinaryService } from './cloudinary.service';
+import { CatalogSseService } from './catalog-sse.service';
 
 @Module({
   imports: [
@@ -16,22 +18,31 @@ import { GatewayCloudinaryService } from './cloudinary.service';
       {
         name: 'AUTH_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 8877 },
+        options: {
+          host: process.env.AUTH_SERVICE_HOST || 'localhost',
+          port: parseInt(process.env.AUTH_SERVICE_PORT || '8877'),
+        },
       },
       {
         name: 'PLAYER_DATA_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 8878 },
+        options: {
+          host: process.env.PLAYER_DATA_SERVICE_HOST || 'localhost',
+          port: parseInt(process.env.PLAYER_DATA_SERVICE_PORT || '8878'),
+        },
       },
       {
         name: 'ADMIN_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 3006 },
+        options: {
+          host: process.env.ADMIN_SERVICE_HOST || 'localhost',
+          port: parseInt(process.env.ADMIN_SERVICE_PORT || '3006'),
+        },
       },
     ]),
   ],
-  controllers: [GatewayController],
-  providers: [GatewayCloudinaryService],
+  controllers: [GatewayController, CatalogSseController],
+  providers: [GatewayCloudinaryService, CatalogSseService],
 })
 export class GatewayModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -40,7 +51,9 @@ export class GatewayModule implements NestModule {
       .apply(AuthorizationMiddleware)
       .forRoutes(
         { path: 'auth/admin-check', method: RequestMethod.GET },
+        { path: 'admin/analytics/summary', method: RequestMethod.GET },
         { path: 'auth/logout', method: RequestMethod.POST },
+        { path: 'player-data/heartbeat', method: RequestMethod.POST },
         { path: 'player-data/world', method: RequestMethod.ALL },
         { path: 'player-data/world/blacklist', method: RequestMethod.ALL },
         { path: 'player-data/worlds', method: RequestMethod.ALL },
@@ -67,6 +80,9 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/items/create', method: RequestMethod.POST },
         { path: 'game-data/items/:itemID', method: RequestMethod.PUT },
         { path: 'game-data/items/:itemID', method: RequestMethod.DELETE },
+        { path: 'game-data/combat-skills/create', method: RequestMethod.POST },
+        { path: 'game-data/combat-skills/:skillId', method: RequestMethod.PUT },
+        { path: 'game-data/combat-skills/:skillId', method: RequestMethod.DELETE },
         { path: 'game-data/plants/create', method: RequestMethod.POST },
         { path: 'game-data/plants/:plantId', method: RequestMethod.PUT },
         { path: 'game-data/plants/:plantId', method: RequestMethod.DELETE },
@@ -74,15 +90,23 @@ export class GatewayModule implements NestModule {
         { path: 'player-data/achievement', method: RequestMethod.ALL },
         { path: 'player-data/achievement/progress', method: RequestMethod.PUT },
         { path: 'player-data/achievement/progress/batch', method: RequestMethod.PUT },
+        { path: 'player-data/combat/skill-loadout', method: RequestMethod.GET },
+        { path: 'player-data/combat/skill-loadout', method: RequestMethod.PUT },
         { path: 'game-data/achievements/create', method: RequestMethod.POST },
         { path: 'game-data/achievements/:achievementId', method: RequestMethod.PUT },
         { path: 'game-data/achievements/:achievementId', method: RequestMethod.DELETE },
         { path: 'game-data/skin-configs', method: RequestMethod.POST },
         { path: 'game-data/skin-configs/:configId', method: RequestMethod.PUT },
         { path: 'game-data/skin-configs/:configId', method: RequestMethod.DELETE },
+        { path: 'game-data/combat-catalogs', method: RequestMethod.POST },
+        { path: 'game-data/combat-catalogs/:configId', method: RequestMethod.PUT },
+        { path: 'game-data/combat-catalogs/:configId', method: RequestMethod.DELETE },
         { path: 'game-data/materials', method: RequestMethod.POST },
         { path: 'game-data/materials/:materialId', method: RequestMethod.PUT },
         { path: 'game-data/materials/:materialId', method: RequestMethod.DELETE },
+        { path: 'game-data/quests', method: RequestMethod.POST },
+        { path: 'game-data/quests/:questId', method: RequestMethod.PUT },
+        { path: 'game-data/quests/:questId', method: RequestMethod.DELETE },
       );
 
     // enforce admin only on admin routes
@@ -90,6 +114,7 @@ export class GatewayModule implements NestModule {
       .apply(AuthenticationMiddleware)
       .forRoutes(
         { path: 'auth/admin-check', method: RequestMethod.GET },
+        { path: 'admin/analytics/summary', method: RequestMethod.GET },
         { path: 'blog/create', method: RequestMethod.POST },
         { path: 'blog/update/:id', method: RequestMethod.POST },
         { path: 'blog/delete/:id', method: RequestMethod.DELETE },
@@ -104,6 +129,9 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/items/create', method: RequestMethod.POST },
         { path: 'game-data/items/:itemID', method: RequestMethod.PUT },
         { path: 'game-data/items/:itemID', method: RequestMethod.DELETE },
+        { path: 'game-data/combat-skills/create', method: RequestMethod.POST },
+        { path: 'game-data/combat-skills/:skillId', method: RequestMethod.PUT },
+        { path: 'game-data/combat-skills/:skillId', method: RequestMethod.DELETE },
         { path: 'game-data/plants/create', method: RequestMethod.POST },
         { path: 'game-data/plants/:plantId', method: RequestMethod.PUT },
         { path: 'game-data/plants/:plantId', method: RequestMethod.DELETE },
@@ -114,9 +142,15 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/skin-configs', method: RequestMethod.POST },
         { path: 'game-data/skin-configs/:configId', method: RequestMethod.PUT },
         { path: 'game-data/skin-configs/:configId', method: RequestMethod.DELETE },
+        { path: 'game-data/combat-catalogs', method: RequestMethod.POST },
+        { path: 'game-data/combat-catalogs/:configId', method: RequestMethod.PUT },
+        { path: 'game-data/combat-catalogs/:configId', method: RequestMethod.DELETE },
         { path: 'game-data/materials', method: RequestMethod.POST },
         { path: 'game-data/materials/:materialId', method: RequestMethod.PUT },
         { path: 'game-data/materials/:materialId', method: RequestMethod.DELETE },
+        { path: 'game-data/quests', method: RequestMethod.POST },
+        { path: 'game-data/quests/:questId', method: RequestMethod.PUT },
+        { path: 'game-data/quests/:questId', method: RequestMethod.DELETE },
       );
   }
 }

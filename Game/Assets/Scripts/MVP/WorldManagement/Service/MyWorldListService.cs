@@ -4,7 +4,14 @@ using System.Threading.Tasks;
 
 public class MyWorldListService : IMyWorldListService
 {
-    private const string BASE_URL = "https://localhost:3000";
+    private const string BASE_URL = AppConfig.ApiBaseUrl;
+
+    [System.Serializable]
+    private class ErrorPayload
+    {
+        public int statusCode;
+        public string message;
+    }
 
     public async Task<WorldModel[]> GetWorlds(string ownerId = null)
     {
@@ -62,8 +69,7 @@ public class MyWorldListService : IMyWorldListService
     {
         if (!SessionManager.Instance.IsAuthenticated())
         {
-            Debug.LogError("User not authenticated. Cannot create world.");
-            return null;
+            throw new System.Exception("User not authenticated.");
         }
 
         string url = $"{BASE_URL}/player-data/world";
@@ -91,14 +97,73 @@ public class MyWorldListService : IMyWorldListService
                 catch (System.Exception ex)
                 {
                     Debug.LogError("Failed to parse create-world response: " + ex.Message);
-                    return null;
+                    throw new System.Exception("Failed to parse create-world response.");
                 }
             }
             else
             {
-                Debug.LogError($"Error creating world: {request.error} (code: {request.responseCode}) - {request.downloadHandler.text}");
-                return null;
+                string raw = request.downloadHandler != null ? request.downloadHandler.text : string.Empty;
+                string message = ExtractErrorMessage(raw, request.error);
+                Debug.LogError($"Error creating world: {request.error} (code: {request.responseCode}) - {raw}");
+                throw new System.Exception(message);
             }
+        }
+    }
+
+    private static string ExtractErrorMessage(string rawResponse, string fallback)
+    {
+        if (!string.IsNullOrEmpty(rawResponse))
+        {
+            try
+            {
+                ErrorPayload payload = JsonUtility.FromJson<ErrorPayload>(rawResponse);
+                if (payload != null && !string.IsNullOrEmpty(payload.message))
+                {
+                    return payload.message;
+                }
+            }
+            catch
+            {
+                // Ignore parse errors and use fallback text below.
+            }
+
+            return rawResponse;
+        }
+
+        return string.IsNullOrEmpty(fallback) ? "Unknown create world error." : fallback;
+    }
+
+    public async Task<(bool success, string message)> DeleteWorld(string worldId)
+    {
+        if (!SessionManager.Instance.IsAuthenticated())
+        {
+            Debug.LogError("User not authenticated. Cannot delete world.");
+            return (false, "User not authenticated.");
+        }
+
+        if (string.IsNullOrEmpty(worldId))
+        {
+            return (false, "Missing world id.");
+        }
+
+        string url = $"{BASE_URL}/player-data/world?_id={UnityWebRequest.EscapeURL(worldId)}";
+
+        using (UnityWebRequest request = UnityWebRequest.Delete(url))
+        {
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Authorization", "Bearer " + SessionManager.Instance.JwtToken);
+
+            await request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                return (true, "World deleted successfully.");
+            }
+
+            string response = request.downloadHandler != null ? request.downloadHandler.text : string.Empty;
+            string error = !string.IsNullOrEmpty(response) ? response : request.error;
+            Debug.LogError($"Error deleting world: {request.error} (code: {request.responseCode}) - {response}");
+            return (false, error);
         }
     }
 }

@@ -91,7 +91,7 @@ public class ShopService : IShopService
         int totalCost = amountToBuy * shopItem.Price;
         if (WorldDataManager.Instance.TrySpendGold(totalCost))
         {
-            playerInventory.AddItem(itemData, amountToBuy);
+            playerInventory.AddItem(itemData.itemID, amountToBuy);
             Debug.Log($"[ShopService] Đã mua {amountToBuy}x {itemData.itemName} với giá {totalCost}G");
             return true;
         }

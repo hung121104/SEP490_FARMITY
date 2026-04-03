@@ -28,6 +28,8 @@ public class RecipeData
     public bool isUnlockedByDefault = true;
     /// <summary>CraftingCategory enum value (cast from int).</summary>
     public int  category;
+    /// <summary>Minimum structure tier required: 0=Wood, 1=Bronze, 2=Iron, 3=Gold.</summary>
+    public int  recipeLevel = 0;
 
     // ── Helpers ─────────────────────────────────────────────────────────────
     public RecipeType       RecipeType => (RecipeType)recipeType;

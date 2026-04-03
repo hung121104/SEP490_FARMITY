@@ -9,6 +9,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 1. [Authentication & Authorization](#authentication--authorization)
    - [User Authentication](#user-authentication)
    - [Admin Authentication](#admin-authentication)
+  - [Analytics Dashboard (Admin)](#analytics-dashboard-admin)
    - [Admin Password Reset](#admin-password-reset)
 2. [Game Config](#game-config)
    - [Main Menu](#main-menu)
@@ -18,20 +19,28 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
    - [Media Gallery](#media-gallery)
 4. [Game Data Management](#game-data-management)
    - [Items Catalog](#items-catalog)
+  - [Weapon Items (Extended Fields)](#weapon-items-extended-fields)
+  - [Combat Catalog](#combat-catalog)
+  - [Combat Skills Catalog](#combat-skills-catalog)
+  - [Fertilizer Catalog](#fertilizer-catalog)
+  - [Plants Catalog](#plants-catalog)
+  - [Crafting Recipes](#crafting-recipes)
+  - [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
+  - [Resource Config Catalog](#resource-config-catalog)
+  - [Material Catalog](#material-catalog)
+  - [Quest Catalog](#quest-catalog)
 
-- [Fertilizer Catalog](#fertilizer-catalog)
-- [Plants Catalog](#plants-catalog)
-- [Crafting Recipes](#crafting-recipes)
-- [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
+7. [Real-Time Sync (Photon PUN Events)](#real-time-sync-photon-pun-events)
+   - [Resource Interaction](#resource-interaction-photon-pun-rpc)
+   - [Structure Interaction](#structure-interaction-photon-pun-events)
+   - [Chest Sync](#chest-sync-photon-pun-events)
 
-- [Resource Config Catalog](#resource-config-catalog)
-- [Material Catalog](#material-catalog)
-
-5. [Player Data](#player-data)
+8. [Player Data](#player-data)
    - [World Management](#world-management)
-  - [World Blacklist](#world-blacklist)
-  - [Player Achievements](#player-achievements)
-   - [Character Management](#character-management)
+
+- [World Blacklist](#world-blacklist)
+- [Player Achievements](#player-achievements)
+- [Character Management](#character-management)
 
 6. [Achievement Definitions (Admin)](#achievement-definitions-admin)
 
@@ -105,6 +114,177 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
 - **POST** `/auth/logout`: Logout admin and revoke session.
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Response: `{ "ok": true }`
+
+### Analytics Dashboard (Admin)
+
+- **GET** `/admin/analytics/summary`: Get analytics cards for admin dashboard (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Query params (optional):
+    - `startDate`: ISO 8601 UTC datetime (inclusive)
+    - `endDate`: ISO 8601 UTC datetime (exclusive)
+  - Response (`200 OK`):
+    ```json
+    {
+      "rangeStartUtc": "2026-03-25T00:00:00.000Z",
+      "rangeEndUtc": "2026-03-26T00:00:00.000Z",
+      "generatedAtUtc": "2026-03-25T08:31:00.000Z",
+      "totalUsers": 1200,
+      "dailyActiveUsers": 340,
+      "concurrentPlayers": 72,
+      "newUsers": 41,
+      "returningUsers": 299,
+      "legitActiveUsers": 280,
+      "concurrentSource": "redis-realtime"
+    }
+    ```
+
+#### Query Behavior
+
+- If no date range is provided, the API defaults to the current UTC day:
+  - `rangeStartUtc` = today `00:00:00.000Z`
+  - `rangeEndUtc` = tomorrow `00:00:00.000Z`
+- If only `startDate` is provided, `endDate` is auto-set to `startDate + 24h`.
+- If only `endDate` is provided, `startDate` is normalized to the UTC start-of-day of `endDate`.
+- Validation rule: `startDate` must be earlier than `endDate`.
+
+#### Metric Definitions
+
+- `totalUsers`: Total non-admin accounts in the system.
+- `dailyActiveUsers`: Distinct non-admin users with at least one session created in `[startDate, endDate)`.
+- `newUsers`: Non-admin accounts created in `[startDate, endDate)`.
+- `returningUsers`: Non-admin users with at least one session in `[startDate, endDate)` **and** at least one session before `startDate`.
+- `concurrentPlayers`: Realtime online non-admin users based on explicit heartbeat presence.
+  - Primary source: Redis realtime heartbeat presence (`concurrentSource = "redis-realtime"`).
+  - Fallback source: MongoDB heartbeat timestamps (`concurrentSource = "mongo-fallback"`).
+- `legitActiveUsers`: Non-admin users whose session reached cumulative heartbeat-confirmed active time >= 5 minutes.
+
+#### Field Reference
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `rangeStartUtc` | string (ISO 8601) | Effective range start used by backend (inclusive). |
+| `rangeEndUtc` | string (ISO 8601) | Effective range end used by backend (exclusive). |
+| `generatedAtUtc` | string (ISO 8601) | Server-side generation timestamp. |
+| `totalUsers` | number | Total non-admin registered users. |
+| `dailyActiveUsers` | number | Active unique users in selected range. |
+| `concurrentPlayers` | number | Realtime online players from heartbeat freshness. |
+| `newUsers` | number | Newly registered users in selected range. |
+| `returningUsers` | number | Users active in range with prior historical activity. |
+| `legitActiveUsers` | number | Users with cumulative active heartbeat time >= 5 minutes. |
+| `concurrentSource` | `"redis-realtime" \| "mongo-fallback"` | Data source used to compute concurrent players. |
+
+#### Request Examples
+
+- Default day (UTC):
+  - `GET /admin/analytics/summary`
+
+- Single custom day (UTC):
+  - `GET /admin/analytics/summary?startDate=2026-03-25T00:00:00.000Z&endDate=2026-03-26T00:00:00.000Z`
+
+- Multi-day range (UTC):
+  - `GET /admin/analytics/summary?startDate=2026-03-20T00:00:00.000Z&endDate=2026-03-27T00:00:00.000Z`
+
+#### cURL Examples
+
+- With Bearer token:
+  ```bash
+  curl -k -X GET "https://0.0.0.0:3000/admin/analytics/summary?startDate=2026-03-25T00:00:00.000Z&endDate=2026-03-26T00:00:00.000Z" \
+    -H "Authorization: Bearer <ADMIN_TOKEN>"
+  ```
+
+- With cookie session:
+  ```bash
+  curl -k -X GET "https://0.0.0.0:3000/admin/analytics/summary" \
+    -H "Cookie: access_token=<ADMIN_TOKEN>"
+  ```
+
+#### Example Responses
+
+- Redis available:
+  ```json
+  {
+    "rangeStartUtc": "2026-03-25T00:00:00.000Z",
+    "rangeEndUtc": "2026-03-26T00:00:00.000Z",
+    "generatedAtUtc": "2026-03-25T08:31:00.000Z",
+    "totalUsers": 1200,
+    "dailyActiveUsers": 340,
+    "concurrentPlayers": 72,
+    "newUsers": 41,
+    "returningUsers": 299,
+    "legitActiveUsers": 280,
+    "concurrentSource": "redis-realtime"
+  }
+  ```
+
+- Redis unavailable (automatic fallback):
+  ```json
+  {
+    "rangeStartUtc": "2026-03-25T00:00:00.000Z",
+    "rangeEndUtc": "2026-03-26T00:00:00.000Z",
+    "generatedAtUtc": "2026-03-25T08:31:00.000Z",
+    "totalUsers": 1200,
+    "dailyActiveUsers": 340,
+    "concurrentPlayers": 65,
+    "newUsers": 41,
+    "returningUsers": 299,
+    "legitActiveUsers": 280,
+    "concurrentSource": "mongo-fallback"
+  }
+  ```
+
+### Player Heartbeat (Game Client)
+
+- **POST** `/player-data/heartbeat`: Confirm player is still online (authenticated player endpoint).
+  - Headers: `Authorization: Bearer <token>`
+  - Body (optional):
+    ```json
+    {
+      "clientUnixMs": 1764001234567
+    }
+    ```
+  - Response (`200 OK`):
+    ```json
+    {
+      "ok": true,
+      "serverUnixMs": 1764001234701,
+      "isLegit": true,
+      "cumulativeHeartbeatMs": 312000
+    }
+    ```
+  - Note: Client sends this every 15 seconds during gameplay while authenticated.
+  - Note: If heartbeat is missing for configured timeout (default 45 seconds), user is removed from realtime concurrent count.
+  - Note: Session becomes legit after cumulative heartbeat-confirmed active time reaches 5 minutes.
+
+#### Error Responses
+
+- `401 Unauthorized` (missing/invalid token or non-admin user):
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Admin privileges required"
+  }
+  ```
+
+- `400 Bad Request` (invalid query):
+  ```json
+  {
+    "statusCode": 400,
+    "message": "startDate must be earlier than endDate"
+  }
+  ```
+
+#### Frontend/UI Notes (for web AI)
+
+- Recommended dashboard cards:
+  - Total Users
+  - Daily Active Users (DAU)
+  - Concurrent Players (show badge using `concurrentSource`)
+  - New Users
+  - Returning Users
+- Date range picker should send UTC ISO strings.
+- Use `generatedAtUtc` for "Last updated" text.
+- Show fallback state in UI when `concurrentSource = "mongo-fallback"` (for observability/transparency).
+- For number formatting, prefer localized separators (e.g., `1,200`).
 
 ### Password Reset
 
@@ -335,17 +515,59 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     ```
   - Note: `ownerId` is extracted from JWT token by gateway and forwarded to the microservice.
 
-- **GET** `/player-data/world?_id=string`: Get a world by ID.
+- **GET** `/player-data/world?_id=string`: Get a world by ID with all associated data.
   - Headers: `Authorization: Bearer <token>`
   - Query params: `_id` - MongoDB ObjectId string
-  - Response: World document or `null`
+  - Response: World document enriched with `characters`, `chunks`, and `chests` arrays:
+    ```json
+    {
+      "_id": "string",
+      "worldName": "string",
+      "ownerId": "string",
+      "day": "number",
+      "month": "number",
+      "year": "number",
+      "hour": "number",
+      "minute": "number",
+      "gold": "number",
+      "weatherToday": "number",
+      "weatherTomorrow": "number",
+      "characters": [
+        {
+          "accountId": "string",
+          "positionX": "number",
+          "positionY": "number",
+          "sectionIndex": "number",
+          "inventory": { "0": { "itemId": "string", "quantity": "number" } }
+        }
+      ],
+      "chunks": [
+        {
+          "chunkX": "number",
+          "chunkY": "number",
+          "sectionId": "number",
+          "tiles": { "0": { "type": "string", "...": "any" } }
+        }
+      ],
+      "chests": [
+        {
+          "tileX": "number",
+          "tileY": "number",
+          "maxSlots": "number",
+          "structureLevel": "number",
+          "slots": { "0": { "itemId": "string", "quantity": "number" } }
+        }
+      ]
+    }
+    ```
+  - Note: Only world owner can access. `chunks`, `characters`, and `chests` are fetched from separate collections and attached to the response. Map fields (`inventory`, `tiles`, `slots`) are converted to plain objects for JSON serialization.
 
 - **GET** `/player-data/worlds`: Get all worlds owned by authenticated account.
   - Headers: `Authorization: Bearer <token>`
   - Optional query: `ownerId=string` (only allowed for admin accounts)
   - Response: Array of world documents
 
-- **PUT** `/player-data/world`: Update world fields and/or upsert up to 4 player characters.
+- **PUT** `/player-data/world`: Save world state — updates world time, characters, tile deltas, inventory deltas, chest deltas, and deleted chests atomically (MongoDB transaction when available).
   - Headers: `Authorization: Bearer <token>` (gateway verifies JWT; `ownerId` injected from token)
   - Body:
     ```json
@@ -357,6 +579,8 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
       "hour": "number (optional)",
       "minute": "number (optional)",
       "gold": "number (optional)",
+      "weatherToday": "number (optional)",
+      "weatherTomorrow": "number (optional)",
       "characters": [
         {
           "accountId": "string",
@@ -364,7 +588,40 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
           "positionY": "number",
           "sectionIndex": "number (optional)"
         }
-      ]
+      ],
+      "deltas": [
+        {
+          "chunkX": "number",
+          "chunkY": "number",
+          "sectionId": "number",
+          "tiles": {
+            "0": { "type": "string", "...other tile fields": "any" },
+            "42": { "type": "string" }
+          }
+        }
+      ],
+      "inventoryDeltas": [
+        {
+          "accountId": "string",
+          "slots": {
+            "0": { "itemId": "string", "quantity": "number" },
+            "5": { "itemId": "string", "quantity": "number" }
+          }
+        }
+      ],
+      "chestDeltas": [
+        {
+          "tileX": "number",
+          "tileY": "number",
+          "maxSlots": "number",
+          "structureLevel": "number",
+          "slots": {
+            "0": { "itemId": "string", "quantity": "number" },
+            "3": { "itemId": "string", "quantity": "number" }
+          }
+        }
+      ],
+      "deletedChests": [{ "tileX": "number", "tileY": "number" }]
     }
     ```
   - Response: Updated world document with `characters` array
@@ -372,6 +629,10 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     - All fields except `worldId` are optional
     - `characters` array is optional and capped at 4 entries
     - Each character is matched by `(worldId, accountId)` and created or updated
+    - `deltas` — only chunks/tiles that changed since last save; backend merges into `chunks` collection
+    - `inventoryDeltas` — only players whose inventory changed; backend merges into `characters` collection using targeted `$set` on individual slots
+    - `chestDeltas` — only chests whose slots changed; backend upserts into `chestinventories` collection using targeted `$set` on individual slots
+    - `deletedChests` — chests destroyed since last save; backend deletes matching documents
     - Only world owner can call this endpoint
 
 - **DELETE** `/player-data/world?_id=string`: Delete a world by ID.
@@ -379,6 +640,8 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Query params: `_id` - MongoDB ObjectId string
   - Response: Deleted world document or `null`
   - Note: Only world owner can delete
+  - Note: Also deletes related `characters`, `chestinventories`, and `chunks` for the world.
+  - Note: Uses MongoDB transaction when supported; automatically falls back to sequential deletes when transactions are unavailable.
 
 ### World Blacklist
 
@@ -579,6 +842,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
     - All other item fields as form-data text fields (see [Base Fields](#base-fields) and [Item Type Fields](#itemtype-discriminator--extra-fields) tables)
   - Response: Saved item document including `_id` and `iconUrl` (Cloudinary `secure_url`)
   - Note: Returns `409 Conflict` if an item with the same `itemID` already exists
+  - Note: Returns `400 Bad Request` when creating Tool/Weapon items if provided `toolMaterialId`/`weaponMaterialId` does not exist in Material catalog
 
 - **GET** `/game-data/items/catalog`: Get full item catalog in Unity-client format.
   - Response: `{ "items": [ ...itemObjects ] }`
@@ -608,6 +872,8 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - Path param: `itemID` - game-side string identifier (e.g., `tool_hoe_basic`)
   - Response: Deleted item document
   - Note: Returns `404` if item not found
+  - Note: Returns `409 Conflict` when the item is referenced by other collections. Delete is denied and the error message includes where the item is used and sample referencing IDs.
+  - Current cross-collection checks include: `Plant.harvestedItemId`, `Plant.pollenItemId`, `CraftingRecipe.resultItemId`, `CraftingRecipe.ingredients.itemId`, `ResourceConfig.dropTable.itemId`, `Item.smeltedResultId`.
 
 #### Base Fields
 
@@ -643,17 +909,116 @@ Depending on `itemType`, specific extra fields must be included:
 | `1`        | Seed       | `plantId`                                                                          | string: ID of `PlantData` entry this seed grows (e.g., `"plant_corn"`)                                                                                                                                                                                                                                                                                                                                                                                                |
 | `2`        | Crop       | _(none)_                                                                           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `3`        | Pollen     | `sourcePlantId`<br>`pollinationSuccessChance`<br>`viabilityDays`<br>`crossResults` | string: `plantId` of the plant that produced this pollen (e.g., `"plant_corn"`)<br>float: Chance of pollination success (e.g., `0.5`)<br>int: Days the pollen remains viable (e.g., `3`)<br>array: Cross-breeding table — `[{ "targetPlantId": "string", "resultPlantId": "string" }]`. Each entry maps a receiver `plantId` to the hybrid `plantId` that spawns when this pollen is applied to it. Consumed by `PollenData.FindResultPlantId()` in the Unity client. |
-| `4`        | Consumable | `energyRestore`<br>`healthRestore`<br>`bufferDuration`                             | int: Stamina restored<br>int: Health restored<br>float: Buff duration                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `4`        | Consumable | `viableRestore`<br>`healthRestore`<br>`regenBoostMultiplier`<br>`toolEfficiencyReductionPercent`<br>`effectDurationSeconds` | int: Restores `viableStamina` (soft-cap pool) on consumption<br>int: Health restored<br>float: Regen speed multiplier for `effectDurationSeconds` (e.g. `2.0` = double regen; must be > 1 to apply)<br>float: Reduces tool stamina cost by this fraction for `effectDurationSeconds` (0–0.95)<br>float: Duration in seconds for `regenBoostMultiplier` and `toolEfficiencyReductionPercent` effects |
 | `5`        | Material   | _(none)_                                                                           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `6`        | Weapon     | `damage`<br>`critChance`<br>`attackSpeed`<br>`weaponMaterialId`                    | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>float: Attack speed (e.g., 1.0)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).                                                                                                                                                                                                                                                       |
+| `6`        | Weapon     | `damage`<br>`critChance`<br>`weaponMaterialId`<br>`weaponType`<br>`tier`<br>`attackCooldown`<br>`knockbackForce`<br>`projectileSpeed`<br>`projectileRange`<br>`projectileKnockback` | int: Base damage (e.g., 10)<br>int: Crit chance % (e.g., 5)<br>string: `materialId` of a Material document (e.g., `"mat_steel"`). See [Material Catalog](#material-catalog).<br>int: WeaponType enum value<br>int: Tier value<br>float: Attack cooldown seconds<br>float: Melee knockback<br>float: Staff projectile speed<br>float: Staff projectile range<br>float: Staff projectile knockback |
 | `7`        | Fish       | `difficulty`<br>`fishingSeasons`<br>`isLegendary`                                  | int: Difficulty level (e.g., 1)<br>int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                 |
-| `8`        | Cooking    | `energyRestore`<br>`healthRestore`<br>`bufferDuration`                             | int: Stamina restored<br>int: Health restored<br>float: Buff duration                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `9`        | Forage     | `foragingSeasons`<br>`energyRestore`                                               | int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>int: (default `5`)                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `8`        | Cooking    | `viableRestore`<br>`healthRestore`<br>`regenBoostMultiplier`<br>`toolEfficiencyReductionPercent`<br>`effectDurationSeconds` | int: Restores `viableStamina` (soft-cap pool) on consumption<br>int: Health restored<br>float: Regen speed multiplier for `effectDurationSeconds` (e.g. `2.0` = double regen; must be > 1 to apply)<br>float: Reduces tool stamina cost by this fraction for `effectDurationSeconds` (0–0.95)<br>float: Duration in seconds for `regenBoostMultiplier` and `toolEfficiencyReductionPercent` effects |
+| `9`        | Forage     | `foragingSeasons`<br>`viableRestore`                                               | int[]: 0=Sunny, 1=Rainy (e.g., `[0,1]`)<br>int: Restores `viableStamina` on consumption (default `5`)                                                                                                                                                                                                                                                                                                                                                                 |
 | `10`       | Resource   | `isOre`<br>`requiresSmelting`<br>`smeltedResultId`                                 | bool: (default `false`)<br>bool: (default `false`)<br>string: ID of smelt output (default `""`)                                                                                                                                                                                                                                                                                                                                                                       |
 | `11`       | Gift       | `isUniversalLike`<br>`isUniversalLove`                                             | bool: (default `false`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `12`       | Quest      | `relatedQuestID`<br>`autoConsume`                                                  | string: Related quest ID (e.g., `"quest_goblins_01"`)<br>bool: (default `false`)                                                                                                                                                                                                                                                                                                                                                                                      |
-| `13`       | Structure  | `structureInteractionType`                                                         | int: 0=Storage, 1=Crafting, 2=Smelting, 3=Fence, 4=Decoration                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `13`       | Structure  | `structureInteractionType`<br>`structureLevel`<br>`structureInteractionSprite`     | int: 0=Storage, 1=Crafting, 2=Smelting, 3=Fence, 4=Decoration<br>int: Level/tier of the structure (0=Wood, 1=Bronze, 2=Iron, 3=Gold)<br>file (PNG): Interaction sprite (e.g., chest open icon). Uploaded to Cloudinary; sets `structureInteractionSpriteUrl` automatically.                                                                                                                                                                                           |
 | `14`       | Fertilizer | _(none)_                                                                           | Stackable fertilizer item consumed on successful crop fertilization                                                                                                                                                                                                                                                                                                                                                                                                   |
+
+---
+
+### Weapon Items (Extended Fields)
+
+> There is no separate weapon endpoint group. Weapon entries use the standard Item endpoints with `itemType = 6`.
+
+#### HTTP Endpoints (same routes as Items)
+
+- **POST** `/game-data/items/create` (admin): create weapon item (`itemType = 6`).
+- **PUT** `/game-data/items/:itemID` (admin): update weapon item.
+- **GET** `/game-data/items/by-item-id/:itemID`: get one weapon item.
+- **GET** `/game-data/items/catalog`: get full item catalog (includes weapons).
+- **DELETE** `/game-data/items/:itemID` (admin): delete weapon item.
+  - Same dependency guard as item delete: returns `409 Conflict` if the weapon item is referenced in other collections.
+
+#### Required Weapon Runtime Fields
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `damage` | int | ✅ | Base damage |
+| `critChance` | int | ✅ | Critical chance percentage |
+| `weaponMaterialId` | string | ✅ | Material `materialId` from Material Catalog |
+| `weaponType` | int | ✅ | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` |
+| `tier` | int | ✅ | Weapon tier |
+| `attackCooldown` | number | ✅ | Attack cooldown seconds |
+| `knockbackForce` | number | ✅ | Melee knockback |
+| `projectileSpeed` | number | ✅ for staff weapons | Projectile speed |
+| `projectileRange` | number | ✅ for staff weapons | Projectile range |
+| `projectileKnockback` | number | ✅ for staff weapons | Projectile knockback |
+| `linkedSkillId` | string | — | Optional weapon special skill id |
+
+#### Runtime Note
+
+- Weapon prefab selection is by `weaponType` base prefab.
+- Visual sprite comes directly from the item `icon` image (runtime item icon cache, 16 PPU).
+
+---
+
+### Combat Catalog
+
+> Dedicated combat skill VFX tint catalog for runtime skill visuals.
+
+#### HTTP Endpoints
+
+- **GET** `/game-data/combat-catalogs` (public): get combat catalog entries.
+  - Optional query: `type`. Only `skill_vfx` is accepted (or omit it).
+
+- **POST** `/game-data/combat-catalogs` (admin): create combat catalog entry.
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `application/json`
+  - Fields:
+
+    | Field | Type | Required | Notes |
+    | --- | --- | --- | --- |
+    | `configId` | string | ✅ | Stable lookup key used by runtime (e.g., `skill_slash_fire`). |
+    | `displayName` | string | ✅ | Display label for admin UI. |
+    | `type` | string | — | Must be `skill_vfx` (default: `skill_vfx`). |
+    | `primaryColorHex` | string | ✅ | Tint color for runtime (hex, e.g., `#FF7A00`). |
+    | `secondaryColorHex` | string | — | Optional secondary tint (hex). |
+    | `colorIntensity` | number | — | Optional color multiplier. Range `[0..4]`, default `1`. |
+    | `tintAlpha` | number | — | Optional final alpha. Range `[0..1]`, default `1`. |
+
+  - Notes:
+    - Any `type` other than `skill_vfx` is rejected.
+    - `409 Conflict` if `configId` exists.
+
+- **PUT** `/game-data/combat-catalogs/:configId` (admin): update combat catalog entry.
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `application/json`
+  - Path param: `configId`
+  - Fields (all optional): `displayName`, `type`, `primaryColorHex`, `secondaryColorHex`, `colorIntensity`, `tintAlpha`
+  - Response: Updated combat catalog document.
+  - Note: Returns `404` if not found.
+
+- **DELETE** `/game-data/combat-catalogs/:configId` (admin): delete combat catalog entry.
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `configId`
+  - Response: `200 OK` (empty body)
+  - Note: Returns `404` if not found.
+
+#### Combat Catalog Fields
+
+| Field | Type | Required | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `configId` | string | ✅ | — | Stable runtime lookup key used by `skillVisualConfigId`. |
+| `type` | string | — | `skill_vfx` | Only supported value is `skill_vfx`. |
+| `displayName` | string | ✅ | — | Human-readable label in web admin. |
+| `primaryColorHex` | string | ✅ for `skill_vfx` | — | Main tint color in hex format. |
+| `secondaryColorHex` | string | — | `""` | Optional extra tint value for future shader use. |
+| `colorIntensity` | float | — | `1` | Color multiplier applied at runtime. |
+| `tintAlpha` | float | — | `1` | Final alpha applied at runtime. |
+
+#### Unity Integration Notes
+
+- Unity loads combat catalog on startup.
+- `type=skill_vfx` entries are tint configs for animated skill prefabs.
+- Weapon visuals do not use Combat Catalog.
+- Combat skills use `skillVisualConfigId`.
 
 ---
 
@@ -699,6 +1064,17 @@ Depending on `itemType`, specific extra fields must be included:
   - Path param: `itemID` - game-side string identifier (e.g., `fertilizer_basic`)
   - Response: Deleted fertilizer document
   - Note: Returns `404` if fertilizer not found
+  - Note: Returns `409 Conflict` when the fertilizer item is referenced by other collections. Delete is denied and the error message includes where the item is used and sample referencing IDs.
+
+Example `409 Conflict` message:
+
+```json
+{
+  "statusCode": 409,
+  "message": "Cannot delete Item \"wood\" because it is currently used in other collections: CraftingRecipe.ingredients.itemId (2) [recipe_fence, recipe_chest]; ResourceConfig.dropTable.itemId (1) [tree_oak]",
+  "error": "Conflict"
+}
+```
 
 #### Fertilizer Fields
 
@@ -725,6 +1101,87 @@ Depending on `itemType`, specific extra fields must be included:
 
 ---
 
+### Combat Skills Catalog
+
+> DB-driven combat-skill definitions consumed by the Unity combat system. Skills are independent catalog entities and not item documents.
+
+#### HTTP Endpoints
+
+- **POST** `/game-data/combat-skills/create`: Create a new combat skill (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Fields:
+    - `icon` _(file, required)_ — Skill icon image (max 5 MB). Uploaded to Cloudinary internally; `iconUrl` set automatically.
+    - Other combat skill fields as form-data text fields (see fields table below)
+  - Response: Saved combat skill document
+  - Note: Returns `409 Conflict` if `skillId` already exists
+
+- **GET** `/game-data/combat-skills/catalog`: Get combat skill catalog in Unity format.
+  - Response: `{ "skills": [ ...combatSkillObjects ] }`
+  - Note: Consumed by Game-side combat skill catalog service
+
+- **GET** `/game-data/combat-skills/all`: Get flat array of all combat skill documents.
+  - Response: `[ ...combatSkillObjects ]`
+
+- **GET** `/game-data/combat-skills/by-skill-id/:skillId`: Find combat skill by game-side ID.
+  - Path param: `skillId` - string ID (e.g., `skill_weapon_staff_special`)
+  - Response: Combat skill document
+
+- **PUT** `/game-data/combat-skills/:skillId`: Update combat skill by `skillId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `multipart/form-data`
+  - Body: Any subset of skill fields as form-data text fields. Include `icon` file to replace icon.
+  - Response: Updated combat skill document
+  - Note: Returns `404` if skill not found
+
+- **DELETE** `/game-data/combat-skills/:skillId`: Delete combat skill by `skillId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `skillId`
+  - Response: Deleted combat skill document
+  - Note: Returns `404` if skill not found
+
+#### Combat Skill Fields
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `skillId` | string | ✅ | Unique game-side skill ID |
+| `skillName` | string | ✅ | Display name |
+| `skillDescription` | string | — | Tooltip/description |
+| `icon` | file | ✅ on create | Uploaded icon image; gateway stores resulting `iconUrl` |
+| `iconUrl` | string | — | Auto-filled from uploaded icon; keep read-only in admin form |
+| `ownership` | enum | — | `PlayerSkill` or `WeaponSkill` |
+| `category` | enum | — | `None`, `Projectile`, `Slash`, `AoE`, `Buff`, `Summon` |
+| `requiredWeaponType` | number | — | Numeric weapon type gate for weapon skills |
+| `cooldown` | number | — | Seconds |
+| `diceTier` | enum | — | `D6`, `D8`, `D10`, `D12`, `D20` |
+| `skillMultiplier` | number | — | Damage multiplier |
+| `projectileSpeed` | number | — | Projectile speed |
+| `projectileRange` | number | — | Projectile max range |
+| `projectileKnockback` | number | — | Projectile knockback force |
+| `skillVisualConfigId` | string | — | CombatCatalog `configId` (type `skill_vfx`) used to tint spawned skill VFX |
+| `slashVfxDuration` | number | — | Slash VFX lifetime |
+| `slashVfxSpawnOffset` | number | — | Forward spawn offset |
+| `slashVfxPositionOffsetX` | number | — | Additional X offset |
+| `slashVfxPositionOffsetY` | number | — | Additional Y offset |
+| `slashKnockbackForce` | number | — | Slash hit knockback force |
+
+#### Combat Skill Dropdown / Select Guide
+
+| Field | UI Type | Allowed Values |
+| --- | --- | --- |
+| `ownership` | Dropdown | `PlayerSkill`, `WeaponSkill` |
+| `category` | Dropdown | `None`, `Projectile`, `Slash`, `AoE`, `Buff`, `Summon` |
+| `diceTier` | Dropdown | `D6`, `D8`, `D10`, `D12`, `D20` |
+| `requiredWeaponType` | Dropdown | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` |
+
+Notes for web form behavior:
+
+- If `ownership = PlayerSkill`, set `requiredWeaponType = 0`.
+- If `ownership = WeaponSkill`, require `requiredWeaponType` > 0.
+- For new skills, create a Combat Catalog `type=skill_vfx` entry and set `skillVisualConfigId`.
+
+---
+
 ### Plants Catalog
 
 > Mirrors Unity `PlantData` / `PlantCatalogResponse` model consumed by `PlantCatalogService.cs`. The `plantId` field on Seed items (`itemType: 1`) links to plant documents here.
@@ -746,6 +1203,7 @@ Depending on `itemType`, specific extra fields must be included:
     - `growthStages` — Send as **JSON string**, e.g., `[{"stageNum":0,"growthDurationMinutes":0},{"stageNum":1,"growthDurationMinutes":30}]`. `stageIconUrl` filled automatically from uploaded sprites.
   - Response: Saved plant document including `_id` and all resolved `stageIconUrl` CDN URLs
   - Note: Returns `409 Conflict` if a plant with the same `plantId` already exists
+  - Note: Returns `400 Bad Request` if `harvestedItemId` or `pollenItemId` does not reference an existing Item `itemID`
 
 - **GET** `/game-data/plants/catalog`: Get full plant catalog in Unity-client format.
   - Response: `{ "plants": [ ...plantObjects ] }`
@@ -777,6 +1235,7 @@ Depending on `itemType`, specific extra fields must be included:
   - **Optional text fields**: Any subset of plant fields (all optional). `growthStages` as JSON string if replacing stages. When updating stage data without uploading new sprites, each stage entry must include `stageIconUrl` (copy existing CDN URL) to pass Mongoose validation.
   - Response: Updated plant document
   - Note: Returns `404` if plant not found
+  - Note: Returns `400 Bad Request` if effective `harvestedItemId` or `pollenItemId` does not reference an existing Item `itemID`
 
 - **DELETE** `/game-data/plants/:plantId`: Delete a plant by game-side `plantId` (admin only).
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
@@ -838,6 +1297,20 @@ Depending on `itemType`, specific extra fields must be included:
 | `hybridMatureIconUrl`       | string      | —        | —       | **Auto-filled** from `hybridMatureSprite` file upload _(hybrid only)_                                                                                                                                                                             |
 | `dropSeeds`                 | bool        | —        | `false` | When `false`, harvest never generates seeds _(hybrid only)_                                                                                                                                                                                       |
 
+#### Plant ItemID Validation
+
+- `harvestedItemId` must reference an existing Item `itemID`.
+- `pollenItemId` is optional, but when provided it must reference an existing Item `itemID`.
+- Validation is enforced on both create and update.
+- Example error response:
+  ```json
+  {
+    "statusCode": 400,
+    "message": "Plant references non-existing itemID(s): item_missing_1, item_missing_2",
+    "error": "Bad Request"
+  }
+  ```
+
 #### `growthStages` Entry Fields
 
 | Field                   | Type   | Notes                                                                                                                                                                                                                                                                                                     |
@@ -864,6 +1337,7 @@ Depending on `itemType`, specific extra fields must be included:
       "description": "string",
       "recipeType": 0,
       "category": 0, //int 0-general, 1-tool, 2-food, 3-materials, 4-furniture, 5-equipment
+      "recipeLevel": 0, //int - Minimum structure tier required: 0-Wood, 1-Bronze, 2-Iron, 3-Gold
       "resultItemId": "string",
       "resultQuantity": 1,
       "resultQuality": 0,
@@ -873,6 +1347,7 @@ Depending on `itemType`, specific extra fields must be included:
     ```
   - Response: Created recipe document (includes `_id` and all fields)
   - Note: Returns `409 Conflict` if a recipe with the same `recipeID` already exists.
+  - Note: Returns `400 Bad Request` if `resultItemId` or any `ingredients[].itemId` does not exist in Item catalog.
 
 - **GET** `/game-data/crafting-recipes/catalog`: Get full recipe catalog in Unity-client format.
   - Response: `{ "recipes": [ ...recipeObjects ] }`
@@ -898,6 +1373,7 @@ Depending on `itemType`, specific extra fields must be included:
       "description": "string",
       "recipeType": 0,
       "category": 0,
+      "recipeLevel": 0, //int - Minimum structure tier required: 0-Wood, 1-Bronze, 2-Iron, 3-Gold
       "resultItemId": "string",
       "resultQuantity": 1,
       "resultQuality": 0,
@@ -906,6 +1382,7 @@ Depending on `itemType`, specific extra fields must be included:
     }
     ```
   - Response: Updated recipe document
+  - Note: Returns `400 Bad Request` if provided `resultItemId` or any provided `ingredients[].itemId` does not exist in Item catalog.
 
 - **DELETE** `/game-data/crafting-recipes/:recipeID`: Delete a recipe by game-side `recipeID` (admin only).
   - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
@@ -995,6 +1472,7 @@ Depending on `itemType`, specific extra fields must be included:
 - `DynamicSpriteSwapper` on each Paper Doll layer reads `configId` from `EquipmentManager` and calls `SkinCatalogManager.GetSprites(configId)` every `LateUpdate`.
 - To clear the client-side disk cache after updating a spritesheet, call `SkinCatalogManager.Instance.RefreshCatalog()` in play mode or delete `Application.persistentDataPath/SkinCache/`.
 - **Tool layer spritesheets are NOT stored here.** Tool appearance is driven by the Material Catalog (see below). `MaterialCatalogService.cs` registers each material's spritesheet into `SkinCatalogManager` under its `materialId` on startup.
+- **Skill VFX tint configs are NOT stored here.** Use [Combat Catalog](#combat-catalog).
 
 ---
 
@@ -1056,6 +1534,18 @@ Depending on `itemType`, specific extra fields must be included:
   - Path param: `materialId` — stable string key (e.g., `mat_copper`)
   - Response: Deleted material document.
   - Note: Returns `404` if not found. Does **not** delete the Cloudinary asset.
+  - Note: Returns `409 Conflict` when the material is still referenced by item documents. Delete is denied and the error includes where the material is used with sample item IDs.
+  - Current cross-collection checks include: `Item.toolMaterialId`, `Item.weaponMaterialId`.
+
+Example `409 Conflict` message:
+
+```json
+{
+  "statusCode": 409,
+  "message": "Cannot delete Material 'mat_copper' because it is currently used in other collections: Item.toolMaterialId (2) [tool_hoe_copper, tool_pickaxe_copper]; Item.weaponMaterialId (1) [weapon_staff_copper]",
+  "error": "Conflict"
+}
+```
 
 #### Material Fields
 
@@ -1074,6 +1564,95 @@ Depending on `itemType`, specific extra fields must be included:
 - For each entry, `SkinCatalogManager.Instance.LoadExternalSheet(materialId, spritesheetUrl, cellSize)` is called, registering the sheet under `materialId` as the configId.
 - `ItemUsageController` looks up `tool.toolMaterialId` via `MaterialCatalogService.Instance.GetMaterial(id)` and passes `materialEntry.materialId` directly to `EquipmentManager.EquipTool()` as the configId.
 - To add a new material tier: `POST /game-data/materials` once — no code changes required.
+
+---
+
+### Quest Catalog
+
+> Defines quest templates (quest chain config, objectives, NPC assignments, rewards) served via `player-data-service`. All mutation endpoints require admin authentication.
+
+- **POST** `/game-data/quests`: Create a new quest definition (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `application/json`
+  - Body:
+    ```json
+    {
+      "questId": "string",
+      "questName": "string",
+      "description": "string",
+      "NPCName": "string",
+      "Weight": 1,
+      "nextQuestId": "string (optional)",
+      "reward": { "itemId": "string", "quantity": 1 },
+      "status": "inactive (optional, default 'inactive')",
+      "objectives": [
+        {
+          "objectiveId": "string",
+          "description": "string",
+          "itemId": "string",
+          "requiredAmount": 5,
+          "currentAmount": 0
+        }
+      ]
+    }
+    ```
+  - Response: Created quest document.
+  - Note: Returns `409` if `questId` already exists.
+
+- **GET** `/game-data/quests/catalog`: Get full catalog `{ quests: [...] }` for Unity client (public).
+  - Response:
+    ```json
+    { "quests": [ { "questId": "string", ... } ] }
+    ```
+
+- **GET** `/game-data/quests/all`: Get flat array of all quests (public).
+  - Response: Array of quest documents.
+
+- **GET** `/game-data/quests/by-quest-id/:questId`: Find a quest by game-side `questId` string (public).
+  - Path param: `questId` — game-side identifier (e.g., `quest_001`).
+  - Response: Quest document or `null`.
+
+- **GET** `/game-data/quests/:id`: Find a quest by MongoDB `_id` (public).
+  - Path param: `id` — MongoDB ObjectId string.
+  - Response: Quest document.
+
+- **PUT** `/game-data/quests/:questId`: Update a quest by game-side `questId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Content-Type: `application/json`
+  - Path param: `questId` — game-side questId (e.g., `quest_001`).
+  - Body: Any subset of quest fields (all optional).
+  - Response: Updated quest document.
+  - Note: Returns `404` if not found.
+
+- **DELETE** `/game-data/quests/:questId`: Delete a quest by game-side `questId` (admin only).
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `questId`
+  - Response: Deleted quest document.
+  - Note: Returns `404` if not found.
+
+#### Quest Fields
+
+| Field         | Type   | Required | Default      | Notes                                                                |
+| ------------- | ------ | -------- | ------------ | -------------------------------------------------------------------- |
+| `questId`     | string | ✅       | —            | Unique game-side identifier (e.g., `"quest_001"`).                   |
+| `questName`   | string | ✅       | —            | Display name of the quest.                                           |
+| `description` | string | ✅       | —            | Quest description shown to the player.                               |
+| `NPCName`     | string | ✅       | —            | Name of the NPC who assigns the quest.                               |
+| `Weight`      | number | ✅       | `1`          | Sorting/priority weight. Higher = appears first.                     |
+| `nextQuestId` | string | ❌       | —            | `questId` of the next quest in the chain (optional).                 |
+| `reward`      | object | ✅       | —            | `{ itemId: string, quantity: number }` — reward on completion.       |
+| `status`      | string | ❌       | `"inactive"` | Quest lifecycle status: `inactive`, `active`, `completed`, `failed`. |
+| `objectives`  | array  | ❌       | `[]`         | Array of `QuestObjective` sub-documents (see below).                 |
+
+#### QuestObjective Fields
+
+| Field            | Type   | Required | Default | Notes                                    |
+| ---------------- | ------ | -------- | ------- | ---------------------------------------- |
+| `objectiveId`    | string | ✅       | —       | Unique identifier within the quest.      |
+| `description`    | string | ✅       | —       | Description of the objective.            |
+| `itemId`         | string | ✅       | —       | Target item `itemId` for this objective. |
+| `requiredAmount` | int    | ✅       | —       | Number of items needed.                  |
+| `currentAmount`  | int    | ❌       | `0`     | Current progress (player-side tracking). |
 
 ---
 
@@ -1132,7 +1711,19 @@ Depending on `itemType`, specific extra fields must be included:
 | `requiredToolType` | string       | —        | Required tool type to harvest this resource (default `Axe`)                             |
 | `minToolPower`     | int          | —        | Minimum tool power required to harvest (default 1)                                      |
 | `spriteUrl`        | string\|null | —        | Cloudinary URL for the resource sprite. **Auto-filled** if a `sprite` file is uploaded. |
-| `dropTable`        | array        | ✅       | Array of item drops with chance and amount range                                        |
+| `dropTable`        | array        | ✅       | Array of `{ itemId, minAmount, maxAmount, dropChance }` entries. Each `itemId` is validated at create/update time and **must be an existing Item in the catalog**. Returns `400 Bad Request` if any itemId does not exist. |
+
+#### Note on ResourceDropEntry Validation
+
+- All `itemId` values in `dropTable` are validated at **POST** and **PUT** time.
+- If any `itemId` in the `dropTable` does not match an existing Item document by `itemID`, the request fails with:
+  ```json
+  {
+    "statusCode": 400,
+    "message": "The following itemIds in dropTable do not exist in Item catalog: item_invalid, item_missing",
+    "error": "Bad Request"
+  }
+  ```
 
 ---
 
@@ -1154,3 +1745,84 @@ Depending on `itemType`, specific extra fields must be included:
 - Client visual sync:
   - `RPC_Client_PlayHitEffect(...)` plays local hit VFX/animation.
   - `RPC_Client_DestroyResource(...)` destroys local spawned resource visual.
+
+---
+
+### Structure Interaction (Photon PUN Events)
+
+> Structure hit/destroy uses Photon PUN2 custom events (NOT RPC). Master-authoritative with HP sync.
+
+#### Event Code Map — Structures
+
+| Code | Name                  | Direction       | Description                                      |
+| ---- | --------------------- | --------------- | ------------------------------------------------ |
+| `90` | STRUCTURE_PLACED      | Master → All    | A new structure was placed in the world          |
+| `91` | STRUCTURE_REMOVED     | Master → All    | Structure destroyed — includes `lastHitPlayerId` |
+| `92` | STRUCTURE_HP_UPDATED  | Master → All    | Structure HP changed (damage or regen)           |
+| `93` | STRUCTURE_HIT_REQUEST | Client → Master | Client requests to hit a structure               |
+| `94` | STRUCTURE_HIT_EFFECT  | Master → All    | Play hit VFX at position (predictive on client)  |
+
+#### Structure Destruction Flow
+
+1. Client calls `RequestHit(pos, damage, playerActorId)`.
+2. Non-Master sends `STRUCTURE_HIT_REQUEST` (93) to Master; plays local hit effect predictively.
+3. Master processes damage:
+   - Updates HP in `UnifiedChunkData`.
+   - Broadcasts `STRUCTURE_HP_UPDATED` (92) with new HP.
+   - If HP ≤ 0:
+     - Calls `ProcessChestContentsDrop()` — adds chest items to last hitter's inventory.
+     - Calls `ProcessStructureItemDrop()` — adds the structure item itself to last hitter's inventory.
+     - Unregisters chest from `ChestDataModule` (if applicable).
+     - Broadcasts `STRUCTURE_REMOVED` (91) with `lastHitPlayerId`.
+     - Removes structure from world data.
+4. All clients receive `STRUCTURE_REMOVED` (91):
+   - Close chest UI if this chest was open.
+   - Non-Master clients unregister chest from local `ChestDataModule`.
+   - `ProcessChestContentsDrop()` and `ProcessStructureItemDrop()` run on all clients — only last hitter's client actually adds items (checks `localPlayerId == lastHitPlayerId`).
+
+#### Structure HP Regeneration
+
+- Master periodically regenerates structure HP to max after a configurable timeout.
+- Broadcasts `STRUCTURE_HP_UPDATED` (92) with restored HP.
+- Clients distinguish regen from damage: if `newHp >= maxHp`, no hit effect is played.
+
+---
+
+### Chest Sync (Photon PUN Events)
+
+> Chest inventory is synced in real-time via Photon PUN2 custom events. Master is authoritative for slot data. Persistent storage uses the HTTP save-world endpoint (see `PUT /player-data/world`).
+
+#### Event Code Map — Chests
+
+| Code  | Name                 | Direction       | Description                                                      |
+| ----- | -------------------- | --------------- | ---------------------------------------------------------------- |
+| `150` | _(reserved)_         | —               | **ChatService** — do NOT use for chests                          |
+| `160` | REQUEST_CHEST_SYNC   | Client → Master | Late-join client requests all chest data                         |
+| `161` | CHEST_SYNC_BATCH     | Master → Client | Batch of chest slot data (response to 160)                       |
+| `162` | CHEST_SYNC_COMPLETE  | Master → Client | All batches sent, sync complete                                  |
+| `163` | CHEST_SLOT_REQUEST   | Client → Master | Client requests a slot change (add/remove/move item)             |
+| `164` | CHEST_SLOT_BROADCAST | Master → All    | Authoritative slot update after Master validates                 |
+| `165` | CHEST_REGISTER       | Master → All    | New chest registered (placed in world)                           |
+| `166` | CHEST_OPEN_NOTIFY    | Player → All    | Player opened a chest (for badge/indicator display)              |
+| `167` | CHEST_CLOSE_NOTIFY   | Player → All    | Player closed a chest                                            |
+| `168` | SLOT_DRAG_START      | Player → All    | Player started dragging from a chest slot (lock slot for others) |
+| `169` | SLOT_DRAG_END        | Player → All    | Player finished dragging (unlock slot)                           |
+
+#### Late-Join Chest Sync Flow
+
+1. Joining client sends `REQUEST_CHEST_SYNC` (160) to Master.
+2. Master iterates all registered chests, sends `CHEST_SYNC_BATCH` (161) messages with slot data.
+3. Master sends `CHEST_SYNC_COMPLETE` (162) to signal end of sync.
+
+#### Slot Lock Flow (Concurrent Access)
+
+1. Player A starts dragging from chest slot → broadcasts `SLOT_DRAG_START` (168) with `chestId` + `slotIndex`.
+2. Other players see the slot dimmed/locked — cannot drag from it.
+3. Player A drops item → broadcasts `SLOT_DRAG_END` (169) → slot unlocked for all.
+4. Auto-unlock after 10s timeout to handle disconnects.
+
+#### Chest Data Persistence
+
+- Real-time changes are held in memory (`ChestDataModule`) and synced via Photon events.
+- On world save (`PUT /player-data/world`), changed chest slots are sent as `chestDeltas`.
+- Destroyed chests are sent as `deletedChests` to remove from the database.

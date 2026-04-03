@@ -1,8 +1,9 @@
-import { Controller, Body } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ItemService } from './item.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { CatalogChange } from '../../catalog-version/catalog-change.types';
 
 @Controller()
 export class ItemController {
@@ -10,9 +11,11 @@ export class ItemController {
 
   /** Create a new item definition */
   @MessagePattern('create-item')
-
-  async createItem(@Payload() createItemDto: CreateItemDto) {
-    return this.itemService.create(createItemDto);
+  async createItem(
+    @Payload() createItemDto: CreateItemDto,
+  ): Promise<CatalogChange> {
+    const data = await this.itemService.create(createItemDto);
+    return { data, changeType: 'create', entityType: 'item' };
   }
 
   /** Return full catalog: { items: [...] } – consumed by Unity client */
@@ -43,19 +46,24 @@ export class ItemController {
   @MessagePattern('update-item')
   async updateItem(
     @Payload() payload: { itemID: string; dto: UpdateItemDto },
-  ) {
-    return this.itemService.update(payload.itemID, payload.dto);
+  ): Promise<CatalogChange> {
+    const data = await this.itemService.update(payload.itemID, payload.dto);
+    return { data, changeType: 'update', entityType: 'item' };
   }
 
   /** Delete an item by game-side itemID string */
   @MessagePattern('delete-item')
-  async deleteItem(@Payload() itemID: string) {
-    return this.itemService.delete(itemID);
+  async deleteItem(@Payload() itemID: string): Promise<CatalogChange> {
+    const data = await this.itemService.delete(itemID);
+    return { data, changeType: 'delete', entityType: 'item' };
   }
 
   @MessagePattern('create-fertilizer')
-  async createFertilizer(@Payload() createItemDto: CreateItemDto) {
-    return this.itemService.createFertilizer(createItemDto);
+  async createFertilizer(
+    @Payload() createItemDto: CreateItemDto,
+  ): Promise<CatalogChange> {
+    const data = await this.itemService.createFertilizer(createItemDto);
+    return { data, changeType: 'create', entityType: 'item' };
   }
 
   @MessagePattern('get-fertilizer-catalog')
@@ -81,12 +89,17 @@ export class ItemController {
   @MessagePattern('update-fertilizer')
   async updateFertilizer(
     @Payload() payload: { itemID: string; dto: UpdateItemDto },
-  ) {
-    return this.itemService.updateFertilizer(payload.itemID, payload.dto);
+  ): Promise<CatalogChange> {
+    const data = await this.itemService.updateFertilizer(
+      payload.itemID,
+      payload.dto,
+    );
+    return { data, changeType: 'update', entityType: 'item' };
   }
 
   @MessagePattern('delete-fertilizer')
-  async deleteFertilizer(@Payload() itemID: string) {
-    return this.itemService.deleteFertilizer(itemID);
+  async deleteFertilizer(@Payload() itemID: string): Promise<CatalogChange> {
+    const data = await this.itemService.deleteFertilizer(itemID);
+    return { data, changeType: 'delete', entityType: 'item' };
   }
 }

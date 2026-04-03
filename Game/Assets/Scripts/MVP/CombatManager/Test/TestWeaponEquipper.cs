@@ -1,93 +1,59 @@
 using UnityEngine;
-using CombatManager.SO;
 using CombatManager.Presenter;
+using System.Collections.Generic;
 
 namespace CombatManager.Test
 {
     /// <summary>
-    /// TEMPORARY TEST SCRIPT - Remove when item hotbar integration is done.
-    /// Simulates weapon equip/unequip via keyboard.
-    /// Attach to any GameObject in scene.
+    /// Legacy debug helper kept only to satisfy project file includes.
+    /// Runtime weapon activation is now driven by hotbar item selection.
     /// </summary>
     public class TestWeaponEquipper : MonoBehaviour
     {
-        [Header("Test Weapons - Assign in Inspector")]
-        [SerializeField] private WeaponDataSO testSwordBronze;
-        [SerializeField] private WeaponDataSO testSwordIron;
-        [SerializeField] private WeaponDataSO testSpear;
-        [SerializeField] private WeaponDataSO testStaff;
+        private string lastResult = "";
 
-        [Header("Hotkeys")]
-        [SerializeField] private KeyCode equipSwordBronzeKey = KeyCode.Alpha4;
-        [SerializeField] private KeyCode equipSwordIronKey   = KeyCode.Alpha5;
-        [SerializeField] private KeyCode equipSpearKey       = KeyCode.Alpha6;
-        [SerializeField] private KeyCode equipStaffKey       = KeyCode.Alpha7;
-        [SerializeField] private KeyCode unequipKey          = KeyCode.Alpha8;
-
-        private void Update()
+        [ContextMenu("Add All Weapons To Inventory")]
+        private void AddAllWeaponsToInventory()
         {
-            if (Input.GetKeyDown(equipSwordBronzeKey))
-                TryEquip(testSwordBronze, "Sword Bronze");
-
-            if (Input.GetKeyDown(equipSwordIronKey))
-                TryEquip(testSwordIron, "Sword Iron");
-
-            if (Input.GetKeyDown(equipSpearKey))
-                TryEquip(testSpear, "Spear");
-
-            if (Input.GetKeyDown(equipStaffKey))
-                TryEquip(testStaff, "Staff");
-
-            if (Input.GetKeyDown(unequipKey))
-                TryUnequip();
-        }
-
-        private void TryEquip(WeaponDataSO weapon, string typeName)
-        {
-            if (weapon == null)
+            if (ItemCatalogService.Instance == null || !ItemCatalogService.Instance.IsReady)
             {
-                Debug.LogWarning($"[TestWeaponEquipper] {typeName} not assigned in Inspector!");
+                lastResult = "ItemCatalog not ready yet.";
                 return;
             }
 
-            if (WeaponEquipPresenter.Instance == null)
+            InventoryGameView inventory = FindFirstObjectByType<InventoryGameView>();
+            if (inventory == null)
             {
-                Debug.LogError("[TestWeaponEquipper] WeaponEquipPresenter.Instance is null!");
+                lastResult = "InventoryGameView not found in scene.";
                 return;
             }
 
-            WeaponEquipPresenter.Instance.EquipWeapon(weapon);
-        }
-
-        private void TryUnequip()
-        {
-            if (WeaponEquipPresenter.Instance == null)
+            List<ItemData> weapons = ItemCatalogService.Instance.GetItemsByType(ItemType.Weapon);
+            if (weapons.Count == 0)
             {
-                Debug.LogError("[TestWeaponEquipper] WeaponEquipPresenter.Instance is null!");
+                lastResult = "No weapon items found in catalog.";
                 return;
             }
 
-            WeaponEquipPresenter.Instance.UnequipWeapon();
+            int added = 0;
+            int failed = 0;
+            for (int i = 0; i < weapons.Count; i++)
+            {
+                bool ok = inventory.AddItem(weapons[i].itemID, 1);
+                if (ok) added++;
+                else failed++;
+            }
+
+            lastResult = $"Added weapons: {added}, failed: {failed}";
+            Debug.Log($"[TestWeaponEquipper] {lastResult}");
         }
 
-        private void OnGUI()
+        [ContextMenu("Force Unequip Weapon")]
+        private void ForceUnequipWeapon()
         {
-            GUILayout.BeginArea(new Rect(10, 10, 300, 150));
-            GUILayout.Label("=== TEST WEAPON EQUIPPER ===");
-            GUILayout.Label($"[{equipSwordBronzeKey}] Equip Sword Bronze");
-            GUILayout.Label($"[{equipSwordIronKey}]   Equip Sword Iron");
-            GUILayout.Label($"[{equipSpearKey}]   Equip Spear");
-            GUILayout.Label($"[{equipStaffKey}]   Equip Staff");
-            GUILayout.Label($"[{unequipKey}]   Unequip");
-
-            if (WeaponEquipPresenter.Instance != null)
-            {
-                string status = WeaponEquipPresenter.Instance.IsWeaponEquipped()
-                    ? $"Equipped: {WeaponEquipPresenter.Instance.GetCurrentWeapon()?.weaponName}"
-                    : "No weapon equipped";
-                GUILayout.Label($"Status: {status}");
-            }
-            GUILayout.EndArea();
+            WeaponEquipPresenter.Instance?.UnequipWeapon();
+            lastResult = "Force unequip requested.";
+            Debug.Log($"[TestWeaponEquipper] {lastResult}");
         }
     }
 }

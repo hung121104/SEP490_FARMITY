@@ -7,10 +7,16 @@ import { CreateAdminDto } from './dto/create-admin.dto';
 import { RequestResetDto } from './dto/request-admin-reset.dto';
 import { ConfirmResetDto } from './dto/confirm-admin-reset.dto';
 import { VerifyRegistrationDto } from './dto/verify-registration.dto';
+import { GetDashboardAnalyticsDto } from './dto/get-dashboard-analytics.dto';
+import { AnalyticsService } from './analytics.service';
+import { PlayerHeartbeatDto } from './dto/player-heartbeat.dto';
 
 @Controller()
 export class AccountController {
-  constructor(private readonly accountService: AccountService) {}
+  constructor(
+    private readonly accountService: AccountService,
+    private readonly analyticsService: AnalyticsService,
+  ) {}
 
   @MessagePattern('register')
   async register(@Body() createAccountDto: CreateAccountDto) {
@@ -105,5 +111,18 @@ export class AccountController {
   @MessagePattern('reset-confirm')
   async resetConfirm(@Body() dto: ConfirmResetDto) {
     return this.accountService.confirmPasswordReset(dto.email, dto.otp, dto.newPassword);
+  }
+
+  @MessagePattern('get-dashboard-analytics')
+  async getDashboardAnalytics(@Body() dto: GetDashboardAnalyticsDto) {
+    return this.analyticsService.getDashboardAnalytics(dto);
+  }
+
+  @MessagePattern('player-heartbeat')
+  async playerHeartbeat(
+    @Body()
+    dto: PlayerHeartbeatDto & { sid?: string; sub?: string },
+  ) {
+    return this.accountService.playerHeartbeat(dto);
   }
 }

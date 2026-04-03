@@ -1,10 +1,10 @@
 ﻿using System;
 using UnityEngine;
-using UnityEngine.UI; // Thêm thư viện UI
+using UnityEngine.UI; 
 
 public class FishingMiniGameView : MonoBehaviour
 {
-    // Cung cấp sự kiện cho Presenter lắng nghe
+    
     public event Action OnMiniGameWon;
 
     public event Action OnMiniGameLost;
@@ -51,12 +51,12 @@ public class FishingMiniGameView : MonoBehaviour
             miniGamePanel.SetActive(false); 
         }
     }   
-    public void StartMiniGame()
+    public void StartMiniGame(float timerMultiplier = 3f)
     {
-        
+        timerMutilicator = timerMultiplier;
+
         miniGamePanel.SetActive(true);
 
-        
         hookProgress = 0f;
         hookPosition = 0.5f;
         fishPosition = 0.5f;

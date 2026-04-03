@@ -47,10 +47,19 @@ export class UpsertCharacterInWorldDto {
   positionX: number;
   positionY: number;
   sectionIndex?: number;
+  currentStamina?: number;
+  viableStamina?: number;
+  regenBoostMultiplier?: number;
+  regenBoostRemaining?: number;
+  toolEfficiencyReduction?: number;
+  toolEfficiencyRemaining?: number;
 }
 
 export class UpdateWorldDto {
   worldId: string;
+
+  // Optional world metadata fields
+  worldName?: string;
 
   // Optional world fields to update
   day?: number;
@@ -74,4 +83,20 @@ export class UpdateWorldDto {
    * Forwarded transparently to player-data-service save-world handler.
    */
   inventoryDeltas?: PlayerInventoryDeltaDto[];
+
+  /** Enemy spawner persistence blob (stored in worldentities collection). */
+  enemySpawnerState?: {
+    runtimeSequence?: number;
+    active?: Array<{
+      runtimeId: string;
+      enemyId: string;
+      x: number;
+      y: number;
+      z: number;
+    }>;
+    pending?: Array<{
+      enemyId: string;
+      dueUnixMs: number;
+    }>;
+  };
 }

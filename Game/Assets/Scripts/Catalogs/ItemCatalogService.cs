@@ -26,8 +26,9 @@ public class ItemCatalogService : MonoBehaviour
         Converters = { new ItemDataConverter() }
     };
 
-    private readonly Dictionary<string, ItemData> _catalog     = new();
-    private readonly Dictionary<string, Sprite>   _spriteCache = new();
+    private readonly Dictionary<string, ItemData> _catalog     = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Sprite>   _spriteCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Sprite>   _structureInteractionSpriteCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>True once catalog JSON is fully parsed and all icon sprites downloaded.</summary>
     public bool IsReady { get; private set; }
@@ -70,6 +71,34 @@ public class ItemCatalogService : MonoBehaviour
         return s;
     }
 
+    /// <summary>Returns a copy of all catalog items.</summary>
+    public List<ItemData> GetAllItems()
+    {
+        return new List<ItemData>(_catalog.Values);
+    }
+
+    /// <summary>Returns all catalog items of the requested item type.</summary>
+    public List<ItemData> GetItemsByType(ItemType itemType)
+    {
+        var result = new List<ItemData>();
+        foreach (ItemData item in _catalog.Values)
+        {
+            if (item != null && item.itemType == itemType)
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Returns the cached structure interaction Sprite, or null if not available.</summary>
+    public Sprite GetCachedStructureInteractionSprite(string itemId)
+    {
+        _structureInteractionSpriteCache.TryGetValue(itemId, out var s);
+        return s;
+    }
+
     // ── Loading ───────────────────────────────────────────────────────────────
 
     private const int MAX_RETRIES = 3;
@@ -84,11 +113,73 @@ public class ItemCatalogService : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Swaps catalog atomically; only downloads sprites for new entries.
+    /// Safe to call mid-game (SSE reconnect).
+    /// </summary>
+    public IEnumerator SafeRefetch()
+    {
+        string url = $"{AppConfig.ApiBaseUrl}/game-data/items/catalog";
+        using var request = UnityWebRequest.Get(url);
+        request.timeout = 15;
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogWarning($"[ItemCatalogService] SafeRefetch failed: {request.error}");
+            yield break;
+        }
+
+        ItemCatalogResponse response = null;
+        try
+        {
+            response = JsonConvert.DeserializeObject<ItemCatalogResponse>(
+                request.downloadHandler.text, _jsonSettings);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[ItemCatalogService] SafeRefetch parse error: {ex.Message}");
+            yield break;
+        }
+
+        if (response?.items == null) yield break;
+
+        var newCatalog = new Dictionary<string, ItemData>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in response.items)
+        {
+            if (item != null && !string.IsNullOrWhiteSpace(item.itemID))
+                newCatalog[item.itemID] = item;
+        }
+
+        // Atomic swap — keep IsReady true
+        _catalog.Clear();
+        foreach (var kvp in newCatalog)
+            _catalog[kvp.Key] = kvp.Value;
+
+        // Download only missing sprites
+        foreach (var item in newCatalog.Values)
+        {
+            if (!string.IsNullOrEmpty(item.iconUrl) && !_spriteCache.ContainsKey(item.itemID))
+                yield return DownloadSprite(item.itemID, item.iconUrl);
+
+            if (item is StructureItemData structItem
+                && !string.IsNullOrEmpty(structItem.structureInteractionSpriteUrl)
+                && !_structureInteractionSpriteCache.ContainsKey(item.itemID))
+            {
+                yield return DownloadSprite(item.itemID, structItem.structureInteractionSpriteUrl,
+                    _structureInteractionSpriteCache);
+            }
+        }
+
+        Debug.Log($"[ItemCatalogService] SafeRefetch complete — {_catalog.Count} item(s).");
+    }
+
     private IEnumerator FetchCatalog()
     {
         IsReady = false;
         _catalog.Clear();
         _spriteCache.Clear();
+        _structureInteractionSpriteCache.Clear();
 
         string url = $"{AppConfig.ApiBaseUrl}/game-data/items/catalog";
 
@@ -173,26 +264,94 @@ public class ItemCatalogService : MonoBehaviour
                 downloadedSprites++;
                 CatalogProgressManager.ReportProgress(downloadedSprites, totalSprites, "Item Catalog");
             }
+
+            if (item is StructureItemData structItem
+                && !string.IsNullOrEmpty(structItem.structureInteractionSpriteUrl))
+            {
+                yield return DownloadSprite(item.itemID, structItem.structureInteractionSpriteUrl,
+                                            _structureInteractionSpriteCache);
+            }
         }
     }
 
-    private IEnumerator DownloadSprite(string itemId, string url)
+    private IEnumerator DownloadSprite(string itemId, string url,
+                                       Dictionary<string, Sprite> targetCache = null)
     {
+        targetCache ??= _spriteCache;
+
         using var req = UnityWebRequestTexture.GetTexture(url);
         yield return req.SendWebRequest();
 
         if (req.result != UnityWebRequest.Result.Success)
         {
-            Debug.LogWarning($"[ItemCatalogService] Icon download failed for '{itemId}': {req.error}");
+            Debug.LogWarning($"[ItemCatalogService] Sprite download failed for '{itemId}': {req.error}");
             yield break;
         }
 
         var tex    = DownloadHandlerTexture.GetContent(req);
-        
+
         // Pixel art settings: crisp filtering and 16 pixels per unit
         tex.filterMode = FilterMode.Point;
         var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 16f);
-        _spriteCache[itemId] = sprite;
-        Debug.Log($"[ItemCatalogService] Icon ready for '{itemId}'.");
+        targetCache[itemId] = sprite;
+        Debug.Log($"[ItemCatalogService] Sprite ready for '{itemId}'.");
+    }
+
+    // ── Catalog Sync (real-time updates from CatalogSyncManager) ───────────
+
+    /// <summary>
+    /// Fired when an item entry is added or replaced in the catalog at runtime (admin SSE update).
+    /// Subscribers (InventoryGameView, ChestGameView) use this to refresh only affected slots.
+    /// Parameter: itemId of the updated item.
+    /// </summary>
+    public static event Action<string> OnItemUpdated;
+
+    /// <summary>
+    /// Adds or replaces an item in the catalog from a JSON string.
+    /// Starts sprite download asynchronously.
+    /// </summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var item = JsonConvert.DeserializeObject<ItemData>(json, _jsonSettings);
+            if (item == null || string.IsNullOrWhiteSpace(item.itemID)) return;
+
+            _catalog[item.itemID] = item;
+
+            // Download sprites first, then notify subscribers so UI reads the fresh sprite.
+            StartCoroutine(DownloadThenNotify(item));
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[ItemCatalogService] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Downloads icon sprites for the given item, then fires OnItemUpdated
+    /// so subscribers refresh with both updated data AND the new sprite.
+    /// </summary>
+    private IEnumerator DownloadThenNotify(ItemData item)
+    {
+        if (!string.IsNullOrEmpty(item.iconUrl))
+            yield return DownloadSprite(item.itemID, item.iconUrl);
+
+        if (item is StructureItemData structItem
+            && !string.IsNullOrEmpty(structItem.structureInteractionSpriteUrl))
+        {
+            yield return DownloadSprite(item.itemID, structItem.structureInteractionSpriteUrl,
+                _structureInteractionSpriteCache);
+        }
+
+        OnItemUpdated?.Invoke(item.itemID);
+    }
+
+    /// <summary>Removes an item and its cached sprites from the catalog.</summary>
+    public bool RemoveItem(string itemId)
+    {
+        _spriteCache.Remove(itemId);
+        _structureInteractionSpriteCache.Remove(itemId);
+        return _catalog.Remove(itemId);
     }
 }

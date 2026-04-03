@@ -102,7 +102,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2049091631077726381
 Transform:
   m_ObjectHideFlags: 0
@@ -217,8 +217,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca9928f9e2f5e154d838b67a7decc8c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  unloadTriggerCollider: {fileID: 3882025535754408441}
+  loadTriggerCollider: {fileID: 0}
   prefab: {fileID: 372591978817517267, guid: c3d1ade4963a1bf43bb3fecf474913d9, type: 3}
+  activeStateOnTrigger: 0
 --- !u!1 &3320098669166969633
 GameObject:
   m_ObjectHideFlags: 0
@@ -69842,8 +69843,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   loadTriggerCollider: {fileID: 2178243278951986782}
-  zOffset: {x: 0, y: 0, z: 1}
   prefab: {fileID: 372591978817517267, guid: c3d1ade4963a1bf43bb3fecf474913d9, type: 3}
+  activeStateOnTrigger: 0
 --- !u!1 &7722470777793964249
 GameObject:
   m_ObjectHideFlags: 0
@@ -112033,7 +112034,7 @@ Tilemap:
     second:
       serializedVersion: 2
       m_TileIndex: 25
-      m_TileSpriteIndex: 12
+      m_TileSpriteIndex: 14
       m_TileMatrixIndex: 0
       m_TileColorIndex: 0
       m_TileObjectToInstantiateIndex: 65535
@@ -225658,10 +225659,12 @@ Tilemap:
     m_Data: {fileID: 952275495, guid: bdbae52799fb46c43aa1e5d2e2c0252d, type: 3}
   - m_RefCount: 142
     m_Data: {fileID: 1205662078, guid: bdbae52799fb46c43aa1e5d2e2c0252d, type: 3}
-  - m_RefCount: 80
+  - m_RefCount: 79
     m_Data: {fileID: 1943232172, guid: bdbae52799fb46c43aa1e5d2e2c0252d, type: 3}
   - m_RefCount: 3
     m_Data: {fileID: -717556155, guid: bdbae52799fb46c43aa1e5d2e2c0252d, type: 3}
+  - m_RefCount: 1
+    m_Data: {fileID: 158187377, guid: bdbae52799fb46c43aa1e5d2e2c0252d, type: 3}
   m_TileMatrixArray:
   - m_RefCount: 12781
     m_Data:

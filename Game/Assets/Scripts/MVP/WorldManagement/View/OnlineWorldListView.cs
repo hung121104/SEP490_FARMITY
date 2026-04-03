@@ -213,6 +213,8 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
+        CacheJoinedRoomWorldContext();
+
         // With AutomaticallySyncScene = true (set in Awake), only the master calls LoadLevel.
         // Non-master clients are synced automatically by PUN.
         if (PhotonNetwork.IsMasterClient || !PhotonNetwork.AutomaticallySyncScene)
@@ -383,6 +385,14 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
                 return;
             }
 
+            string displayName = WorldRoomProperties.GetString(
+                roomInfo.CustomProperties,
+                WorldRoomProperties.DisplayName,
+                roomInfo.Name);
+
+            WorldSelectionManager manager = WorldSelectionManager.EnsureExists();
+            manager.SetSelectedWorld(worldId, displayName);
+
             HashSet<string> blacklist = await blacklistPresenter.GetBlacklistSet(worldId);
             if (blacklist == null)
             {
@@ -482,6 +492,28 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
         }
 
         PhotonNetwork.JoinRoom(roomName);
+    }
+
+    private void CacheJoinedRoomWorldContext()
+    {
+        if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null)
+            return;
+
+        string worldId = WorldRoomProperties.GetString(
+            PhotonNetwork.CurrentRoom.CustomProperties,
+            WorldRoomProperties.WorldId,
+            PhotonNetwork.CurrentRoom.Name);
+
+        if (string.IsNullOrEmpty(worldId))
+            return;
+
+        string displayName = WorldRoomProperties.GetString(
+            PhotonNetwork.CurrentRoom.CustomProperties,
+            WorldRoomProperties.DisplayName,
+            PhotonNetwork.CurrentRoom.Name);
+
+        WorldSelectionManager manager = WorldSelectionManager.EnsureExists();
+        manager.SetSelectedWorld(worldId, displayName);
     }
 
     private void ShowLoading(bool show)

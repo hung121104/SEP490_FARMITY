@@ -104,7 +104,7 @@ public class ChestPresenter
         chestInventoryService.OnItemAdded += HandleChestItemAdded;
         chestInventoryService.OnItemRemoved += HandleChestItemRemoved;
         chestInventoryService.OnItemsMoved += HandleChestItemsMoved;
-        chestInventoryService.OnQuantityChanged += HandleChestQuantityChanged;
+        chestInventoryService.OnSlotChanged += HandleChestSlotChanged;
         chestInventoryService.OnInventoryChanged += HandleChestInventoryChanged;
     }
 
@@ -113,7 +113,7 @@ public class ChestPresenter
         chestInventoryService.OnItemAdded -= HandleChestItemAdded;
         chestInventoryService.OnItemRemoved -= HandleChestItemRemoved;
         chestInventoryService.OnItemsMoved -= HandleChestItemsMoved;
-        chestInventoryService.OnQuantityChanged -= HandleChestQuantityChanged;
+        chestInventoryService.OnSlotChanged -= HandleChestSlotChanged;
         chestInventoryService.OnInventoryChanged -= HandleChestInventoryChanged;
     }
 
@@ -126,7 +126,7 @@ public class ChestPresenter
         chestView?.UpdateSlot(fromSlot, fromItem);
         chestView?.UpdateSlot(toSlot, toItem);
     }
-    private void HandleChestQuantityChanged(int slot, int qty)
+    private void HandleChestSlotChanged(int slot)
     {
         var item = chestInventoryService.GetItemAtSlot(slot);
         chestView?.UpdateSlot(slot, item);
@@ -296,7 +296,8 @@ public class ChestPresenter
     private void HandleDropChestItemToWorld(int slotIndex)
     {
         var item = chestInventoryService.GetItemAtSlot(slotIndex);
-        if (item != null && !item.IsQuestItem)
+        // if (item != null && !item.IsQuestItem)
+        if (item != null)
         {
             OnItemDropped?.Invoke(item);
             chestInventoryService.RemoveItemFromSlot(slotIndex, item.Quantity);
@@ -350,6 +351,7 @@ public class ChestPresenter
                 RefreshChestSlot(targetSlot);
                 SyncChestSlot(draggedSlot);
                 SyncChestSlot(targetSlot);
+                chestInventoryService.NotifyInventoryChangedExternal();
             }
         }
         else
@@ -362,6 +364,9 @@ public class ChestPresenter
             SyncPlayerSlot(draggedSlot);
             RefreshPlayerSlot(draggedSlot);
             RefreshChestSlot(targetSlot);
+
+            chestInventoryService.NotifyInventoryChangedExternal();
+            playerInventoryService.NotifyInventoryChangedExternal();
 
             // Release target lock after sync is sent
             sync?.NotifySlotDragEnd(chestData.ChestId, (byte)targetSlot);
@@ -400,6 +405,9 @@ public class ChestPresenter
             // Refresh both views
             RefreshChestSlot(draggedSlot);
             RefreshPlayerSlot(targetSlot);
+
+            chestInventoryService.NotifyInventoryChangedExternal();
+            playerInventoryService.NotifyInventoryChangedExternal();
         }
 
         chestView?.HideDragPreview();
@@ -437,11 +445,11 @@ public class ChestPresenter
         }
 
         // Prevent deletion of quest items
-        if (item.IsQuestItem)
-        {
-            Debug.LogWarning($"[ChestPresenter] Cannot delete quest item: {item.ItemName}");
-            return;
-        }
+        // if (item.IsQuestItem)
+        // {
+        //     Debug.LogWarning($"[ChestPresenter] Cannot delete quest item: {item.ItemName}");
+        //     return;
+        // }
 
         int quantity = item.Quantity;
         string itemName = item.ItemName;
@@ -559,14 +567,21 @@ public class ChestPresenter
         var itemModel = service.GetItemAtSlot(slotIndex);
         if (itemModel == null || itemDetailView == null) return;
 
-        HideCurrentItemDetail();
-
         currentTooltipSlot = slotIndex;
         tooltipFromChest = isChestSlot;
 
         IItemService itemService = new ItemService(itemModel);
-        currentItemPresenter = new ItemPresenter(itemModel, itemService);
-        currentItemPresenter.SetView(itemDetailView);
+
+        if (currentItemPresenter == null)
+        {
+            currentItemPresenter = new ItemPresenter(itemModel, itemService);
+            currentItemPresenter.SetView(itemDetailView);
+        }
+        else
+        {
+            currentItemPresenter.UpdateModel(itemModel, itemService);
+        }
+
         currentItemPresenter.ShowItemDetailsAtPosition(screenPosition);
     }
 

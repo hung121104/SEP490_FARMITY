@@ -69,6 +69,66 @@ public static class WorldApi
         [JsonProperty("slots")]     public Dictionary<string, InventorySlotDelta> slots;
     }
 
+    // ── Chest delta DTOs ──────────────────────────────────────────────────────
+
+    [Serializable]
+    public class ChestSlotDelta
+    {
+        [JsonProperty("itemId")]   public string itemId;
+        [JsonProperty("quantity")] public int    quantity;
+    }
+
+    /// <summary>
+    /// One chest's changed slots.
+    /// Key of the slots dictionary = slot index as string ("0"–"35").
+    /// </summary>
+    [Serializable]
+    public class ChestDelta
+    {
+        [JsonProperty("tileX")]          public int tileX;
+        [JsonProperty("tileY")]          public int tileY;
+        [JsonProperty("maxSlots")]       public int maxSlots;
+        [JsonProperty("structureLevel")] public int structureLevel;
+        [JsonProperty("slots")]          public Dictionary<string, ChestSlotDelta> slots;
+    }
+
+    /// <summary>Identifies a chest that was destroyed and should be removed from DB.</summary>
+    [Serializable]
+    public class DeletedChest
+    {
+        [JsonProperty("tileX")] public int tileX;
+        [JsonProperty("tileY")] public int tileY;
+    }
+
+    // ── Enemy spawner persistence DTOs ───────────────────────────────────────
+
+    [Serializable]
+    public class EnemySpawnerActiveEnemyDto
+    {
+        [JsonProperty("runtimeId")] public string runtimeId;
+        [JsonProperty("enemyId")] public string enemyId;
+        [JsonProperty("x")] public float x;
+        [JsonProperty("y")] public float y;
+        [JsonProperty("z")] public float z;
+    }
+
+    [Serializable]
+    public class EnemySpawnerPendingRespawnDto
+    {
+        [JsonProperty("enemyId")] public string enemyId;
+        [JsonProperty("dueUnixMs")] public long dueUnixMs;
+    }
+
+    [Serializable]
+    public class EnemySpawnerStateDto
+    {
+        [JsonProperty("runtimeSequence")] public int runtimeSequence;
+        [JsonProperty("active", NullValueHandling = NullValueHandling.Ignore)]
+        public List<EnemySpawnerActiveEnemyDto> active;
+        [JsonProperty("pending", NullValueHandling = NullValueHandling.Ignore)]
+        public List<EnemySpawnerPendingRespawnDto> pending;
+    }
+
     // -------------------------------------------------------------------------
     //  Request model
     // -------------------------------------------------------------------------
@@ -78,6 +138,9 @@ public static class WorldApi
     {
         [JsonProperty("worldId")]
         public string worldId;
+
+        [JsonProperty("worldName", NullValueHandling = NullValueHandling.Ignore)]
+        public string worldName;
 
         [JsonProperty("day",    NullValueHandling = NullValueHandling.Ignore)] public int? day;
         [JsonProperty("month",  NullValueHandling = NullValueHandling.Ignore)] public int? month;
@@ -104,6 +167,21 @@ public static class WorldApi
         [JsonProperty("inventoryDeltas", NullValueHandling = NullValueHandling.Ignore)]
         public List<PlayerInventoryDelta> inventoryDeltas;
 
+        /// <summary>
+        /// Only dirty chests are included.  Null / empty → no chest changes to save.
+        /// </summary>
+        [JsonProperty("chestDeltas", NullValueHandling = NullValueHandling.Ignore)]
+        public List<ChestDelta> chestDeltas;
+
+        /// <summary>
+        /// Chests destroyed since last save.  Null / empty → no chests to delete.
+        /// </summary>
+        [JsonProperty("deletedChests", NullValueHandling = NullValueHandling.Ignore)]
+        public List<DeletedChest> deletedChests;
+
+        [JsonProperty("enemySpawnerState", NullValueHandling = NullValueHandling.Ignore)]
+        public EnemySpawnerStateDto enemySpawnerState;
+
         public class CharacterUpdate
         {
             [JsonProperty("accountId")]  public string accountId;
@@ -115,6 +193,24 @@ public static class WorldApi
             [JsonProperty("outfitConfigId")] public string outfitConfigId;
             [JsonProperty("hatConfigId")]    public string hatConfigId;
             [JsonProperty("toolConfigId")]   public string toolConfigId;
+
+            [JsonProperty("currentStamina", NullValueHandling = NullValueHandling.Ignore)]
+            public float? currentStamina;
+
+            [JsonProperty("viableStamina", NullValueHandling = NullValueHandling.Ignore)]
+            public float? viableStamina;
+
+            [JsonProperty("regenBoostMultiplier", NullValueHandling = NullValueHandling.Ignore)]
+            public float? regenBoostMultiplier;
+
+            [JsonProperty("regenBoostRemaining", NullValueHandling = NullValueHandling.Ignore)]
+            public float? regenBoostRemaining;
+
+            [JsonProperty("toolEfficiencyReduction", NullValueHandling = NullValueHandling.Ignore)]
+            public float? toolEfficiencyReduction;
+
+            [JsonProperty("toolEfficiencyRemaining", NullValueHandling = NullValueHandling.Ignore)]
+            public float? toolEfficiencyRemaining;
         }
     }
 

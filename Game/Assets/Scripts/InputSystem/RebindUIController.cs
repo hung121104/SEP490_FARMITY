@@ -1,31 +1,37 @@
-using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Attach this to each "keybind row" in the Settings UI.
-/// Handles interactive rebinding, duplicate-key detection, and label updates.
+/// Handles interactive rebinding for a single binding slot.
 ///
-/// Inspector setup:
-///   • actionName   – exact action name in the Player map (e.g. "Harvest")
-///   • bindingIndex – which binding to rebind (0 for single-key actions)
-///   • bindingLabel – TMP_Text that shows the current key
-///   • rebindButton – Button the player clicks to start rebinding
-///   • waitingText  – text shown while waiting for a key press (default "Press a key…")
+/// Usage A – Inspector (manual rows):
+///   Set actionName + bindingIndex in Inspector. The row configures itself in Start().
+///
+/// Usage B – Programmatic (auto-generated rows via KeybindPanelController):
+///   Call Initialize(actionName, bindingIndex, displayLabel) after Instantiate().
+///   Start() skips its setup if Initialize() was already called.
+///
+/// Row prefab expected layout:
+///   • actionLabel  (optional) – TMP_Text showing the action name on the left
+///   • bindingLabel            – TMP_Text showing the current key on the right
+///   • rebindButton            – Button the player clicks to start rebinding
 /// </summary>
 public class RebindUIController : MonoBehaviour
 {
     // ───── Inspector ─────
     [Header("Action Reference")]
-    [Tooltip("Exact name of the action in the Player map (e.g. \"Harvest\").")]
+    [Tooltip("Exact name of the action in the Player map. Set via Inspector or Initialize().")]
     [SerializeField] private string actionName;
 
     [Tooltip("Binding index within the action (0 for simple single-key actions).")]
     [SerializeField] private int bindingIndex = 0;
 
     [Header("UI References")]
+    [Tooltip("(Optional) Left-side label showing the action name. Populated by KeybindPanelController.")]
+    [SerializeField] private TMP_Text actionLabel;
+
     [SerializeField] private TMP_Text bindingLabel;
     [SerializeField] private Button   rebindButton;
 
@@ -41,6 +47,7 @@ public class RebindUIController : MonoBehaviour
     // ───── Runtime ─────
     private InputAction        _action;
     private InputActionRebindingExtensions.RebindingOperation _rebindOperation;
+    private bool               _isInitialized;
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Lifecycle
@@ -48,6 +55,23 @@ public class RebindUIController : MonoBehaviour
 
     private void Start()
     {
+        // Skip if already set up by Initialize() (programmatic path)
+        if (_isInitialized) return;
+
+        Initialize(actionName, bindingIndex);
+    }
+
+    /// <summary>
+    /// Configures this row for the given action and binding slot.
+    /// Call this right after Instantiate() when generating rows at runtime.
+    /// displayLabel overrides the text shown in actionLabel (defaults to actionName).
+    /// </summary>
+    public void Initialize(string actionName, int bindingIndex, string displayLabel = null)
+    {
+        _isInitialized  = true;
+        this.actionName   = actionName;
+        this.bindingIndex = bindingIndex;
+
         _action = InputManager.Instance.Actions.Player.FindAction(actionName);
         if (_action == null)
         {
@@ -55,6 +79,11 @@ public class RebindUIController : MonoBehaviour
             return;
         }
 
+        if (actionLabel != null)
+            actionLabel.text = displayLabel ?? actionName;
+
+        // Guard against double-add when called from Start() as fallback
+        rebindButton.onClick.RemoveListener(StartRebind);
         rebindButton.onClick.AddListener(StartRebind);
         RefreshLabel();
     }

@@ -77,8 +77,9 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
         while (WorldDataBootstrapper.Instance != null && !WorldDataBootstrapper.Instance.IsReady)
             yield return null;
 
-        // Load saved time from WorldDataManager if available
-        if (WorldDataManager.Instance != null && WorldDataManager.Instance.Day > 0)
+        // Load saved time from WorldDataManager if available.
+        // New worlds can legitimately have day == 0, so gate on loaded world meta instead.
+        if (WorldDataManager.Instance != null && !string.IsNullOrEmpty(WorldDataManager.Instance.WorldName))
         {
             year   = WorldDataManager.Instance.Year;
             month  = WorldDataManager.Instance.Month;

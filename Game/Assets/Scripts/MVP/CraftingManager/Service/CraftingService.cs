@@ -98,7 +98,7 @@ public class CraftingService : ICraftingService
 
         // Add result item
         int resultAmount = recipe.ResultQuantity * amount;
-        bool added = inventory.AddItem(recipe.ResultItemId, resultAmount, recipe.ResultQuality);
+        bool added = inventory.AddItem(recipe.ResultItemId, resultAmount);
 
         if (!added)
         {
@@ -145,6 +145,12 @@ public class CraftingService : ICraftingService
     {
         var recipe = model.GetRecipe(recipeID);
         recipe?.Lock();
+    }
+
+    public void RemoveRecipe(string recipeID)
+    {
+        model.RemoveRecipe(recipeID);
+        Debug.Log($"[CraftingService] Removed recipe from UI model: {recipeID}");
     }
 
     public bool IsRecipeUnlocked(string recipeID)
@@ -199,6 +205,16 @@ public class CraftingService : ICraftingService
     public List<RecipeModel> GetCookingRecipes()
     {
         return model.GetCookingRecipes();
+    }
+
+    public List<RecipeModel> GetCraftingRecipesByLevel(int stationLevel)
+    {
+        return model.GetCraftingRecipesByLevel(stationLevel);
+    }
+
+    public List<RecipeModel> GetCookingRecipesByLevel(int stationLevel)
+    {
+        return model.GetCookingRecipesByLevel(stationLevel);
     }
 
     public List<RecipeModel> GetCraftableRecipes(IInventoryService inventory)

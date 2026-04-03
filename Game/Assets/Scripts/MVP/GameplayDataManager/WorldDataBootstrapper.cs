@@ -22,6 +22,13 @@ public class WorldDataBootstrapper : MonoBehaviour
     /// <summary>True once all managers have been populated with API data.</summary>
     public bool IsReady { get; private set; } = false;
 
+    /// <summary>
+    /// Fired on the MasterClient immediately after world data has been fully distributed to all
+    /// managers. Systems that need world data to be ready before running (e.g. ResourceSpawnerManager)
+    /// should subscribe to this instead of polling IsReady.
+    /// </summary>
+    public static event System.Action OnWorldDataReady;
+
     private string _worldId;
     private string _authToken;
 
@@ -29,6 +36,20 @@ public class WorldDataBootstrapper : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+    }
+
+    /// <summary>
+    /// Called by <see cref="ChunkDataSyncManager"/> when the world sync batch is complete on a
+    /// non-master client. Marks this bootstrapper as ready so that systems waiting on
+    /// <see cref="IsReady"/> (e.g. <c>ChunkLoadingManager.FindLocalPlayer</c>) stop blocking.
+    /// </summary>
+    public void SetReadyFromSync()
+    {
+        if (!Photon.Pun.PhotonNetwork.IsMasterClient)
+        {
+            IsReady = true;
+            Debug.Log("[WorldDataBootstrapper] IsReady set via sync (non-master).");
+        }
     }
 
     private void Start()
@@ -61,7 +82,9 @@ public class WorldDataBootstrapper : MonoBehaviour
             if (!string.IsNullOrEmpty(_authToken))
                 req.SetRequestHeader("Authorization", "Bearer " + _authToken);
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             req.certificateHandler = new AcceptAllCertificates();
+#endif
             yield return req.SendWebRequest();
 
 #if UNITY_2020_1_OR_NEWER
@@ -94,6 +117,15 @@ public class WorldDataBootstrapper : MonoBehaviour
                 Debug.LogError("[WorldDataBootstrapper] Deserialized null response.");
                 yield break;
             }
+
+            CombatManager.Service.EnemySpawnerManager.SetBootstrapState(data.enemySpawnerState);
+
+            // --- Clear stale in-memory data before populating ---
+            // Required for rejoin within the same game session: WorldDataManager is DontDestroyOnLoad
+            // and may still hold tile/inventory data from the previous session if LeaveRoomButton
+            // was not used (e.g. network drop, host migration).
+            if (WorldDataManager.Instance != null)
+                WorldDataManager.Instance.ClearAllModules();
 
             // --- Distribute to managers ---
 
@@ -138,13 +170,46 @@ public class WorldDataBootstrapper : MonoBehaviour
                 Debug.Log($"[WorldDataBootstrapper] Loaded {data.chunks.Count} chunk(s) from save.");
             }
 
+            // 4. Chest inventory data — load saved chest contents into ChestDataModule
+            if (WorldDataManager.Instance?.ChestData != null && data.chests != null && data.chests.Count > 0)
+            {
+                var chestModule = WorldDataManager.Instance.ChestData;
+                foreach (var chest in data.chests)
+                {
+                    short tx = (short)chest.tileX;
+                    short ty = (short)chest.tileY;
+
+                    // Register chest header (idempotent — may already be registered via structure spawn)
+                    chestModule.RegisterChest(tx, ty, (byte)chest.maxSlots, (byte)chest.structureLevel);
+
+                    // Load slot contents
+                    if (chest.slots != null)
+                    {
+                        foreach (var kvp in chest.slots)
+                        {
+                            if (!byte.TryParse(kvp.Key, out byte slotIndex)) continue;
+                            var slotData = kvp.Value;
+                            if (slotData == null || string.IsNullOrEmpty(slotData.itemId)) continue;
+
+                            chestModule.SetSlot(tx, ty, slotIndex, slotData.itemId, (ushort)slotData.quantity);
+                        }
+                    }
+                }
+                // Clear dirty flags since this data was just loaded from DB (not a user change)
+                chestModule.ClearAllDirtyFlags();
+                Debug.Log($"[WorldDataBootstrapper] Loaded {data.chests.Count} chest(s) from save.");
+            }
+
             IsReady = true;
-            Debug.Log($"[WorldDataBootstrapper] Ready. World: {data.worldName} | Characters: {data.characters?.Count ?? 0} | Chunks: {data.chunks?.Count ?? 0}");
+            OnWorldDataReady?.Invoke();
+            Debug.Log($"[WorldDataBootstrapper] Ready. World: {data.worldName} | Characters: {data.characters?.Count ?? 0} | Chunks: {data.chunks?.Count ?? 0} | Chests: {data.chests?.Count ?? 0}");
         }
     }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
     private class AcceptAllCertificates : CertificateHandler
     {
         protected override bool ValidateCertificate(byte[] certificateData) => true;
     }
+#endif
 }

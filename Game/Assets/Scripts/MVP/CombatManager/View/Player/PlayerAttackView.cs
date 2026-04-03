@@ -13,7 +13,7 @@ namespace CombatManager.View
         [SerializeField] private PlayerAttackPresenter presenter;
 
         [Header("Debug Settings")]
-        [SerializeField] private bool showDebugInfo = true;
+        [SerializeField] private bool showDebugInfo = false;
 
         #region Unity Lifecycle
 

@@ -25,10 +25,22 @@ public class PlayerMovementService : IPlayerMovementService
     {
         if (!player.GetComponent<PhotonView>().IsMine)
         {
+            bool isAuthoritativeHost = !PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient;
+
             if (playerCa != null) Object.Destroy(playerCa.gameObject);
             if (cinemachineCamera != null) Object.Destroy(cinemachineCamera.gameObject);
-            if (playerCollider != null) playerCollider.enabled = false;
-            if (rb != null) rb.simulated = false;
+
+            // Host must keep remote colliders/physics simulated so authoritative enemy touch damage can detect contacts.
+            if (!isAuthoritativeHost)
+            {
+                if (playerCollider != null) playerCollider.enabled = false;
+                if (rb != null) rb.simulated = false;
+            }
+            else
+            {
+                if (playerCollider != null) playerCollider.enabled = true;
+                if (rb != null) rb.simulated = true;
+            }
         }
     }
 }

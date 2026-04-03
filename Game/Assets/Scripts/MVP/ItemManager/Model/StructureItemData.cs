@@ -8,4 +8,5 @@ public class StructureItemData : ItemData
     /// </summary>
     public int structureInteractionType = 0;
     public int structureLevel = 1;
+    public string structureInteractionSpriteUrl = "";
 }

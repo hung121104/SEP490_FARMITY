@@ -33,11 +33,56 @@ export class PlayerInventoryDeltaDto {
   slots: Record<string, InventorySlotDeltaDto>;
 }
 
+// ── Chest delta types ─────────────────────────────────────────────────────────
+
+export class ChestSlotDeltaDto {
+  itemId: string;
+  quantity: number;
+}
+
+/** One chest's changed slots.  slots key = slot index "0"–"35". */
+export class ChestDeltaDto {
+  tileX: number;
+  tileY: number;
+  maxSlots: number;
+  structureLevel: number;
+  /** Only the slots that changed; key = string(slotIndex) */
+  slots: Record<string, ChestSlotDeltaDto>;
+}
+
+/** Identifies a chest to be deleted from the database. */
+export class DeletedChestDto {
+  tileX: number;
+  tileY: number;
+}
+
+export class EnemySpawnerActiveEnemyDto {
+  runtimeId: string;
+  enemyId: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export class EnemySpawnerPendingRespawnDto {
+  enemyId: string;
+  dueUnixMs: number;
+}
+
+export class EnemySpawnerStateDto {
+  runtimeSequence?: number;
+  active?: EnemySpawnerActiveEnemyDto[];
+  pending?: EnemySpawnerPendingRespawnDto[];
+}
+
 // ── Main DTO ────────────────────────────────────────────────────────────────
 
 export class UpdateWorldDto {
   worldId: string;
   ownerId: string;
+
+  // Optional world metadata fields
+  worldName?: string;
 
   // Optional world time/economy fields
   day?: number;
@@ -65,4 +110,19 @@ export class UpdateWorldDto {
    * Backend merges these into the `characters` collection atomically.
    */
   inventoryDeltas?: PlayerInventoryDeltaDto[];
+
+  /**
+   * Chest deltas — only the chests whose slots changed since last save.
+   * Backend upserts these into the `chests` collection atomically.
+   */
+  chestDeltas?: ChestDeltaDto[];
+
+  /**
+   * Chests that were destroyed since last save.
+   * Backend deletes the matching documents from the `chests` collection.
+   */
+  deletedChests?: DeletedChestDto[];
+
+  /** Enemy spawner persistence blob (stored in worldentities collection). */
+  enemySpawnerState?: EnemySpawnerStateDto;
 }

@@ -23,12 +23,6 @@ public class CraftingModel
             return;
         }
 
-        if (recipes.ContainsKey(recipeData.recipeID))
-        {
-            Debug.LogWarning($"[CraftingModel] Recipe '{recipeData.recipeID}' already exists — skipping.");
-            return;
-        }
-
         recipes[recipeData.recipeID] = new RecipeModel(recipeData);
     }
 
@@ -78,6 +72,20 @@ public class CraftingModel
     public List<RecipeModel> GetCookingRecipes()
     {
         return GetRecipesByType(RecipeType.Cooking);
+    }
+
+    public List<RecipeModel> GetCraftingRecipesByLevel(int stationLevel)
+    {
+        return recipes.Values
+            .Where(r => r.RecipeType == RecipeType.Crafting && r.isUnlocked && r.RecipeLevel <= stationLevel)
+            .ToList();
+    }
+
+    public List<RecipeModel> GetCookingRecipesByLevel(int stationLevel)
+    {
+        return recipes.Values
+            .Where(r => r.RecipeType == RecipeType.Cooking && r.isUnlocked && r.RecipeLevel <= stationLevel)
+            .ToList();
     }
 
     #endregion

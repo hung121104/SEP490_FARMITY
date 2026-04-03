@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 using TMPro;
-using System.Collections;
+using Photon.Pun;
 
 public class SeasonManagerView : MonoBehaviour
 {
@@ -14,19 +14,22 @@ public class SeasonManagerView : MonoBehaviour
     [Header("UI")]
     [SerializeField] private TextMeshProUGUI seasonText;
 
-    public Season CurrentSeason { get; private set; }
+    // State lives in Presenter/Model — View delegates to Presenter.
+    public Season CurrentSeason => presenter.CurrentSeason;
 
-    public delegate void SeasonChangedHandler(Season newSeason);
-    public event SeasonChangedHandler OnSeasonChanged;
+    public event System.Action<Season> OnSeasonChanged
+    {
+        add    => presenter.OnSeasonChanged += value;
+        remove => presenter.OnSeasonChanged -= value;
+    }
 
     private SeasonPresenter presenter;
 
-    private bool styleApplied = false;
-
     void Awake()
     {
+        var model = new SeasonModel();
         ISeasonService service = new SeasonService(monthsPerSeason);
-        presenter = new SeasonPresenter(this, service);
+        presenter = new SeasonPresenter(this, service, model);
     }
 
     void OnEnable()
@@ -45,31 +48,39 @@ public class SeasonManagerView : MonoBehaviour
     {
         ApplyFarmingTextStyle(seasonText);
 
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // MasterClient: defer evaluation until Bootstrapper has finished restoring
+            // saved data into TimeManager. Without this, timeManager.month is still 1
+            // (default) even though the save may have month = 2 (Rainy).
+            StartCoroutine(WaitForBootstrapperAndEvaluate());
+        }
+        else
+        {
+            // Non-MasterClient: time is synced via OnRoomPropertiesUpdate → OnMonthChanged.
+            // Read whatever month is currently in TimeManager (may already be correct
+            // if room props arrived before Start ran).
+            if (timeManager != null)
+                presenter.EvaluateSeason(timeManager.month);
+
+            UpdateSeasonUI(presenter.CurrentSeason);
+        }
+    }
+
+    private System.Collections.IEnumerator WaitForBootstrapperAndEvaluate()
+    {
+        // Wait for WorldDataBootstrapper to finish populating all managers.
+        while (WorldDataBootstrapper.Instance != null && !WorldDataBootstrapper.Instance.IsReady)
+            yield return null;
+
+        // One extra frame ensures TimeManagerView's own bootstrapper coroutine
+        // (which unblocks in the same frame) has already restored the saved month.
+        yield return null;
+
         if (timeManager != null)
             presenter.EvaluateSeason(timeManager.month);
 
-        UpdateSeasonUI(CurrentSeason);
-    }
-
-    void ApplyFarmingTextStyle(TMP_Text text)
-    {
-        if (text == null) return;
-
-        // Force TMP to create a material instance
-        Material mat = text.fontMaterial;
-
-        if (mat == null) return;
-
-        // Outline
-        text.outlineWidth = 0.25f;
-        text.outlineColor = Color.black;
-
-        // Enable shadow (Underlay)
-        mat.EnableKeyword("UNDERLAY_ON");
-        mat.SetColor("_UnderlayColor", new Color(0, 0, 0, 0.85f));
-        mat.SetFloat("_UnderlayOffsetX", 1f);
-        mat.SetFloat("_UnderlayOffsetY", -1f);
-        mat.SetFloat("_UnderlayDilate", 0.2f);
+        UpdateSeasonUI(presenter.CurrentSeason);
     }
 
     private void HandleMonthChanged()
@@ -77,21 +88,8 @@ public class SeasonManagerView : MonoBehaviour
         presenter.EvaluateSeason(timeManager.month);
     }
 
-    public void SetSeason(Season newSeason)
-    {
-        if (CurrentSeason == newSeason)
-            return;
-
-        CurrentSeason = newSeason;
-
-        Debug.Log($"[SeasonManager] Season changed to {newSeason}");
-
-        UpdateSeasonUI(newSeason);
-
-        OnSeasonChanged?.Invoke(newSeason);
-    }
-
-    private void UpdateSeasonUI(Season newSeason)
+    // Called by SeasonPresenter — pure UI rendering, zero business logic.
+    public void UpdateSeasonUI(Season newSeason)
     {
         if (seasonText == null) return;
 
@@ -107,5 +105,24 @@ public class SeasonManagerView : MonoBehaviour
                 seasonText.color = new Color(0.3f, 0.9f, 1f);
                 break;
         }
+
+        Debug.Log($"[SeasonManager] Season UI updated to {newSeason}");
+    }
+
+    private void ApplyFarmingTextStyle(TMP_Text text)
+    {
+        if (text == null) return;
+
+        Material mat = text.fontMaterial;
+        if (mat == null) return;
+
+        text.outlineWidth = 0.25f;
+        text.outlineColor = Color.black;
+
+        mat.EnableKeyword("UNDERLAY_ON");
+        mat.SetColor("_UnderlayColor", new Color(0, 0, 0, 0.85f));
+        mat.SetFloat("_UnderlayOffsetX", 1f);
+        mat.SetFloat("_UnderlayOffsetY", -1f);
+        mat.SetFloat("_UnderlayDilate", 0.2f);
     }
 }

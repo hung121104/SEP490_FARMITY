@@ -9,6 +9,8 @@ import { UnverifiedAccount, UnverifiedAccountSchema } from './unverified-account
 import { AccountService } from './account.service';
 import { AccountController } from './account.controller';
 import { SessionService } from './session.service';
+import { AnalyticsService } from './analytics.service';
+import { AnalyticsPresenceService } from './analytics-presence.service';
 
 @Module({
   imports: [
@@ -22,7 +24,10 @@ import { SessionService } from './session.service';
       {
         name: 'ADMIN_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 3006 },
+        options: {
+          host: process.env.ADMIN_SERVICE_HOST || 'localhost',
+          port: parseInt(process.env.ADMIN_SERVICE_PORT || '3006'),
+        },
       },
     ]),
     JwtModule.register({
@@ -31,7 +36,12 @@ import { SessionService } from './session.service';
     }),
   ],
   controllers: [AccountController],
-  providers: [AccountService, SessionService],
-  exports: [AccountService, SessionService],
+  providers: [
+    AccountService,
+    SessionService,
+    AnalyticsService,
+    AnalyticsPresenceService,
+  ],
+  exports: [AccountService, SessionService, AnalyticsService],
 })
 export class AccountModule {}

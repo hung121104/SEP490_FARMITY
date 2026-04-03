@@ -112,14 +112,24 @@ export class Item {
 
   // ── itemType: 4 – Consumable / 8 – Cooking ────────────────────────────────
 
+  /** Restores viableStamina (soft-cap recovery). Maps to ConsumableData.viableRestore on the client. */
   @Prop()
-  energyRestore?: number;
+  viableRestore?: number;
 
   @Prop()
   healthRestore?: number;
 
+  /** Multiplier applied to stamina regen rate for effectDurationSeconds (e.g. 2.0 = double regen). Must be > 1 to take effect. */
   @Prop()
-  bufferDuration?: number;
+  regenBoostMultiplier?: number;
+
+  /** Reduces tool stamina cost by this fraction for effectDurationSeconds (0–0.95). */
+  @Prop()
+  toolEfficiencyReductionPercent?: number;
+
+  /** Duration in seconds for regenBoostMultiplier and toolEfficiencyReductionPercent. */
+  @Prop()
+  effectDurationSeconds?: number;
 
   // ── itemType: 6 – Weapon ───────────────────────────────────────────────────
 
@@ -129,12 +139,36 @@ export class Item {
   @Prop()
   critChance?: number;
 
-  @Prop()
-  attackSpeed?: number;
-
   /** References a Material document by materialId (e.g. 'mat_steel'). */
   @Prop()
   weaponMaterialId?: string;
+
+  @Prop()
+  weaponType?: number;
+
+  @Prop()
+  tier?: number;
+
+  @Prop()
+  attackCooldown?: number;
+
+  @Prop()
+  knockbackForce?: number;
+
+  @Prop()
+  projectileSpeed?: number;
+
+  @Prop()
+  projectileRange?: number;
+
+  @Prop()
+  projectileKnockback?: number;
+
+  @Prop()
+  linkedSkillId?: string;
+
+  @Prop()
+  weaponPrefabKey?: string;
 
   // ── itemType: 7 – Fish ─────────────────────────────────────────────────────
 
@@ -181,11 +215,15 @@ export class Item {
 
   // ── itemType: 13 – Structure ──────────────────────────────────────────────
 
-  @Prop()
+  @Prop({ default: 0 })
   structureInteractionType?: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   structureLevel?: number;
+
+  /** Sprite URL/path used when interacting with this structure (e.g. chest open sprite) */
+  @Prop({ default: '' })
+  structureInteractionSpriteUrl?: string;
 
   // ── itemType: 14 – Fertilizer ───────────────────────────
   // No additional persisted fields beyond the shared base item properties.

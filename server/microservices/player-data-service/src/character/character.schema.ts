@@ -60,6 +60,26 @@ export class Character {
 
   @Prop({ default: '' })
   toolConfigId: string;
+
+  @Prop({ type: [String], default: [] })
+  playerSkillSlotIds: string[];
+  @Prop({ default: 200 })
+  currentStamina: number;
+
+  @Prop({ default: 200 })
+  viableStamina: number;
+
+  @Prop({ default: 1 })
+  regenBoostMultiplier: number;
+
+  @Prop({ default: 0 })
+  regenBoostRemaining: number;
+
+  @Prop({ default: 0 })
+  toolEfficiencyReduction: number;
+
+  @Prop({ default: 0 })
+  toolEfficiencyRemaining: number;
 }
 
 export const CharacterSchema = SchemaFactory.createForClass(Character);
