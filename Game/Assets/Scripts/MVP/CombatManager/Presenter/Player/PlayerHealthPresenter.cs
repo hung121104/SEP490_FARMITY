@@ -557,9 +557,9 @@ namespace CombatManager.Presenter
             }
 
             PlayerData data = list[idx];
-            if (data.currentHealth <= 0f)
+            if (data.currentHealth < 0f)
             {
-                Debug.LogWarning($"{TRACE} [PlayerHealthPresenter] Fallback found accountId='{accountId}' but currentHealth={data.currentHealth} (<=0), keeping current runtime value={service.GetCurrentHealth()}.");
+                Debug.LogWarning($"{TRACE} [PlayerHealthPresenter] Fallback found accountId='{accountId}' but currentHealth={data.currentHealth} (<0), keeping current runtime value={service.GetCurrentHealth()}.");
                 return false;
             }
 

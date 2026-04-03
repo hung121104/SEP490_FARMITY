@@ -145,7 +145,11 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
                 continue;
             }
 
-            string userId = view.Owner.UserId;
+            string userId = null;
+            if (view.Owner.CustomProperties.TryGetValue("accountId", out object rawAccountId) && rawAccountId is string accountIdProp && !string.IsNullOrEmpty(accountIdProp))
+                userId = accountIdProp;
+            else
+                userId = view.Owner.UserId;
 
             if (!PlayerDataManager.Instance.players.Exists(p => p.accountId == userId))
             {
@@ -263,7 +267,8 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
             }
             else
             {
-                Debug.LogWarning($"{TRACE} [LoadPlayerData] Could not self-apply health for '{accountId}' (presenter/service missing). expectedHealth={restoredHealth}");
+                Debug.LogWarning($"{TRACE} [LoadPlayerData] Presenter/service not ready for self-apply health '{accountId}'. Queueing retry. expectedHealth={restoredHealth}");
+                StartCoroutine(ApplySelfHealthWhenReady(restoredHealth, accountId));
             }
 
             // Restore saved appearance — broadcast via Custom Properties
@@ -282,5 +287,42 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
     private class AcceptAllCertificatesHandler : UnityEngine.Networking.CertificateHandler
     {
         protected override bool ValidateCertificate(byte[] certificateData) => true;
+    }
+
+    private IEnumerator ApplySelfHealthWhenReady(int restoredHealth, string accountId)
+    {
+        float timeout = 10f;
+        float elapsed = 0f;
+
+        while (elapsed < timeout)
+        {
+            GameObject localPlayer = null;
+            foreach (var go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine)
+                {
+                    localPlayer = go;
+                    break;
+                }
+            }
+
+            var healthPresenter = localPlayer != null
+                ? localPlayer.GetComponent<CombatManager.Presenter.PlayerHealthPresenter>()
+                : null;
+            var healthService = healthPresenter?.GetService();
+
+            if (healthService != null && healthService.IsInitialized())
+            {
+                healthService.SetCurrentHealth(Mathf.Max(0, restoredHealth));
+                Debug.Log($"{TRACE} [LoadPlayerData] Deferred self-apply health succeeded for '{accountId}' health={restoredHealth}");
+                yield break;
+            }
+
+            elapsed += 0.1f;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        Debug.LogWarning($"{TRACE} [LoadPlayerData] Deferred self-apply health timed out for '{accountId}' expectedHealth={restoredHealth}");
     }
 }
