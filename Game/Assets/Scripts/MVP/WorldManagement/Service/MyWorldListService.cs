@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 public class MyWorldListService : IMyWorldListService
 {
-    private const string BASE_URL = "https://localhost:3000";
+    private const string BASE_URL = AppConfig.ApiBaseUrl;
 
     [System.Serializable]
     private class ErrorPayload

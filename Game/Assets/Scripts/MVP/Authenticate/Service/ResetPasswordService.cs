@@ -40,8 +40,8 @@ public class ApiErrorResponse
 
 public class ResetPasswordService : IResetPasswordService
 {
-    private const string RequestResetUrl = "https://localhost:3000/auth/reset/request";
-    private const string ConfirmResetUrl = "https://localhost:3000/auth/reset/confirm";
+    private const string RequestResetUrl = AppConfig.ApiBaseUrl + "/auth/reset/request";
+    private const string ConfirmResetUrl = AppConfig.ApiBaseUrl + "/auth/reset/confirm";
 
     public async Task<RequestResetPasswordResponse> RequestResetOtp(RequestResetPasswordRequest request)
     {

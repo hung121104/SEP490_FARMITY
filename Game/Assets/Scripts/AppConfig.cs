@@ -4,5 +4,5 @@
 /// </summary>
 public static class AppConfig
 {
-    public const string ApiBaseUrl = "https://localhost:3000";
+    public const string ApiBaseUrl = "https://sep490farmity-gatewayservice-production.up.railway.app";
 }
