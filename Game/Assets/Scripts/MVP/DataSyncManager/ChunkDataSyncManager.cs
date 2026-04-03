@@ -495,8 +495,53 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         hasSyncedThisSession = true;
 
-        // Log stats
+        // Non-master: unblock ChunkLoadingManager.FindLocalPlayer (it was waiting up to 30 s
+        // for WorldDataBootstrapper.IsReady which is never set for joined clients).
+        if (!PhotonNetwork.IsMasterClient && WorldDataBootstrapper.Instance != null)
+            WorldDataBootstrapper.Instance.SetReadyFromSync();
+
+        // Non-master: once the local player transform is available, force a full visual
+        // rebuild so the tilled-overlay tilemap is guaranteed to render correctly.
+        // (The async SpawnChunkVisuals coroutines launched during HandleWorldSyncBatch may
+        // run before the Tilemap is fully searchable, leaving TilledCells[] empty and the
+        // overlay invisible.  RefreshChunkVisuals re-syncs every loaded chunk from RAM.)
+        if (!PhotonNetwork.IsMasterClient)
+            StartCoroutine(RebuildVisualsAfterSync());
+
         WorldDataManager.Instance.LogStats();
+    }
+
+    /// <summary>
+    /// Waits until the local player is registered and PlantCatalogService is ready, then
+    /// calls <see cref="ChunkLoadingManager.RefreshChunkVisuals"/> on every loaded chunk so
+    /// that the tilled-overlay tilemap cells are written from the authoritative in-RAM data.
+    /// </summary>
+    private System.Collections.IEnumerator RebuildVisualsAfterSync()
+    {
+        // Wait for both prerequisites so SpawnChunkVisuals won't early-exit.
+        yield return new WaitUntil(() =>
+            PlayerRegistry.LocalPlayerTransform != null &&
+            PlantCatalogService.Instance != null && PlantCatalogService.Instance.IsReady);
+
+        // One extra frame so position-restore teleports have a chance to settle.
+        yield return null;
+
+        ChunkLoadingManager clm = chunkLoadingManager != null
+            ? chunkLoadingManager
+            : FindAnyObjectByType<ChunkLoadingManager>();
+
+        if (clm == null)
+        {
+            Debug.LogWarning("[ChunkSync] RebuildVisualsAfterSync: ChunkLoadingManager not found.");
+            yield break;
+        }
+
+        var loaded = clm.GetLoadedChunks();
+        if (showDebugLogs)
+            Debug.Log($"[ChunkSync] RebuildVisualsAfterSync — refreshing {loaded.Count} chunk(s).");
+
+        foreach (var chunkPos in loaded)
+            clm.RefreshChunkVisuals(chunkPos);
     }
     
     /// <summary>

@@ -31,7 +31,6 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
                     ""actions"": [
                         { ""name"": ""Move"",          ""type"": ""Value"",  ""id"": ""11111111-1111-1111-1111-111111111111"", ""expectedControlType"": ""Vector2"", ""processors"": """", ""interactions"": """", ""initialStateCheck"": true },
                         { ""name"": ""Interact"",      ""type"": ""Button"", ""id"": ""22222222-2222-2222-2222-222222222222"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
-                        { ""name"": ""Harvest"",       ""type"": ""Button"", ""id"": ""33333333-3333-3333-3333-333333333333"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""OpenInventory"", ""type"": ""Button"", ""id"": ""44444444-4444-4444-4444-444444444444"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""Attack"",        ""type"": ""Button"", ""id"": ""55555555-5555-5555-5555-555555555555"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""UseSkill"",      ""type"": ""Button"", ""id"": ""66666666-6666-6666-6666-666666666666"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
@@ -70,7 +69,6 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
                         { ""name"": ""left"", ""id"": ""b0000002-0001-0001-0001-000000000004"", ""path"": ""<Keyboard>/leftArrow"",  ""action"": ""Move"", ""isComposite"": false, ""isPartOfComposite"": true  },
                         { ""name"": ""right"",""id"": ""b0000002-0001-0001-0001-000000000005"", ""path"": ""<Keyboard>/rightArrow"", ""action"": ""Move"", ""isComposite"": false, ""isPartOfComposite"": true  },
                         { ""name"": """", ""id"": ""b0000003-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/e"",              ""action"": ""Interact"",      ""isComposite"": false, ""isPartOfComposite"": false },
-                        { ""name"": """", ""id"": ""b0000004-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/f"",              ""action"": ""Harvest"",       ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000005-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/tab"",            ""action"": ""OpenInventory"", ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000006-0001-0001-0001-000000000001"", ""path"": ""<Mouse>/leftButton"",        ""action"": ""Attack"",        ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/q"",              ""action"": ""UseSkill"",      ""isComposite"": false, ""isPartOfComposite"": false },
@@ -166,7 +164,6 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
         // ── Core actions ──
         public InputAction Move          => _wrapper.asset.FindAction("Player/Move",          throwIfNotFound: true);
         public InputAction Interact      => _wrapper.asset.FindAction("Player/Interact",      throwIfNotFound: true);
-        public InputAction Harvest       => _wrapper.asset.FindAction("Player/Harvest",       throwIfNotFound: true);
         public InputAction OpenInventory => _wrapper.asset.FindAction("Player/OpenInventory", throwIfNotFound: true);
         public InputAction Attack        => _wrapper.asset.FindAction("Player/Attack",        throwIfNotFound: true);
         public InputAction UseSkill      => _wrapper.asset.FindAction("Player/UseSkill",      throwIfNotFound: true);

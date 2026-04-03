@@ -28,7 +28,6 @@ public class FarmingAction : MonoBehaviour
         // Guard: InputManager might not exist yet in some scene-load orders
         if (InputManager.Instance == null) return;
 
-        InputManager.Instance.Harvest.performed  += OnHarvest;
         InputManager.Instance.Interact.performed += OnInteract;
     }
 
@@ -36,7 +35,6 @@ public class FarmingAction : MonoBehaviour
     {
         if (InputManager.Instance == null) return;
 
-        InputManager.Instance.Harvest.performed  -= OnHarvest;
         InputManager.Instance.Interact.performed -= OnInteract;
     }
 
@@ -44,17 +42,10 @@ public class FarmingAction : MonoBehaviour
     // Callbacks
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    private void OnHarvest(InputAction.CallbackContext ctx)
-    {
-        // ⮕ Replace this with your actual harvest logic
-        Debug.Log("[FarmingAction] Harvest performed!");
-        // e.g. TryHarvestCrop();
-    }
-
     private void OnInteract(InputAction.CallbackContext ctx)
     {
-        // ⮕ Replace this with your actual interact logic
+        // ⮕ Replace this with your actual interact/harvest logic
         Debug.Log("[FarmingAction] Interact performed!");
-        // e.g. InteractWithNearbyObject();
+        // e.g. InteractWithNearbyObject(); / TryHarvestCrop();
     }
 }

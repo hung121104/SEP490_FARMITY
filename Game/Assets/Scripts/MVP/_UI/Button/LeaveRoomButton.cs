@@ -56,8 +56,10 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
         {
             var stamina = StaminaView.FindLocal();
             stamina?.PushFinalStateToMaster();
-            // Wait one frame so the RPC is flushed to the master before leaving.
-            yield return null;
+            // Wait a short moment for the RPC to arrive at the master before we leave.
+            // One frame (~16 ms) is too short over real networks; 0.3 s gives the packet
+            // time to land so the master's BuildPayload() sees the final position.
+            yield return new WaitForSecondsRealtime(0.3f);
         }
 
         // Master client: trigger a save and wait for it to finish
