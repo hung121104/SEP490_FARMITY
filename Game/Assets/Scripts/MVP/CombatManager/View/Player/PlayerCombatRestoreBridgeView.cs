@@ -50,10 +50,9 @@ public class PlayerCombatRestoreBridgeView : MonoBehaviourPun
         while (Time.realtimeSinceStartup < deadline)
         {
             var presenter = CombatManager.Presenter.PlayerHealthPresenter.FindLocal();
-            var healthService = presenter?.GetService();
-            if (healthService != null && healthService.IsInitialized())
+            if (presenter != null)
             {
-                healthService.SetCurrentHealth(restoredHealth);
+                presenter.SetHealthFromSave(restoredHealth);
                 Debug.Log($"{HPTRACE} [PlayerCombatRestoreBridgeView] Applied restored health to local presenter health={restoredHealth}");
                 yield break;
             }

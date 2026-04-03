@@ -340,6 +340,8 @@ namespace CombatManager.Presenter
             }
 
             Debug.LogWarning($"{TRACE} [PlayerHealthPresenter] Deferred restore timed out. reason={reason}");
+            hasAppliedInitialRestore = true;
+            MarkHealthDirty();
             deferredRestoreCoroutine = null;
         }
 
@@ -476,6 +478,35 @@ namespace CombatManager.Presenter
 
         public IPlayerHealthService GetService() => service;
 
+        public void SetHealthFromSave(int restoredHealth)
+        {
+            int normalized = Mathf.Max(0, restoredHealth);
+
+            if (service == null || !service.IsInitialized())
+            {
+                hasPendingRpcRestoreHealth = true;
+                pendingRpcRestoreHealth = normalized;
+                Debug.Log($"{TRACE} [PlayerHealthPresenter] SetHealthFromSave queued; service not ready. health={normalized}");
+                return;
+            }
+
+            if (deferredRestoreCoroutine != null)
+            {
+                StopCoroutine(deferredRestoreCoroutine);
+                deferredRestoreCoroutine = null;
+            }
+
+            suppressDirtySync = true;
+            service.SetCurrentHealth(normalized);
+            suppressDirtySync = false;
+            hasAppliedInitialRestore = true;
+            hasPendingRpcRestoreHealth = false;
+
+            NotifyViewUpdate();
+            MarkHealthDirty();
+            Debug.Log($"{TRACE} [PlayerHealthPresenter] SetHealthFromSave applied health={normalized}");
+        }
+
         public void OnEvent(EventData photonEvent)
         {
             if (photonEvent == null || photonEvent.Code != PLAYER_HEALTH_SYNC_EVENT)
@@ -551,10 +582,10 @@ namespace CombatManager.Presenter
             int currentHealth = service != null ? service.GetCurrentHealth() : 0;
             Debug.Log($"{TRACE} [PlayerHealthPresenter] MarkHealthDirty currentHealth={currentHealth}, isMaster={PhotonNetwork.IsMasterClient}");
 
-            // Non-host clients must not publish startup max-health before restore is applied.
-            if (!PhotonNetwork.IsMasterClient && !hasAppliedInitialRestore)
+            // Neither host nor client should publish startup max-health before restore is applied.
+            if (!hasAppliedInitialRestore)
             {
-                Debug.Log($"{TRACE} [PlayerHealthPresenter] MarkHealthDirty suppressed on client until initial restore completes. currentHealth={currentHealth}");
+                Debug.Log($"{TRACE} [PlayerHealthPresenter] MarkHealthDirty suppressed until initial restore completes. currentHealth={currentHealth} isMaster={PhotonNetwork.IsMasterClient}");
                 return;
             }
 
