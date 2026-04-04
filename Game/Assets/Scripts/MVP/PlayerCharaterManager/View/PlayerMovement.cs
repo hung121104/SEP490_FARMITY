@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(StaminaView))]
+[RequireComponent(typeof(PlayerCombatRestoreBridgeView))]
 public class PlayerMovement : MonoBehaviourPun, IPunObservable
 {
     private PlayerMovementPresenter presenter;
@@ -15,6 +16,7 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
     private SpriteRenderer spriteRenderer;
     private Collider2D playerCollider;
     private StaminaView staminaView;
+    private PlayerCombatRestoreBridgeView combatRestoreBridge;
     private bool sprintIntent;
 
     [SerializeField] private Camera playerCa;
@@ -35,6 +37,7 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
         presenter      = new PlayerMovementPresenter();
         playerCollider = GetComponent<CapsuleCollider2D>();
         staminaView    = GetComponent<StaminaView>() ?? gameObject.AddComponent<StaminaView>();
+        combatRestoreBridge = GetComponent<PlayerCombatRestoreBridgeView>() ?? gameObject.AddComponent<PlayerCombatRestoreBridgeView>();
     }
 
     void Start()

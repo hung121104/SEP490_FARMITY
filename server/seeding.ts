@@ -1,5 +1,5 @@
 import { connect, connection } from 'mongoose';
-import { Character, CharacterSchema } from './src/character/character.schema';
+import { CharacterSchema } from './microservices/player-data-service/src/character/character.schema';
 
 async function seedDatabase() {
   try {

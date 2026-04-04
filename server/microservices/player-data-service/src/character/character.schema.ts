@@ -69,6 +69,9 @@ export class Character {
   @Prop({ default: 200 })
   viableStamina: number;
 
+  @Prop({ default: 0 })
+  currentHealth: number;
+
   @Prop({ default: 1 })
   regenBoostMultiplier: number;
 
@@ -80,6 +83,21 @@ export class Character {
 
   @Prop({ default: 0 })
   toolEfficiencyRemaining: number;
+
+  @Prop({ default: 1 })
+  level: number;
+
+  @Prop({ default: 0 })
+  currentExp: number;
+
+  @Prop({ default: 100 })
+  expToNextLevel: number;
+
+  @Prop({ default: 10 })
+  baseStrength: number;
+
+  @Prop({ default: 10 })
+  baseVitality: number;
 }
 
 export const CharacterSchema = SchemaFactory.createForClass(Character);

@@ -52,6 +52,7 @@ public class WorldApiResponse
 
         public float currentStamina;
         public float viableStamina;
+        public float currentHealth;
 
         public float regenBoostMultiplier;
         public float regenBoostRemaining;
@@ -64,6 +65,9 @@ public class WorldApiResponse
         /// Requires Newtonsoft.Json for Dictionary deserialization.
         /// </summary>
         public Dictionary<string, InventorySlotResponse> inventory;
+        public int level;
+        public int currentExp;
+        public int expToNextLevel;
     }
 }
 

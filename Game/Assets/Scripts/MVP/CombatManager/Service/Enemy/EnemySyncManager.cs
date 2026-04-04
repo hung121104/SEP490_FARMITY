@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
@@ -17,6 +18,7 @@ namespace CombatManager.Service
         private const byte ENEMY_HIT_APPLIED_EVENT = 169;
         private const byte ENEMY_PLAYER_DAMAGE_REQUEST_EVENT = 170;
         private const byte ENEMY_PLAYER_DAMAGE_APPLIED_EVENT = 171;
+        private const byte ENEMY_EXP_GRANTED_EVENT = 175;
         private const int DAMAGE_TOKEN_HISTORY_LIMIT = 128;
 
         private static EnemySyncManager instance;
@@ -24,6 +26,8 @@ namespace CombatManager.Service
 
         private readonly Dictionary<string, EnemyPresenter> enemiesByRuntimeId = new Dictionary<string, EnemyPresenter>();
         private readonly Dictionary<string, float> lastEnemyDamageByTarget = new Dictionary<string, float>();
+        private readonly Dictionary<string, Dictionary<int, int>> enemyDamageContributionByRuntimeId = new Dictionary<string, Dictionary<int, int>>();
+        private readonly Dictionary<string, Dictionary<int, int>> attackerLevelByRuntimeId = new Dictionary<string, Dictionary<int, int>>();
         private readonly HashSet<int> consumedEnemyDamageTokens = new HashSet<int>();
         private readonly Queue<int> enemyDamageTokenOrder = new Queue<int>();
 
@@ -130,10 +134,11 @@ namespace CombatManager.Service
                 : -1;
 
             int hitToken = BuildHitToken(attackerActorNumber);
+            int attackerLevel = ResolveLocalPlayerLevel();
 
             if (IsAuthoritative)
             {
-                ProcessHitRequest(runtimeId, damage, knockbackDir, knockbackForce, attackerActorNumber, hitToken);
+                ProcessHitRequest(runtimeId, damage, knockbackDir, knockbackForce, attackerActorNumber, hitToken, attackerLevel);
                 return;
             }
 
@@ -146,6 +151,7 @@ namespace CombatManager.Service
                 knockbackForce,
                 attackerActorNumber,
                 hitToken,
+                attackerLevel,
             };
 
             RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.MasterClient };
@@ -207,6 +213,10 @@ namespace CombatManager.Service
                 case ENEMY_PLAYER_DAMAGE_APPLIED_EVENT:
                     HandleEnemyPlayerDamageAppliedEvent(photonEvent);
                     break;
+
+                case ENEMY_EXP_GRANTED_EVENT:
+                    HandleEnemyExpGrantedEvent(photonEvent);
+                    break;
             }
         }
 
@@ -215,7 +225,7 @@ namespace CombatManager.Service
             if (!IsAuthoritative)
                 return;
 
-            if (photonEvent.CustomData is not object[] payload || payload.Length < 7)
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 8)
                 return;
 
             string runtimeId = payload[0] as string ?? string.Empty;
@@ -227,7 +237,8 @@ namespace CombatManager.Service
                 !TryGetFloat(payload, 3, out float knockbackY) ||
                 !TryGetFloat(payload, 4, out float knockbackForce) ||
                 !TryGetInt(payload, 5, out int attackerActorNumber) ||
-                !TryGetInt(payload, 6, out int hitToken))
+                !TryGetInt(payload, 6, out int hitToken) ||
+                !TryGetInt(payload, 7, out int attackerLevel))
             {
                 return;
             }
@@ -238,7 +249,8 @@ namespace CombatManager.Service
                 new Vector2(knockbackX, knockbackY),
                 knockbackForce,
                 attackerActorNumber,
-                hitToken);
+                hitToken,
+                attackerLevel);
         }
 
         private void ProcessHitRequest(
@@ -247,7 +259,8 @@ namespace CombatManager.Service
             Vector2 knockbackDir,
             float knockbackForce,
             int attackerActorNumber,
-            int hitToken)
+            int hitToken,
+            int attackerLevel)
         {
             if (!IsAuthoritative || string.IsNullOrWhiteSpace(runtimeId) || damage <= 0)
                 return;
@@ -255,6 +268,8 @@ namespace CombatManager.Service
             EnemyPresenter enemy = ResolveEnemy(runtimeId);
             if (enemy == null || !enemy.IsInitialized() || enemy.IsDead())
                 return;
+
+            RecordDamageContribution(runtimeId, attackerActorNumber, damage, attackerLevel);
 
             enemy.ApplyAuthoritativeHit(damage, knockbackDir, knockbackForce, hitToken, attackerActorNumber);
 
@@ -280,6 +295,115 @@ namespace CombatManager.Service
                 RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
                 PhotonNetwork.RaiseEvent(ENEMY_HIT_APPLIED_EVENT, payload, options, SendOptions.SendReliable);
             }
+        }
+
+        public void ProcessEnemyDeathReward(string runtimeId, int enemyLevel, int baseExp)
+        {
+            if (!IsAuthoritative || string.IsNullOrWhiteSpace(runtimeId) || baseExp <= 0)
+                return;
+
+            if (!enemyDamageContributionByRuntimeId.TryGetValue(runtimeId, out Dictionary<int, int> contributionMap) || contributionMap == null || contributionMap.Count == 0)
+                return;
+
+            int totalDamage = 0;
+            foreach (KeyValuePair<int, int> entry in contributionMap)
+            {
+                if (entry.Value > 0)
+                    totalDamage += entry.Value;
+            }
+
+            if (totalDamage <= 0)
+            {
+                ClearEnemyCombatTracking(runtimeId);
+                return;
+            }
+
+            List<ExpShareCandidate> candidates = new List<ExpShareCandidate>();
+            int awardedFloorTotal = 0;
+
+            foreach (KeyValuePair<int, int> entry in contributionMap)
+            {
+                int actorNumber = entry.Key;
+                int dealtDamage = Mathf.Max(0, entry.Value);
+                if (dealtDamage <= 0)
+                    continue;
+
+                int playerLevel = ResolveAttackerLevel(runtimeId, actorNumber);
+                float multiplier = Mathf.Clamp(1f + ((enemyLevel - playerLevel) * 0.1f), 0.5f, 2f);
+                float playerScaledTotal = Mathf.Max(1f, baseExp * multiplier);
+
+                float exactShare = playerScaledTotal * ((float)dealtDamage / totalDamage);
+                int floorShare = Mathf.FloorToInt(exactShare);
+                float remainder = exactShare - floorShare;
+
+                candidates.Add(new ExpShareCandidate
+                {
+                    actorNumber = actorNumber,
+                    floorShare = Mathf.Max(0, floorShare),
+                    remainder = Mathf.Clamp01(remainder),
+                });
+
+                awardedFloorTotal += Mathf.Max(0, floorShare);
+            }
+
+            if (candidates.Count == 0)
+            {
+                ClearEnemyCombatTracking(runtimeId);
+                return;
+            }
+
+            float expectedTotalFloat = 0f;
+            foreach (ExpShareCandidate candidate in candidates)
+            {
+                int playerLevel = ResolveAttackerLevel(runtimeId, candidate.actorNumber);
+                float multiplier = Mathf.Clamp(1f + ((enemyLevel - playerLevel) * 0.1f), 0.5f, 2f);
+                expectedTotalFloat += Mathf.Max(1f, baseExp * multiplier) * (Mathf.Max(1, contributionMap[candidate.actorNumber]) / (float)totalDamage);
+            }
+
+            int expectedTotal = Mathf.Max(1, Mathf.RoundToInt(expectedTotalFloat));
+            int remaining = Mathf.Max(0, expectedTotal - awardedFloorTotal);
+
+            candidates.Sort((a, b) =>
+            {
+                int remainderCompare = b.remainder.CompareTo(a.remainder);
+                if (remainderCompare != 0)
+                    return remainderCompare;
+                return a.actorNumber.CompareTo(b.actorNumber);
+            });
+
+            for (int i = 0; i < candidates.Count && remaining > 0; i++)
+            {
+                ExpShareCandidate updated = candidates[i];
+                updated.floorShare += 1;
+                candidates[i] = updated;
+                remaining -= 1;
+            }
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                ExpShareCandidate candidate = candidates[i];
+                int expAward = Mathf.Max(0, candidate.floorShare);
+                if (expAward <= 0)
+                    continue;
+
+                if (PhotonNetwork.IsConnected)
+                {
+                    object[] payload = { candidate.actorNumber, expAward, runtimeId };
+                    RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.All };
+                    PhotonNetwork.RaiseEvent(ENEMY_EXP_GRANTED_EVENT, payload, options, SendOptions.SendReliable);
+                }
+                else
+                {
+                    ApplyExpAwardToLocalPlayer(expAward);
+                }
+            }
+
+            ClearEnemyCombatTracking(runtimeId);
+        }
+
+        public void ClearEnemyRuntimeTracking(string runtimeId)
+        {
+            ClearEnemyCombatTracking(runtimeId);
         }
 
         private void HandleHitAppliedEvent(EventData photonEvent)
@@ -502,6 +626,100 @@ namespace CombatManager.Service
             }
 
             return null;
+        }
+
+        private void HandleEnemyExpGrantedEvent(EventData photonEvent)
+        {
+            if (photonEvent.CustomData is not object[] payload || payload.Length < 3)
+                return;
+
+            if (!TryGetInt(payload, 0, out int targetActorNumber) ||
+                !TryGetInt(payload, 1, out int expAward))
+            {
+                return;
+            }
+
+            if (PhotonNetwork.IsConnected)
+            {
+                int localActorNumber = PhotonNetwork.LocalPlayer?.ActorNumber ?? -1;
+                if (localActorNumber <= 0 || localActorNumber != targetActorNumber)
+                    return;
+            }
+
+            ApplyExpAwardToLocalPlayer(expAward);
+        }
+
+        private void ApplyExpAwardToLocalPlayer(int expAward)
+        {
+            if (expAward <= 0)
+                return;
+
+            StatsPresenter statsPresenter = FindObjectOfType<StatsPresenter>();
+            if (statsPresenter == null)
+                return;
+
+            statsPresenter.AddExperienceFromHost(expAward);
+        }
+
+        private void RecordDamageContribution(string runtimeId, int attackerActorNumber, int damage, int attackerLevel)
+        {
+            if (string.IsNullOrWhiteSpace(runtimeId) || damage <= 0)
+                return;
+
+            int actorKey = attackerActorNumber;
+            if (!PhotonNetwork.IsConnected && actorKey <= 0)
+                actorKey = 0;
+
+            if (!enemyDamageContributionByRuntimeId.TryGetValue(runtimeId, out Dictionary<int, int> contributionMap))
+            {
+                contributionMap = new Dictionary<int, int>();
+                enemyDamageContributionByRuntimeId[runtimeId] = contributionMap;
+            }
+
+            contributionMap.TryGetValue(actorKey, out int currentDamage);
+            contributionMap[actorKey] = currentDamage + damage;
+
+            if (!attackerLevelByRuntimeId.TryGetValue(runtimeId, out Dictionary<int, int> levelMap))
+            {
+                levelMap = new Dictionary<int, int>();
+                attackerLevelByRuntimeId[runtimeId] = levelMap;
+            }
+
+            levelMap[actorKey] = Mathf.Max(1, attackerLevel);
+        }
+
+        private int ResolveAttackerLevel(string runtimeId, int actorNumber)
+        {
+            if (attackerLevelByRuntimeId.TryGetValue(runtimeId, out Dictionary<int, int> levelMap) &&
+                levelMap != null &&
+                levelMap.TryGetValue(actorNumber, out int attackerLevel))
+            {
+                return Mathf.Max(1, attackerLevel);
+            }
+
+            return 1;
+        }
+
+        private int ResolveLocalPlayerLevel()
+        {
+            StatsPresenter statsPresenter = FindObjectOfType<StatsPresenter>();
+            return statsPresenter != null ? Mathf.Max(1, statsPresenter.GetLevel()) : 1;
+        }
+
+        private void ClearEnemyCombatTracking(string runtimeId)
+        {
+            if (string.IsNullOrWhiteSpace(runtimeId))
+                return;
+
+            enemyDamageContributionByRuntimeId.Remove(runtimeId);
+            attackerLevelByRuntimeId.Remove(runtimeId);
+        }
+
+        private struct ExpShareCandidate
+        {
+            public int actorNumber;
+            public int floorShare;
+            public float remainder;
         }
 
         private static int BuildHitToken(int attackerActorNumber)

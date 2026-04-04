@@ -6,37 +6,23 @@ namespace CombatManager.Service
     /// </summary>
     public interface IStatsService
     {
-        #region Point Management
-
-        void AddPoints(int amount);
-        bool HasAvailablePoints(int requiredPoints);
-
-        #endregion
-
-        #region Stat Modification (Temporary)
-
-        bool IncreaseTempStrength();
-        bool IncreaseTempVitality();
-        bool DecreaseTempStrength();
-        bool DecreaseTempVitality();
-
-        #endregion
-
-        #region Apply/Cancel Stats
-
-        void ApplyStats();
-        void CancelStats();
-
-        #endregion
-
         #region Stat Queries
 
         int GetStrength();
         int GetVitality();
-        int GetTempStrength();
-        int GetTempVitality();
-        int GetCurrentPoints();
-        int GetPointsSpent();
+        int GetEndurance();
+        int GetLevel();
+        int GetCurrentExp();
+        int GetExpToNextLevel();
+        float GetExpProgress01();
+
+        #endregion
+
+        #region Progression
+
+        int AddExperience(int amount);
+        void SetProgressionState(int level, int currentExp, int expToNextLevel);
+        void SetBaseStats(int strength, int vitality);
 
         #endregion
 
@@ -44,6 +30,7 @@ namespace CombatManager.Service
 
         int GetAttackDamage();
         int GetMaxHealth();
+        int GetMaxStamina();
         int GetCurrentHealth();
         void SetCurrentHealth(int value);
         float GetAttackRange();
