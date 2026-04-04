@@ -32,6 +32,7 @@ public class HotbarPresenter
 
         inventoryService.OnItemAdded += HandleItemAddedOrRemoved;
         inventoryService.OnItemRemoved += HandleItemAddedOrRemoved;
+        inventoryService.OnItemsMoved += HandleItemsMoved;
         inventoryService.OnSlotChanged += HandleSlotChanged;
         inventoryService.OnInventoryChanged += RefreshAllSlots;
     }
@@ -47,6 +48,7 @@ public class HotbarPresenter
 
         inventoryService.OnItemAdded -= HandleItemAddedOrRemoved;
         inventoryService.OnItemRemoved -= HandleItemAddedOrRemoved;
+        inventoryService.OnItemsMoved -= HandleItemsMoved;
         inventoryService.OnSlotChanged -= HandleSlotChanged;
         inventoryService.OnInventoryChanged -= RefreshAllSlots;
     }
@@ -105,6 +107,12 @@ public class HotbarPresenter
     private void HandleItemAddedOrRemoved(ItemModel _,int inventorySlotIndex)
     {
         RefreshSlotIfHotbar(inventorySlotIndex);
+    }
+
+    private void HandleItemsMoved(int fromSlot, int toSlot)
+    {
+        RefreshSlotIfHotbar(fromSlot);
+        RefreshSlotIfHotbar(toSlot);
     }
 
     private void HandleSlotChanged(int inventorySlotIndex)
