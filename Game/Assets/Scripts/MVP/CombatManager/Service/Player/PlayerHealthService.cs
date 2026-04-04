@@ -231,7 +231,7 @@ namespace CombatManager.Service
 
         private void HandleDeath()
         {
-            Debug.Log("[PlayerHealthService] Player died!");
+            Debug.LogWarning($"{TRACE} [PlayerHealthService] Player died. current={model.currentHealth} max={model.maxHealth} isConnected={PhotonNetwork.IsConnected}");
             
             if (model.playerEntity != null)
             {
