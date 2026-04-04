@@ -116,7 +116,6 @@ public class InventoryService : IInventoryService
                     remainingQuantity -= canAdd;
 
                     OnSlotChanged?.Invoke(slotIndex);
-                    OnInventoryChanged?.Invoke();
                     SyncSlotToNetwork(slotIndex);
 
                     if (remainingQuantity <= 0)
@@ -144,7 +143,6 @@ public class InventoryService : IInventoryService
             model.SetItemAtSlot(emptySlot, newItem);
 
             OnItemAdded?.Invoke(newItem, emptySlot);
-            OnInventoryChanged?.Invoke();
             SyncSlotToNetwork(emptySlot);
 
             remainingQuantity -= stackSize;
@@ -228,7 +226,6 @@ public class InventoryService : IInventoryService
                 OnSlotChanged?.Invoke(slotIndex);
             }
 
-            OnInventoryChanged?.Invoke();
             SyncSlotToNetwork(slotIndex);
         }
 
@@ -253,7 +250,6 @@ public class InventoryService : IInventoryService
             OnSlotChanged?.Invoke(slotIndex);
         }
 
-        OnInventoryChanged?.Invoke();
         SyncSlotToNetwork(slotIndex);
         return true;
     }
@@ -280,7 +276,6 @@ public class InventoryService : IInventoryService
             model.ClearSlot(fromSlot);
 
             OnItemsMoved?.Invoke(fromSlot, toSlot);
-            OnInventoryChanged?.Invoke();
             SyncSlotToNetwork(fromSlot);
             SyncSlotToNetwork(toSlot);
             return true;
@@ -311,7 +306,6 @@ public class InventoryService : IInventoryService
                     OnSlotChanged?.Invoke(fromSlot);
                 }
 
-                OnInventoryChanged?.Invoke();
                 SyncSlotToNetwork(fromSlot);
                 SyncSlotToNetwork(toSlot);
                 return true;
@@ -330,7 +324,6 @@ public class InventoryService : IInventoryService
         model.SwapSlots(slotA, slotB);
 
         OnItemsMoved?.Invoke(slotA, slotB);
-        OnInventoryChanged?.Invoke();
         SyncSlotToNetwork(slotA);
         SyncSlotToNetwork(slotB);
         return true;

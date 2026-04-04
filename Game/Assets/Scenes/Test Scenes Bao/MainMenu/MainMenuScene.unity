@@ -5204,7 +5204,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1254789854}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7e2dc33b98f644778ece3a4dbe4de6bc, type: 3}
+  m_Script: {fileID: 11500000, guid: 407b6b7618baf604fb7f49d84f6ff12f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   worldNameInput: {fileID: 0}
@@ -5300,7 +5300,7 @@ PrefabInstance:
     - target: {fileID: 1520324987715178837, guid: 6fef231ca2725a74da5c1d76a083f090, type: 3}
       propertyPath: updateWorldView
       value: 
-      objectReference: {fileID: 1254789856}
+      objectReference: {fileID: 0}
     - target: {fileID: 1520324987715178837, guid: 6fef231ca2725a74da5c1d76a083f090, type: 3}
       propertyPath: legacyEditWorldNameInput
       value: 
@@ -7577,7 +7577,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1254789856}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: UpdateWorld, Assembly-CSharp
         m_MethodName: OnCancelRenameButtonClick
         m_Mode: 1
@@ -8358,7 +8358,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   token: 
-  worldName: World 7
+  worldName: 
   legacyWorldNameInput: {fileID: 2074351436}
   statusText: {fileID: 1156261142}
   sceneToLoad: LoadGameScene
