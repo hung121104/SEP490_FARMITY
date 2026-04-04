@@ -60,15 +60,19 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
     private void OnDestroy()
     {
         isDestroyed = true;
-        if (Instance == this) Instance = null;
+        // Unsubscribe from external static events (safety net — OnDisable may be skipped during Photon scene loads)
+        PhotonNetwork.NetworkingClient.EventReceived -= OnPhotonEvent;
+        CatalogSseListener.OnSseEventForRoom -= HandleSseEventFromListener;
+        if (Instance == this)
+        {
+            OnCatalogChanged = null;
+            Instance = null;
+        }
     }
 
     public override void OnEnable()
     {
         base.OnEnable();
-        // Guard: unsubscribe first to prevent duplicate subscriptions (static events persist across scene loads)
-        PhotonNetwork.NetworkingClient.EventReceived -= OnPhotonEvent;
-        CatalogSseListener.OnSseEventForRoom -= HandleSseEventFromListener;
         PhotonNetwork.NetworkingClient.EventReceived += OnPhotonEvent;
         CatalogSseListener.OnSseEventForRoom += HandleSseEventFromListener;
     }

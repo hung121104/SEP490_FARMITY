@@ -17,9 +17,6 @@ public class CatalogSyncNotifier : MonoBehaviour
 
     private void OnEnable()
     {
-        // Guard: always unsubscribe first to prevent duplicate subscriptions
-        // if OnDisable was missed during scene transitions (static event persists).
-        CatalogSyncManager.OnCatalogChanged -= HandleCatalogChanged;
         CatalogSyncManager.OnCatalogChanged += HandleCatalogChanged;
     }
 
@@ -60,16 +57,16 @@ public class CatalogSyncNotifier : MonoBehaviour
     {
         return entityType switch
         {
-            "item" => "item",
-            "plant" => "plant",
-            "recipe" => "recipe",
-            "achievement" => "achievement",
-            "material" => "material",
-            "quest" => "quest",
-            "combat-skill" => "combat skill",
-            "combat-catalog" => "combat catalog",
-            "resource-config" => "resource",
-            "skin-config" => "skin config",
+            "item" => "Item",
+            "plant" => "Plant",
+            "recipe" => "Recipe",
+            "achievement" => "Achievement",
+            "material" => "Material",
+            "quest" => "Quest",
+            "combat-skill" => "Combat Skill",
+            "combat-catalog" => "Combat Catalog",
+            "resource-config" => "Resource",
+            "skin-config" => "Skin Config",
             _ => entityType
         };
     }
