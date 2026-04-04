@@ -37,7 +37,10 @@ public class CleanupNotificationView : MonoBehaviour, ICleanupNotificationView
         if (entries == null || entries.Count == 0) return;
 
         foreach (var e in entries)
-            messageQueue.Enqueue(e.Message);
+        {
+            if (!messageQueue.Contains(e.Message))
+                messageQueue.Enqueue(e.Message);
+        }
 
         float effectiveDuration = duration > 0 ? duration : displayDuration;
 

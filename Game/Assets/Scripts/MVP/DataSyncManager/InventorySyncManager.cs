@@ -725,9 +725,7 @@ public class InventorySyncManager : MonoBehaviourPunCallbacks
             ApplyOperation(charId, opType, slotIndex, itemId, quantity, slotB);
 
             RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
-            PhotonNetwork.RaiseEvent(SLOT_BROADCAST, payload, opts, SendOptions.SendReliable);
-
-            OnInventoryChanged?.Invoke();
+            PhotonNetwork.RaiseEvent(SLOT_BROADCAST, payload, opts, SendOptions.SendReliable);      
         }
         else
         {
