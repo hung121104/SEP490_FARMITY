@@ -524,6 +524,7 @@ MonoBehaviour:
   staminaPerEndurance: 10
   baselineEndurance: 10
   minDerivedMaxStamina: 1
+  viableRatioOnMaxIncrease: 0.7
 --- !u!60 &5899556085378982185
 PolygonCollider2D:
   m_ObjectHideFlags: 0
