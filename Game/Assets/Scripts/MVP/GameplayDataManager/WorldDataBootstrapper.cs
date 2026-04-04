@@ -38,6 +38,20 @@ public class WorldDataBootstrapper : MonoBehaviour
         Instance = this;
     }
 
+    /// <summary>
+    /// Called by <see cref="ChunkDataSyncManager"/> when the world sync batch is complete on a
+    /// non-master client. Marks this bootstrapper as ready so that systems waiting on
+    /// <see cref="IsReady"/> (e.g. <c>ChunkLoadingManager.FindLocalPlayer</c>) stop blocking.
+    /// </summary>
+    public void SetReadyFromSync()
+    {
+        if (!Photon.Pun.PhotonNetwork.IsMasterClient)
+        {
+            IsReady = true;
+            Debug.Log("[WorldDataBootstrapper] IsReady set via sync (non-master).");
+        }
+    }
+
     private void Start()
     {
         if (!Photon.Pun.PhotonNetwork.IsMasterClient)
@@ -105,6 +119,13 @@ public class WorldDataBootstrapper : MonoBehaviour
             }
 
             CombatManager.Service.EnemySpawnerManager.SetBootstrapState(data.enemySpawnerState);
+
+            // --- Clear stale in-memory data before populating ---
+            // Required for rejoin within the same game session: WorldDataManager is DontDestroyOnLoad
+            // and may still hold tile/inventory data from the previous session if LeaveRoomButton
+            // was not used (e.g. network drop, host migration).
+            if (WorldDataManager.Instance != null)
+                WorldDataManager.Instance.ClearAllModules();
 
             // --- Distribute to managers ---
 

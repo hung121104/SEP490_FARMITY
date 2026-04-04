@@ -209,6 +209,10 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                         .FindIndex(p => p.accountId == charUpdate.accountId);
                     if (idx < 0) continue;
                     var pd = PlayerDataManager.Instance.players[idx];
+                    // Sync position so the fallback path always has the last-saved position,
+                    // not the stale initial API-load value.
+                    pd.positionX = charUpdate.positionX;
+                    pd.positionY = charUpdate.positionY;
                     if (charUpdate.currentStamina.HasValue)
                         pd.currentStamina = charUpdate.currentStamina.Value;
                     if (charUpdate.viableStamina.HasValue)

@@ -18,17 +18,26 @@ import { CatalogSseService } from './catalog-sse.service';
       {
         name: 'AUTH_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 8877 },
+        options: {
+          host: process.env.AUTH_SERVICE_HOST || 'localhost',
+          port: parseInt(process.env.AUTH_SERVICE_PORT || '8877'),
+        },
       },
       {
         name: 'PLAYER_DATA_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 8878 },
+        options: {
+          host: process.env.PLAYER_DATA_SERVICE_HOST || 'localhost',
+          port: parseInt(process.env.PLAYER_DATA_SERVICE_PORT || '8878'),
+        },
       },
       {
         name: 'ADMIN_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 3006 },
+        options: {
+          host: process.env.ADMIN_SERVICE_HOST || 'localhost',
+          port: parseInt(process.env.ADMIN_SERVICE_PORT || '3006'),
+        },
       },
     ]),
   ],

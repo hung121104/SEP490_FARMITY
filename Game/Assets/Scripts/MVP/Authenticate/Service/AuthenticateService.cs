@@ -30,7 +30,7 @@ public class AuthenticateService : IAuthenticateService
     {
         string json = JsonUtility.ToJson(request);
 
-        using (UnityWebRequest webRequest = new UnityWebRequest("https://localhost:3000/auth/login-ingame", "POST"))
+        using (UnityWebRequest webRequest = new UnityWebRequest(AppConfig.ApiBaseUrl + "/auth/login-ingame", "POST"))
         {
             byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
             webRequest.uploadHandler = new UploadHandlerRaw(bodyRaw);

@@ -1,4 +1,5 @@
 # compiled output
+/dist/
 /microservices/*/dist/
 /node_modules
 /microservices/*/node_modules/

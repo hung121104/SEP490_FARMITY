@@ -402,14 +402,9 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
         };
     }
 
-    internal static string ExtractTypeName(string entityType, JObject data)
+    internal static string ExtractTypeName(string entityType)
     {
-        if (data == null) return entityType;
-        return entityType switch
-        {
-            "item" => data.Value<string>("itemType")?.ToString() ?? "Item",
-            _ => entityType
-        };
+        return entityType;
     }
 
     // ── SSE Download Handler ─────────────────────────────────────────────────

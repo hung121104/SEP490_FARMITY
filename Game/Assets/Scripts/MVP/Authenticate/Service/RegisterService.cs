@@ -34,8 +34,8 @@ public class VerifyRegistrationResponse
 
 public class RegisterService : IRegisterService
 {
-    private const string RegisterUrl       = "https://localhost:3000/auth/register";
-    private const string VerifyUrl         = "https://localhost:3000/auth/verify-registration";
+    private const string RegisterUrl = AppConfig.ApiBaseUrl + "/auth/register";
+    private const string VerifyUrl   = AppConfig.ApiBaseUrl + "/auth/verify-registration";
 
     public async Task<RegisterResponse> Register(RegisterRequest request)
     {

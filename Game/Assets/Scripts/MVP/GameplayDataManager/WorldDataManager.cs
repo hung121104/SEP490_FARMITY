@@ -9,19 +9,7 @@ using UnityEngine;
 public class WorldDataManager : MonoBehaviour
 {
     private static WorldDataManager _instance;
-    public static WorldDataManager Instance
-    {
-        get
-        {
-            if (_instance == null)
-            {
-                GameObject go = new GameObject("WorldDataManager");
-                _instance = go.AddComponent<WorldDataManager>();
-                DontDestroyOnLoad(go);
-            }
-            return _instance;
-        }
-    }
+    public static WorldDataManager Instance => _instance;
     
     [Header("World Configuration")]
     [Tooltip("Total world size in chunks (10×10 grid)")]
@@ -330,6 +318,19 @@ public class WorldDataManager : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Clears all in-memory tile, inventory, structure, and chest data across every module.
+    /// Call this before re-populating from the server to avoid stale data on rejoin.
+    /// </summary>
+    public void ClearAllModules()
+    {
+        foreach (var module in modules.Values)
+            module.ClearAll();
+
+        if (showDebugLogs)
+            Debug.Log("[WorldDataManager] All modules cleared.");
+    }
+
     private void InitializeModules()
     {
         // Crop Module

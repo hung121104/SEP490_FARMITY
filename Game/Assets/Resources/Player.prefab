@@ -1530,7 +1530,7 @@ MonoBehaviour:
   photonView: {fileID: 470869259128668884}
   footstepInterval: 0.35
   sprintFootstepInterval: 0.25
-  showDebugLogs: 1
+  showDebugLogs: 0
 --- !u!1 &7724047194671413354
 GameObject:
   m_ObjectHideFlags: 0
