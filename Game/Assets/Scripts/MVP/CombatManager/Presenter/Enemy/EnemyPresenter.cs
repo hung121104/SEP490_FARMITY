@@ -58,7 +58,7 @@ namespace CombatManager.Presenter
         private Vector3 remotePosition;
         private Vector2 remoteVelocity;
         private bool remoteIsWalking;
-        private bool remoteFlipX;
+        private bool remoteFacingRight;
         private int remoteAttackSequence;
         private int lastAppliedRemoteAttackSequence = -1;
         private Vector3 attackHitboxBaseLocalPosition;
@@ -261,7 +261,7 @@ namespace CombatManager.Presenter
             remotePosition = transform.position;
             remoteVelocity = Vector2.zero;
             remoteIsWalking = false;
-            remoteFlipX = spriteRenderer != null && spriteRenderer.flipX;
+            remoteFacingRight = transform.localScale.x >= 0f;
             remoteAttackSequence = 0;
 
             if (attackHitbox != null)
@@ -747,7 +747,7 @@ namespace CombatManager.Presenter
                 return;
 
             bool isWalking = model.animator != null && model.animator.GetBool("isWalking");
-            bool flipX = model.spriteRenderer != null && model.spriteRenderer.flipX;
+            bool facingRight = transform.localScale.x >= 0f;
 
             object[] payload =
             {
@@ -763,7 +763,7 @@ namespace CombatManager.Presenter
                 model.isAlerted,
                 model.isKnockedBack,
                 isWalking,
-                flipX,
+                facingRight,
                 model.facingDirection.x,
                 model.facingDirection.y,
                 aiService != null ? aiService.GetAttackSequence() : 0,
@@ -789,8 +789,7 @@ namespace CombatManager.Presenter
 
             TryApplyRemoteAttackAnimation();
 
-            if (model.spriteRenderer != null)
-                model.spriteRenderer.flipX = remoteFlipX;
+            ApplyRemoteFacing(remoteFacingRight);
         }
 
         public void OnEvent(EventData photonEvent)
@@ -816,7 +815,7 @@ namespace CombatManager.Presenter
                 !TryGetBool(payload, 9, out bool isAlerted) ||
                 !TryGetBool(payload, 10, out bool isKnockedBack) ||
                 !TryGetBool(payload, 11, out bool isWalking) ||
-                !TryGetBool(payload, 12, out bool flipX) ||
+                !TryGetBool(payload, 12, out bool facingRight) ||
                 !TryGetFloat(payload, 13, out float faceX) ||
                 !TryGetFloat(payload, 14, out float faceY) ||
                 !TryGetInt(payload, 15, out int attackSequence))
@@ -827,7 +826,7 @@ namespace CombatManager.Presenter
             remotePosition = new Vector3(posX, posY, posZ);
             remoteVelocity = new Vector2(velX, velY);
             remoteIsWalking = isWalking;
-            remoteFlipX = flipX;
+            remoteFacingRight = facingRight;
             model.currentHealth = hp;
             model.maxHealth = maxHp;
             model.currentState = (EnemyState)stateValue;
@@ -849,6 +848,20 @@ namespace CombatManager.Presenter
             model.animator.SetTrigger(ATTACK_TRIGGER);
         }
 
+        private void ApplyRemoteFacing(bool facingRight)
+        {
+            Vector3 scale = transform.localScale;
+            float absX = Mathf.Abs(scale.x);
+            if (absX <= 0.0001f)
+                absX = 1f;
+
+            scale.x = facingRight ? absX : -absX;
+            transform.localScale = scale;
+
+            if (model.spriteRenderer != null)
+                model.spriteRenderer.flipX = false;
+        }
+
         private void UpdateAttackHitboxFacing()
         {
             if (attackHitbox == null)
@@ -864,9 +877,15 @@ namespace CombatManager.Presenter
             if (Mathf.Abs(facingX) < 0.001f)
                 return;
 
-            float directionSign = facingX >= 0f ? 1f : -1f;
+            // Desired world-space side comes from facingDirection.
+            // Because enemy visual facing now uses transform.localScale.x mirroring,
+            // local hitbox X must compensate for parent scale sign.
+            float desiredWorldSign = facingX >= 0f ? 1f : -1f;
+            float parentScaleSign = transform.localScale.x >= 0f ? 1f : -1f;
+            float localDirectionSign = desiredWorldSign * parentScaleSign;
+
             Vector3 local = attackHitbox.transform.localPosition;
-            local.x = Mathf.Abs(attackHitboxBaseLocalPosition.x) * directionSign;
+            local.x = Mathf.Abs(attackHitboxBaseLocalPosition.x) * localDirectionSign;
             attackHitbox.transform.localPosition = local;
         }
 
