@@ -10,6 +10,7 @@ namespace CombatManager.Service
 
         int GetStrength();
         int GetVitality();
+        int GetEndurance();
         int GetLevel();
         int GetCurrentExp();
         int GetExpToNextLevel();
@@ -29,6 +30,7 @@ namespace CombatManager.Service
 
         int GetAttackDamage();
         int GetMaxHealth();
+        int GetMaxStamina();
         int GetCurrentHealth();
         void SetCurrentHealth(int value);
         float GetAttackRange();

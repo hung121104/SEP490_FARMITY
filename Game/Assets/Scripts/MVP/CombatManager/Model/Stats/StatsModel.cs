@@ -18,6 +18,7 @@ namespace CombatManager.Model
         [Header("Core Stats")]
         public int strength = 10;
         public int vitality = 10;
+        public int endurance = 10;
 
         [Header("Growth Source")]
         public LevelGrowthProfile growthProfile;
@@ -61,6 +62,7 @@ namespace CombatManager.Model
         public int GetBaseDamage() => baseDamage;
         public int GetAttackDamage() => baseDamage + strength / 2;
         public int GetMaxHealth() => baseDamage * 10 + vitality * 5;
+        public int GetMaxStamina() => Mathf.Max(1, 200 + (endurance - 10) * 10);
 
         public float GetExpProgress01()
         {
@@ -111,12 +113,13 @@ namespace CombatManager.Model
         {
             if (growthProfile != null)
             {
-                growthProfile.Evaluate(level, out strength, out vitality);
+                growthProfile.Evaluate(level, out strength, out vitality, out endurance);
                 return;
             }
 
             strength = 10 + Mathf.Max(0, level - 1) * 2;
             vitality = 10 + Mathf.Max(0, level - 1) * 2;
+            endurance = 10 + Mathf.Max(0, level - 1) * 2;
         }
 
         #endregion

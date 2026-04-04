@@ -519,6 +519,11 @@ MonoBehaviour:
   sprintCostPerSecond: 8
   viableDecayPerGameMinute: 0.05
   syncIntervalSeconds: 0.2
+  useEnduranceForMaxStamina: 1
+  baseMaxStaminaAtEnd10: 200
+  staminaPerEndurance: 10
+  baselineEndurance: 10
+  minDerivedMaxStamina: 1
 --- !u!60 &5899556085378982185
 PolygonCollider2D:
   m_ObjectHideFlags: 0

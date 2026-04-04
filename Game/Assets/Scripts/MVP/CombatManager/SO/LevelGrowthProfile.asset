@@ -14,5 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseStrength: 10
   baseVitality: 10
+  baseEndurance: 10
   strengthPerLevel: 5
   vitalityPerLevel: 5
+  endurancePerLevel: 5
+  perLevel: []

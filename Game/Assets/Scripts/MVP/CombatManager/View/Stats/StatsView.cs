@@ -22,8 +22,10 @@ namespace CombatManager.View
         [Header("Stats UI")]
         [SerializeField] private TextMeshProUGUI strText;
         [SerializeField] private TextMeshProUGUI vitText;
+        [SerializeField] private TextMeshProUGUI endText;
         [SerializeField] private TextMeshProUGUI strNumber;
         [SerializeField] private TextMeshProUGUI vitNumber;
+        [SerializeField] private TextMeshProUGUI endNumber;
 
         #region Unity Lifecycle
 
@@ -56,11 +58,17 @@ namespace CombatManager.View
             if (vitText != null)
                 vitText.text = "VIT";
 
+            if (endText != null)
+                endText.text = "END";
+
             if (strNumber != null)
                 strNumber.text = presenter.GetStrength().ToString();
 
             if (vitNumber != null)
                 vitNumber.text = presenter.GetVitality().ToString();
+
+            if (endNumber != null)
+                endNumber.text = presenter.GetEndurance().ToString();
         }
 
         #endregion

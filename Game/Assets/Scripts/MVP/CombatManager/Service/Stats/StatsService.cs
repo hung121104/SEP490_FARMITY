@@ -28,6 +28,7 @@ namespace CombatManager.Service
 
         public int GetStrength() => model.strength;
         public int GetVitality() => model.vitality;
+        public int GetEndurance() => model.endurance;
         public int GetLevel() => model.level;
         public int GetCurrentExp() => model.currentExp;
         public int GetExpToNextLevel() => model.expToNextLevel;
@@ -99,6 +100,7 @@ namespace CombatManager.Service
 
         public int GetAttackDamage() => model.GetAttackDamage();
         public int GetMaxHealth() => model.GetMaxHealth();
+        public int GetMaxStamina() => model.GetMaxStamina();
         public int GetCurrentHealth() => model.CurrentHealth;
         public void SetCurrentHealth(int value) => model.CurrentHealth = value;
         public float GetAttackRange() => model.attackRange;

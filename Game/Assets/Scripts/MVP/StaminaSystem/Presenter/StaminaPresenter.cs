@@ -57,4 +57,11 @@ public class StaminaPresenter
         model.viableStamina = UnityEngine.Mathf.Clamp(viable, model.PassiveDecayFloor, model.maxStamina);
         model.currentStamina = UnityEngine.Mathf.Min(model.currentStamina, model.viableStamina);
     }
+
+    public void SetMaxStamina(float maxStamina)
+    {
+        model.maxStamina = UnityEngine.Mathf.Max(1f, maxStamina);
+        model.viableStamina = UnityEngine.Mathf.Clamp(model.viableStamina, model.PassiveDecayFloor, model.maxStamina);
+        model.currentStamina = UnityEngine.Mathf.Clamp(model.currentStamina, 0f, model.viableStamina);
+    }
 }

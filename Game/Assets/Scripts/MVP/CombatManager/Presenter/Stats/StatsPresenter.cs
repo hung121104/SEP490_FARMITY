@@ -100,6 +100,7 @@ namespace CombatManager.Presenter
 
         public int GetStrength() => service.GetStrength();
         public int GetVitality() => service.GetVitality();
+        public int GetEndurance() => service.GetEndurance();
         public int GetLevel() => service.GetLevel();
         public int GetCurrentExp() => service.GetCurrentExp();
         public int GetExpToNextLevel() => service.GetExpToNextLevel();

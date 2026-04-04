@@ -21,6 +21,14 @@ public class StaminaView : MonoBehaviourPun
     [Header("Sync")]
     [SerializeField] private float syncIntervalSeconds = 0.2f;
 
+    [Header("END -> Max Stamina")]
+    [SerializeField] private bool useEnduranceForMaxStamina = true;
+    [SerializeField] private float baseMaxStaminaAtEnd10 = 200f;
+    [SerializeField] private float staminaPerEndurance = 10f;
+    [SerializeField] private int baselineEndurance = 10;
+    [SerializeField] private float minDerivedMaxStamina = 1f;
+    [SerializeField, Range(0f, 1f)] private float viableRatioOnMaxIncrease = 0.7f;
+
     private StaminaModel model;
     private StaminaPresenter presenter;
     private TimeManagerView timeManager;
@@ -28,6 +36,8 @@ public class StaminaView : MonoBehaviourPun
     private float syncTimer;
     private bool sprintIntentSent;
     private bool masterSprintIntent;
+    private CombatManager.Presenter.StatsPresenter statsPresenter;
+    private float nextStatsLookupAt;
 
     public float CurrentStamina => presenter?.CurrentStamina ?? maxStamina;
     public float ViableStamina => presenter?.ViableStamina ?? maxStamina;
@@ -101,6 +111,8 @@ public class StaminaView : MonoBehaviourPun
     private void Update()
     {
         if (!PhotonNetwork.IsMasterClient || presenter == null) return;
+
+        RefreshMaxStaminaFromStats();
 
         float gameSpeed = timeManager != null ? timeManager.timeSpeed : 1f;
         float gameMinutesDelta = Time.deltaTime * gameSpeed * viableDecayPerGameMinute;
@@ -222,6 +234,7 @@ public class StaminaView : MonoBehaviourPun
     private void BroadcastState()
     {
         photonView.RPC(nameof(RPC_ApplyAuthoritativeState), RpcTarget.All,
+            model.maxStamina,
             model.currentStamina, model.viableStamina,
             model.regenBoostMultiplier, model.regenBoostRemaining,
             model.toolEfficiencyReduction, model.toolEfficiencyRemaining);
@@ -276,10 +289,51 @@ public class StaminaView : MonoBehaviourPun
     }
 
     [PunRPC]
-    private void RPC_ApplyAuthoritativeState(float current, float viable, float regenMult, float regenRem, float effRed, float effRem)
+    private void RPC_ApplyAuthoritativeState(float max, float current, float viable, float regenMult, float regenRem, float effRed, float effRem)
     {
+        presenter.SetMaxStamina(max);
         presenter.SetState(current, viable);
         presenter.SyncBoostState(regenMult, regenRem, effRed, effRem);
+    }
+
+    private void RefreshMaxStaminaFromStats()
+    {
+        if (!useEnduranceForMaxStamina)
+            return;
+
+        if (statsPresenter == null)
+        {
+            if (Time.time < nextStatsLookupAt)
+                return;
+
+            statsPresenter = FindObjectOfType<CombatManager.Presenter.StatsPresenter>();
+            nextStatsLookupAt = Time.time + 0.5f;
+            if (statsPresenter == null)
+                return;
+        }
+
+        int endurance = statsPresenter.GetEndurance();
+        float derivedMax = baseMaxStaminaAtEnd10 + (endurance - baselineEndurance) * staminaPerEndurance;
+        derivedMax = Mathf.Max(minDerivedMaxStamina, derivedMax);
+
+        if (Mathf.Abs(model.maxStamina - derivedMax) > 0.01f)
+        {
+            float oldMax = model.maxStamina;
+            bool increased = derivedMax > oldMax;
+            presenter.SetMaxStamina(derivedMax);
+
+            if (increased)
+            {
+                float targetViable = Mathf.Clamp01(viableRatioOnMaxIncrease) * derivedMax;
+                if (model.viableStamina < targetViable)
+                {
+                    presenter.SetState(model.currentStamina, targetViable);
+                }
+            }
+
+            Debug.Log($"[StaminaView] END max stamina updated accountId='{GetOwnerAccountId()}' END={endurance} oldMax={oldMax:F1} newMax={derivedMax:F1} current={model.currentStamina:F1} viable={model.viableStamina:F1}");
+            BroadcastState();
+        }
     }
 
     private bool IsOwnerSender(int senderActorNumber, Player sender)
