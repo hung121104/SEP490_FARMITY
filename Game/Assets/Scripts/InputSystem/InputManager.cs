@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Singleton that owns the FarmittyInputActions asset.
 /// Loads/saves binding overrides via PlayerPrefs so custom keybinds persist.
-/// Other scripts access actions through InputManager.Instance (e.g. InputManager.Instance.Harvest).
+/// Other scripts access actions through InputManager.Instance (e.g. InputManager.Instance.Interact).
 /// </summary>
 public class InputManager : MonoBehaviour
 {
@@ -20,7 +20,6 @@ public class InputManager : MonoBehaviour
     // ───── Convenience accessors for gameplay scripts ─────
     public InputAction Move          => _actions.Player.Move;
     public InputAction Interact      => _actions.Player.Interact;
-    public InputAction Harvest       => _actions.Player.Harvest;
     public InputAction OpenInventory => _actions.Player.OpenInventory;
     public InputAction Attack        => _actions.Player.Attack;
     public InputAction UseSkill      => _actions.Player.UseSkill;
@@ -85,8 +84,8 @@ public class InputManager : MonoBehaviour
         };
     }
 
-    // ───── PlayerPrefs key ─────
-    private const string BINDINGS_KEY = "InputBindings";
+    // ───── PlayerPrefs key prefix ─────
+    private const string BINDINGS_KEY = "Keybind";
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Lifecycle
@@ -124,13 +123,31 @@ public class InputManager : MonoBehaviour
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     /// <summary>
-    /// Serializes all current binding overrides to JSON and writes to PlayerPrefs.
+    /// Saves every binding override individually to PlayerPrefs.
+    /// Uses per-binding string keys instead of InputSystem's JSON API
+    /// to avoid IL2CPP stripping issues in builds.
     /// Call this after every successful rebind.
     /// </summary>
     public void SaveBindings()
     {
-        string json = _actions.asset.SaveBindingOverridesAsJson();
-        PlayerPrefs.SetString(BINDINGS_KEY, json);
+        var playerMap = _actions.asset.FindActionMap("Player");
+        if (playerMap == null) return;
+
+        foreach (var action in playerMap.actions)
+        {
+            for (int i = 0; i < action.bindings.Count; i++)
+            {
+                var binding = action.bindings[i];
+                if (binding.isComposite) continue;
+
+                string key = BINDINGS_KEY + "_" + action.name + "_" + i;
+                if (binding.hasOverrides)
+                    PlayerPrefs.SetString(key, binding.overridePath ?? string.Empty);
+                else
+                    PlayerPrefs.DeleteKey(key);
+            }
+        }
+
         PlayerPrefs.Save();
         Debug.Log("[InputManager] Bindings saved.");
     }
@@ -141,22 +158,49 @@ public class InputManager : MonoBehaviour
     /// </summary>
     public void LoadBindings()
     {
-        string json = PlayerPrefs.GetString(BINDINGS_KEY, string.Empty);
-        if (!string.IsNullOrEmpty(json))
+        var playerMap = _actions.asset.FindActionMap("Player");
+        if (playerMap == null) return;
+
+        int loaded = 0;
+        foreach (var action in playerMap.actions)
         {
-            _actions.asset.LoadBindingOverridesFromJson(json);
-            Debug.Log("[InputManager] Bindings loaded from PlayerPrefs.");
+            for (int i = 0; i < action.bindings.Count; i++)
+            {
+                if (action.bindings[i].isComposite) continue;
+
+                string key = BINDINGS_KEY + "_" + action.name + "_" + i;
+                if (PlayerPrefs.HasKey(key))
+                {
+                    action.ApplyBindingOverride(i, PlayerPrefs.GetString(key));
+                    loaded++;
+                }
+            }
         }
+
+        if (loaded > 0)
+            Debug.Log($"[InputManager] Loaded {loaded} binding override(s) from PlayerPrefs.");
     }
 
     /// <summary>
-    /// Removes all overrides and deletes the PlayerPrefs key.
+    /// Removes all overrides and deletes all PlayerPrefs keys for bindings.
     /// Useful for a "Reset to Defaults" button.
     /// </summary>
     public void ResetBindingsToDefault()
     {
+        var playerMap = _actions.asset.FindActionMap("Player");
+        if (playerMap != null)
+        {
+            foreach (var action in playerMap.actions)
+            {
+                for (int i = 0; i < action.bindings.Count; i++)
+                {
+                    if (action.bindings[i].isComposite) continue;
+                    PlayerPrefs.DeleteKey(BINDINGS_KEY + "_" + action.name + "_" + i);
+                }
+            }
+        }
+
         _actions.asset.RemoveAllBindingOverrides();
-        PlayerPrefs.DeleteKey(BINDINGS_KEY);
         PlayerPrefs.Save();
         Debug.Log("[InputManager] Bindings reset to defaults.");
     }

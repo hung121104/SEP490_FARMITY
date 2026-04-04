@@ -1,0 +1,5 @@
+[build]
+buildCommand = "npm install -g pnpm && pnpm install && pnpm --filter account-service build"
+
+[deploy]
+startCommand = "node microservices/auth-service/dist/main"

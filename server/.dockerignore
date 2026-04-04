@@ -1,0 +1,6 @@
+dist/
+microservices/*/dist/
+node_modules/
+microservices/*/node_modules/
+*.log
+.env
