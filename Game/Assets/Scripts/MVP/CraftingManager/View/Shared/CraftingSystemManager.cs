@@ -99,6 +99,10 @@ public class CraftingSystemManager : MonoBehaviour
         InitializeInventoryForSubUIs();
 
         // 9. Subscribe to catalog events for real-time sync
+        // Guard: unsubscribe first to prevent duplicate subscriptions (static events persist across scene loads)
+        RecipeCatalogService.OnRecipeRemoved  -= HandleOrphanedRecipeRemoved;
+        RecipeCatalogService.OnCatalogReloaded -= HandleRecipeCatalogReloaded;
+        CatalogSyncManager.OnCatalogChanged   -= HandleCatalogChanged;
         RecipeCatalogService.OnRecipeRemoved  += HandleOrphanedRecipeRemoved;
         RecipeCatalogService.OnCatalogReloaded += HandleRecipeCatalogReloaded;
         CatalogSyncManager.OnCatalogChanged   += HandleCatalogChanged;

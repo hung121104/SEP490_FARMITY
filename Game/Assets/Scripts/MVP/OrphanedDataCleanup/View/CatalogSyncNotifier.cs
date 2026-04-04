@@ -17,6 +17,9 @@ public class CatalogSyncNotifier : MonoBehaviour
 
     private void OnEnable()
     {
+        // Guard: always unsubscribe first to prevent duplicate subscriptions
+        // if OnDisable was missed during scene transitions (static event persists).
+        CatalogSyncManager.OnCatalogChanged -= HandleCatalogChanged;
         CatalogSyncManager.OnCatalogChanged += HandleCatalogChanged;
     }
 
@@ -29,7 +32,7 @@ public class CatalogSyncNotifier : MonoBehaviour
     {
         if (notificationView == null) return;
 
-        string message = BuildMessage(changeType, entityType, entityName, typeName);
+        string message = BuildMessage(changeType, entityType, entityName);
         if (string.IsNullOrEmpty(message)) return;
 
         var entries = new List<CleanupNotificationData>
@@ -40,16 +43,15 @@ public class CatalogSyncNotifier : MonoBehaviour
         notificationView.ShowNotification(entries, messageDuration);
     }
 
-    private static string BuildMessage(string changeType, string entityType, string entityName, string typeName)
+    private static string BuildMessage(string changeType, string entityType, string entityName)
     {
-        string typeLabel = string.IsNullOrEmpty(typeName) ? "" : $" ({typeName})";
         string entityLabel = FormatEntityType(entityType);
 
         return changeType switch
         {
-            "create" => $"New {entityLabel} added: {entityName}{typeLabel}",
-            "update" => $"{entityLabel} updated: {entityName}{typeLabel}",
-            "delete" => $"{entityLabel} removed: {entityName}{typeLabel}",
+            "create" => $"New {entityLabel} added: {entityName}",
+            "update" => $"{entityLabel} updated: {entityName}",
+            "delete" => $"{entityLabel} removed: {entityName}",
             _ => null
         };
     }

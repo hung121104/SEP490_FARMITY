@@ -66,6 +66,9 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
     public override void OnEnable()
     {
         base.OnEnable();
+        // Guard: unsubscribe first to prevent duplicate subscriptions (static events persist across scene loads)
+        PhotonNetwork.NetworkingClient.EventReceived -= OnPhotonEvent;
+        CatalogSseListener.OnSseEventForRoom -= HandleSseEventFromListener;
         PhotonNetwork.NetworkingClient.EventReceived += OnPhotonEvent;
         CatalogSseListener.OnSseEventForRoom += HandleSseEventFromListener;
     }
@@ -112,7 +115,7 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
 
         // Extract readable names for notification
         string entityName = CatalogSseListener.ExtractName(sseEvent.entity, sseEvent.data);
-        string typeName = CatalogSseListener.ExtractTypeName(sseEvent.entity, sseEvent.data);
+        string typeName = CatalogSseListener.ExtractTypeName(sseEvent.entity);
         string jsonData = sseEvent.data?.ToString(Formatting.None) ?? "";
 
         // Broadcast to all clients via Photon
