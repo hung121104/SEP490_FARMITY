@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e204212c97d2e7e4d8a3deae1cc3f1fe, type: 3}
   m_Name: Luna
   m_EditorClassIdentifier: 
-  npcName: 
-  avatar: {fileID: 0}
-  nodes: []
+  npcName: Luna
+  avatar: {fileID: 4125636645744980110, guid: f3108a2bdcad59a4ebdd48878cd3a098, type: 3}
+  nodes:
+  - dialogueText: Im Luna
+    options: []
