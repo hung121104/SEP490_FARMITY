@@ -262,6 +262,7 @@ export class GatewayController {
     };
 
     const numericFields = [
+      'unlockLevel',
       'requiredWeaponType',
       'cooldown',
       'skillMultiplier',
@@ -292,6 +293,7 @@ export class GatewayController {
     if (iconUrl) dto.iconUrl = iconUrl;
 
     const numericFields = [
+      'unlockLevel',
       'requiredWeaponType',
       'cooldown',
       'skillMultiplier',

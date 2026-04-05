@@ -1151,6 +1151,7 @@ Example `409 Conflict` message:
 | `iconUrl` | string | — | Auto-filled from uploaded icon; keep read-only in admin form |
 | `ownership` | enum | — | `PlayerSkill` or `WeaponSkill` |
 | `category` | enum | — | `None`, `Projectile`, `Slash`, `AoE`, `Buff`, `Summon` |
+| `unlockLevel` | number | — | Minimum character level required for this skill to appear in Skill Management panel (default: `1`) |
 | `requiredWeaponType` | number | — | Numeric weapon type gate for weapon skills |
 | `cooldown` | number | — | Seconds |
 | `diceTier` | enum | — | `D6`, `D8`, `D10`, `D12`, `D20` |
@@ -1178,6 +1179,9 @@ Notes for web form behavior:
 
 - If `ownership = PlayerSkill`, set `requiredWeaponType = 0`.
 - If `ownership = WeaponSkill`, require `requiredWeaponType` > 0.
+- If `unlockLevel` is omitted, backend defaults it to `1` (visible from level 1).
+- Skill Management panel visibility rule (game client): show only `PlayerSkill` entries where `playerLevel >= unlockLevel`.
+- Recommended admin validation: prevent values `< 1` for `unlockLevel`.
 - For new skills, create a Combat Catalog `type=skill_vfx` entry and set `skillVisualConfigId`.
 
 ---

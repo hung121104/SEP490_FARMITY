@@ -42,6 +42,7 @@ namespace CombatManager.Presenter
         private ISkillManagementService service;
         private List<SkillDisplayItemView> displayItems = new List<SkillDisplayItemView>();
         private InputAction escapeCloseAction;
+        private StatsPresenter cachedStatsPresenter;
 
         #endregion
 
@@ -81,6 +82,7 @@ namespace CombatManager.Presenter
             StartCoroutine(LoadCatalogSkills());
 
             CombatModePresenter.OnCombatModeChanged += OnCombatModeChanged;
+            GameEventBus.OnLevelReached += OnLevelReached;
             SetPanelVisible(false);
 
             Debug.Log("[SkillManagementPresenter] Initialized!");
@@ -99,7 +101,7 @@ namespace CombatManager.Presenter
             if (CombatSkillCatalogService.Instance == null || !CombatSkillCatalogService.Instance.IsReady)
             {
                 Debug.LogWarning("[SkillManagementPresenter] CombatSkillCatalogService unavailable. Panel will be empty.");
-                service.Initialize(new List<SkillData>());
+                service.Initialize(new List<SkillData>(), GetCurrentPlayerLevel());
                 PopulateGrid();
                 yield break;
             }
@@ -107,7 +109,7 @@ namespace CombatManager.Presenter
             List<SkillData> allSkills = CombatSkillCatalogService.Instance.GetAllSkills();
             Debug.Log($"[SkillManagementPresenter] Catalog skills loaded: {allSkills.Count}");
 
-            service.Initialize(allSkills);
+            service.Initialize(allSkills, GetCurrentPlayerLevel());
             Debug.Log($"[SkillManagementPresenter] Player skills after filter: {service.GetAllSkills().Count}");
 
             PopulateGrid();
@@ -121,6 +123,7 @@ namespace CombatManager.Presenter
         private void OnDestroy()
         {
             CombatModePresenter.OnCombatModeChanged -= OnCombatModeChanged;
+            GameEventBus.OnLevelReached -= OnLevelReached;
 
             if (escapeCloseAction != null)
             {
@@ -266,6 +269,8 @@ namespace CombatManager.Presenter
 
         public void ShowPanel()
         {
+            RefreshUnlockedSkills();
+            PopulateGrid();
             service.OpenPanel();
             SetPanelVisible(true);
         }
@@ -342,6 +347,31 @@ namespace CombatManager.Presenter
         private void OnCombatModeChanged(bool isActive)
         {
             if (service.IsPanelOpen()) HidePanel();
+        }
+
+        private void OnLevelReached(int level, int count)
+        {
+            RefreshUnlockedSkills(level);
+
+            if (service.IsPanelOpen())
+                PopulateGrid();
+        }
+
+        private int GetCurrentPlayerLevel()
+        {
+            if (cachedStatsPresenter == null)
+                cachedStatsPresenter = FindObjectOfType<StatsPresenter>();
+
+            return cachedStatsPresenter != null ? Mathf.Max(1, cachedStatsPresenter.GetLevel()) : 1;
+        }
+
+        private void RefreshUnlockedSkills(int? explicitLevel = null)
+        {
+            if (service == null || !service.IsInitialized())
+                return;
+
+            int level = explicitLevel.HasValue ? Mathf.Max(1, explicitLevel.Value) : GetCurrentPlayerLevel();
+            service.RefreshForLevel(level);
         }
 
         #endregion

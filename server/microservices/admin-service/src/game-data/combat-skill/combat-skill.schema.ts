@@ -36,6 +36,9 @@ export class CombatSkill {
   })
   category: CombatSkillCategory;
 
+  @Prop({ default: 1 })
+  unlockLevel: number;
+
   @Prop({ default: 0 })
   requiredWeaponType: number;
 

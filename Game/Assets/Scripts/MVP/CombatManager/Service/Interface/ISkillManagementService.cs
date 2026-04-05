@@ -10,7 +10,8 @@ namespace CombatManager.Service
     /// </summary>
     public interface ISkillManagementService
     {
-        void Initialize(List<SkillData> skills);
+        void Initialize(List<SkillData> skills, int playerLevel);
+        void RefreshForLevel(int playerLevel);
         bool IsInitialized();
 
         // ✅ Only PlayerSkills shown in panel

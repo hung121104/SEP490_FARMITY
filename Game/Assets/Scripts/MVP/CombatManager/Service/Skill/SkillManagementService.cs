@@ -13,6 +13,7 @@ namespace CombatManager.Service
     public class SkillManagementService : ISkillManagementService
     {
         private SkillManagementModel model;
+        private readonly List<SkillData> catalogSkills = new List<SkillData>();
 
         public SkillManagementService(SkillManagementModel model)
         {
@@ -21,13 +22,29 @@ namespace CombatManager.Service
 
         #region Initialization
 
-        public void Initialize(List<SkillData> skills)
+        public void Initialize(List<SkillData> skills, int playerLevel)
         {
-            // ✅ Filter: only PlayerSkills shown in management panel
-            model.allSkills = skills.FindAll(s => s != null && s.IsPlayerSkill);
+            catalogSkills.Clear();
+            if (skills != null)
+                catalogSkills.AddRange(skills.FindAll(s => s != null));
+
+            RefreshForLevel(playerLevel);
             model.isInitialized = true;
             Debug.Log($"[SkillManagementService] Initialized with " +
-                      $"{model.allSkills.Count} player skills");
+                      $"{model.allSkills.Count} unlocked player skills at level {Mathf.Max(1, playerLevel)}");
+        }
+
+        public void RefreshForLevel(int playerLevel)
+        {
+            int safeLevel = Mathf.Max(1, playerLevel);
+
+            // Show only player skills that meet unlock-level requirement.
+            model.allSkills = catalogSkills.FindAll(s =>
+                s != null &&
+                s.IsPlayerSkill &&
+                Mathf.Max(1, s.unlockLevel) <= safeLevel);
+
+            Debug.Log($"[SkillManagementService] RefreshForLevel level={safeLevel} visibleSkills={model.allSkills.Count}");
         }
 
         public bool IsInitialized() => model.isInitialized;

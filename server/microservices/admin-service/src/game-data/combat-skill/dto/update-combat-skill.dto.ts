@@ -33,6 +33,10 @@ export class UpdateCombatSkillDto {
 
 	@IsOptional()
 	@IsNumber()
+	unlockLevel?: number;
+
+	@IsOptional()
+	@IsNumber()
 	requiredWeaponType?: number;
 
 	@IsOptional()

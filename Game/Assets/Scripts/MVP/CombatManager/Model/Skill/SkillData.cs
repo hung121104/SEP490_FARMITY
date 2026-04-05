@@ -29,6 +29,9 @@ namespace CombatManager.Model
         [Tooltip("PlayerSkill = hotbar slots. WeaponSkill = weapon slot (R key) only.")]
         [JsonProperty("ownership")]
         public SkillOwnership skillOwnership = SkillOwnership.PlayerSkill;
+        [Tooltip("Minimum player level required for this skill to appear in Skill Management panel.")]
+        [JsonProperty("unlockLevel")]
+        public int unlockLevel = 1;
         [Tooltip("Determines which presenter handles execution logic.")]
         [JsonProperty("category")]
         public SkillCategory skillCategory = SkillCategory.None;

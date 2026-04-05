@@ -38,6 +38,10 @@ export class CreateCombatSkillDto {
 
   @IsOptional()
   @IsNumber()
+  unlockLevel?: number;
+
+  @IsOptional()
+  @IsNumber()
   requiredWeaponType?: number;
 
   @IsOptional()
