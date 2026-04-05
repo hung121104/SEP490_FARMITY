@@ -280,7 +280,7 @@ namespace CombatManager.Presenter
 
             int strength = 0;
             if (statsPresenter != null)
-                strength = statsPresenter.GetService().GetTempStrength();
+                strength = statsPresenter.GetService().GetStrength();
 
             int weaponDamage = 0;
             var currentWeapon = WeaponEquipPresenter.Instance?.GetCurrentWeapon();

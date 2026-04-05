@@ -19,9 +19,14 @@ public struct PlayerData
 
     public float currentStamina;
     public float viableStamina;
+    public float currentHealth;
 
     public float regenBoostMultiplier;
     public float regenBoostRemaining;
     public float toolEfficiencyReduction;
     public float toolEfficiencyRemaining;
+
+    public int level;
+    public int currentExp;
+    public int expToNextLevel;
 }

@@ -9,127 +9,17 @@ namespace CombatManager.Service
     /// </summary>
     public class StatsService : IStatsService
     {
-        private StatsModel model;
+        private readonly StatsModel model;
 
         #region Constructor
 
         public StatsService(StatsModel model)
         {
             this.model = model;
-        }
-
-        #endregion
-
-        #region Point Management
-
-        public void AddPoints(int amount)
-        {
-            model.currentPoints += amount;
-            Debug.Log($"[StatsService] Added {amount} points. Total: {model.currentPoints}");
-        }
-
-        public bool HasAvailablePoints(int requiredPoints)
-        {
-            return model.currentPoints >= requiredPoints;
-        }
-
-        #endregion
-
-        #region Stat Modification (Temporary)
-
-        public bool IncreaseTempStrength()
-        {
-            if (HasAvailablePoints(1))
-            {
-                model.currentPoints -= 1;
-                model.tempStrength += 1;
-                model.pointsSpentThisSession += 1;
-                Debug.Log($"[StatsService] Temp STR increased to {model.tempStrength}");
-                return true;
-            }
-            Debug.LogWarning("[StatsService] Not enough points to increase STR");
-            return false;
-        }
-
-        public bool IncreaseTempVitality()
-        {
-            if (HasAvailablePoints(1))
-            {
-                model.currentPoints -= 1;
-                model.tempVitality += 1;
-                model.pointsSpentThisSession += 1;
-                Debug.Log($"[StatsService] Temp VIT increased to {model.tempVitality}");
-                return true;
-            }
-            Debug.LogWarning("[StatsService] Not enough points to increase VIT");
-            return false;
-        }
-
-        public bool DecreaseTempStrength()
-        {
-            if (model.tempStrength > model.strength && model.pointsSpentThisSession > 0)
-            {
-                model.tempStrength -= 1;
-                model.currentPoints += 1;
-                model.pointsSpentThisSession -= 1;
-                Debug.Log($"[StatsService] Temp STR decreased to {model.tempStrength}");
-                return true;
-            }
-            Debug.LogWarning("[StatsService] Cannot decrease STR below committed value");
-            return false;
-        }
-
-        public bool DecreaseTempVitality()
-        {
-            if (model.tempVitality > model.vitality && model.pointsSpentThisSession > 0)
-            {
-                model.tempVitality -= 1;
-                model.currentPoints += 1;
-                model.pointsSpentThisSession -= 1;
-                Debug.Log($"[StatsService] Temp VIT decreased to {model.tempVitality}");
-                return true;
-            }
-            Debug.LogWarning("[StatsService] Cannot decrease VIT below committed value");
-            return false;
-        }
-
-        #endregion
-
-        #region Apply/Cancel Stats
-
-        public void ApplyStats()
-        {
-            int oldMax = model.GetMaxHealth();
-
-            // Commit temp values to actual stats
-            model.strength = model.tempStrength;
-            model.vitality = model.tempVitality;
-
-            // Recalculate max health and adjust current health
-            int newMax = model.GetMaxHealth();
-            int healthDelta = newMax - oldMax;
-
-            if (healthDelta != 0)
-            {
-                model.CurrentHealth += healthDelta;
-            }
-
-            model.MaxHealth = newMax;
-            model.pointsSpentThisSession = 0;
-
-            Debug.Log($"[StatsService] Stats applied: STR={model.strength}, VIT={model.vitality}, MaxHP={newMax}");
-        }
-
-        public void CancelStats()
-        {
-            // Refund points spent this session
-            model.currentPoints += model.pointsSpentThisSession;
-            model.pointsSpentThisSession = 0;
-
-            // Reset temp stats to committed values
-            model.ResetTempStats();
-
-            Debug.Log($"[StatsService] Stats cancelled. Points refunded: {model.currentPoints}");
+            this.model.level = Mathf.Max(1, this.model.level);
+            this.model.RecalculateExpRequirement();
+            this.model.ApplyGrowthForLevel();
+            this.model.InitializeDerivedStats();
         }
 
         #endregion
@@ -138,10 +28,71 @@ namespace CombatManager.Service
 
         public int GetStrength() => model.strength;
         public int GetVitality() => model.vitality;
-        public int GetTempStrength() => model.tempStrength;
-        public int GetTempVitality() => model.tempVitality;
-        public int GetCurrentPoints() => model.currentPoints;
-        public int GetPointsSpent() => model.pointsSpentThisSession;
+        public int GetEndurance() => model.endurance;
+        public int GetLevel() => model.level;
+        public int GetCurrentExp() => model.currentExp;
+        public int GetExpToNextLevel() => model.expToNextLevel;
+        public float GetExpProgress01() => model.GetExpProgress01();
+
+        #endregion
+
+        #region Progression
+
+        public int AddExperience(int amount)
+        {
+            int gained = Mathf.Max(0, amount);
+            if (gained <= 0)
+                return 0;
+
+            model.currentExp += gained;
+
+            int levelsGained = 0;
+            while (model.currentExp >= model.expToNextLevel)
+            {
+                model.currentExp -= model.expToNextLevel;
+                model.level += 1;
+                levelsGained += 1;
+                model.RecalculateExpRequirement();
+            }
+
+            if (levelsGained > 0)
+            {
+                int oldMax = model.GetMaxHealth();
+                model.ApplyGrowthForLevel();
+                int newMax = model.GetMaxHealth();
+                int delta = newMax - oldMax;
+                model.MaxHealth = newMax;
+                model.CurrentHealth += delta;
+            }
+
+            return levelsGained;
+        }
+
+        public void SetProgressionState(int level, int currentExp, int expToNextLevel)
+        {
+            model.level = Mathf.Max(1, level);
+            model.currentExp = Mathf.Max(0, currentExp);
+            model.expToNextLevel = Mathf.Max(1, expToNextLevel);
+
+            while (model.currentExp >= model.expToNextLevel)
+            {
+                model.currentExp -= model.expToNextLevel;
+                model.level += 1;
+                model.RecalculateExpRequirement();
+            }
+
+            model.ApplyGrowthForLevel();
+            model.MaxHealth = model.GetMaxHealth();
+            model.CurrentHealth = Mathf.Clamp(model.CurrentHealth, 0, model.MaxHealth);
+        }
+
+        public void SetBaseStats(int strength, int vitality)
+        {
+            model.strength = Mathf.Max(1, strength);
+            model.vitality = Mathf.Max(1, vitality);
+            model.MaxHealth = model.GetMaxHealth();
+            model.CurrentHealth = Mathf.Clamp(model.CurrentHealth, 0, model.MaxHealth);
+        }
 
         #endregion
 
@@ -149,6 +100,7 @@ namespace CombatManager.Service
 
         public int GetAttackDamage() => model.GetAttackDamage();
         public int GetMaxHealth() => model.GetMaxHealth();
+        public int GetMaxStamina() => model.GetMaxStamina();
         public int GetCurrentHealth() => model.CurrentHealth;
         public void SetCurrentHealth(int value) => model.CurrentHealth = value;
         public float GetAttackRange() => model.attackRange;

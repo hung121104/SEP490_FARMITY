@@ -80,7 +80,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1697184185
   m_SortingLayer: 3
-  m_SortingOrder: 0
+  m_SortingOrder: -1
   m_Sprite: {fileID: -1179684449971318233, guid: 91103570c1f4c0e46b51243fd8de6827, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -261,6 +261,7 @@ GameObject:
   - component: {fileID: 4780614825639126304}
   - component: {fileID: 1881129590101078214}
   - component: {fileID: 5899556085378982185}
+  - component: {fileID: 3378645304276504264}
   m_Layer: 3
   m_Name: PlayerEntity
   m_TagString: PlayerEntity
@@ -518,6 +519,12 @@ MonoBehaviour:
   sprintCostPerSecond: 8
   viableDecayPerGameMinute: 0.05
   syncIntervalSeconds: 0.2
+  useEnduranceForMaxStamina: 1
+  baseMaxStaminaAtEnd10: 200
+  staminaPerEndurance: 10
+  baselineEndurance: 10
+  minDerivedMaxStamina: 1
+  viableRatioOnMaxIncrease: 0.7
 --- !u!60 &5899556085378982185
 PolygonCollider2D:
   m_ObjectHideFlags: 0
@@ -573,6 +580,18 @@ PolygonCollider2D:
       - {x: 0.4550967, y: -0.069751024}
       - {x: 0.46883893, y: 0.34116498}
   m_UseDelaunayMesh: 0
+--- !u!114 &3378645304276504264
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1083092175523969477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3290d26ff0eb6bc4a974d49b7f6879c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1202695650498789555
 GameObject:
   m_ObjectHideFlags: 0

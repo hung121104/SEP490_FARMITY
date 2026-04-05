@@ -34,8 +34,6 @@ MonoBehaviour:
     m_path: Assets/Scenes/Test Scenes Quoc Bao/LobbyScene.unity
   - m_enabled: 1
     m_path: Assets/Scenes/Test Scenes Quoc Bao/MapLoaderTestScene.unity
-  - m_enabled: 1
-    m_path: Assets/Scenes/Test Scenes Hung/GameCoreTestScene.unity
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings: []

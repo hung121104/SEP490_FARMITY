@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7126e56cd5cf3b541abc3d15628b0f0c, type: 3}
+  m_Name: LevelGrowthProfile
+  m_EditorClassIdentifier: 
+  baseStrength: 10
+  baseVitality: 10
+  baseEndurance: 10
+  strengthPerLevel: 5
+  vitalityPerLevel: 5
+  endurancePerLevel: 5
+  perLevel: []

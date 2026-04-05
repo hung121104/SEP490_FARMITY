@@ -1,0 +1,9 @@
+namespace CombatManager.Service
+{
+    public struct PlayerProgressionSnapshot
+    {
+        public int level;
+        public int currentExp;
+        public int expToNextLevel;
+    }
+}
