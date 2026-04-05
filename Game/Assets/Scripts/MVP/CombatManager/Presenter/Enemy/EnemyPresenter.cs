@@ -252,6 +252,7 @@ namespace CombatManager.Presenter
 
             // ✅ NEW: Sync from EnemyDataSO instead of inspector
             SyncFromEnemyData();
+            TryApplyCatalogOverridesOnInitialize();
             ApplyRuntimeProgression();
 
             healthService = new EnemyHealthService(model);
@@ -376,6 +377,18 @@ namespace CombatManager.Presenter
             model.maxHealth = Mathf.Max(1, Mathf.RoundToInt(enemyData.maxHealth * hpMultiplier));
             model.currentHealth = model.maxHealth;
             model.damageAmount = Mathf.Max(1, Mathf.RoundToInt(enemyData.damageAmount * damageMultiplier));
+        }
+
+        private void TryApplyCatalogOverridesOnInitialize()
+        {
+            EnemyStatsCatalogManager catalog = EnemyStatsCatalogManager.EnsureInstance();
+            if (catalog == null)
+                return;
+
+            if (catalog.TryGetEnemyStats(enemyId, out EnemyStatsCatalogEntry entry))
+            {
+                ApplyCatalogStatsOverride(entry, preserveHealthRatio: false);
+            }
         }
 
         private void RefreshPotentialTargets()
@@ -698,6 +711,75 @@ namespace CombatManager.Presenter
                 return;
 
             ApplyRuntimeProgression();
+        }
+
+        public void ApplyCatalogStatsOverride(EnemyStatsCatalogEntry entry, bool preserveHealthRatio)
+        {
+            if (entry == null)
+                return;
+
+            int oldMaxHealth = Mathf.Max(1, model.maxHealth);
+            int oldCurrentHealth = healthService != null
+                ? Mathf.Clamp(healthService.GetCurrentHealth(), 0, oldMaxHealth)
+                : Mathf.Clamp(model.currentHealth, 0, oldMaxHealth);
+
+            model.maxHealth = Mathf.Max(1, entry.maxHealth);
+            model.damageAmount = Mathf.Max(1, entry.damageAmount);
+            model.baseExp = Mathf.Max(1, entry.baseExp);
+            model.knockbackForce = Mathf.Max(0f, entry.knockbackForce);
+
+            model.enableOutOfCombatRegen = entry.enableOutOfCombatRegen;
+            model.regenDelaySeconds = Mathf.Max(0f, entry.regenDelaySeconds);
+            model.regenHpPerSecond = Mathf.Max(0f, entry.regenHpPerSecond);
+            model.regenRequireNearGuardAnchor = entry.regenRequireNearGuardAnchor;
+            model.regenGuardProximity = Mathf.Max(0f, entry.regenGuardProximity);
+
+            model.moveSpeed = Mathf.Max(0f, entry.moveSpeed);
+            model.chaseSpeed = Mathf.Max(0f, entry.chaseSpeed);
+            model.wanderSpeed = Mathf.Max(0f, entry.wanderSpeed);
+            model.wanderRange = Mathf.Max(0f, entry.wanderRange);
+            model.enableSeparation = entry.enableSeparation;
+            model.separationRadius = Mathf.Max(0f, entry.separationRadius);
+            model.separationForce = Mathf.Max(0f, entry.separationForce);
+
+            model.detectionRange = Mathf.Max(0f, entry.detectionRange);
+            model.attackRange = Mathf.Max(0f, entry.attackRange);
+            model.fieldOfViewAngle = Mathf.Clamp(entry.fieldOfViewAngle, 0f, 360f);
+
+            model.guardDuration = Mathf.Max(0f, entry.guardDuration);
+            model.guardLookDuration = Mathf.Max(0f, entry.guardLookDuration);
+
+            model.damageThrottleTime = Mathf.Max(0f, entry.damageThrottleTime);
+            model.useActiveAttack = entry.useActiveAttack;
+            model.attackCooldown = Mathf.Max(0f, entry.attackCooldown);
+            model.attackRecovery = Mathf.Max(0f, entry.attackRecovery);
+            model.attackFrontDotThreshold = Mathf.Clamp(entry.attackFrontDotThreshold, -1f, 1f);
+
+            model.knockbackDuration = Mathf.Max(0f, entry.knockbackDuration);
+            model.squashPixels = Mathf.Max(0f, entry.squashPixels);
+            model.stretchPixels = Mathf.Max(0f, entry.stretchPixels);
+            model.waveDuration = Mathf.Max(0f, entry.waveDuration);
+            model.flashDuration = Mathf.Max(0f, entry.flashDuration);
+            model.flashCount = Mathf.Max(0, entry.flashCount);
+
+            if (healthService == null)
+            {
+                model.currentHealth = Mathf.Clamp(oldCurrentHealth, 0, model.maxHealth);
+                return;
+            }
+
+            int nextCurrentHealth;
+            if (preserveHealthRatio && oldMaxHealth > 0)
+            {
+                float ratio = oldCurrentHealth / (float)oldMaxHealth;
+                nextCurrentHealth = Mathf.Clamp(Mathf.RoundToInt(model.maxHealth * ratio), 0, model.maxHealth);
+            }
+            else
+            {
+                nextCurrentHealth = Mathf.Clamp(oldCurrentHealth, 0, model.maxHealth);
+            }
+
+            model.currentHealth = nextCurrentHealth;
         }
 
         private void ApplyGuardAnchorOverrideIfPresent()

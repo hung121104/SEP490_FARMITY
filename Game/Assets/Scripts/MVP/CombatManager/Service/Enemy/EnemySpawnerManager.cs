@@ -390,6 +390,28 @@ namespace CombatManager.Service
             }
         }
 
+        public List<EnemyDataSO> GetUniqueEnemyDefinitions()
+        {
+            Dictionary<string, EnemyDataSO> uniqueById =
+                new Dictionary<string, EnemyDataSO>(System.StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < spawnMappings.Count; i++)
+            {
+                EnemySpawnTypeMapping mapping = spawnMappings[i];
+                if (mapping == null || mapping.enemyData == null)
+                    continue;
+
+                string enemyId = mapping.enemyData.enemyId;
+                if (string.IsNullOrWhiteSpace(enemyId))
+                    continue;
+
+                if (!uniqueById.ContainsKey(enemyId))
+                    uniqueById[enemyId] = mapping.enemyData;
+            }
+
+            return new List<EnemyDataSO>(uniqueById.Values);
+        }
+
         private void FillInitialSpawnTargets()
         {
             for (int i = 0; i < spawnMappings.Count; i++)

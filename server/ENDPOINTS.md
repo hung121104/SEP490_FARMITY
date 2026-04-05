@@ -26,6 +26,7 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   - [Plants Catalog](#plants-catalog)
   - [Crafting Recipes](#crafting-recipes)
   - [Skin Configs (Paper Doll)](#skin-configs-paper-doll)
+  - [Enemy Stats Catalog](#enemy-stats-catalog)
   - [Resource Config Catalog](#resource-config-catalog)
   - [Material Catalog](#material-catalog)
   - [Quest Catalog](#quest-catalog)
@@ -1670,6 +1671,268 @@ Example `409 Conflict` message:
 | `itemId`         | string | ✅       | —       | Target item `itemId` for this objective. |
 | `requiredAmount` | int    | ✅       | —       | Number of items needed.                  |
 | `currentAmount`  | int    | ❌       | `0`     | Current progress (player-side tracking). |
+
+---
+
+### Enemy Stats Catalog
+
+> DB-driven gameplay tuning for enemies keyed by `enemyId`.
+>
+> Unity remains source-of-truth for prefab/animation-heavy assets. This catalog controls tunable runtime stats only.
+
+#### Intended Web Usage
+
+- Build one admin page with:
+  - A table/list that fetches and displays all enemies.
+  - A detail editor form for a selected `enemyId`.
+  - Update action only (no create/delete buttons).
+- Treat `enemyId` as immutable key in UI.
+- Treat `updatedAt` as read-only metadata for "last edited" display.
+
+#### HTTP Endpoints
+
+- **GET** `/game-data/enemy-stats/catalog`: Get full enemy stats catalog in Unity-client format (public).
+  - Headers: none required
+  - Response:
+    ```json
+    {
+      "enemies": [
+        {
+          "_id": "67f1b9d4e2b9f8f44a12b321",
+          "enemyId": "slime",
+          "enemyName": "Green Slime",
+          "respawnDelaySeconds": 20,
+          "maxHealth": 24,
+          "damageAmount": 3,
+          "baseExp": 10,
+          "knockbackForce": 30,
+          "enableOutOfCombatRegen": true,
+          "regenDelaySeconds": 10,
+          "regenHpPerSecond": 2,
+          "regenRequireNearGuardAnchor": true,
+          "regenGuardProximity": 1.5,
+          "moveSpeed": 2,
+          "chaseSpeed": 3,
+          "wanderSpeed": 1,
+          "wanderRange": 5,
+          "enableSeparation": true,
+          "separationRadius": 0.8,
+          "separationForce": 2.5,
+          "detectionRange": 8,
+          "attackRange": 1.5,
+          "fieldOfViewAngle": 120,
+          "guardDuration": 2,
+          "guardLookDuration": 1,
+          "damageThrottleTime": 0.5,
+          "useActiveAttack": true,
+          "attackCooldown": 1.2,
+          "attackRecovery": 0.1,
+          "attackFrontDotThreshold": 0.25,
+          "knockbackDuration": 0.3,
+          "squashPixels": 0.05,
+          "stretchPixels": 0.05,
+          "waveDuration": 0.3,
+          "flashDuration": 0.2,
+          "flashCount": 2,
+          "createdAt": "2026-04-05T08:00:00.000Z",
+          "updatedAt": "2026-04-05T10:00:00.000Z"
+        }
+      ]
+    }
+    ```
+  - Notes:
+    - Return shape is always `{ enemies: [...] }`.
+    - This is the canonical source for web list rendering.
+
+- **PUT** `/game-data/enemy-stats/:enemyId` _(admin only)_: Update an existing enemy stats document.
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
+  - Path param: `enemyId`
+  - Body: Any subset of enemy stat fields (partial patch).
+  - Example request:
+    ```json
+    {
+      "enemyName": "Green Slime",
+      "maxHealth": 30,
+      "damageAmount": 4,
+      "moveSpeed": 2.2,
+      "attackCooldown": 1.1,
+      "enableOutOfCombatRegen": true
+    }
+    ```
+  - Response: Updated enemy stats document.
+  - Notes:
+    - Returns `404` if `enemyId` is not already registered.
+    - Returns `400` if body has no updatable fields.
+    - Returns `400` if `enemyName` is present but blank.
+
+- **POST** `/player-data/world/enemy-stats/register-missing` _(authenticated internal sync path)_: Register missing enemy IDs discovered from Unity host bootstrap.
+  - Headers: `Authorization: Bearer <token>`
+  - Body:
+    ```json
+    {
+      "worldId": "<world-id>",
+      "entries": [
+        {
+          "enemyId": "slime",
+          "enemyName": "Green Slime",
+          "maxHealth": 24,
+          "damageAmount": 3
+        }
+      ]
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "inserted": 1,
+      "enemies": [
+        {
+          "enemyId": "slime",
+          "enemyName": "Green Slime"
+        }
+      ]
+    }
+    ```
+  - Notes:
+    - `worldId` is required.
+    - Requester must own the world.
+    - Insert-only for missing ids; existing rows are not overwritten by this route.
+    - Intended for game host bootstrap flow, not admin UI page.
+
+#### Policy
+
+- Web/admin is **update-only** for enemy stats:
+  - No enemy-stats create endpoint for admin panel.
+  - No enemy-stats delete endpoint.
+- New enemy rows are created by host bootstrap sync (`register-missing`) when Unity introduces new `enemyId`s.
+
+#### Updatable Fields (Web Form Schema)
+
+| Field | Type | Validation / Range | Suggested Form Control |
+| --- | --- | --- | --- |
+| `enemyName` | string | non-empty when provided | text |
+| `respawnDelaySeconds` | number | `>= 0` | number |
+| `maxHealth` | number | `>= 1` | number |
+| `damageAmount` | number | `>= 1` | number |
+| `baseExp` | number | `>= 1` | number |
+| `knockbackForce` | number | `>= 0` | number |
+| `enableOutOfCombatRegen` | boolean | boolean | toggle |
+| `regenDelaySeconds` | number | `>= 0` | number |
+| `regenHpPerSecond` | number | `>= 0` | number |
+| `regenRequireNearGuardAnchor` | boolean | boolean | toggle |
+| `regenGuardProximity` | number | `>= 0` | number |
+| `moveSpeed` | number | `>= 0` | number |
+| `chaseSpeed` | number | `>= 0` | number |
+| `wanderSpeed` | number | `>= 0` | number |
+| `wanderRange` | number | `>= 0` | number |
+| `enableSeparation` | boolean | boolean | toggle |
+| `separationRadius` | number | `>= 0` | number |
+| `separationForce` | number | `>= 0` | number |
+| `detectionRange` | number | `>= 0` | number |
+| `attackRange` | number | `>= 0` | number |
+| `fieldOfViewAngle` | number | `0..360` | number |
+| `guardDuration` | number | `>= 0` | number |
+| `guardLookDuration` | number | `>= 0` | number |
+| `damageThrottleTime` | number | `>= 0` | number |
+| `useActiveAttack` | boolean | boolean | toggle |
+| `attackCooldown` | number | `>= 0` | number |
+| `attackRecovery` | number | `>= 0` | number |
+| `attackFrontDotThreshold` | number | `-1..1` | number |
+| `knockbackDuration` | number | `>= 0` | number |
+| `squashPixels` | number | `>= 0` | number |
+| `stretchPixels` | number | `>= 0` | number |
+| `waveDuration` | number | `>= 0` | number |
+| `flashDuration` | number | `>= 0` | number |
+| `flashCount` | number | `>= 0` | number |
+
+#### Recommended Page Flow (Web AI)
+
+1. On page load, call `GET /game-data/enemy-stats/catalog`.
+2. Render table columns: `enemyId`, `enemyName`, `maxHealth`, `damageAmount`, `moveSpeed`, `attackCooldown`, `updatedAt`.
+3. On row click, bind full row object into form state.
+4. On save:
+   - Build minimal patch payload of changed fields only.
+   - Call `PUT /game-data/enemy-stats/:enemyId`.
+   - On success, replace that row in local table and show success toast.
+5. Keep create/delete actions hidden or disabled.
+
+#### Example Update Flow
+
+Request:
+
+```http
+PUT /game-data/enemy-stats/slime
+Authorization: Bearer <ADMIN_TOKEN>
+Content-Type: application/json
+```
+
+```json
+{
+  "maxHealth": 30,
+  "damageAmount": 5,
+  "attackCooldown": 1.0
+}
+```
+
+Response:
+
+```json
+{
+  "_id": "67f1b9d4e2b9f8f44a12b321",
+  "enemyId": "slime",
+  "enemyName": "Green Slime",
+  "maxHealth": 30,
+  "damageAmount": 5,
+  "attackCooldown": 1,
+  "updatedAt": "2026-04-06T02:15:11.000Z"
+}
+```
+
+#### Common Error Responses
+
+- `400 Bad Request` (empty patch):
+  ```json
+  {
+    "statusCode": 400,
+    "message": "At least one updatable field is required.",
+    "error": "Bad Request"
+  }
+  ```
+
+- `400 Bad Request` (blank name):
+  ```json
+  {
+    "statusCode": 400,
+    "message": "enemyName cannot be empty.",
+    "error": "Bad Request"
+  }
+  ```
+
+- `404 Not Found` (unknown enemyId):
+  ```json
+  {
+    "statusCode": 404,
+    "message": "Enemy stats with enemyId 'unknown_enemy' not found.",
+    "error": "Not Found"
+  }
+  ```
+
+- `401 Unauthorized` (missing/invalid admin token):
+  ```json
+  {
+    "statusCode": 401,
+    "message": "Unauthorized"
+  }
+  ```
+
+#### Tunable Field Coverage
+
+- Core combat: `maxHealth`, `damageAmount`, `baseExp`, `knockbackForce`
+- Regen: `enableOutOfCombatRegen`, `regenDelaySeconds`, `regenHpPerSecond`, `regenRequireNearGuardAnchor`, `regenGuardProximity`
+- Movement/AI tuning: `moveSpeed`, `chaseSpeed`, `wanderSpeed`, `wanderRange`, `enableSeparation`, `separationRadius`, `separationForce`, `detectionRange`, `attackRange`, `fieldOfViewAngle`
+- Attack cadence: `damageThrottleTime`, `useActiveAttack`, `attackCooldown`, `attackRecovery`, `attackFrontDotThreshold`
+- Hit/death feel: `knockbackDuration`, `squashPixels`, `stretchPixels`, `waveDuration`, `flashDuration`, `flashCount`
+- Spawn timing: `respawnDelaySeconds`
 
 ---
 
