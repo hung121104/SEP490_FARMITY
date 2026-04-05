@@ -274,6 +274,9 @@ export class GatewayController {
       'slashVfxPositionOffsetX',
       'slashVfxPositionOffsetY',
       'slashKnockbackForce',
+      'buffValue',
+      'buffDuration',
+      'buffTickInterval',
     ];
 
     for (const field of numericFields) {
@@ -305,6 +308,9 @@ export class GatewayController {
       'slashVfxPositionOffsetX',
       'slashVfxPositionOffsetY',
       'slashKnockbackForce',
+      'buffValue',
+      'buffDuration',
+      'buffTickInterval',
     ];
 
     for (const field of numericFields) {

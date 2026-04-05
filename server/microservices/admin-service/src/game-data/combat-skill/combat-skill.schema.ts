@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import {
   CombatDiceTier,
+  CombatBuffSubCategory,
   CombatSkillCategory,
   CombatSkillOwnership,
 } from './combat-skill.enums';
@@ -81,6 +82,22 @@ export class CombatSkill {
 
   @Prop({ default: 5 })
   slashKnockbackForce: number;
+
+  @Prop({
+    required: true,
+    enum: Object.values(CombatBuffSubCategory),
+    default: CombatBuffSubCategory.None,
+  })
+  buffSubCategory: CombatBuffSubCategory;
+
+  @Prop({ default: 0 })
+  buffValue: number;
+
+  @Prop({ default: 0 })
+  buffDuration: number;
+
+  @Prop({ default: 1 })
+  buffTickInterval: number;
 }
 
 export const CombatSkillSchema = SchemaFactory.createForClass(CombatSkill);

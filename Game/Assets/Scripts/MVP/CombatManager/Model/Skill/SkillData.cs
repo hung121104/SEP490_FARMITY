@@ -39,6 +39,20 @@ namespace CombatManager.Model
         [JsonProperty("requiredWeaponType")]
         public WeaponType requiredWeaponType = WeaponType.None;
 
+        [Header("Buff Settings (Category = Buff)")]
+        [Tooltip("Small logic type under Buff category.")]
+        [JsonProperty("buffSubCategory")]
+        public BuffSkillSubCategory buffSubCategory = BuffSkillSubCategory.None;
+        [Tooltip("Buff numeric magnitude. InstantHeal/HoT use HP points. StaminaRegen/MoveSpeedPercent use percent or multiplier based on buff type.")]
+        [JsonProperty("buffValue")]
+        public float buffValue = 0f;
+        [Tooltip("Duration in seconds for timed buffs (HoT, stamina regen, move speed).")]
+        [JsonProperty("buffDuration")]
+        public float buffDuration = 0f;
+        [Tooltip("Tick interval in seconds for periodic effects such as HealOverTime.")]
+        [JsonProperty("buffTickInterval")]
+        public float buffTickInterval = 1f;
+
         [Header("Gameplay")]
         [JsonProperty("cooldown")]
         public float cooldown = 3f;
@@ -75,6 +89,7 @@ namespace CombatManager.Model
         public bool IsWeaponSkill => skillOwnership == SkillOwnership.WeaponSkill;
         public bool IsProjectile  => skillCategory  == SkillCategory.Projectile;
         public bool IsSlash       => skillCategory  == SkillCategory.Slash;
+        public bool IsBuff        => skillCategory  == SkillCategory.Buff;
         public Vector2 SlashVfxPositionOffset => new Vector2(slashVfxPositionOffsetX, slashVfxPositionOffsetY);
 
         #endregion

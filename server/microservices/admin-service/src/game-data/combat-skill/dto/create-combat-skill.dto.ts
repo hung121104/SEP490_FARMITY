@@ -7,6 +7,7 @@ import {
 } from 'class-validator';
 import {
   CombatDiceTier,
+  CombatBuffSubCategory,
   CombatSkillCategory,
   CombatSkillOwnership,
 } from '../combat-skill.enums';
@@ -91,4 +92,20 @@ export class CreateCombatSkillDto {
   @IsOptional()
   @IsNumber()
   slashKnockbackForce?: number;
+
+  @IsOptional()
+  @IsEnum(CombatBuffSubCategory)
+  buffSubCategory?: CombatBuffSubCategory;
+
+  @IsOptional()
+  @IsNumber()
+  buffValue?: number;
+
+  @IsOptional()
+  @IsNumber()
+  buffDuration?: number;
+
+  @IsOptional()
+  @IsNumber()
+  buffTickInterval?: number;
 }

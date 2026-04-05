@@ -77,6 +77,17 @@ namespace CombatManager.Presenter
                 syncComponent = gameObject.AddComponent<SkillLoadoutSyncService>();
             }
             loadoutSyncService = syncComponent;
+
+            EnsureBuffPresenter();
+        }
+
+        private void EnsureBuffPresenter()
+        {
+            if (GetComponent<BuffSkillPresenter>() == null)
+            {
+                gameObject.AddComponent<BuffSkillPresenter>();
+                Debug.Log("[SkillHotbarPresenter] Added missing BuffSkillPresenter component.");
+            }
         }
 
         private void Start()
@@ -415,6 +426,8 @@ namespace CombatManager.Presenter
                     return ProjectileSkillPresenter.Instance;
                 case SkillCategory.Slash:
                     return SlashSkillPresenter.Instance;
+                case SkillCategory.Buff:
+                    return BuffSkillPresenter.Instance;
                 default:
                     Debug.LogWarning($"[SkillHotbarPresenter] " +
                                      $"No presenter registered for: {category}");
@@ -434,6 +447,9 @@ namespace CombatManager.Presenter
                     break;
                 case SlashSkillPresenter s:
                     s.SetSkillData(skillData);
+                    break;
+                case BuffSkillPresenter b:
+                    b.SetSkillData(skillData);
                     break;
             }
         }
@@ -533,6 +549,7 @@ namespace CombatManager.Presenter
             {
                 case ProjectileSkillPresenter p: return p.GetCurrentSkillData();
                 case SlashSkillPresenter s:      return s.GetCurrentSkillData();
+                case BuffSkillPresenter b:       return b.GetCurrentSkillData();
                 default:                         return null;
             }
         }

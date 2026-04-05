@@ -1151,6 +1151,10 @@ Example `409 Conflict` message:
 | `iconUrl` | string | — | Auto-filled from uploaded icon; keep read-only in admin form |
 | `ownership` | enum | — | `PlayerSkill` or `WeaponSkill` |
 | `category` | enum | — | `None`, `Projectile`, `Slash`, `AoE`, `Buff`, `Summon` |
+| `buffSubCategory` | enum | — | Used only when `category=Buff`: `None`, `InstantHeal`, `HealOverTime`, `StaminaRegen`, `MoveSpeedPercent` |
+| `buffValue` | number | — | Buff magnitude. Heal values are HP points. For stamina/speed buffs use percent or multiplier |
+| `buffDuration` | number | — | Duration in seconds for timed buff effects |
+| `buffTickInterval` | number | — | Tick interval in seconds for periodic effects (e.g. HealOverTime) |
 | `unlockLevel` | number | — | Minimum character level required for this skill to appear in Skill Management panel (default: `1`) |
 | `requiredWeaponType` | number | — | Numeric weapon type gate for weapon skills |
 | `cooldown` | number | — | Seconds |
@@ -1172,6 +1176,7 @@ Example `409 Conflict` message:
 | --- | --- | --- |
 | `ownership` | Dropdown | `PlayerSkill`, `WeaponSkill` |
 | `category` | Dropdown | `None`, `Projectile`, `Slash`, `AoE`, `Buff`, `Summon` |
+| `buffSubCategory` | Dropdown | `None`, `InstantHeal`, `HealOverTime`, `StaminaRegen`, `MoveSpeedPercent` |
 | `diceTier` | Dropdown | `D6`, `D8`, `D10`, `D12`, `D20` |
 | `requiredWeaponType` | Dropdown | `0=None`, `1=Sword`, `2=Staff`, `3=Spear` |
 
@@ -1179,6 +1184,8 @@ Notes for web form behavior:
 
 - If `ownership = PlayerSkill`, set `requiredWeaponType = 0`.
 - If `ownership = WeaponSkill`, require `requiredWeaponType` > 0.
+- If `category != Buff`, set `buffSubCategory=None` and all `buff*` numeric fields to `0`.
+- Heal skills (first wave): use `category=Buff` with `buffSubCategory=InstantHeal` or `HealOverTime`.
 - If `unlockLevel` is omitted, backend defaults it to `1` (visible from level 1).
 - Skill Management panel visibility rule (game client): show only `PlayerSkill` entries where `playerLevel >= unlockLevel`.
 - Recommended admin validation: prevent values `< 1` for `unlockLevel`.
