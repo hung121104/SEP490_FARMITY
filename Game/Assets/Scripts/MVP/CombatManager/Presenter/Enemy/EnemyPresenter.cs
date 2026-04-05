@@ -66,6 +66,7 @@ namespace CombatManager.Presenter
         private int lastAppliedHitToken = int.MinValue;
         private Coroutine knockbackEffectRoutine;
         private Coroutine flashEffectRoutine;
+        private Coroutine deathFinalizeFallbackRoutine;
         private float lastDamagePopupAt = -10f;
         private const float DAMAGE_POPUP_INTERVAL = 0.1f;
         private const string ATTACK_TRIGGER = "Attack";
@@ -76,6 +77,11 @@ namespace CombatManager.Presenter
         private int runtimeBaseExp = 10;
 
         private readonly List<Collider2D> activeAttackTargets = new List<Collider2D>();
+
+        [Header("Death Animation")]
+        [SerializeField] private string deathTriggerName = "Death";
+        [SerializeField] private bool finishDeathByAnimationEvent = true;
+        [SerializeField] private float deathDespawnFallbackSeconds = 1.2f;
 
         private bool IsAuthoritative => !PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient;
 
@@ -97,6 +103,12 @@ namespace CombatManager.Presenter
             PhotonNetwork.RemoveCallbackTarget(this);
             if (EnemySyncManager.Instance != null)
                 EnemySyncManager.Instance.UnregisterEnemy(this);
+
+            if (deathFinalizeFallbackRoutine != null)
+            {
+                StopCoroutine(deathFinalizeFallbackRoutine);
+                deathFinalizeFallbackRoutine = null;
+            }
         }
 
         private void Update()
@@ -126,10 +138,13 @@ namespace CombatManager.Presenter
             }
             else
             {
-                ApplyRemoteState();
-
                 if (healthService.IsDead())
+                {
                     HandleDeath(false);
+                    return;
+                }
+
+                ApplyRemoteState();
             }
         }
 
@@ -718,14 +733,95 @@ namespace CombatManager.Presenter
                 OnEnemyAuthoritativeDeath?.Invoke(model.runtimeEnemyId, enemyId, transform.position);
             }
 
-            aiService.Stop();
+            HardStopEnemyForDeath();
 
             if (model.animator != null)
             {
-                model.animator.SetTrigger("Death");
+                model.animator.SetBool("isWalking", false);
+                model.animator.ResetTrigger(ATTACK_TRIGGER);
+                model.animator.SetTrigger(string.IsNullOrWhiteSpace(deathTriggerName) ? "Death" : deathTriggerName);
             }
 
-            Destroy(gameObject, 1f);
+            if (deathFinalizeFallbackRoutine != null)
+                StopCoroutine(deathFinalizeFallbackRoutine);
+
+            deathFinalizeFallbackRoutine = StartCoroutine(DeathFinalizeFallbackCoroutine());
+        }
+
+        // Called by enemy death animation event at the final frame.
+        public void OnDeathAnimationFinishedEvent()
+        {
+            if (!deathHandled)
+                return;
+
+            FinalizeDeathDestroy();
+        }
+
+        private IEnumerator DeathFinalizeFallbackCoroutine()
+        {
+            float waitSeconds = Mathf.Max(0.05f, deathDespawnFallbackSeconds);
+            yield return new WaitForSeconds(waitSeconds);
+
+            // If animator event was missed/not configured, fallback still cleans up.
+            FinalizeDeathDestroy();
+        }
+
+        private void FinalizeDeathDestroy()
+        {
+            if (this == null || gameObject == null)
+                return;
+
+            if (deathFinalizeFallbackRoutine != null)
+            {
+                StopCoroutine(deathFinalizeFallbackRoutine);
+                deathFinalizeFallbackRoutine = null;
+            }
+
+            Destroy(gameObject);
+        }
+
+        private void HardStopEnemyForDeath()
+        {
+            aiService?.Stop();
+
+            if (knockbackEffectRoutine != null)
+            {
+                StopCoroutine(knockbackEffectRoutine);
+                knockbackEffectRoutine = null;
+            }
+
+            if (flashEffectRoutine != null)
+            {
+                StopCoroutine(flashEffectRoutine);
+                flashEffectRoutine = null;
+            }
+
+            // If knockback flash coroutine was interrupted mid-red frame,
+            // force visual state back to the enemy's base sprite color before death anim starts.
+            if (model.spriteRenderer != null)
+                model.spriteRenderer.color = model.originalColor;
+
+            // If squash/stretch was interrupted, restore base scale for clean death VFX.
+            transform.localScale = model.originalScale;
+
+            model.isKnockedBack = false;
+            model.isAttackAnimating = false;
+            model.pendingAttackTrigger = false;
+            model.hasAppliedImpactThisAttack = false;
+
+            if (model.rb != null)
+            {
+                model.rb.linearVelocity = Vector2.zero;
+                model.rb.angularVelocity = 0f;
+                model.rb.simulated = false;
+            }
+
+            if (attackHitbox != null)
+                attackHitbox.enabled = false;
+
+            Collider2D[] colliders = GetComponentsInChildren<Collider2D>(true);
+            for (int i = 0; i < colliders.Length; i++)
+                colliders[i].enabled = false;
         }
 
         private string BuildDefaultRuntimeEnemyId()

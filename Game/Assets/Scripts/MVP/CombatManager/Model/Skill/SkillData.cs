@@ -83,12 +83,21 @@ namespace CombatManager.Model
         [JsonProperty("slashKnockbackForce")]
         public float slashKnockbackForce = 5f;
 
+        [Header("AoE Settings (Category = AoE)")]
+        [JsonProperty("aoeCastRange")]
+        public float aoeCastRange = 6f;
+        [JsonProperty("aoeRadius")]
+        public float aoeRadius = 2f;
+        [JsonProperty("aoeVfxDuration")]
+        public float aoeVfxDuration = 1f;
+
         #region Public Helpers
 
         public bool IsPlayerSkill => skillOwnership == SkillOwnership.PlayerSkill;
         public bool IsWeaponSkill => skillOwnership == SkillOwnership.WeaponSkill;
         public bool IsProjectile  => skillCategory  == SkillCategory.Projectile;
         public bool IsSlash       => skillCategory  == SkillCategory.Slash;
+        public bool IsAoE         => skillCategory  == SkillCategory.AoE;
         public bool IsBuff        => skillCategory  == SkillCategory.Buff;
         public Vector2 SlashVfxPositionOffset => new Vector2(slashVfxPositionOffsetX, slashVfxPositionOffsetY);
 

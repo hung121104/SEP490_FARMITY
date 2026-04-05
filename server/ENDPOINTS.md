@@ -1169,6 +1169,9 @@ Example `409 Conflict` message:
 | `slashVfxPositionOffsetX` | number | — | Additional X offset |
 | `slashVfxPositionOffsetY` | number | — | Additional Y offset |
 | `slashKnockbackForce` | number | — | Slash hit knockback force |
+| `aoeCastRange` | number | — | Max cast distance from player to mouse target (AoE only) |
+| `aoeRadius` | number | — | AoE damage radius and circle indicator radius |
+| `aoeVfxDuration` | number | — | AoE VFX lifetime fallback in seconds |
 
 #### Combat Skill Dropdown / Select Guide
 
@@ -1188,6 +1191,7 @@ Notes for web form behavior:
 - Heal skills (first wave): use `category=Buff` with `buffSubCategory=InstantHeal` or `HealOverTime`.
 - For `StaminaRegen` / `MoveSpeedPercent`, use `buffValue > 0` and `buffDuration > 0`.
 - `buffValue` accepts either multiplier (e.g. `1.2`) or percent (e.g. `20` means +20% => `1.2`).
+- AoE skills: set `category=AoE`, configure `aoeCastRange` + `aoeRadius`, and use AoE prefab animation event `OnImpactAnimationEvent` to trigger damage frame.
 - If `unlockLevel` is omitted, backend defaults it to `1` (visible from level 1).
 - Skill Management panel visibility rule (game client): show only `PlayerSkill` entries where `playerLevel >= unlockLevel`.
 - Recommended admin validation: prevent values `< 1` for `unlockLevel`.

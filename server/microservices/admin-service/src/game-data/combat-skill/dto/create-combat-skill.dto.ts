@@ -94,6 +94,18 @@ export class CreateCombatSkillDto {
   slashKnockbackForce?: number;
 
   @IsOptional()
+  @IsNumber()
+  aoeCastRange?: number;
+
+  @IsOptional()
+  @IsNumber()
+  aoeRadius?: number;
+
+  @IsOptional()
+  @IsNumber()
+  aoeVfxDuration?: number;
+
+  @IsOptional()
   @IsEnum(CombatBuffSubCategory)
   buffSubCategory?: CombatBuffSubCategory;
 

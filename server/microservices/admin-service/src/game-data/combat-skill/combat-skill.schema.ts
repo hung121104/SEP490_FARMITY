@@ -83,6 +83,15 @@ export class CombatSkill {
   @Prop({ default: 5 })
   slashKnockbackForce: number;
 
+  @Prop({ default: 6 })
+  aoeCastRange: number;
+
+  @Prop({ default: 2 })
+  aoeRadius: number;
+
+  @Prop({ default: 1 })
+  aoeVfxDuration: number;
+
   @Prop({
     required: true,
     enum: Object.values(CombatBuffSubCategory),
