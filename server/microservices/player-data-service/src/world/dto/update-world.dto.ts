@@ -62,6 +62,8 @@ export class EnemySpawnerActiveEnemyDto {
   x: number;
   y: number;
   z: number;
+  enemyLevel?: number;
+  baseExp?: number;
 }
 
 export class EnemySpawnerPendingRespawnDto {

@@ -71,6 +71,9 @@ namespace CombatManager.Presenter
         private const string ATTACK_TRIGGER = "Attack";
         private bool hasGuardAnchorOverride;
         private Vector3 guardAnchorOverride;
+        private bool hasRuntimeProgressionOverride;
+        private int runtimeEnemyLevel = 1;
+        private int runtimeBaseExp = 10;
 
         private readonly List<Collider2D> activeAttackTargets = new List<Collider2D>();
 
@@ -234,13 +237,14 @@ namespace CombatManager.Presenter
 
             // ✅ NEW: Sync from EnemyDataSO instead of inspector
             SyncFromEnemyData();
+            ApplyRuntimeProgression();
 
             healthService = new EnemyHealthService(model);
             knockbackService = new EnemyKnockbackService(model);
             combatService = new EnemyCombatService(model);
             aiService = new EnemyAIService(model);
 
-            healthService.Initialize(enemyData.maxHealth);
+            healthService.Initialize(model.maxHealth);
             knockbackService.Initialize(this);
             combatService.Initialize(damagePopupPrefab);
             aiService.Initialize(transform);
@@ -320,6 +324,8 @@ namespace CombatManager.Presenter
 
             // Combat
             model.damageAmount = enemyData.damageAmount;
+            model.baseExp = Mathf.Max(1, enemyData.baseExp);
+            model.enemyLevel = Mathf.Max(1, runtimeEnemyLevel);
             model.knockbackForce = enemyData.knockbackForce;
             model.damageThrottleTime = enemyData.damageThrottleTime;
             model.useActiveAttack = enemyData.useActiveAttack;
@@ -339,6 +345,22 @@ namespace CombatManager.Presenter
             model.waveDuration = enemyData.waveDuration;
             model.flashDuration = enemyData.flashDuration;
             model.flashCount = enemyData.flashCount;
+        }
+
+        private void ApplyRuntimeProgression()
+        {
+            int level = Mathf.Max(1, hasRuntimeProgressionOverride ? runtimeEnemyLevel : 1);
+            int baseExp = Mathf.Max(1, hasRuntimeProgressionOverride ? runtimeBaseExp : enemyData.baseExp);
+
+            int levelDelta = Mathf.Max(0, level - 1);
+            float hpMultiplier = 1f + (levelDelta * 0.2f);
+            float damageMultiplier = 1f + (levelDelta * 0.12f);
+
+            model.enemyLevel = level;
+            model.baseExp = baseExp;
+            model.maxHealth = Mathf.Max(1, Mathf.RoundToInt(enemyData.maxHealth * hpMultiplier));
+            model.currentHealth = model.maxHealth;
+            model.damageAmount = Mathf.Max(1, Mathf.RoundToInt(enemyData.damageAmount * damageMultiplier));
         }
 
         private void RefreshPotentialTargets()
@@ -623,8 +645,17 @@ namespace CombatManager.Presenter
 
         // ✅ NEW: Get enemy ID
         public string GetEnemyId() => enemyId;
+        public string GetEnemyDisplayName()
+        {
+            if (enemyData != null && !string.IsNullOrWhiteSpace(enemyData.enemyName))
+                return enemyData.enemyName;
+
+            return string.IsNullOrWhiteSpace(enemyId) ? "Enemy" : enemyId;
+        }
         public string GetRuntimeEnemyId() => model.runtimeEnemyId;
         public EnemyDataSO GetEnemyData() => enemyData;
+        public int GetEnemyLevel() => model.enemyLevel;
+        public int GetBaseExp() => model.baseExp;
 
         public void SetRuntimeEnemyId(string runtimeId)
         {
@@ -640,6 +671,18 @@ namespace CombatManager.Presenter
             hasGuardAnchorOverride = true;
             guardAnchorOverride = anchorWorldPosition;
             ApplyGuardAnchorOverrideIfPresent();
+        }
+
+        public void SetRuntimeProgression(int enemyLevel, int baseExp)
+        {
+            hasRuntimeProgressionOverride = true;
+            runtimeEnemyLevel = Mathf.Max(1, enemyLevel);
+            runtimeBaseExp = Mathf.Max(1, baseExp);
+
+            if (!model.isInitialized)
+                return;
+
+            ApplyRuntimeProgression();
         }
 
         private void ApplyGuardAnchorOverrideIfPresent()
@@ -671,6 +714,7 @@ namespace CombatManager.Presenter
             {
                 // ✅ Fire achievement event with enemy ID - called ONCE
                 GameEventBus.FireEnemyKilled(enemyId, 1);
+                EnemySyncManager.Instance.ProcessEnemyDeathReward(model.runtimeEnemyId, model.enemyLevel, model.baseExp);
                 OnEnemyAuthoritativeDeath?.Invoke(model.runtimeEnemyId, enemyId, transform.position);
             }
 

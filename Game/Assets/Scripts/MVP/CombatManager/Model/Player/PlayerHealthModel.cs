@@ -23,6 +23,12 @@ namespace CombatManager.Model
         [Header("Invulnerability")]
         public bool isInvulnerable = false;
 
+        [Header("Passive Regeneration")]
+        public float regenDelaySeconds = 8f;
+        public float regenPercentPerSecond = 0.01f;
+        public float lastDamageTime = -999f;
+        public float regenAccumulator = 0f;
+
         #endregion
 
         #region Initialization
@@ -48,6 +54,10 @@ namespace CombatManager.Model
             maxHealth = 0;
             targetHealthValue = 0f;
             isInvulnerable = false;
+            regenDelaySeconds = 8f;
+            regenPercentPerSecond = 0.01f;
+            lastDamageTime = -999f;
+            regenAccumulator = 0f;
             isInitialized = false;
             deathHandled = false;
             playerEntity = null;

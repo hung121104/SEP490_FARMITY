@@ -19,6 +19,12 @@ export class EnemySpawnerActiveEnemy {
 
   @Prop({ required: true })
   z: number;
+
+  @Prop({ required: true, default: 1 })
+  enemyLevel: number;
+
+  @Prop({ required: true, default: 10 })
+  baseExp: number;
 }
 
 export const EnemySpawnerActiveEnemySchema = SchemaFactory.createForClass(EnemySpawnerActiveEnemy);

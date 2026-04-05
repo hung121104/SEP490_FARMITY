@@ -12,6 +12,8 @@ using UnityEngine.UI;
 /// </summary>
 public class LeaveRoomButton : MonoBehaviourPunCallbacks
 {
+    private const string TRACE = "[HPTRACE]";
+
     [SerializeField] private Button leaveButton;
 
     private void Awake()
@@ -54,15 +56,27 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
         // so it can be saved even if this GO is destroyed before BuildPayload runs.
         if (!PhotonNetwork.IsMasterClient)
         {
+            var stats = FindObjectOfType<CombatManager.Presenter.StatsPresenter>();
+            stats?.PushFinalStateToMaster();
+
             var stamina = StaminaView.FindLocal();
             stamina?.PushFinalStateToMaster();
+
+            var health = CombatManager.Presenter.PlayerHealthPresenter.FindLocal();
+            Debug.Log($"{TRACE} [LeaveRoomButton] Client leaving: pushing final stamina/health to master.");
+            health?.PushFinalStateToMaster();
             // Wait one frame so the RPC is flushed to the master before leaving.
             yield return null;
+            // Wait a short moment for the RPC to arrive at the master before we leave.
+            // One frame (~16 ms) is too short over real networks; 0.3 s gives the packet
+            // time to land so the master's BuildPayload() sees the final position.
+            yield return new WaitForSecondsRealtime(0.3f);
         }
 
         // Master client: trigger a save and wait for it to finish
         if (PhotonNetwork.IsMasterClient && WorldSaveManager.Instance != null)
         {
+            Debug.Log($"{TRACE} [LeaveRoomButton] Master leaving: ForceSave before LeaveRoom.");
             WorldSaveManager.Instance.ForceSave();
 
             // Wait until the save coroutine finishes (or 10 s timeout)
@@ -79,7 +93,10 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
             if (elapsed >= timeout)
                 Debug.LogWarning("[LeaveRoomButton] Save timed out — leaving room anyway.");
             else
+            {
+                Debug.Log($"{TRACE} [LeaveRoomButton] Master leave ForceSave completed.");
                 Debug.Log("[LeaveRoomButton] Save complete. Leaving room.");
+            }
         }
 
         PhotonNetwork.LeaveRoom();

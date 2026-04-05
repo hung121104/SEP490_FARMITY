@@ -13,9 +13,14 @@ export class UpsertCharacterDto {
 
   currentStamina?: number;
   viableStamina?: number;
+  currentHealth?: number;
 
   regenBoostMultiplier?: number;
   regenBoostRemaining?: number;
   toolEfficiencyReduction?: number;
   toolEfficiencyRemaining?: number;
+
+  level?: number;
+  currentExp?: number;
+  expToNextLevel?: number;
 }

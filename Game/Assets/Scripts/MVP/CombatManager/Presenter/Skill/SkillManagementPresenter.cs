@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using System.Collections;
 using System.Collections.Generic;
 using CombatManager.Model;
@@ -23,6 +24,7 @@ namespace CombatManager.Presenter
 
         [Header("Canvas Reference")]
         [SerializeField] private GameObject skillManagementCanvas;
+        [SerializeField] private CanvasGroup skillManagementCanvasGroup;
 
         [Header("Grid")]
         [SerializeField] private Transform skillGridContainer;
@@ -39,6 +41,7 @@ namespace CombatManager.Presenter
 
         private ISkillManagementService service;
         private List<SkillDisplayItemView> displayItems = new List<SkillDisplayItemView>();
+        private InputAction escapeCloseAction;
 
         #endregion
 
@@ -59,6 +62,16 @@ namespace CombatManager.Presenter
             }
             Instance = this;
             service = new SkillManagementService(model);
+            escapeCloseAction = new InputAction("CloseSkillManagementPanel", InputActionType.Button, "<Keyboard>/escape");
+            escapeCloseAction.performed += OnEscapeClosePanel;
+
+            if (skillManagementCanvasGroup == null && skillManagementCanvas != null)
+                skillManagementCanvasGroup = skillManagementCanvas.GetComponent<CanvasGroup>();
+        }
+
+        private void OnEnable()
+        {
+            escapeCloseAction?.Enable();
         }
 
         private void Start()
@@ -108,6 +121,13 @@ namespace CombatManager.Presenter
         private void OnDestroy()
         {
             CombatModePresenter.OnCombatModeChanged -= OnCombatModeChanged;
+
+            if (escapeCloseAction != null)
+            {
+                escapeCloseAction.performed -= OnEscapeClosePanel;
+                escapeCloseAction.Dispose();
+                escapeCloseAction = null;
+            }
         }
 
         #endregion
@@ -265,8 +285,22 @@ namespace CombatManager.Presenter
 
         private void SetPanelVisible(bool visible)
         {
-            if (skillManagementCanvas != null)
-                skillManagementCanvas.SetActive(visible);
+            if (visible)
+            {
+                if (skillManagementCanvasGroup != null)
+                    skillManagementCanvasGroup.Show();
+
+                if (skillManagementCanvas != null)
+                    skillManagementCanvas.SetActive(true);
+
+                return;
+            }
+
+            if (skillManagementCanvasGroup != null)
+                skillManagementCanvasGroup.Hide();
+
+            if (skillManagementCanvasGroup == null && skillManagementCanvas != null)
+                skillManagementCanvas.SetActive(false);
         }
 
         private void CancelAllDrags()
@@ -291,6 +325,14 @@ namespace CombatManager.Presenter
 
             if (inputManager.SkillCancel.WasPressedThisFrame() && service.IsAnySkillDragging())
                 CancelAllDrags();
+        }
+
+        private void OnEscapeClosePanel(InputAction.CallbackContext _)
+        {
+            if (!service.IsPanelOpen())
+                return;
+
+            HidePanel();
         }
 
         #endregion

@@ -110,6 +110,8 @@ public static class WorldApi
         [JsonProperty("x")] public float x;
         [JsonProperty("y")] public float y;
         [JsonProperty("z")] public float z;
+        [JsonProperty("enemyLevel")] public int enemyLevel;
+        [JsonProperty("baseExp")] public int baseExp;
     }
 
     [Serializable]
@@ -199,6 +201,18 @@ public static class WorldApi
 
             [JsonProperty("viableStamina", NullValueHandling = NullValueHandling.Ignore)]
             public float? viableStamina;
+
+            [JsonProperty("currentHealth", NullValueHandling = NullValueHandling.Ignore)]
+            public float? currentHealth;
+
+            [JsonProperty("level", NullValueHandling = NullValueHandling.Ignore)]
+            public int? level;
+
+            [JsonProperty("currentExp", NullValueHandling = NullValueHandling.Ignore)]
+            public int? currentExp;
+
+            [JsonProperty("expToNextLevel", NullValueHandling = NullValueHandling.Ignore)]
+            public int? expToNextLevel;
 
             [JsonProperty("regenBoostMultiplier", NullValueHandling = NullValueHandling.Ignore)]
             public float? regenBoostMultiplier;

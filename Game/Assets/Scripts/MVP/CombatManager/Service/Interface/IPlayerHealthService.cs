@@ -18,6 +18,7 @@ namespace CombatManager.Service
         #region Health Management
 
         void ChangeHealth(int amount);
+        bool TickPassiveRegeneration(float deltaTime);
         void RefreshHealthBar();
         void SetMaxHealth(int maxHealth);
         void SetCurrentHealth(int health);

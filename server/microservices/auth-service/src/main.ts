@@ -10,7 +10,7 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 async function bootstrap() {
   const app = await NestFactory.createMicroservice(AppModule, {
     transport: Transport.TCP,
-    options: { host: 'localhost', port: parseInt(process.env.PORT || '8877') },
+    options: { host: '0.0.0.0', port: parseInt(process.env.PORT || '8877') },
   });
   app.useGlobalPipes(new ValidationPipe());
   await app.listen();

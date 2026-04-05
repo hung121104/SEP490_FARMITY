@@ -10,6 +10,8 @@ namespace CombatManager.Service
     /// </summary>
     public class PlayerHealthService : IPlayerHealthService
     {
+        private const string TRACE = "[HPTRACE]";
+
         private PlayerHealthModel model;
         private IStatsService statsService;
 
@@ -35,6 +37,10 @@ namespace CombatManager.Service
             model.currentHealth = maxHealth;
             model.targetHealthValue = maxHealth;
             model.deathHandled = false;
+            model.lastDamageTime = -999f;
+            model.regenAccumulator = 0f;
+
+            Debug.Log($"{TRACE} [PlayerHealthService] Initialize set currentHealth=maxHealth={maxHealth} before restore/fetch phase.");
 
             // Update StatsService's current health
             statsService.SetCurrentHealth(maxHealth);
@@ -72,6 +78,12 @@ namespace CombatManager.Service
             model.currentHealth += amount;
             model.ClampHealth();
 
+            if (amount < 0)
+            {
+                model.lastDamageTime = Time.time;
+                model.regenAccumulator = 0f;
+            }
+
             // Update target for ease animation
             model.targetHealthValue = model.currentHealth;
 
@@ -93,6 +105,41 @@ namespace CombatManager.Service
             {
                 model.deathHandled = false;
             }
+        }
+
+        public bool TickPassiveRegeneration(float deltaTime)
+        {
+            if (!model.isInitialized || model.IsDead())
+                return false;
+
+            if (model.currentHealth >= model.maxHealth)
+            {
+                model.regenAccumulator = 0f;
+                return false;
+            }
+
+            float delay = Mathf.Max(0f, model.regenDelaySeconds);
+            if (Time.time - model.lastDamageTime < delay)
+                return false;
+
+            float regenPerSecond = Mathf.Max(0f, model.maxHealth * model.regenPercentPerSecond * 0.5f);
+            if (regenPerSecond <= 0f)
+                return false;
+
+            model.regenAccumulator += regenPerSecond * Mathf.Max(0f, deltaTime);
+            int healAmount = Mathf.FloorToInt(model.regenAccumulator);
+            if (healAmount <= 0)
+                return false;
+
+            model.regenAccumulator -= healAmount;
+            int before = model.currentHealth;
+            model.currentHealth = Mathf.Min(model.maxHealth, model.currentHealth + healAmount);
+            if (model.currentHealth == before)
+                return false;
+
+            model.targetHealthValue = model.currentHealth;
+            statsService?.SetCurrentHealth(model.currentHealth);
+            return true;
         }
 
         public void RefreshHealthBar()
@@ -184,7 +231,7 @@ namespace CombatManager.Service
 
         private void HandleDeath()
         {
-            Debug.Log("[PlayerHealthService] Player died!");
+            Debug.LogWarning($"{TRACE} [PlayerHealthService] Player died. current={model.currentHealth} max={model.maxHealth} isConnected={PhotonNetwork.IsConnected}");
             
             if (model.playerEntity != null)
             {

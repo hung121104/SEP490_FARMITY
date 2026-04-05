@@ -5575,7 +5575,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 932959019}
   planeZ: 0
-  mouseWorldPosition: {x: -1.3577303, y: 10.225405}
+  mouseWorldPosition: {x: -10.663979, y: 10.354681}
 --- !u!1 &2101468138
 GameObject:
   m_ObjectHideFlags: 0

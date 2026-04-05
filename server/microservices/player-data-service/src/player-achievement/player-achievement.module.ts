@@ -14,7 +14,10 @@ import { PlayerAchievementController } from './player-achievement.controller';
       {
         name: 'ADMIN_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 3006 },
+        options: {
+          host: process.env.ADMIN_SERVICE_HOST || 'localhost',
+          port: parseInt(process.env.ADMIN_SERVICE_PORT || '3006'),
+        },
       },
     ]),
   ],

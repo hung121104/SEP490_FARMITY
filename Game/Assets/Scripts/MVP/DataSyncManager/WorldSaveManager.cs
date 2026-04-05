@@ -37,6 +37,9 @@ using UnityEngine;
 /// </summary>
 public class WorldSaveManager : MonoBehaviourPunCallbacks
 {
+    private const string TRACE = "[HPTRACE]";
+    private const string PROGTRACE = "[PROGTRACE]";
+
     // ──────────────────────────────────────────────────── Inspector
 
     [Header("Timing")]
@@ -181,6 +184,17 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
             (success, _) => saved = success
         );
 
+        if (payload.characters != null && ShowDebugLogs)
+        {
+            foreach (var charUpdate in payload.characters)
+            {
+                if (string.IsNullOrEmpty(charUpdate.accountId) || !charUpdate.currentHealth.HasValue)
+                    continue;
+
+                Debug.Log($"{TRACE} [WorldSave] HTTP result={(saved ? "success" : "failed")} accountId='{charUpdate.accountId}' persistedHealthCandidate={charUpdate.currentHealth.Value}");
+            }
+        }
+
         if (saved)
         {
             // Sync saved stamina values back into PlayerDataManager so that if a joined
@@ -195,10 +209,22 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                         .FindIndex(p => p.accountId == charUpdate.accountId);
                     if (idx < 0) continue;
                     var pd = PlayerDataManager.Instance.players[idx];
+                    // Sync position so the fallback path always has the last-saved position,
+                    // not the stale initial API-load value.
+                    pd.positionX = charUpdate.positionX;
+                    pd.positionY = charUpdate.positionY;
                     if (charUpdate.currentStamina.HasValue)
                         pd.currentStamina = charUpdate.currentStamina.Value;
                     if (charUpdate.viableStamina.HasValue)
                         pd.viableStamina = charUpdate.viableStamina.Value;
+                    if (charUpdate.currentHealth.HasValue)
+                        pd.currentHealth = charUpdate.currentHealth.Value;
+                    if (charUpdate.level.HasValue)
+                        pd.level = charUpdate.level.Value;
+                    if (charUpdate.currentExp.HasValue)
+                        pd.currentExp = charUpdate.currentExp.Value;
+                    if (charUpdate.expToNextLevel.HasValue)
+                        pd.expToNextLevel = charUpdate.expToNextLevel.Value;
                     if (charUpdate.regenBoostMultiplier.HasValue)
                         pd.regenBoostMultiplier = charUpdate.regenBoostMultiplier.Value;
                     if (charUpdate.regenBoostRemaining.HasValue)
@@ -357,6 +383,45 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                 positionY = go.transform.position.y,
             };
 
+            if (CombatManager.Presenter.StatsPresenter.TryGetCachedProgression(accountId, out var cachedProgression))
+            {
+                charUpdate.level = cachedProgression.level;
+                charUpdate.currentExp = cachedProgression.currentExp;
+                charUpdate.expToNextLevel = cachedProgression.expToNextLevel;
+                if (ShowDebugLogs)
+                    Debug.Log($"{PROGTRACE} [WorldSave] BuildPayload live accountId='{accountId}' from Stats cache lv={cachedProgression.level} exp={cachedProgression.currentExp}/{cachedProgression.expToNextLevel}");
+            }
+            else if (PlayerDataManager.Instance != null)
+            {
+                int progressionIndex = PlayerDataManager.Instance.players.FindIndex(p => p.accountId == accountId);
+                if (progressionIndex >= 0)
+                {
+                    var pd = PlayerDataManager.Instance.players[progressionIndex];
+                    charUpdate.level = pd.level;
+                    charUpdate.currentExp = pd.currentExp;
+                    charUpdate.expToNextLevel = pd.expToNextLevel;
+                    if (ShowDebugLogs)
+                        Debug.Log($"{PROGTRACE} [WorldSave] BuildPayload live accountId='{accountId}' from PlayerData lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel}");
+                }
+            }
+
+            if (CombatManager.Presenter.PlayerHealthPresenter.TryGetCachedHealthForActor(pv.OwnerActorNr, out int currentHealth))
+            {
+                charUpdate.currentHealth = currentHealth;
+                if (ShowDebugLogs)
+                    Debug.Log($"{TRACE} [WorldSave] BuildPayload live player accountId='{accountId}' actor={pv.OwnerActorNr} cachedHealth={currentHealth}");
+            }
+            else if (PlayerDataManager.Instance != null)
+            {
+                int pdIndex = PlayerDataManager.Instance.players.FindIndex(p => p.accountId == accountId);
+                if (pdIndex >= 0)
+                {
+                    charUpdate.currentHealth = PlayerDataManager.Instance.players[pdIndex].currentHealth;
+                    if (ShowDebugLogs)
+                        Debug.Log($"{TRACE} [WorldSave] BuildPayload live player accountId='{accountId}' using PlayerData health={charUpdate.currentHealth}");
+                }
+            }
+
             // Include appearance configIds if PlayerAppearanceSync is present
             var appearance = go.GetComponent<PlayerAppearanceSync>();
             if (appearance != null)
@@ -414,7 +479,15 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
                     toolConfigId   = pd.toolConfigId   ?? string.Empty,
                     currentStamina = pd.currentStamina,
                     viableStamina  = pd.viableStamina,
+                    currentHealth  = pd.currentHealth,
+                    level          = pd.level,
+                    currentExp     = pd.currentExp,
+                    expToNextLevel = pd.expToNextLevel,
                 };
+                if (ShowDebugLogs)
+                    Debug.Log($"{TRACE} [WorldSave] BuildPayload fallback accountId='{pd.accountId}' health={pd.currentHealth}");
+                if (ShowDebugLogs)
+                    Debug.Log($"{PROGTRACE} [WorldSave] BuildPayload fallback accountId='{pd.accountId}' lv={pd.level} exp={pd.currentExp}/{pd.expToNextLevel}");
                 if (pd.regenBoostRemaining > 0f)
                 {
                     fallback.regenBoostMultiplier = pd.regenBoostMultiplier;
