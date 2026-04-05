@@ -1186,6 +1186,8 @@ Notes for web form behavior:
 - If `ownership = WeaponSkill`, require `requiredWeaponType` > 0.
 - If `category != Buff`, set `buffSubCategory=None` and all `buff*` numeric fields to `0`.
 - Heal skills (first wave): use `category=Buff` with `buffSubCategory=InstantHeal` or `HealOverTime`.
+- For `StaminaRegen` / `MoveSpeedPercent`, use `buffValue > 0` and `buffDuration > 0`.
+- `buffValue` accepts either multiplier (e.g. `1.2`) or percent (e.g. `20` means +20% => `1.2`).
 - If `unlockLevel` is omitted, backend defaults it to `1` (visible from level 1).
 - Skill Management panel visibility rule (game client): show only `PlayerSkill` entries where `playerLevel >= unlockLevel`.
 - Recommended admin validation: prevent values `< 1` for `unlockLevel`.

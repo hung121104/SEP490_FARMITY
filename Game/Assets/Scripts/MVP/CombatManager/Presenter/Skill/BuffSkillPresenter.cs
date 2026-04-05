@@ -98,8 +98,7 @@ namespace CombatManager.Presenter
                     ApplyStaminaRegen(skillData);
                     break;
                 case BuffSkillSubCategory.MoveSpeedPercent:
-                    // Movement system currently has no runtime API for timed speed multiplier.
-                    Debug.LogWarning($"[BuffSkillPresenter] MoveSpeedPercent is configured but not implemented yet. Skill={skillData.skillName}");
+                    ApplyMoveSpeedPercent(skillData);
                     break;
                 default:
                     Debug.LogWarning($"[BuffSkillPresenter] Unsupported Buff sub-category: {skillData.buffSubCategory} (Skill={skillData.skillName})");
@@ -181,6 +180,31 @@ namespace CombatManager.Presenter
 
             staminaView.ApplyConsumableEffects(0f, regenMultiplier, 0f, duration);
             Debug.Log($"[BuffSkillPresenter] StaminaRegen applied: x{regenMultiplier:F2} for {duration:F1}s | Skill={skillData.skillName}");
+        }
+
+        private void ApplyMoveSpeedPercent(SkillData skillData)
+        {
+            PlayerMovement movement = playerMovement;
+            if (movement == null && playerTransform != null)
+                movement = playerTransform.GetComponent<PlayerMovement>();
+
+            if (movement == null)
+            {
+                Debug.LogWarning("[BuffSkillPresenter] MoveSpeedPercent failed: local PlayerMovement not found.");
+                return;
+            }
+
+            float speedMultiplier = ConvertPercentOrMultiplier(skillData.buffValue);
+            float duration = Mathf.Max(0.1f, skillData.buffDuration);
+
+            if (speedMultiplier <= 1f)
+            {
+                Debug.LogWarning($"[BuffSkillPresenter] MoveSpeedPercent skipped: buffValue={skillData.buffValue} -> multiplier={speedMultiplier}");
+                return;
+            }
+
+            movement.ApplyExternalSpeedBuff(speedMultiplier, duration);
+            Debug.Log($"[BuffSkillPresenter] MoveSpeedPercent applied: x{speedMultiplier:F2} for {duration:F1}s | Skill={skillData.skillName}");
         }
 
         private static float ConvertPercentOrMultiplier(float rawValue)
