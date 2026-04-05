@@ -1862,9 +1862,9 @@ MonoBehaviour:
   month: 1
   week: 1
   day: 1
-  hour: 0
+  hour: 7
   minute: 0
-  timeSpeed: 6
+  timeSpeed: 0
 --- !u!4 &76351688
 Transform:
   m_ObjectHideFlags: 0
