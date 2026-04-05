@@ -77,6 +77,9 @@ namespace CombatManager.Presenter
                 syncComponent = gameObject.AddComponent<SkillLoadoutSyncService>();
             }
             loadoutSyncService = syncComponent;
+
+            EnsureBuffPresenter();
+            EnsureAoePresenter();
         }
 
         private void EnsureBuffPresenter()
