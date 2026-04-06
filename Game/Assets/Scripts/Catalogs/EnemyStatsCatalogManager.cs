@@ -23,6 +23,10 @@ public class EnemyStatsCatalogManager : MonoBehaviour
 
     private bool _isRefreshing;
     private string _lastCatalogHash = string.Empty;
+    private bool _bootstrapInProgress;
+    private bool _hasBootstrapped;
+    private string _bootstrappedWorldId = string.Empty;
+    private bool _lastRefreshSucceeded;
 
     public bool IsReady { get; private set; }
 
@@ -55,17 +59,45 @@ public class EnemyStatsCatalogManager : MonoBehaviour
 
     public IEnumerator BootstrapAndRegisterIfHost(string worldId, string authToken)
     {
+        string normalizedWorldId = (worldId ?? string.Empty).Trim();
+        if (_hasBootstrapped &&
+            string.Equals(_bootstrappedWorldId, normalizedWorldId, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!_isRefreshing)
+                StartCoroutine(PollRefreshLoop());
+            yield break;
+        }
+
+        if (_bootstrapInProgress)
+            yield break;
+
+        _bootstrapInProgress = true;
         IsReady = false;
 
         yield return RefreshCatalogFromServer();
+        if (!_lastRefreshSucceeded)
+        {
+            IsReady = false;
+            _bootstrapInProgress = false;
+            yield break;
+        }
 
         if (Photon.Pun.PhotonNetwork.IsMasterClient)
         {
             yield return RegisterMissingFromSpawner(worldId, authToken);
             yield return RefreshCatalogFromServer();
+            if (!_lastRefreshSucceeded)
+            {
+                IsReady = false;
+                _bootstrapInProgress = false;
+                yield break;
+            }
         }
 
         IsReady = true;
+        _hasBootstrapped = true;
+        _bootstrappedWorldId = normalizedWorldId;
+        _bootstrapInProgress = false;
 
         if (!_isRefreshing)
             StartCoroutine(PollRefreshLoop());
@@ -95,6 +127,8 @@ public class EnemyStatsCatalogManager : MonoBehaviour
 
     private IEnumerator RefreshCatalogFromServer()
     {
+        _lastRefreshSucceeded = false;
+
         string url = $"{AppConfig.ApiBaseUrl.TrimEnd('/')}/game-data/enemy-stats/catalog";
         using UnityWebRequest request = UnityWebRequest.Get(url);
         request.timeout = 15;
@@ -122,7 +156,10 @@ public class EnemyStatsCatalogManager : MonoBehaviour
 
         string hash = request.downloadHandler.text;
         if (hash == _lastCatalogHash)
+        {
+            _lastRefreshSucceeded = true;
             yield break;
+        }
 
         _lastCatalogHash = hash;
 
@@ -140,6 +177,7 @@ public class EnemyStatsCatalogManager : MonoBehaviour
 
         ApplyToKnownEnemyDefinitions();
         ApplyToActiveEnemies();
+        _lastRefreshSucceeded = true;
         Debug.Log($"[EnemyStatsCatalogManager] Loaded {_entries.Count} enemy stat entries.");
     }
 
