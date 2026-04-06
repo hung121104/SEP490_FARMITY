@@ -35,6 +35,9 @@ namespace CombatManager.View
         private Vector3 originalLocalPosition;
         private Transform hotbarParent;
         private bool isDragging = false;
+        private RectTransform dragVisualRect;
+        private Image dragVisualImage;
+        private Canvas dragRootCanvas;
         private Color defaultSlotBackgroundColor = Color.white;
         private bool hasDefaultSlotBackgroundColor = false;
 
@@ -249,9 +252,15 @@ namespace CombatManager.View
             originalLocalPosition = rectTransform.localPosition;
             hotbarParent = transform.parent;
 
+            CreateDragVisual();
+            UpdateDragVisual(eventData.position);
+
+            // Keep the slot anchored in layout and show it as temporarily empty while dragging.
+            SetEmptyVisual();
+
             if (canvasGroup != null)
             {
-                canvasGroup.alpha = model != null ? 0.6f : 0.6f;
+                canvasGroup.alpha = 1f;
                 canvasGroup.blocksRaycasts = false;
             }
 
@@ -261,7 +270,7 @@ namespace CombatManager.View
         public void OnDrag(PointerEventData eventData)
         {
             if (!isDragging) return;
-            rectTransform.position = eventData.position;
+            UpdateDragVisual(eventData.position);
         }
 
         public void OnEndDrag(PointerEventData eventData)
@@ -276,8 +285,10 @@ namespace CombatManager.View
                 canvasGroup.alpha = 1f;
             }
 
-            // Return to original position
-            rectTransform.localPosition = originalLocalPosition;
+            DestroyDragVisual();
+
+            // Restore visual in case no swap/unequip happens.
+            RefreshDisplay(currentSkillData);
 
             // Check if dropped OUTSIDE any slot → unequip
             if (eventData.pointerCurrentRaycast.gameObject == null
@@ -300,6 +311,68 @@ namespace CombatManager.View
         #endregion
 
         #region Helpers
+
+        private void CreateDragVisual()
+        {
+            if (dragVisualRect != null)
+                return;
+
+            if (currentSkillData == null || currentSkillData.skillIcon == null)
+                return;
+
+            Canvas parentCanvas = GetComponentInParent<Canvas>();
+            if (parentCanvas == null)
+                return;
+
+            dragRootCanvas = parentCanvas.rootCanvas != null ? parentCanvas.rootCanvas : parentCanvas;
+
+            GameObject visualGO = new GameObject($"DraggedSkillIcon_{slotIndex}", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
+            dragVisualRect = visualGO.GetComponent<RectTransform>();
+            dragVisualImage = visualGO.GetComponent<Image>();
+            CanvasGroup visualCanvasGroup = visualGO.GetComponent<CanvasGroup>();
+
+            dragVisualRect.SetParent(dragRootCanvas.transform, false);
+            dragVisualRect.SetAsLastSibling();
+            dragVisualRect.sizeDelta = rectTransform != null ? rectTransform.rect.size : new Vector2(64f, 64f);
+
+            dragVisualImage.sprite = currentSkillData.skillIcon;
+            dragVisualImage.color = Color.white;
+            dragVisualImage.raycastTarget = false;
+
+            visualCanvasGroup.blocksRaycasts = false;
+            visualCanvasGroup.interactable = false;
+            visualCanvasGroup.alpha = 0.95f;
+        }
+
+        private void UpdateDragVisual(Vector2 screenPosition)
+        {
+            if (dragVisualRect == null || dragRootCanvas == null)
+                return;
+
+            Camera cam = dragRootCanvas.renderMode == RenderMode.ScreenSpaceOverlay
+                ? null
+                : dragRootCanvas.worldCamera;
+
+            RectTransform rootRect = dragRootCanvas.transform as RectTransform;
+            if (rootRect == null)
+            {
+                dragVisualRect.position = screenPosition;
+                return;
+            }
+
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rootRect, screenPosition, cam, out Vector2 localPoint))
+                dragVisualRect.anchoredPosition = localPoint;
+        }
+
+        private void DestroyDragVisual()
+        {
+            if (dragVisualRect != null)
+                Destroy(dragVisualRect.gameObject);
+
+            dragVisualRect = null;
+            dragVisualImage = null;
+            dragRootCanvas = null;
+        }
 
         private bool IsManagementPanelOpen()
         {
@@ -328,6 +401,9 @@ namespace CombatManager.View
 
             if (rectTransform != null)
                 rectTransform.localPosition = originalLocalPosition;
+
+            DestroyDragVisual();
+            RefreshDisplay(currentSkillData);
         }
 
         #endregion

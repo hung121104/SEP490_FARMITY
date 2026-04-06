@@ -30,6 +30,9 @@ namespace CombatManager.View
         private RectTransform rectTransform;
         private Vector3 originalPosition;
         private Transform gridParent;
+        private RectTransform dragVisualRect;
+        private Image dragVisualImage;
+        private Canvas dragRootCanvas;
 
         // Events → Presenter listens
         public System.Action<SkillDisplayItemView> OnBeginDragEvent;
@@ -120,16 +123,18 @@ namespace CombatManager.View
             originalPosition = rectTransform.localPosition;
             gridParent = transform.parent;
 
+            CreateDragVisual();
+            UpdateDragVisual(eventData.position);
+
+            // Keep this item anchored in the grid but dim it to indicate active drag source.
+            ApplyDraggingSourceVisual();
+
             // Reduce opacity, disable raycast so drop targets can receive events
             if (canvasGroup != null)
             {
-                canvasGroup.alpha = 0.85f;
+                canvasGroup.alpha = 0.6f;
                 canvasGroup.blocksRaycasts = false;
             }
-
-            // Hide description during drag (mirrors old behavior)
-            if (skillDescriptionText != null)
-                skillDescriptionText.enabled = false;
 
             OnBeginDragEvent?.Invoke(this);
             Debug.Log($"[SkillDisplayItemView] Begin drag: {skillData.skillName}");
@@ -139,8 +144,8 @@ namespace CombatManager.View
         {
             if (!isDragging) return;
 
-            // ✅ Item itself follows mouse - mirrors old SkillDisplayItem.OnDrag
-            rectTransform.position = eventData.position;
+            // Floating preview follows mouse while source item stays anchored.
+            UpdateDragVisual(eventData.position);
 
             OnDragEvent?.Invoke(this);
         }
@@ -155,16 +160,12 @@ namespace CombatManager.View
             if (canvasGroup != null)
                 canvasGroup.blocksRaycasts = true;
 
-            // Return to original position
-            rectTransform.localPosition = originalPosition;
-
             // Restore opacity
             if (canvasGroup != null)
                 canvasGroup.alpha = 1f;
 
-            // Restore description
-            if (skillDescriptionText != null)
-                skillDescriptionText.enabled = true;
+            DestroyDragVisual();
+            RefreshDisplay();
 
             // Rebuild grid layout
             if (gridParent != null)
@@ -242,13 +243,103 @@ namespace CombatManager.View
             if (rectTransform != null)
                 rectTransform.localPosition = originalPosition;
 
-            if (skillDescriptionText != null)
-                skillDescriptionText.enabled = true;
+            DestroyDragVisual();
+            RefreshDisplay();
 
             if (gridParent != null)
                 LayoutRebuilder.ForceRebuildLayoutImmediate(gridParent as RectTransform);
 
             Debug.Log($"[SkillDisplayItemView] Force reset: {skillData?.skillName}");
+        }
+
+        private void ApplyDraggingSourceVisual()
+        {
+            if (skillIcon != null && skillIcon.sprite != null)
+                skillIcon.color = new Color(1f, 1f, 1f, 0.8f);
+
+            if (skillNameText != null)
+                skillNameText.alpha = 0.85f;
+
+            if (skillDescriptionText != null)
+                skillDescriptionText.alpha = 0.85f;
+        }
+
+        private void CreateDragVisual()
+        {
+            if (dragVisualRect != null)
+                return;
+
+            if (skillData == null)
+                return;
+
+            Canvas parentCanvas = GetComponentInParent<Canvas>();
+            if (parentCanvas == null)
+                return;
+
+            dragRootCanvas = parentCanvas.rootCanvas != null ? parentCanvas.rootCanvas : parentCanvas;
+
+            GameObject visualGO = Instantiate(gameObject, dragRootCanvas.transform);
+            visualGO.name = $"DraggedSkillItem_{skillData.skillName}";
+            dragVisualRect = visualGO.GetComponent<RectTransform>();
+            dragVisualImage = visualGO.GetComponent<Image>();
+
+            SkillDisplayItemView visualView = visualGO.GetComponent<SkillDisplayItemView>();
+            if (visualView != null)
+                visualView.enabled = false;
+
+            Button[] buttons = visualGO.GetComponentsInChildren<Button>(true);
+            foreach (Button button in buttons)
+                button.interactable = false;
+
+            Graphic[] graphics = visualGO.GetComponentsInChildren<Graphic>(true);
+            foreach (Graphic graphic in graphics)
+                graphic.raycastTarget = false;
+
+            CanvasGroup visualCanvasGroup = visualGO.GetComponent<CanvasGroup>();
+            if (visualCanvasGroup == null)
+                visualCanvasGroup = visualGO.AddComponent<CanvasGroup>();
+
+            dragVisualRect.SetAsLastSibling();
+            dragVisualRect.anchorMin = new Vector2(0.5f, 0.5f);
+            dragVisualRect.anchorMax = new Vector2(0.5f, 0.5f);
+            dragVisualRect.pivot = new Vector2(0.5f, 0.5f);
+
+            if (rectTransform != null)
+                dragVisualRect.sizeDelta = rectTransform.rect.size;
+
+            visualCanvasGroup.blocksRaycasts = false;
+            visualCanvasGroup.interactable = false;
+            visualCanvasGroup.alpha = 0.95f;
+        }
+
+        private void UpdateDragVisual(Vector2 screenPosition)
+        {
+            if (dragVisualRect == null || dragRootCanvas == null)
+                return;
+
+            Camera cam = dragRootCanvas.renderMode == RenderMode.ScreenSpaceOverlay
+                ? null
+                : dragRootCanvas.worldCamera;
+
+            RectTransform rootRect = dragRootCanvas.transform as RectTransform;
+            if (rootRect == null)
+            {
+                dragVisualRect.position = screenPosition;
+                return;
+            }
+
+            if (RectTransformUtility.ScreenPointToWorldPointInRectangle(rootRect, screenPosition, cam, out Vector3 worldPoint))
+                dragVisualRect.position = worldPoint;
+        }
+
+        private void DestroyDragVisual()
+        {
+            if (dragVisualRect != null)
+                Destroy(dragVisualRect.gameObject);
+
+            dragVisualRect = null;
+            dragVisualImage = null;
+            dragRootCanvas = null;
         }
 
         #endregion
