@@ -12,6 +12,7 @@ import { CreateAdminDto } from './dto/create-admin.dto';
 import { SessionService } from './session.service';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import * as crypto from 'crypto';
 import { firstValueFrom } from 'rxjs';
 import { ResetOtpTemplate } from './templates/reset-otp.template';
