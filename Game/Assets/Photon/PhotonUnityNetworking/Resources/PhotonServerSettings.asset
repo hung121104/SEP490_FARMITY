@@ -71,6 +71,8 @@ MonoBehaviour:
   - RPC_RestoreProgressionFromMaster
   - RPC_CombatRestoreHealthFromMaster
   - RPC_CombatRestoreProgressionFromMaster
+  - RPC_SyncAllAppearance
+  - RPC_SyncAppearanceSlot
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1
