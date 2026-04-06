@@ -4,16 +4,28 @@ import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
-import { RequestAdminResetDto } from './dto/request-admin-reset.dto';
-import { ConfirmAdminResetDto } from './dto/confirm-admin-reset.dto';
+import { RequestResetDto } from './dto/request-admin-reset.dto';
+import { ConfirmResetDto } from './dto/confirm-admin-reset.dto';
+import { VerifyRegistrationDto } from './dto/verify-registration.dto';
+import { GetDashboardAnalyticsDto } from './dto/get-dashboard-analytics.dto';
+import { AnalyticsService } from './analytics.service';
+import { PlayerHeartbeatDto } from './dto/player-heartbeat.dto';
 
 @Controller()
 export class AccountController {
-  constructor(private readonly accountService: AccountService) {}
+  constructor(
+    private readonly accountService: AccountService,
+    private readonly analyticsService: AnalyticsService,
+  ) {}
 
   @MessagePattern('register')
   async register(@Body() createAccountDto: CreateAccountDto) {
-    return this.accountService.create(createAccountDto);
+    return this.accountService.initiateRegistration(createAccountDto);
+  }
+
+  @MessagePattern('verify-registration')
+  async verifyRegistration(@Body() dto: VerifyRegistrationDto) {
+    return this.accountService.verifyRegistration(dto.email, dto.otp);
   }
 
   @MessagePattern('login-ingame')
@@ -24,6 +36,39 @@ export class AccountController {
   @MessagePattern('find-account')
   async findAccount(@Body() accountId: string) {
     return this.accountService.findById(accountId);
+  }
+
+  @MessagePattern('get-player-achievements')
+  async getPlayerAchievements(@Body() accountId: string) {
+    return this.accountService.getPlayerAchievements(accountId);
+  }
+
+  @MessagePattern('update-achievement-progress')
+  async updateAchievementProgress(
+    @Body()
+    dto: {
+      accountId: string;
+      achievementId: string;
+      requirementIndex: number;
+      progress: number;
+    },
+  ) {
+    return this.accountService.updateAchievementProgress(dto);
+  }
+
+  @MessagePattern('update-achievement-progress-batch')
+  async updateAchievementProgressBatch(
+    @Body()
+    dto: {
+      accountId: string;
+      updates: Array<{
+        achievementId: string;
+        requirementIndex: number;
+        progress: number;
+      }>;
+    },
+  ) {
+    return this.accountService.updateAchievementProgressBatch(dto);
   }
 
   // Admin login (web management)
@@ -56,15 +101,28 @@ export class AccountController {
     return this.accountService.logout(token);
   }
 
-  // Admin password reset request
-  @MessagePattern('admin-reset-request')
-  async adminResetRequest(@Body() dto: RequestAdminResetDto) {
-    return this.accountService.requestAdminPasswordReset(dto.email);
+  // Password reset request
+  @MessagePattern('reset-request')
+  async resetRequest(@Body() dto: RequestResetDto) {
+    return this.accountService.requestPasswordReset(dto.email);
   }
 
-  // Admin password reset confirmation
-  @MessagePattern('admin-reset-confirm')
-  async adminResetConfirm(@Body() dto: ConfirmAdminResetDto) {
-    return this.accountService.confirmAdminPasswordReset(dto.email, dto.otp, dto.newPassword);
+  // Password reset confirmation
+  @MessagePattern('reset-confirm')
+  async resetConfirm(@Body() dto: ConfirmResetDto) {
+    return this.accountService.confirmPasswordReset(dto.email, dto.otp, dto.newPassword);
+  }
+
+  @MessagePattern('get-dashboard-analytics')
+  async getDashboardAnalytics(@Body() dto: GetDashboardAnalyticsDto) {
+    return this.analyticsService.getDashboardAnalytics(dto);
+  }
+
+  @MessagePattern('player-heartbeat')
+  async playerHeartbeat(
+    @Body()
+    dto: PlayerHeartbeatDto & { sid?: string; sub?: string },
+  ) {
+    return this.accountService.playerHeartbeat(dto);
   }
 }

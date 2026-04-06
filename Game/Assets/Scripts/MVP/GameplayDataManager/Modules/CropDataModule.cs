@@ -1,0 +1,341 @@
+using UnityEngine;
+using System.Collections.Generic;
+
+/// <summary>
+/// Manages all crop and tilling data in the world.
+/// Operates on UnifiedChunkData — the same chunk objects shared with StructureDataModule.
+/// </summary>
+public class CropDataModule : IWorldDataModule
+{
+    public string ModuleName => "Crop Data";
+
+    private WorldDataManager manager;
+    private bool showDebugLogs = true;
+
+    // sections[sectionId][chunkPosition] = UnifiedChunkData
+    private Dictionary<int, Dictionary<Vector2Int, UnifiedChunkData>> sections =
+        new Dictionary<int, Dictionary<Vector2Int, UnifiedChunkData>>();
+
+    public void Initialize(WorldDataManager manager)
+    {
+        this.manager       = manager;
+        this.showDebugLogs = manager.showDebugLogs;
+
+        // Only create the section-level dictionaries here.
+        // Individual UnifiedChunkData instances are allocated lazily on first access via GetChunk(),
+        // which avoids pre-allocating empty dictionaries for all 24+ chunks before any data arrives.
+        foreach (var config in manager.sectionConfigs)
+        {
+            if (!config.IsActive) continue;
+            sections[config.SectionId] = new Dictionary<Vector2Int, UnifiedChunkData>();
+        }
+
+        if (showDebugLogs)
+            Debug.Log($"[CropDataModule] Initialized {sections.Count} section(s) (chunks are lazy-allocated on first access)");
+    }
+
+    // ── Chunk/Section access ──────────────────────────────────────────────
+
+    public UnifiedChunkData GetChunk(int sectionId, Vector2Int chunkPos)
+    {
+        if (!sections.TryGetValue(sectionId, out var section)) return null;
+
+        if (!section.TryGetValue(chunkPos, out var chunk))
+        {
+            // Lazy-allocate on first access: find the matching section config to fill metadata
+            WorldSectionConfig cfg = null;
+            foreach (var c in manager.sectionConfigs)
+            {
+                if (c.SectionId == sectionId && c.ContainsChunk(chunkPos)) { cfg = c; break; }
+            }
+            if (cfg == null) return null; // chunk position not in this section
+
+            chunk = new UnifiedChunkData
+            {
+                ChunkX    = chunkPos.x,
+                ChunkY    = chunkPos.y,
+                SectionId = sectionId,
+                IsLoaded  = false
+            };
+            section[chunkPos] = chunk;
+        }
+
+        return chunk;
+    }
+
+    public Dictionary<Vector2Int, UnifiedChunkData> GetSection(int sectionId)
+    {
+        return sections.TryGetValue(sectionId, out var section) ? section : null;
+    }
+
+    // ── Planting ──────────────────────────────────────────────────────────
+
+    public bool PlantCropAtWorldPosition(Vector3 worldPos, string plantId)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
+            return false;
+
+        bool success = chunk.PlantCrop(plantId, wx, wy);
+        if (success && showDebugLogs)
+        {
+            var config = manager.GetSectionConfig(sectionId);
+            Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+            Debug.Log($"✓ Planted '{plantId}' at ({wx},{wy}) [Chunk: {chunkPos}, Section: {config?.SectionName}]");
+        }
+        return success;
+    }
+
+    public bool RemoveCropAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.RemoveCrop(wx, wy);
+    }
+
+    // ── Tilling ───────────────────────────────────────────────────────────
+
+    public bool TillTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
+            return false;
+
+        bool success = chunk.TillTile(wx, wy);
+        if (success && showDebugLogs)
+        {
+            var config = manager.GetSectionConfig(sectionId);
+            Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+            Debug.Log($"✓ Tilled tile at ({wx},{wy}) [Chunk: {chunkPos}, Section: {config?.SectionName}]");
+        }
+        return success;
+    }
+
+    public bool UntillTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.UntillTile(wx, wy);
+    }
+
+    public bool IsTilledAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.IsTilled(wx, wy);
+    }
+
+    // ── Queries ───────────────────────────────────────────────────────────
+
+    public bool HasCropAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.HasCrop(wx, wy);
+    }
+
+    public bool TryGetCropAtWorldPosition(Vector3 worldPos, out UnifiedChunkData.CropTileData crop)
+    {
+        crop = default;
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.TryGetCrop(wx, wy, out crop);
+    }
+
+    // ── Growth ────────────────────────────────────────────────────────────
+
+    public bool UpdateCropStage(Vector3 worldPos, byte newStage)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.UpdateCropStage(wx, wy, newStage);
+    }
+
+    public bool UpdateGrowthTimer(Vector3 worldPos, float newTimer)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.UpdateGrowthTimer(wx, wy, newTimer);
+    }
+
+    public bool AddGrowthTime(Vector3 worldPos, float deltaSeconds)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.AddGrowthTime(wx, wy, deltaSeconds);
+    }
+
+    // ── Pollen ────────────────────────────────────────────────────────────
+
+    public bool IncrementPollenHarvestCount(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.IncrementPollenHarvestCount(wx, wy);
+    }
+
+    // ── Crossbreeding ─────────────────────────────────────────────────────
+
+    public bool SetCropPlantId(Vector3 worldPos, string newPlantId, byte startStage)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        bool ok = chunk.SetCropPlantId(wx, wy, newPlantId, startStage);
+        if (ok && showDebugLogs)
+            Debug.Log($"[CropDataModule] ✓ Crossbred crop at ({wx},{wy}) → '{newPlantId}' stage {startStage}");
+        return ok;
+    }
+
+    public bool SetPollinatedAtWorldPosition(Vector3 worldPos, bool value)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.SetPollinated(wx, wy, value);
+    }
+
+    public bool IsPollinatedAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.IsPollinatedAt(wx, wy);
+    }
+
+    // ── Watering ──────────────────────────────────────────────────────────
+
+    public bool WaterTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
+            return false;
+
+        bool success = chunk.WaterTile(wx, wy);
+        if (success && showDebugLogs)
+        {
+            Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+            Debug.Log($"✓ Watered tile at ({wx},{wy}) [Chunk: {chunkPos}, Section: {sectionId}]");
+        }
+        return success;
+    }
+
+    public bool UnwaterTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.UnwaterTile(wx, wy);
+    }
+
+    public bool IsWateredAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.IsWateredAt(wx, wy);
+    }
+
+    public bool AddWaterDecayTime(Vector3 worldPos, float deltaMinutes)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.AddWaterDecayTime(wx, wy, deltaMinutes);
+    }
+
+    // ── Fertilizer ────────────────────────────────────────────────────────
+
+    public bool FertilizeTileAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out int sectionId))
+            return false;
+
+        bool success = chunk.FertilizeTile(wx, wy);
+        if (success && showDebugLogs)
+        {
+            Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+            Debug.Log($"✓ Fertilized tile at ({wx},{wy}) [Chunk: {chunkPos}, Section: {sectionId}]");
+        }
+        return success;
+    }
+
+    public bool IsFertilizedAtWorldPosition(Vector3 worldPos)
+    {
+        if (!TryResolveChunk(worldPos, out UnifiedChunkData chunk, out int wx, out int wy, out _))
+            return false;
+        return chunk.IsFertilizedAt(wx, wy);
+    }
+
+    // ── IWorldDataModule ──────────────────────────────────────────────────
+
+    public void ClearAll()
+    {
+        foreach (var section in sections.Values)
+            foreach (var chunk in section.Values)
+                chunk.Clear();
+
+        if (showDebugLogs) Debug.Log("[CropDataModule] All data cleared");
+    }
+
+    public float GetMemoryUsageMB()
+    {
+        int totalTiles = 0;
+        foreach (var section in sections.Values)
+            foreach (var chunk in section.Values)
+                totalTiles += chunk.tiles.Count;
+
+        float bytes = totalTiles * 40f; // avg slot size estimate
+        bytes += sections.Count * 1000f;
+        return bytes / (1024f * 1024f);
+    }
+
+    public Dictionary<string, object> GetStats()
+    {
+        int totalChunks = 0, loadedChunks = 0, totalCrops = 0, totalTilledTiles = 0, chunksWithCrops = 0;
+
+        foreach (var section in sections.Values)
+        {
+            totalChunks += section.Count;
+            foreach (var chunk in section.Values)
+            {
+                if (chunk.IsLoaded) loadedChunks++;
+                int cropCount = chunk.GetCropCount();
+                totalCrops        += cropCount;
+                totalTilledTiles  += chunk.GetTilledCount();
+                if (cropCount > 0) chunksWithCrops++;
+            }
+        }
+
+        return new Dictionary<string, object>
+        {
+            ["TotalChunks"]     = totalChunks,
+            ["LoadedChunks"]    = loadedChunks,
+            ["TotalCrops"]      = totalCrops,
+            ["TotalTilledTiles"]= totalTilledTiles,
+            ["ChunksWithCrops"] = chunksWithCrops,
+            ["MemoryUsageMB"]   = GetMemoryUsageMB()
+        };
+    }
+
+    // ── Internal helper ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Resolves the UnifiedChunkData + integer world coords for a world-space Vector3.
+    /// Returns false and logs a warning if the position is outside all active sections.
+    /// </summary>
+    private bool TryResolveChunk(Vector3 worldPos,
+                                  out UnifiedChunkData chunk,
+                                  out int wx, out int wy,
+                                  out int sectionId)
+    {
+        wx        = Mathf.FloorToInt(worldPos.x);
+        wy        = Mathf.FloorToInt(worldPos.y);
+        sectionId = manager.GetSectionIdFromWorldPosition(worldPos);
+        chunk     = null;
+
+        if (sectionId == -1)
+            return false;
+
+        Vector2Int chunkPos = manager.WorldToChunkCoords(worldPos);
+        chunk = GetChunk(sectionId, chunkPos);
+
+        if (chunk == null)
+        {
+            Debug.LogWarning($"[CropDataModule] Chunk {chunkPos} not found in section {sectionId}.");
+            return false;
+        }
+        return true;
+    }
+}

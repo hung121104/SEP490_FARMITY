@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b67bdc56eab5f7d4790c4be5e478be06, type: 3}
+  m_Name: Gift_coco
+  m_EditorClassIdentifier: 
+  itemName: Coconut
+  itemID: Coconut
+  icon: {fileID: 8797434715106196215, guid: 3f5d3049b7bd2c248b010efd5fdf3753, type: 3}
+  description: 
+  maxStack: 99
+  isStackable: 1
+  quality: 0
+  basePrice: 1
+  buyPrice: 0
+  canBeSold: 1
+  canBeBought: 0
+  npcPreferences:
+  - npcName: Smith
+    reaction: 0
+  isQuestItem: 1
+  isArtifact: 0
+  isRareItem: 0
+  itemCategory: 7
+  isUniversalLike: 0
+  isUniversalLove: 0

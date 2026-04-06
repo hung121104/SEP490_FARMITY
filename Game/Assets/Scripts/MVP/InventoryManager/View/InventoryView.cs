@@ -2,41 +2,51 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class InventoryView : MonoBehaviour, IInventoryView
 {
     [Header("UI Panels")]
+    [Tooltip("Drag the entire Inventory GameObject (including DropZone, Buttons, etc.) here to move them together.")]
+    [SerializeField] private RectTransform inventoryRoot;
     [SerializeField] private GameObject inventoryPanel;
-    [SerializeField] private GameObject itemDetailsPanel;
     [SerializeField] private GameObject dragPreviewObject;
+    [Tooltip("Drag the original parent of the inventory root here.")]
+    [SerializeField] private Transform inventoryRootParent;
 
     [Header("Slot Container")]
     [SerializeField] private Transform slotContainer;
     [SerializeField] private GameObject slotPrefab;
 
-    [Header("Item Details UI")]
-    [SerializeField] private TextMeshProUGUI itemNameText;
-    [SerializeField] private TextMeshProUGUI itemDescriptionText;
-    [SerializeField] private Image itemDetailIcon;
-    [SerializeField] private TextMeshProUGUI itemStatsText;
-    [SerializeField] private Button useButton;
-    [SerializeField] private Button dropButton;
+    [Header("Grid Settings")]
+    [SerializeField] private int slotsPerRow = 9;
+    [SerializeField] private float horizontalSpacing = 20f; 
+    [SerializeField] private float verticalSpacing = 20f; 
+    [SerializeField] private float emptyRowHeight = 10f; 
+    [SerializeField] private int emptyRowAfterRows = 3;
 
     [Header("Other UI")]
     [SerializeField] private Button sortButton;
-    [SerializeField] private TextMeshProUGUI notificationText;
-    [SerializeField] private float notificationDuration = 2f;
 
     [Header("Drag Preview")]
     [SerializeField] private Image dragPreviewIcon;
     [SerializeField] private CanvasGroup dragPreviewCanvasGroup;
 
+    [Header("Delete Zone")]
+    [SerializeField] private ItemDeleteView itemDeleteView;
+
+    [Header("Drop Zone")]
+    [SerializeField] private InventoryDropZone inventoryDropZone;
+
     private List<InventorySlotView> slotViews = new List<InventorySlotView>();
-    private int currentSelectedSlot = -1;
+    private List<GameObject> rowObjects = new List<GameObject>();
     private Coroutine notificationCoroutine;
 
-    public bool IsVisible => inventoryPanel.activeSelf;
+    private Transform originalParent;
+    private Vector2 originalPosition;
+
+    public bool IsVisible => inventoryPanel != null && inventoryPanel.activeSelf;
 
     #region Events
 
@@ -46,20 +56,48 @@ public class InventoryView : MonoBehaviour, IInventoryView
     public event Action OnSlotEndDrag;
     public event Action<int> OnSlotDrop;
     public event Action<int> OnUseItemRequested;
-    public event Action<int> OnDropItemRequested;
     public event Action OnSortRequested;
+    public event Action<int, Vector2> OnSlotHoverEnter;
+    public event Action<int> OnSlotHoverExit;
+    public event Action<int> OnItemDeleteRequested;
 
     #endregion
 
     private void Awake()
     {
-        InitializeButtons();
-        HideItemDetails();
-        HideDragPreview();
+        RectTransform root = inventoryRoot != null ? inventoryRoot : (inventoryPanel != null ? inventoryPanel.GetComponent<RectTransform>() : null);
+        if (root != null)
+        {
+            originalParent = inventoryRootParent != null ? inventoryRootParent : root.parent;
+            originalPosition = root.anchoredPosition;
+        }
 
-        if (notificationText != null)
-            notificationText.gameObject.SetActive(false);
+        InitializeButtons();
+        HideDragPreview();
+        InitializeDeleteZone();
+        ConfigureVerticalLayout();
     }
+
+    #region Initialize
+    private void ConfigureVerticalLayout()
+    {
+        // Add or configure VerticalLayoutGroup
+        VerticalLayoutGroup verticalLayout = slotContainer.GetComponent<VerticalLayoutGroup>();
+        if (verticalLayout == null)
+        {
+            verticalLayout = slotContainer.gameObject.AddComponent<VerticalLayoutGroup>();
+            Debug.Log("[InventoryView] Added VerticalLayoutGroup to slotContainer");
+        }
+
+        verticalLayout.spacing = verticalSpacing;
+        verticalLayout.childAlignment = TextAnchor.MiddleCenter;
+        verticalLayout.childControlWidth = false;
+        verticalLayout.childControlHeight = false;
+        verticalLayout.childForceExpandWidth = false;
+        verticalLayout.childForceExpandHeight = false;
+        verticalLayout.padding = new RectOffset(0, 0, 0, 0);
+    }
+
 
     public void InitializeSlots(int slotCount)
     {
@@ -71,41 +109,202 @@ public class InventoryView : MonoBehaviour, IInventoryView
         }
         slotViews.Clear();
 
+        // Clear existing rows
+        foreach (var row in rowObjects)
+        {
+            if (row != null)
+                Destroy(row);
+        }
+        rowObjects.Clear();
+
+        // Clear all children in container
+        foreach (Transform child in slotContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        //Create rows and slots
+        int slotIndex = 0;
+        int currentRowNumber = 0;
+        GameObject currentRowObject = null;
+        Transform currentRowTransform = null;
+        int slotsInCurrentRow = 0;
+
         // Create new slots
         for (int i = 0; i < slotCount; i++)
         {
-            GameObject slotObj = Instantiate(slotPrefab, slotContainer);
+            // Check if we need to start a new row
+            if (slotsInCurrentRow == 0 || slotsInCurrentRow >= slotsPerRow)
+            {
+                // Create empty row
+                if (currentRowNumber > 0 && currentRowNumber % emptyRowAfterRows == 0)
+                {
+                    CreateEmptyRow();
+                }
+
+                currentRowObject = CreateRow(currentRowNumber);
+                currentRowTransform = currentRowObject.transform;
+                rowObjects.Add(currentRowObject);
+                slotsInCurrentRow = 0;
+                currentRowNumber++;
+
+                Debug.Log($"[InventoryView] Created row {currentRowNumber}");
+            }
+
+            GameObject slotObj = Instantiate(slotPrefab, currentRowTransform);
             InventorySlotView slotView = slotObj.GetComponent<InventorySlotView>();
+
+            if (slotView == null)
+            {
+                Debug.LogError($"Slot prefab missing InventorySlotView component!");
+                continue;
+            }
 
             slotView.Initialize(i);
 
+            int capturedIndex = slotIndex;
             // Subscribe to slot events
-            int index = i; // Capture for closure
             slotView.OnClickedRequested += (slot) => HandleSlotClicked(slot);
             slotView.OnBeginDragRequested += (slot) => OnSlotBeginDrag?.Invoke(slot);
             slotView.OnDragRequested += (pos) => OnSlotDrag?.Invoke(pos);
             slotView.OnEndDragRequested += () => OnSlotEndDrag?.Invoke();
             slotView.OnDropRequested += (slot) => OnSlotDrop?.Invoke(slot);
+            slotView.OnPointerEnterRequested += (slot, pos) => OnSlotHoverEnter?.Invoke(slot, pos);
+            slotView.OnPointerExitRequested += (slot) => OnSlotHoverExit?.Invoke(slot);
 
             slotViews.Add(slotView);
+            slotIndex++;
+            slotsInCurrentRow++;
         }
+    }
+
+    private GameObject CreateRow(int rowNumber)
+    {
+        GameObject row = new GameObject($"Row_{rowNumber}");
+        row.transform.SetParent(slotContainer, false);
+        row.transform.localScale = Vector3.one;
+
+        RectTransform rectTransform = row.GetComponent<RectTransform>();
+        if (rectTransform == null)
+            rectTransform = row.AddComponent<RectTransform>();
+
+        // Create row with anchor and pivot at top center
+        rectTransform.anchorMin = new Vector2(0.5f, 1f);
+        rectTransform.anchorMax = new Vector2(0.5f, 1f);
+        rectTransform.pivot = new Vector2(0.5f, 1f);
+
+        // Add Horizontal Layout Group
+        HorizontalLayoutGroup horizontalLayout = row.AddComponent<HorizontalLayoutGroup>();
+        horizontalLayout.spacing = horizontalSpacing;
+        horizontalLayout.childAlignment = TextAnchor.MiddleCenter;
+        horizontalLayout.childControlWidth = false;
+        horizontalLayout.childControlHeight = false;
+        horizontalLayout.childForceExpandWidth = false;
+        horizontalLayout.childForceExpandHeight = false;
+        horizontalLayout.childScaleWidth = false;
+        horizontalLayout.childScaleHeight = false;
+
+        // Add Content Size Fitter for dynamic resizing
+        ContentSizeFitter sizeFitter = row.AddComponent<ContentSizeFitter>();
+        sizeFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        return row;
+    }
+
+    private GameObject CreateEmptyRow()
+    {
+        GameObject emptyRow = new GameObject("EmptyRow");
+        emptyRow.transform.SetParent(slotContainer, false);
+        emptyRow.transform.localScale = Vector3.one;
+
+        RectTransform rectTransform = emptyRow.GetComponent<RectTransform>();
+        if (rectTransform == null)
+            rectTransform = emptyRow.AddComponent<RectTransform>();
+
+        // Create row with anchor and pivot at top center
+        rectTransform.anchorMin = new Vector2(0.5f, 1f);
+        rectTransform.anchorMax = new Vector2(0.5f, 1f);
+        rectTransform.pivot = new Vector2(0.5f, 1f);
+        rectTransform.sizeDelta = new Vector2(0f, emptyRowHeight);
+
+        // Set height for empty row
+        LayoutElement layoutElement = emptyRow.AddComponent<LayoutElement>();
+        layoutElement.preferredHeight = emptyRowHeight;
+        layoutElement.minHeight = emptyRowHeight;
+        //layoutElement.flexibleHeight = 0;
+        //layoutElement.flexibleWidth = 1;
+
+        rowObjects.Add(emptyRow);
+
+        return emptyRow;
     }
 
     private void InitializeButtons()
     {
-        if (useButton != null)
-            useButton.onClick.AddListener(() => OnUseItemRequested?.Invoke(currentSelectedSlot));
-
-        if (dropButton != null)
-            dropButton.onClick.AddListener(() => OnDropItemRequested?.Invoke(currentSelectedSlot));
-
         if (sortButton != null)
             sortButton.onClick.AddListener(() => OnSortRequested?.Invoke());
     }
 
+    private void InitializeDeleteZone()
+    {
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.OnItemDeleteRequested += HandleDeleteZoneRequest;
+        }
+    }
+
+    /// <summary>
+    /// Programmatically assigns a delete zone.
+    /// </summary>
+    public void SetDeleteZone(ItemDeleteView newDeleteView)
+    {
+        // Unsubscribe from old delete zone if exists
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.OnItemDeleteRequested -= HandleDeleteZoneRequest;
+        }
+
+        itemDeleteView = newDeleteView;
+
+        // Subscribe new delete zone if assigned
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.OnItemDeleteRequested += HandleDeleteZoneRequest;
+        }
+    }
+
+    private void HandleDeleteZoneRequest(int slot)
+    {
+        OnItemDeleteRequested?.Invoke(slot);
+    }
+
+    /// <summary>
+    /// Programmatically assigns a drop zone.
+    /// </summary>
+    public void SetDropZone(InventoryDropZone newDropZone)
+    {
+        inventoryDropZone = newDropZone;
+    }
+
+    // Extra RectTransform zones that should NOT trigger "drop to world" (e.g. chest panel)
+    private RectTransform additionalSafeZone;
+
+    /// <summary>
+    /// Register an additional UI panel as a safe drop zone.
+    /// While set, dragging onto this panel will not count as "dropped outside".
+    /// Pass null to unregister.
+    /// </summary>
+    public void SetAdditionalSafeZone(RectTransform zone)
+    {
+        additionalSafeZone = zone;
+    }
+
+    #endregion 
+
     #region IInventoryView Implementation
 
-    public void UpdateSlot(int slotIndex, InventoryItem item)
+    public void UpdateSlot(int slotIndex, ItemModel item)
     {
         if (slotIndex >= 0 && slotIndex < slotViews.Count)
         {
@@ -121,52 +320,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
         }
     }
 
-    public void ShowItemDetails(InventoryItem item)
-    {
-        if (itemDetailsPanel == null) return;
-
-        itemDetailsPanel.SetActive(true);
-
-        if (itemNameText != null)
-            itemNameText.text = item.ItemName;
-
-        if (itemDescriptionText != null)
-            itemDescriptionText.text = item.Description;
-
-        if (itemDetailIcon != null)
-            itemDetailIcon.sprite = item.Icon;
-
-        if (itemStatsText != null)
-        {
-            itemStatsText.text = $"Type: {item.ItemType}\n" +
-                                 $"Category: {item.ItemCategory}\n" +
-                                 $"Quality: {item.Quality}\n" +
-                                 $"Sell Price: {item.SellPrice}";
-        }
-
-        // Enable/disable buttons based on item properties
-        if (useButton != null)
-            useButton.interactable = item.ItemType == ItemType.Consumable;
-
-        if (dropButton != null)
-            dropButton.interactable = !item.IsQuestItem && !item.IsArtifact;
-    }
-
-    public void HideItemDetails()
-    {
-        if (itemDetailsPanel != null)
-            itemDetailsPanel.SetActive(false);
-
-        currentSelectedSlot = -1;
-
-        // Deselect all slots
-        foreach (var slot in slotViews)
-        {
-            slot.SetSelected(false);
-        }
-    }
-
-    public void ShowDragPreview(InventoryItem item)
+    public void ShowDragPreview(ItemModel item)
     {
         if (dragPreviewObject == null) return;
 
@@ -176,7 +330,10 @@ public class InventoryView : MonoBehaviour, IInventoryView
             dragPreviewIcon.sprite = item.Icon;
 
         if (dragPreviewCanvasGroup != null)
-            dragPreviewCanvasGroup.alpha = 0.6f;
+        {
+            dragPreviewCanvasGroup.alpha = 1f;
+            dragPreviewCanvasGroup.blocksRaycasts = false;
+        }
     }
 
     public void UpdateDragPreview(Vector2 position)
@@ -193,43 +350,169 @@ public class InventoryView : MonoBehaviour, IInventoryView
             dragPreviewObject.SetActive(false);
     }
 
-    public void ShowNotification(string message)
+    public void CancelAllActions()
     {
-        if (notificationText == null) return;
+        ForceStopDragInEventSystem();
 
+        // 1. Hide drag preview
+        HideDragPreview();
+
+        // 2. Stop notification coroutine
         if (notificationCoroutine != null)
+        {
             StopCoroutine(notificationCoroutine);
+            notificationCoroutine = null;
+        }
 
-        notificationCoroutine = StartCoroutine(ShowNotificationCoroutine(message));
+        // 4. Reset all slots hover state
+        foreach (var slotView in slotViews)
+        {
+            if (slotView != null)
+            {
+                slotView.ForceResetState();
+            }
+        }
+
+        // 5. Reset delete zone visual state
+        if (itemDeleteView != null)
+        {
+            itemDeleteView.ResetVisualOnly();
+        }
+
+        Debug.Log("[InventoryView] All actions cancelled");
     }
 
+    //Force stop drag operation by resetting internal slot state.
+    private void ForceStopDragInEventSystem()
+    {
+        // Reset all slot drag states safely without touching EventSystem internals
+        foreach (var slot in slotViews)
+        {
+            if (slot != null)
+            {
+                slot.ForceResetState();
+            }
+        }
+
+        Debug.Log("[InventoryView] Drag state reset via ForceStopDragInEventSystem");
+    }
     #endregion
+
+    /// <summary>
+    /// Moves the inventory panel to a new parent container (e.g. escaping closed menus)
+    /// and resets its position to (0,0) so it fits perfectly inside the new parent's layout.
+    /// </summary>
+    public void ShowWithParent(Transform parentContainer)
+    {
+        if (inventoryPanel == null) return;
+        
+        RectTransform root = inventoryRoot != null ? inventoryRoot : inventoryPanel.GetComponent<RectTransform>();
+
+        if (parentContainer != null && root != null)
+        {
+            root.SetParent(parentContainer, false);
+            // Snap to the center/origin of the new parent container
+            root.anchoredPosition = Vector2.zero;
+        }
+            
+        inventoryPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Returns the inventory panel back to its original parent in the hierarchy.
+    /// </summary>
+    public void ReturnToOriginalParent()
+    {
+        RectTransform root = inventoryRoot != null ? inventoryRoot : (inventoryPanel != null ? inventoryPanel.GetComponent<RectTransform>() : null);
+        if (root == null || originalParent == null) return;
+        
+        if (root.parent != originalParent)
+        {
+            root.SetParent(originalParent, false);
+            root.anchoredPosition = originalPosition;
+            
+            Debug.Log("[InventoryView] Returned to original parent.");
+        }
+    }
+
+    /// <summary>
+    /// Checks if the inventory is currently reparented to another UI container.
+    /// </summary>
+    public bool IsReparented()
+    {
+        RectTransform root = inventoryRoot != null ? inventoryRoot : (inventoryPanel != null ? inventoryPanel.GetComponent<RectTransform>() : null);
+        if (root == null || originalParent == null) return false;
+        return root.parent != originalParent;
+    }
+
+    /// <summary>
+    /// Show the inventory panel without changing its position.
+    /// Used for default inventory opening via hotkey.
+    /// </summary>
+    public void Show()
+    {
+        ReturnToOriginalParent();
+        if (inventoryPanel != null)
+            inventoryPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Hide the inventory panel and cancel any ongoing actions.
+    /// </summary>
+    public void Hide()
+    {
+        CancelAllActions();
+        if (inventoryPanel != null)
+            inventoryPanel.SetActive(false);
+            
+        ReturnToOriginalParent();
+    }
 
     private void HandleSlotClicked(int slotIndex)
     {
-        // Deselect previous slot
-        if (currentSelectedSlot >= 0 && currentSelectedSlot < slotViews.Count)
-        {
-            slotViews[currentSelectedSlot].SetSelected(false);
-        }
-
-        // Select new slot
-        currentSelectedSlot = slotIndex;
-        if (slotIndex >= 0 && slotIndex < slotViews.Count)
-        {
-            slotViews[slotIndex].SetSelected(true);
-        }
-
         OnSlotClicked?.Invoke(slotIndex);
     }
 
-    private System.Collections.IEnumerator ShowNotificationCoroutine(string message)
+    /// <summary>
+    /// Check if a screen position is inside the inventory zone.
+    /// Prefers InventoryDropZone if assigned; falls back to inventoryPanel bounds.
+    /// Used to detect when a drag ends outside the inventory (drop to world).
+    /// </summary>
+    public bool IsScreenPositionInsideInventory(Vector2 screenPosition)
     {
-        notificationText.text = message;
-        notificationText.gameObject.SetActive(true);
+        // Prefer the explicit drop zone if assigned
+        if (inventoryDropZone != null)
+        {
+            if (inventoryDropZone.IsScreenPositionInsideZone(screenPosition))
+                return true;
+        }
+        else
+        {
+            // Fallback: use the inventory panel bounds
+            if (inventoryPanel != null)
+            {
+                RectTransform rect = inventoryPanel.GetComponent<RectTransform>();
+                if (rect != null)
+                {
+                    Canvas canvas = inventoryPanel.GetComponentInParent<Canvas>();
+                    Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                        ? canvas.worldCamera : null;
+                    if (RectTransformUtility.RectangleContainsScreenPoint(rect, screenPosition, cam))
+                        return true;
+                }
+            }
+        }
 
-        yield return new WaitForSeconds(notificationDuration);
+        // Also check any registered additional safe zone (e.g. chest panel)
+        if (additionalSafeZone != null && additionalSafeZone.gameObject.activeInHierarchy)
+        {
+            Canvas canvas = additionalSafeZone.GetComponentInParent<Canvas>();
+            Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                ? canvas.worldCamera : null;
+            if (RectTransformUtility.RectangleContainsScreenPoint(additionalSafeZone, screenPosition, cam))
+                return true;
+        }
 
-        notificationText.gameObject.SetActive(false);
+        return false;
     }
 }

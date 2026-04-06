@@ -2,26 +2,98 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Photon.Pun;
 
 public class InventoryService : IInventoryService
 {
     private readonly InventoryModel model;
 
     // Events
-    public event Action<InventoryItem, int> OnItemAdded;
-    public event Action<InventoryItem, int> OnItemRemoved;
+    public event Action<ItemModel, int> OnItemAdded;
+    public event Action<ItemModel, int> OnItemRemoved;
     public event Action<int, int> OnItemsMoved;
-    public event Action<int, int> OnQuantityChanged;
+    public event Action<int> OnSlotChanged;
     public event Action OnInventoryChanged;
+
+    /// <summary>When true, every successful local change is also sent through InventorySyncManager.</summary>
+    public bool NetworkSyncEnabled { get; set; }
 
     public InventoryService(InventoryModel inventoryModel)
     {
         model = inventoryModel;
     }
 
+    // ── Network sync helper ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Push the current state of a single slot to InventorySyncManager (Master authority).
+    /// Called after every local InventoryModel mutation so the network layer stays in sync.
+    /// Follows the same pattern as CropPlantingService → ChunkDataSyncManager.
+    /// </summary>
+    private void SyncSlotToNetwork(int slotIndex)
+    {
+        if (!NetworkSyncEnabled) return;
+        if (InventorySyncManager.Instance == null) return;
+
+        var item = model.GetItemAtSlot(slotIndex);
+        if (item == null || item.Quantity <= 0)
+        {
+            InventorySyncManager.Instance.RequestClearSlot((byte)slotIndex);
+        }
+        else
+        {
+            InventorySyncManager.Instance.RequestSetSlot(
+                (byte)slotIndex,
+                item.ItemId,
+                (ushort)Mathf.Clamp(item.Quantity, 0, ushort.MaxValue));
+        }
+    }
+
+    /// <summary>
+    /// Fire OnInventoryChanged from external code (e.g., remote network sync).
+    /// Used by InventoryGameView.HandleRemoteInventoryChanged so the Presenter refreshes UI.
+    /// </summary>
+    public void NotifyInventoryChangedExternal()
+    {
+        OnInventoryChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Refresh all inventory slots that hold the given itemId after an admin catalog update.
+    /// Updates the stale ItemData reference inside each affected ItemModel, then fires
+    /// OnSlotChanged per slot so the Presenter refreshes only those slots — not the full view.
+    /// </summary>
+    public void RefreshSlotsForItem(string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId)) return;
+
+        var newData = ItemCatalogService.Instance?.GetItemData(itemId);
+        if (newData == null) return;
+
+        var slots = model.GetSlotsWithItem(itemId, null);
+        foreach (int slotIndex in slots)
+        {
+            var item = model.GetItemAtSlot(slotIndex);
+            if (item == null) continue;
+            item.RefreshItemData(newData);
+            OnSlotChanged?.Invoke(slotIndex);
+        }
+    }
+
     #region Add Operations
 
-    public bool AddItem(ItemDataSO itemData, int quantity = 1, Quality quality = Quality.Normal)
+    public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
+    {
+        var data = ItemCatalogService.Instance?.GetItemData(itemId);
+        if (data == null)
+        {
+            Debug.LogWarning($"[InventoryService] Item '{itemId}' not found in catalog.");
+            return false;
+        }
+        return AddItem(data, quantity, quality, dropOffset);
+    }
+
+    private bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
     {
         if (itemData == null || quantity <= 0)
             return false;
@@ -29,22 +101,22 @@ public class InventoryService : IInventoryService
         int remainingQuantity = quantity;
 
         // If stackable, try to add to existing stacks first
-        if (itemData.IsStackable)
+        if (itemData.isStackable)
         {
             var existingSlots = model.GetSlotsWithItem(itemData.itemID, quality);
 
             foreach (int slotIndex in existingSlots)
             {
                 var existingItem = model.GetItemAtSlot(slotIndex);
-                int canAdd = Mathf.Min(remainingQuantity, itemData.MaxStack - existingItem.quantity);
+                int canAdd = Mathf.Min(remainingQuantity, itemData.maxStack - existingItem.Quantity);
 
                 if (canAdd > 0)
                 {
-                    existingItem.quantity += canAdd;
+                    existingItem.AddQuantity(canAdd);
                     remainingQuantity -= canAdd;
 
-                    OnQuantityChanged?.Invoke(slotIndex, existingItem.quantity);
-                    OnInventoryChanged?.Invoke();
+                    OnSlotChanged?.Invoke(slotIndex);
+                    SyncSlotToNetwork(slotIndex);
 
                     if (remainingQuantity <= 0)
                         return true;
@@ -57,22 +129,59 @@ public class InventoryService : IInventoryService
         {
             int emptySlot = model.FindEmptySlot();
             if (emptySlot == -1)
-                return false; // No space
+            {
+                // Not enough space: drop remaining into the world
+                HandleRemainingItemDrop(itemData, quality, remainingQuantity, dropOffset);
+                return false;
+            }
 
-            int stackSize = itemData.IsStackable
-                ? Mathf.Min(remainingQuantity, itemData.MaxStack)
+            int stackSize = itemData.isStackable
+                ? Mathf.Min(remainingQuantity, itemData.maxStack)
                 : 1;
 
-            var newItem = new InventoryItem(itemData, stackSize, emptySlot, quality);
+            var newItem = new ItemModel(itemData, quality, stackSize, emptySlot);
             model.SetItemAtSlot(emptySlot, newItem);
 
             OnItemAdded?.Invoke(newItem, emptySlot);
-            OnInventoryChanged?.Invoke();
+            SyncSlotToNetwork(emptySlot);
 
             remainingQuantity -= stackSize;
         }
 
         return true;
+    }
+
+    private void HandleRemainingItemDrop(ItemData itemData, Quality quality, int quantity, Vector2? dropOffset)
+    {
+        Vector2 randomDir = UnityEngine.Random.insideUnitCircle.normalized;
+        if (randomDir == Vector2.zero) randomDir = Vector2.up;
+        float distance = UnityEngine.Random.Range(0.5f, 1.5f);
+
+        Vector2 finalOffset = dropOffset ?? (randomDir * distance);
+        
+        var sync = UnityEngine.Object.FindAnyObjectByType<DroppedItemSyncManager>();
+        if (sync != null)
+        {
+            // Find the LOCAL player using PhotonView.IsMine to avoid using Master's position
+            GameObject player = null;
+            foreach (GameObject p in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            {
+                var pv = p.GetComponent<Photon.Pun.PhotonView>();
+                if (pv != null && pv.IsMine) { player = p; break; }
+            }
+            Vector3 basePos = player != null ? player.transform.position : Vector3.zero;
+            Vector3 dropPos = basePos + new Vector3(finalOffset.x, finalOffset.y, 0f);
+
+            var dropModel = new ItemModel(itemData, quality, quantity, -1);
+            var dropData = DroppedItemData.FromItemModel(dropModel, dropPos.x, dropPos.y);
+            sync.SendDropRequest(dropData);
+
+            Debug.LogWarning($"[InventoryService] Inventory full! Dropped item '{itemData.itemName}' x{quantity} at {dropPos}");
+        }
+        else
+        {
+            Debug.LogWarning($"[InventoryService] Inventory full and no DroppedItemSyncManager found! Failed to drop '{itemData.itemName}'");
+        }
     }
 
     #endregion
@@ -91,7 +200,7 @@ public class InventoryService : IInventoryService
             return false;
 
         // Calculate total available
-        int totalAvailable = slots.Sum(slot => model.GetItemAtSlot(slot).quantity);
+        int totalAvailable = slots.Sum(slot => model.GetItemAtSlot(slot).Quantity);
         if (totalAvailable < quantity)
             return false;
 
@@ -102,22 +211,22 @@ public class InventoryService : IInventoryService
                 break;
 
             var item = model.GetItemAtSlot(slotIndex);
-            int toRemove = Mathf.Min(remainingToRemove, item.quantity);
+            int toRemove = Mathf.Min(remainingToRemove, item.Quantity);
 
-            item.quantity -= toRemove;
+            item.AddQuantity(-toRemove);
             remainingToRemove -= toRemove;
 
-            if (item.quantity <= 0)
+            if (item.Quantity <= 0)
             {
                 OnItemRemoved?.Invoke(item, slotIndex);
                 model.ClearSlot(slotIndex);
             }
             else
             {
-                OnQuantityChanged?.Invoke(slotIndex, item.quantity);
+                OnSlotChanged?.Invoke(slotIndex);
             }
 
-            OnInventoryChanged?.Invoke();
+            SyncSlotToNetwork(slotIndex);
         }
 
         return remainingToRemove == 0;
@@ -126,22 +235,22 @@ public class InventoryService : IInventoryService
     public bool RemoveItemFromSlot(int slotIndex, int quantity)
     {
         var item = model.GetItemAtSlot(slotIndex);
-        if (item == null || quantity <= 0 || quantity > item.quantity)
+        if (item == null || quantity <= 0 || quantity > item.Quantity)
             return false;
 
-        item.quantity -= quantity;
+        item.AddQuantity(-quantity);
 
-        if (item.quantity <= 0)
+        if (item.Quantity <= 0)
         {
             OnItemRemoved?.Invoke(item, slotIndex);
             model.ClearSlot(slotIndex);
         }
         else
         {
-            OnQuantityChanged?.Invoke(slotIndex, item.quantity);
+            OnSlotChanged?.Invoke(slotIndex);
         }
 
-        OnInventoryChanged?.Invoke();
+        SyncSlotToNetwork(slotIndex);
         return true;
     }
 
@@ -167,7 +276,8 @@ public class InventoryService : IInventoryService
             model.ClearSlot(fromSlot);
 
             OnItemsMoved?.Invoke(fromSlot, toSlot);
-            OnInventoryChanged?.Invoke();
+            SyncSlotToNetwork(fromSlot);
+            SyncSlotToNetwork(toSlot);
             return true;
         }
 
@@ -176,27 +286,28 @@ public class InventoryService : IInventoryService
             fromItem.Quality == toItem.Quality &&
             fromItem.IsStackable)
         {
-            int spaceInTarget = toItem.MaxStack - toItem.quantity;
-            int amountToMove = Mathf.Min(spaceInTarget, fromItem.quantity);
+            int spaceInTarget = toItem.MaxStack - toItem.Quantity;
+            int amountToMove = Mathf.Min(spaceInTarget, fromItem.Quantity);
 
             if (amountToMove > 0)
             {
-                toItem.quantity += amountToMove;
-                fromItem.quantity -= amountToMove;
+                toItem.AddQuantity(amountToMove);
+                fromItem.AddQuantity(-amountToMove);
 
-                OnQuantityChanged?.Invoke(toSlot, toItem.quantity);
+                OnSlotChanged?.Invoke(toSlot);
 
-                if (fromItem.quantity <= 0)
+                if (fromItem.Quantity <= 0)
                 {
                     model.ClearSlot(fromSlot);
                     OnItemRemoved?.Invoke(fromItem, fromSlot);
                 }
                 else
                 {
-                    OnQuantityChanged?.Invoke(fromSlot, fromItem.quantity);
+                    OnSlotChanged?.Invoke(fromSlot);
                 }
 
-                OnInventoryChanged?.Invoke();
+                SyncSlotToNetwork(fromSlot);
+                SyncSlotToNetwork(toSlot);
                 return true;
             }
         }
@@ -213,7 +324,8 @@ public class InventoryService : IInventoryService
         model.SwapSlots(slotA, slotB);
 
         OnItemsMoved?.Invoke(slotA, slotB);
-        OnInventoryChanged?.Invoke();
+        SyncSlotToNetwork(slotA);
+        SyncSlotToNetwork(slotB);
         return true;
     }
 
@@ -221,7 +333,7 @@ public class InventoryService : IInventoryService
 
     #region Query Operations
 
-    public InventoryItem GetItemAtSlot(int slotIndex)
+    public ItemModel GetItemAtSlot(int slotIndex)
     {
         return model.GetItemAtSlot(slotIndex);
     }
@@ -229,7 +341,7 @@ public class InventoryService : IInventoryService
     public int GetItemCount(string itemId, Quality? quality = null)
     {
         var slots = model.GetSlotsWithItem(itemId, quality);
-        return slots.Sum(slot => model.GetItemAtSlot(slot).quantity);
+        return slots.Sum(slot => model.GetItemAtSlot(slot).Quantity);
     }
 
     public bool HasItem(string itemId, int quantity = 1, Quality? quality = null)
@@ -253,19 +365,48 @@ public class InventoryService : IInventoryService
         return count;
     }
 
-    public List<InventoryItem> GetAllItems()
+    public int GetAddableQuantity(ItemData itemData, int quantity, Quality quality = Quality.Normal)
+    {
+        if (itemData == null || quantity <= 0) return 0;
+        int remainingQuantity = quantity;
+
+        // Check space in existing stacks
+        if (itemData.isStackable)
+        {
+            var existingSlots = model.GetSlotsWithItem(itemData.itemID, quality);
+            foreach (int slotIndex in existingSlots)
+            {
+                var existingItem = model.GetItemAtSlot(slotIndex);
+                int canAdd = Mathf.Min(remainingQuantity, itemData.maxStack - existingItem.Quantity);
+                if (canAdd > 0)
+                {
+                    remainingQuantity -= canAdd;
+                    if (remainingQuantity <= 0) return quantity;
+                }
+            }
+        }
+
+        // Check space in empty slots
+        int emptyCount = GetEmptySlotCount();
+        int canAddBySlots = emptyCount * (itemData.isStackable ? itemData.maxStack : 1);
+        
+        remainingQuantity -= canAddBySlots;
+        return quantity - Mathf.Max(0, remainingQuantity);
+    }
+
+    public List<ItemModel> GetAllItems()
     {
         return model.GetNonEmptyItems();
     }
 
-    public List<InventoryItem> GetItemsByType(ItemType type)
+    public List<ItemModel> GetItemsByType(ItemType type)
     {
         return model.GetNonEmptyItems()
             .Where(item => item.ItemType == type)
             .ToList();
     }
 
-    public List<InventoryItem> GetItemsByCategory(ItemCategory category)
+    public List<ItemModel> GetItemsByCategory(ItemCategory category)
     {
         return model.GetNonEmptyItems()
             .Where(item => item.ItemCategory == category)
@@ -283,6 +424,7 @@ public class InventoryService : IInventoryService
             if (!model.IsSlotEmpty(i))
             {
                 model.ClearSlot(i);
+                SyncSlotToNetwork(i);
             }
         }
         OnInventoryChanged?.Invoke();
@@ -290,24 +432,125 @@ public class InventoryService : IInventoryService
 
     public void SortInventory()
     {
-        var allItems = model.GetNonEmptyItems()
+        const int hotbarStartIndex = 27;
+
+        // Collect items from main inventory slots only (exclude hotbar)
+        var mainItems = new System.Collections.Generic.List<ItemModel>();
+        for (int i = 0; i < hotbarStartIndex; i++)
+        {
+            var item = model.GetItemAtSlot(i);
+            if (item != null && item.Quantity > 0)
+                mainItems.Add(item);
+        }
+
+        var sorted = mainItems
             .OrderBy(item => item.ItemType)
             .ThenBy(item => item.ItemCategory)
             .ThenBy(item => item.ItemName)
             .ToList();
 
-        // Clear all slots
-        for (int i = 0; i < model.maxSlots; i++)
+        // Clear only main inventory slots
+        for (int i = 0; i < hotbarStartIndex; i++)
         {
             model.ClearSlot(i);
         }
 
-        // Re-add sorted items
-        for (int i = 0; i < allItems.Count; i++)
+        // Re-add sorted items into main inventory slots
+        for (int i = 0; i < sorted.Count; i++)
         {
-            model.SetItemAtSlot(i, allItems[i]);
+            model.SetItemAtSlot(i, sorted[i]);
         }
 
+        // Sync main inventory slots to network (hotbar slots are unchanged)
+        for (int i = 0; i < hotbarStartIndex; i++)
+            SyncSlotToNetwork(i);
+
+        OnInventoryChanged?.Invoke();
+    }
+
+    #endregion
+
+    #region Remote Sync
+
+    /// <summary>
+    /// Apply authoritative inventory state from InventorySyncManager.
+    /// All Model mutations go through Service — GameView never touches Model directly.
+    /// Temporarily disables NetworkSync to prevent re-broadcasting remote changes.
+    /// </summary>
+    public void ApplyRemoteInventoryState(CharacterInventory remoteInventory, int maxSlots)
+    {
+        if (remoteInventory == null) return;
+
+        bool wasSyncEnabled = NetworkSyncEnabled;
+        NetworkSyncEnabled = false;
+
+        for (byte i = 0; i < (byte)maxSlots; i++)
+        {
+            if (remoteInventory.TryGetSlot(i, out InventorySlot slot) && !slot.IsEmpty)
+            {
+                var existingItem = model.GetItemAtSlot(i);
+                if (existingItem == null || existingItem.ItemId != slot.ItemId || existingItem.Quantity != slot.Quantity)
+                {
+                    var itemData = ItemCatalogService.Instance?.GetItemData(slot.ItemId);
+                    if (itemData != null)
+                    {
+                        var itemModel = new ItemModel(itemData, Quality.Normal, slot.Quantity, i);
+                        model.SetItemAtSlot(i, itemModel);
+                    }
+                }
+            }
+            else
+            {
+                if (!model.IsSlotEmpty(i))
+                    model.ClearSlot(i);
+            }
+        }
+
+        NetworkSyncEnabled = wasSyncEnabled;
+        OnInventoryChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Apply authoritative chest state from flat ChestSlotEntry list.
+    /// Same pattern as ApplyRemoteInventoryState but reads from flat struct data
+    /// instead of CharacterInventory. Used by ChestPresenter.LoadStateFromModule().
+    /// </summary>
+    public void ApplyRemoteChestState(List<ChestSlotEntry> remoteSlots, int maxSlots)
+    {
+        bool wasSyncEnabled = NetworkSyncEnabled;
+        NetworkSyncEnabled = false;
+
+        // Track which slots have remote data
+        HashSet<byte> occupiedSlots = new HashSet<byte>();
+
+        // Apply occupied slots from remote data
+        for (int i = 0; i < remoteSlots.Count; i++)
+        {
+            var entry = remoteSlots[i];
+            occupiedSlots.Add(entry.SlotIndex);
+
+            var existingItem = model.GetItemAtSlot(entry.SlotIndex);
+            if (existingItem == null
+                || existingItem.ItemId != entry.ItemId
+                || existingItem.Quantity != entry.Quantity)
+            {
+                var itemData = ItemCatalogService.Instance?.GetItemData(entry.ItemId);
+                if (itemData != null)
+                {
+                    var itemModel = new ItemModel(itemData, Quality.Normal, entry.Quantity, entry.SlotIndex);
+                    model.SetItemAtSlot(entry.SlotIndex, itemModel);
+                }
+            }
+        }
+
+        // Clear slots that have no remote data
+        for (byte s = 0; s < (byte)maxSlots; s++)
+        {
+            if (!occupiedSlots.Contains(s) && !model.IsSlotEmpty(s))
+                model.ClearSlot(s);
+        }
+
+        NetworkSyncEnabled = wasSyncEnabled;
         OnInventoryChanged?.Invoke();
     }
 

@@ -14,9 +14,6 @@ public class CropPlowingService : ICropPlowingService
     private readonly bool showDebugLogs;
     private readonly ChunkDataSyncManager syncManager;
     
-    // Store tile data to track which tiles have been modified (for quick checks)
-    private HashSet<Vector3Int> tilledPositions = new HashSet<Vector3Int>();
-    
     public CropPlowingService(ChunkDataSyncManager syncManager, bool showDebugLogs = false)
     {
         this.syncManager = syncManager;
@@ -38,6 +35,9 @@ public class CropPlowingService : ICropPlowingService
         // Find all tilemaps with the specified name
         Tilemap[] tilemaps = Object.FindObjectsByType<Tilemap>(FindObjectsSortMode.None);
         
+        Tilemap closestTilemap = null;
+        float closestDistance = float.MaxValue;
+        
         foreach (Tilemap tilemap in tilemaps)
         {
             if (tilemap.gameObject.name == tilemapName)
@@ -45,32 +45,46 @@ public class CropPlowingService : ICropPlowingService
                 // Convert world position to cell position
                 Vector3Int cellPos = tilemap.WorldToCell(worldPosition);
                 
-                // Convert back to world position to check if this tilemap covers this area
-                Vector3 cellWorldPos = tilemap.GetCellCenterWorld(cellPos);
-                
-                // Check if the distance is reasonable (within the same grid)
-                float distance = Vector3.Distance(cellWorldPos, worldPosition);
-                if (distance < 10f) // Assuming cells are smaller than 10 units
+                // For TillableTilemap, we ONLY care if it actually has a tile here!
+                // If it does, this is 100% the tilemap we want to use.
+                if (tilemapName == "TillableTilemap" && tilemap.HasTile(cellPos))
                 {
                     return tilemap;
+                }
+                
+                // For other tilemaps (TilledOverlay, Watered, etc) which might be empty,
+                // we find the one closest to the world position (i.e. the chunk this position belongs to).
+                // Measure distance from the Tilemap's transform to the world position.
+                float distance = Vector2.Distance(
+                    new Vector2(cellPos.x, cellPos.y), // Using grid coords could be another way, but transform position is safer
+                    new Vector2(tilemap.transform.position.x, tilemap.transform.position.y)
+                );
+                
+                // Actual distance from world position to the transform is better:
+                float distToTransform = Vector3.Distance(tilemap.transform.position, worldPosition);
+                
+                if (distToTransform < closestDistance)
+                {
+                    closestDistance = distToTransform;
+                    closestTilemap = tilemap;
                 }
             }
         }
         
-        return null;
+        return closestTilemap;
     }
     
     private Tilemap FindTilledTilemapFromTillable(Tilemap tillableTilemap)
     {
-        // Try to find TilledTilemap in the same parent (map section)
+        // Try to find TilledOverlayTilemap in the same parent (map section)
         Transform parent = tillableTilemap.transform.parent;
         if (parent != null)
         {
-            // Search for TilledTilemap as a sibling
+            // Search for TilledOverlayTilemap as a sibling
             for (int i = 0; i < parent.childCount; i++)
             {
                 Transform child = parent.GetChild(i);
-                if (child.name == "TillableTilemap")
+                if (child.name == "TilledOverlayTilemap")
                 {
                     Tilemap tilemap = child.GetComponent<Tilemap>();
                     if (tilemap != null)
@@ -105,10 +119,14 @@ public class CropPlowingService : ICropPlowingService
         return tile != null;
     }
     
+    /// <summary>
+    /// Checks whether a tile has already been tilled.
+    /// Delegates to WorldDataManager — single source of truth for all clients.
+    /// </summary>
     public bool HasTileData(Vector3Int tilePosition)
     {
-        // Check if this position has already been tilled or has something placed on it
-        return tilledPositions.Contains(tilePosition);
+        // Kept for interface compatibility. WorldDataManager is authoritative now.
+        return false; // never block on local cache
     }
     
     public bool PlowTile(Vector3Int tilePosition, Vector3 worldPosition)
@@ -116,100 +134,93 @@ public class CropPlowingService : ICropPlowingService
         // Check if position is in active section
         if (!IsPositionInActiveSection(worldPosition))
         {
-            if (showDebugLogs)
-            {
-                Debug.LogWarning($"[CropPlowingService] Cannot plow at ({worldPosition.x:F0}, {worldPosition.y:F0}): position not in any section");
-            }
+            Debug.LogWarning($"[PlowTile] FAIL: world pos ({worldPosition.x:F1}, {worldPosition.y:F1}) is not in any active section.");
             return false;
         }
-        
-        // Check if already tilled in data manager
+
+        // WorldDataManager is authoritative — covers local and remote-synced state
         if (WorldDataManager.Instance.IsTilledAtWorldPosition(worldPosition))
         {
-            if (showDebugLogs)
-            {
-                Debug.LogWarning($"[CropPlowingService] Tile already tilled at ({worldPosition.x:F0}, {worldPosition.y:F0})");
-            }
+            Debug.LogWarning($"[PlowTile] FAIL: tile at ({worldPosition.x:F1}, {worldPosition.y:F1}) is already tilled.");
             return false;
         }
-        
-        // Find the TillableTilemap first
+
+        if (WorldDataManager.Instance.HasStructureAtWorldPosition(worldPosition))
+        {
+            Debug.LogWarning($"[PlowTile] FAIL: tile at ({worldPosition.x:F1}, {worldPosition.y:F1}) has a structure.");
+            return false;
+        }
+
+        if (WorldDataManager.Instance.HasResourceAtWorldPosition(worldPosition))
+        {
+            Debug.LogWarning($"[PlowTile] FAIL: tile at ({worldPosition.x:F1}, {worldPosition.y:F1}) has a resource.");
+            return false;
+        }
+
+        // Find the TillableTilemap for this world position
         Tilemap tillableTilemap = FindTilemapAtPosition(worldPosition, "TillableTilemap");
-        
         if (tillableTilemap == null)
         {
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlowingService] TillableTilemap not found at position {worldPosition}");
-            }
+            Debug.LogWarning($"[PlowTile] FAIL: no TillableTilemap found near world pos ({worldPosition.x:F1}, {worldPosition.y:F1}).");
             return false;
         }
-        
-        // Convert world position to tile position using the correct tilemap
+
         Vector3Int correctTilePosition = tillableTilemap.WorldToCell(worldPosition);
-        
-        // Check if there's a tile in the tillable tilemap at this position
-        TileBase tillableTile = tillableTilemap.GetTile(correctTilePosition);
-        if (tillableTile == null)
+
+        // Must have a farmable tile at this cell
+        if (tillableTilemap.GetTile(correctTilePosition) == null)
         {
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlowingService] Tile at {correctTilePosition} is not tillable - no tile in TillableTilemap");
-            }
+            Debug.LogWarning($"[PlowTile] FAIL: cell {correctTilePosition} has no tile in TillableTilemap — not a farmable spot.");
             return false;
         }
-        
-        if (HasTileData(correctTilePosition))
-        {
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlowingService] Tile at {correctTilePosition} already has data");
-            }
-            return false;
-        }
-        
-        // Find the TilledTilemap in the same map section
-        Tilemap tilledTilemap = FindTilledTilemapFromTillable(tillableTilemap);
-        
+
+        // Find the TilledOverlayTilemap for this world position
+        Tilemap tilledTilemap = FindTilemapAtPosition(worldPosition, "TilledOverlayTilemap");
         if (tilledTilemap == null)
         {
-            Debug.LogError($"[CropPlowingService] TilledTilemap not found as sibling of TillableTilemap");
+            Debug.LogError("[CropPlowingService] TilledOverlayTilemap not found near world pos (" + worldPosition.x.ToString("F1") + ", " + worldPosition.y.ToString("F1") + ").");
             return false;
         }
-        
+
         if (tilledTile == null)
         {
             Debug.LogError("[CropPlowingService] TilledTile is not initialized!");
             return false;
         }
-        
-        // Save to WorldDataManager
+
+        // Save to WorldDataManager first
         bool savedToData = WorldDataManager.Instance.TillTileAtWorldPosition(worldPosition);
-        
         if (savedToData)
         {
-            // Add the tilled tile to the TilledTilemap
             tilledTilemap.SetTile(correctTilePosition, tilledTile);
-            
-            // Record that this tile has been tilled
-            tilledPositions.Add(correctTilePosition);
-            
-            if (showDebugLogs)
+
+            // Auto-water newly tilled tile if it's currently raining
+            if (WeatherView.IsRaining)
             {
-                Debug.Log($"[CropPlowingService] ✓ Successfully plowed tile at {correctTilePosition} on tilemap {tilledTilemap.gameObject.name}");
+                WorldDataManager.Instance.WaterTileAtWorldPosition(worldPosition);
+
+                Tilemap wateredTilemap = FindTilemapAtPosition(worldPosition, "WateredOverlayTilemap");
+                if (wateredTilemap != null)
+                {
+                    ChunkLoadingManager chunkLoader = Object.FindAnyObjectByType<ChunkLoadingManager>();
+                    if (chunkLoader != null && chunkLoader.wateredTile != null)
+                        wateredTilemap.SetTile(correctTilePosition, chunkLoader.wateredTile);
+                }
+
+                if (PhotonNetwork.IsConnected && syncManager != null)
+                    syncManager.BroadcastTileWatered(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y));
             }
 
-            // Broadcast tilled tile to other players
+            if (showDebugLogs)
+                Debug.Log($"[CropPlowingService] ✓ Successfully plowed tile at {correctTilePosition} on tilemap {tilledTilemap.gameObject.name}");
+
             if (PhotonNetwork.IsConnected && syncManager != null)
-            {
-                int worldX = Mathf.FloorToInt(worldPosition.x);
-                int worldY = Mathf.FloorToInt(worldPosition.y);
-                syncManager.BroadcastTileTilled(worldX, worldY);
-            }
-            
+                syncManager.BroadcastTileTilled(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y));
+
             return true;
         }
-        
+
+        Debug.LogWarning($"[PlowTile] FAIL: WorldDataManager.TillTileAtWorldPosition returned false for ({worldPosition.x:F1}, {worldPosition.y:F1}). Chunk may not be loaded.");
         return false;
     }
     
@@ -224,9 +235,98 @@ public class CropPlowingService : ICropPlowingService
         return WorldDataManager.Instance.IsPositionInActiveSection(worldPosition);
     }
     
-    // Additional helper method to clear a tile if needed later
-    public void ClearTile(Vector3Int tilePosition)
+    // Kept for interface compatibility — WorldDataManager is the single source of truth.
+    public void ClearTile(Vector3Int tilePosition) { }
+
+    /// <summary>
+    /// Untills an empty tilled tile. Removes the tilled state from chunk data and from the overlay tilemap.
+    /// </summary>
+    public bool UntillTile(Vector3 worldPosition)
     {
-        tilledPositions.Remove(tilePosition);
+        if (WorldDataManager.Instance == null) return false;
+
+        if (!WorldDataManager.Instance.IsTilledAtWorldPosition(worldPosition))
+        {
+            if (showDebugLogs)
+                Debug.Log($"[CropPlowingService] UntillTile: tile at {worldPosition} is not tilled.");
+            return false;
+        }
+
+        bool untilled = WorldDataManager.Instance.UntillTileAtWorldPosition(worldPosition);
+        if (!untilled) return false;
+
+        // Remove visual tilled tile from overlay tilemap
+        Tilemap tilledTilemap = FindTilemapAtPosition(worldPosition, "TilledOverlayTilemap");
+        if (tilledTilemap != null)
+        {
+            Vector3Int cellPos = tilledTilemap.WorldToCell(worldPosition);
+            tilledTilemap.SetTile(cellPos, null);
+        }
+
+        // Also remove watered overlay tile (tilled is a prerequisite for watered)
+        ChunkLoadingManager chunkLoader = Object.FindAnyObjectByType<ChunkLoadingManager>();
+        chunkLoader?.ClearWateredTileAt(worldPosition);
+
+        if (showDebugLogs)
+            Debug.Log($"[CropPlowingService] ✓ Untilled tile at {worldPosition}.");
+
+        // Sync to other players
+        if (PhotonNetwork.IsConnected && syncManager != null)
+        {
+            int wx = Mathf.FloorToInt(worldPosition.x);
+            int wy = Mathf.FloorToInt(worldPosition.y);
+            syncManager.BroadcastTileUntilled(wx, wy);
+        }
+
+        // Refresh chunk visuals
+        if (chunkLoader != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPosition);
+            if (chunkLoader.IsChunkLoaded(chunkPos))
+                chunkLoader.RefreshChunkVisuals(chunkPos);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the crop at a tilled tile position. Used when the hoe is applied to an occupied tile.
+    /// Syncs removal to other players via ChunkDataSyncManager.
+    /// </summary>
+    public bool RemoveCropOnTile(Vector3 worldPosition)
+    {
+        if (WorldDataManager.Instance == null) return false;
+
+        if (!WorldDataManager.Instance.HasCropAtWorldPosition(worldPosition))
+        {
+            if (showDebugLogs)
+                Debug.Log($"[CropPlowingService] RemoveCropOnTile: no crop at {worldPosition}.");
+            return false;
+        }
+
+        bool removed = WorldDataManager.Instance.RemoveCropAtWorldPosition(worldPosition);
+        if (!removed) return false;
+
+        if (showDebugLogs)
+            Debug.Log($"[CropPlowingService] ✓ Crop removed at {worldPosition}.");
+
+        // Sync to other players
+        if (PhotonNetwork.IsConnected && syncManager != null)
+        {
+            int wx = Mathf.FloorToInt(worldPosition.x);
+            int wy = Mathf.FloorToInt(worldPosition.y);
+            syncManager.BroadcastCropRemoved(wx, wy);
+        }
+
+        // Refresh visuals locally
+        ChunkLoadingManager chunkLoader = Object.FindAnyObjectByType<ChunkLoadingManager>();
+        if (chunkLoader != null)
+        {
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPosition);
+            if (chunkLoader.IsChunkLoaded(chunkPos))
+                chunkLoader.RefreshChunkVisuals(chunkPos);
+        }
+
+        return true;
     }
 }

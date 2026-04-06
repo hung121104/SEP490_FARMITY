@@ -9,7 +9,7 @@
 
     public string GetCalendarText()
     {
-        // Dùng text chuẩn từ TimeManager
+        
         return timePresenter.GetTimeText();
     }
 

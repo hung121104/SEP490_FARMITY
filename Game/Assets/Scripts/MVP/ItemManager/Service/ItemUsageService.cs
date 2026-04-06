@@ -1,178 +1,138 @@
-﻿using System.Threading.Tasks;
 using UnityEngine;
+using CombatManager.Presenter;
 
+/// <summary>
+/// Dispatches item usage to the appropriate service based on item type.
+/// All parameters are now plain C# ItemData — no ScriptableObject references.
+/// </summary>
 public class ItemUsageService : IItemUsageService
 {
-    private readonly IToolSystem toolSystem;
-    private readonly IFarmingSystem farmingSystem;
-    private readonly IConsumableSystem consumableSystem;
-    private readonly IWeaponSystem weaponSystem;
+    private readonly IUseToolService useToolService;
+    private readonly IUseSeedService useSeedService;
 
-    public ItemUsageService(
-        IToolSystem toolSystem = null,
-        IFarmingSystem farmingSystem = null,
-        IConsumableSystem consumableSystem = null,
-        IWeaponSystem weaponSystem = null)
+    public ItemUsageService(IUseToolService useToolService, IUseSeedService useSeedService = null)
     {
-        this.toolSystem = toolSystem;
-        this.farmingSystem = farmingSystem;
-        this.consumableSystem = consumableSystem;
-        this.weaponSystem = weaponSystem;
+        this.useToolService = useToolService;
+        this.useSeedService = useSeedService ?? new UseSeedService();
     }
 
-    public bool CanUseItem(ItemDataSO item)
+    public bool UseTool(ItemData item, Vector3 pos)
     {
-        if (item == null) return false;
-
-        return item.GetItemType() switch
+        Debug.Log("[ItemUsageService] UseTool: " + item.itemID + " at: " + pos);
+        if (item is not ToolData toolData)
         {
-            ItemType.Tool => toolSystem != null,
-            ItemType.Seed => farmingSystem != null,
-            ItemType.Consumable => consumableSystem != null,
-            ItemType.Weapon => weaponSystem != null,
-            ItemType.Material => false,
-            _ => false
-        };
-    }
-
-    public string GetUsageDescription(ItemDataSO item)
-    {
-        if (item == null) return "No item";
-
-        return item.GetItemType() switch
-        {
-            ItemType.Tool => "Use tool at target location",
-            ItemType.Seed => "Plant seed at target location",
-            ItemType.Consumable => "Consume item for effect",
-            ItemType.Weapon => "Attack with weapon",
-            ItemType.Material => "Material cannot be used directly",
-            _ => "Unknown usage"
-        };
-    }
-
-    public ItemUsageResult ProcessItemUsage(ItemDataSO item, Vector3 targetPosition)
-    {
-        if (item == null)
-        {
-            return new ItemUsageResult(false, false, "No item to use");
+            Debug.LogWarning("[ItemUsageService] UseTool: item is not ToolData");
+            return false;
         }
 
-        Debug.Log($"📦 [ItemUsageService] Processing {item.itemName} (Type: {item.GetItemType()}) at {targetPosition}");
-
-        return item.GetItemType() switch
+        var stamina = StaminaView.FindLocal();
+        if (stamina != null && !stamina.TryConsumeToolStamina(toolData.staminaCost))
         {
-            ItemType.Tool => HandleToolUsage(item, targetPosition),
-            ItemType.Seed => HandleSeedUsage(item, targetPosition),
-            ItemType.Consumable => HandleConsumableUsage(item, targetPosition),
-            ItemType.Weapon => HandleWeaponUsage(item, targetPosition),
-            ItemType.Material => HandleMaterialUsage(item),
-            _ => new ItemUsageResult(false, false, $"Unknown item type: {item.GetItemType()}")
-        };
-    }
-
-    public async Task<ItemUsageResult> ProcessItemUsageAsync(ItemDataSO item, Vector3 targetPosition)
-    {
-        return await Task.FromResult(ProcessItemUsage(item, targetPosition));
-    }
-
-    #region Private Usage Handlers
-
-    private ItemUsageResult HandleToolUsage(ItemDataSO item, Vector3 targetPosition)
-    {
-        if (toolSystem != null)
-        {
-            bool success = toolSystem.UseTool(item, targetPosition);
-            return new ItemUsageResult(
-                successful: success,
-                consumed: false, // Tools typically not consumed
-                message: success ? $"Used {item.itemName}" : "Failed to use tool"
-            )
-            {
-                UsageType = ItemUsageType.Tool
-            };
+            Debug.Log("[ItemUsageService] Blocked tool use due to low stamina.");
+            return false;
         }
 
-        Debug.LogWarning("⚠️ ToolSystem not available!");
-        return new ItemUsageResult(false, false, "ToolSystem not available")
+        return toolData.toolType switch
         {
-            UsageType = ItemUsageType.Tool
+            ToolType.Hoe         => useToolService.UseHoe(toolData, pos),
+            ToolType.WateringCan => useToolService.UseWateringCan(toolData, pos),
+            ToolType.Pickaxe     => useToolService.UsePickaxe(toolData, pos),
+            ToolType.Axe         => useToolService.UseAxe(toolData, pos),
+            ToolType.FishingRod  => useToolService.UseFishingRod(toolData, pos),
+            _                    => LogUnknownTool(toolData)
         };
     }
 
-    private ItemUsageResult HandleSeedUsage(ItemDataSO item, Vector3 targetPosition)
+    public bool UseFertilizer(ItemData item, Vector3 pos)
     {
-        if (farmingSystem != null)
+        Debug.Log("[ItemUsageService] UseFertilizer: " + item.itemID + " at: " + pos);
+        if (item is not FertilizerData fertilizerData)
         {
-            bool wasPlanted = farmingSystem.PlantSeed(item, targetPosition);
-            return new ItemUsageResult(
-                successful: wasPlanted,
-                consumed: wasPlanted, // Seeds consumed when planted
-                message: wasPlanted ? $"Planted {item.itemName}" : "Cannot plant here"
-            )
-            {
-                UsageType = ItemUsageType.Seed
-            };
+            Debug.LogWarning("[ItemUsageService] UseFertilizer: item is not FertilizerData");
+            return false;
         }
 
-        Debug.LogWarning("⚠️ FarmingSystem not available!");
-        return new ItemUsageResult(false, false, "FarmingSystem not available")
-        {
-            UsageType = ItemUsageType.Seed
-        };
+        return useToolService.UseFertilizer(fertilizerData, pos);
     }
 
-    private ItemUsageResult HandleConsumableUsage(ItemDataSO item, Vector3 targetPosition)
+    public (bool, int) UseSeed(ItemData item, Vector3 pos)
     {
-        if (consumableSystem != null)
+        return useSeedService.UseSeed(item, pos);
+    }
+
+    public (bool, int) UseConsumable(ItemData item, Vector3 pos)
+    {
+        Debug.Log("[ItemUsageService] UseConsumable: " + item.itemID + " at: " + pos);
+
+        var stamina = StaminaView.FindLocal();
+        var health  = CombatManager.Presenter.PlayerHealthPresenter.FindLocal();
+
+        if (item is ConsumableData consumable)
         {
-            bool wasConsumed = consumableSystem.Consume(item);
-            return new ItemUsageResult(
-                successful: wasConsumed,
-                consumed: wasConsumed,
-                message: wasConsumed ? $"Consumed {item.itemName}" : "Cannot consume item"
-            )
-            {
-                UsageType = ItemUsageType.Consumable
-            };
+            stamina?.ApplyConsumableEffects(
+                consumable.viableRestore,
+                consumable.regenBoostMultiplier,
+                consumable.toolEfficiencyReductionPercent / 100f,
+                consumable.effectDurationSeconds);
+            if (consumable.healthRestore > 0) health?.ChangeHealth(consumable.healthRestore);
+            return (true, 1);
         }
 
-        Debug.LogWarning("⚠️ ConsumableSystem not available!");
-        return new ItemUsageResult(false, false, "ConsumableSystem not available")
+        if (item is CookingData cooking)
         {
-            UsageType = ItemUsageType.Consumable
-        };
-    }
-
-    private ItemUsageResult HandleWeaponUsage(ItemDataSO item, Vector3 targetPosition)
-    {
-        if (weaponSystem != null)
-        {
-            bool success = weaponSystem.UseWeapon(item, targetPosition);
-            return new ItemUsageResult(
-                successful: success,
-                consumed: false, // Weapons typically not consumed
-                message: success ? $"Used weapon {item.itemName}" : "Failed to use weapon"
-            )
-            {
-                UsageType = ItemUsageType.Weapon
-            };
+            stamina?.ApplyConsumableEffects(
+                cooking.viableRestore,
+                cooking.regenBoostMultiplier,
+                cooking.toolEfficiencyReductionPercent / 100f,
+                cooking.effectDurationSeconds);
+            if (cooking.healthRestore > 0) health?.ChangeHealth(cooking.healthRestore);
+            return (true, 1);
         }
 
-        Debug.LogWarning("⚠️ WeaponSystem not available!");
-        return new ItemUsageResult(false, false, "WeaponSystem not available")
+        if (item is CropData crop)
         {
-            UsageType = ItemUsageType.Weapon
-        };
+            if (crop.viableRestore > 0) stamina?.ApplyConsumableEffects(crop.viableRestore, 1f, 0f, 0f);
+            if (crop.healthRestore  > 0) health?.ChangeHealth(crop.healthRestore);
+            return (true, 1);
+        }
+
+        if (item is ForageData forage)
+        {
+            if (forage.viableRestore > 0) stamina?.ApplyConsumableEffects(forage.viableRestore, 1f, 0f, 0f);
+            if (forage.healthRestore  > 0) health?.ChangeHealth(forage.healthRestore);
+            return (true, 1);
+        }
+
+        return (true, 1);
     }
 
-    private ItemUsageResult HandleMaterialUsage(ItemDataSO item)
+    public bool UseWeapon(ItemData item, Vector3 pos)
     {
-        Debug.Log("ℹ️ Material cannot be used directly");
-        return new ItemUsageResult(false, false, "Materials cannot be used directly")
+        Debug.Log("[ItemUsageService] UseWeapon: " + item.itemID + " at: " + pos);
+        if (item is not WeaponData weapon)
         {
-            UsageType = ItemUsageType.Material
-        };
+            Debug.LogWarning("[ItemUsageService] UseWeapon: item is not WeaponData");
+            return false;
+        }
+
+        WeaponEquipPresenter.Instance?.EquipWeapon(weapon);
+        return true;
     }
 
-    #endregion
+    public bool UsePollen(ItemData item, Vector3 pos)
+    {
+        if (item is not PollenData pollen)
+        {
+            Debug.LogWarning("[ItemUsageService] UsePollen: item is not PollenData");
+            return false;
+        }
+
+        return useToolService.UsePollen(pollen, pos);
+    }
+
+    private bool LogUnknownTool(ToolData toolData)
+    {
+        Debug.LogWarning("[ItemUsageService] Unknown ToolType: " + toolData.toolType);
+        return false;
+    }
 }

@@ -37,28 +37,25 @@ public class HotbarSlotUI : MonoBehaviour
         }
     }
 
-    public void UpdateDisplay(HotbarSlot slot)
+    public void UpdateDisplay(ItemModel item)
     {
-        if (slot == null || slot.IsEmpty)
+        if (item == null)
         {
-            // Empty slot - hide icon and quantity
             iconImage.enabled = false;
             if (quantityText != null)
                 quantityText.enabled = false;
         }
         else
         {
-            // Has item - show icon and quantity if needed
             iconImage.enabled = true;
-            iconImage.sprite = slot.item.icon;
+            iconImage.sprite = item.Icon;
 
-            // Display quantity for stackable items
             if (quantityText != null)
             {
-                if (slot.item.IsStackable && slot.quantity > 1)
+                if (item.IsStackable && item.Quantity > 1)
                 {
                     quantityText.enabled = true;
-                    quantityText.text = slot.quantity.ToString();
+                    quantityText.text = item.Quantity.ToString();
                 }
                 else
                 {

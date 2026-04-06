@@ -22,4 +22,15 @@ public interface ICropPlowingService
     /// Initializes the service with the tilled tile reference
     /// </summary>
     void Initialize(TileBase tilledTile);
+
+    /// <summary>
+    /// Removes the crop on a tilled tile (hoe on occupied tile). Returns true if a crop was removed.
+    /// </summary>
+    bool RemoveCropOnTile(Vector3 worldPosition);
+
+    /// <summary>
+    /// Untills a tilled tile with no crop (hoe on empty tilled tile).
+    /// Removes the tilled state from chunk data and from the tilemap. Returns true on success.
+    /// </summary>
+    bool UntillTile(Vector3 worldPosition);
 }

@@ -3,10 +3,28 @@ import { Document, Types } from 'mongoose';
 
 export type CharacterDocument = Character & Document;
 
+// ────────────────────────────────────────────────────────────────────────────
+//  InventorySlotData sub-document
+//  Stored inside the Character's `inventory` Map.
+//  Key = slot index as string ("0"–"35"), value = this sub-document.
+//  Same Map pattern as Chunk.tiles for targeted $set updates.
+// ────────────────────────────────────────────────────────────────────────────
+@Schema({ _id: false })
+export class InventorySlotData {
+  @Prop({ required: true })
+  itemId: string;
+
+  @Prop({ required: true })
+  quantity: number;
+}
+
+export const InventorySlotDataSchema = SchemaFactory.createForClass(InventorySlotData);
+
 @Schema()
 export class Character {
   @Prop({ required: true })
-  worldId: string;
+  @Prop({ type: Types.ObjectId, ref: 'World', required: true })
+  worldId: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Account', required: true })
   accountId: Types.ObjectId;
@@ -18,7 +36,68 @@ export class Character {
   positionY: number;
 
   @Prop({ required: true })
-  chunkIndex: number;
+  sectionIndex: number;
+
+  /**
+   * Map<slotIndex, InventorySlotData>.
+   * slotIndex = "0"–"35" (string key).
+   * Targeted $set operators like { $set: { "inventory.5": { ... } } }
+   * update individual slots without touching others.
+   */
+  @Prop({ type: Map, of: InventorySlotDataSchema, default: () => new Map() })
+  inventory: Map<string, InventorySlotData>;
+
+  // ── Appearance config IDs (paper-doll layers) ──
+
+  @Prop({ default: '' })
+  hairConfigId: string;
+
+  @Prop({ default: '' })
+  outfitConfigId: string;
+
+  @Prop({ default: '' })
+  hatConfigId: string;
+
+  @Prop({ default: '' })
+  toolConfigId: string;
+
+  @Prop({ type: [String], default: [] })
+  playerSkillSlotIds: string[];
+  @Prop({ default: 200 })
+  currentStamina: number;
+
+  @Prop({ default: 200 })
+  viableStamina: number;
+
+  @Prop({ default: 0 })
+  currentHealth: number;
+
+  @Prop({ default: 1 })
+  regenBoostMultiplier: number;
+
+  @Prop({ default: 0 })
+  regenBoostRemaining: number;
+
+  @Prop({ default: 0 })
+  toolEfficiencyReduction: number;
+
+  @Prop({ default: 0 })
+  toolEfficiencyRemaining: number;
+
+  @Prop({ default: 1 })
+  level: number;
+
+  @Prop({ default: 0 })
+  currentExp: number;
+
+  @Prop({ default: 100 })
+  expToNextLevel: number;
+
+  @Prop({ default: 10 })
+  baseStrength: number;
+
+  @Prop({ default: 10 })
+  baseVitality: number;
 }
 
 export const CharacterSchema = SchemaFactory.createForClass(Character);

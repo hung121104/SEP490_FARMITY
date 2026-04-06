@@ -13,21 +13,24 @@ public class LoginRequest
 [Serializable]
 public class LoginResponse
 {
+    public string userId;
+    public string username;
     public string access_token;
-    public string userId;  // Added for backend user ID
-    public string displayName;  // Optional: Display name from backend
+}
+
+[Serializable]
+public class LoginErrorResponse
+{
+    public string message;
 }
 
 public class AuthenticateService : IAuthenticateService
 {
-    public static string JwtToken { get; private set; }  // Session-only storage for JWT
-    public static string UserId { get; private set; }    // Session-only storage for user ID
-
     public async Task<LoginResponse> Login(LoginRequest request)
     {
         string json = JsonUtility.ToJson(request);
 
-        using (UnityWebRequest webRequest = new UnityWebRequest("https://localhost:3000/auth/login-ingame", "POST"))
+        using (UnityWebRequest webRequest = new UnityWebRequest(AppConfig.ApiBaseUrl + "/auth/login-ingame", "POST"))
         {
             byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
             webRequest.uploadHandler = new UploadHandlerRaw(bodyRaw);
@@ -40,16 +43,45 @@ public class AuthenticateService : IAuthenticateService
             {
                 string jsonResponse = webRequest.downloadHandler.text;
                 LoginResponse response = JsonUtility.FromJson<LoginResponse>(jsonResponse);
-                JwtToken = response.access_token;  // Store token in memory for session
-                UserId = response.userId;          // Store user ID in memory for session
-                Debug.Log("Login successful, token and user ID stored in session");
+                
+                // Store authentication data in SessionManager
+                SessionManager.Instance.SetAuthenticationData(
+                    response.access_token, 
+                    response.userId, 
+                    response.username
+                );
+                
+                Debug.Log("Login successful for user: " + response.username);
                 return response;
             }
             else
             {
-                Debug.LogError("Login failed: " + webRequest.error);
-                return null;
+                string errorMessage = ParseErrorMessage(
+                    webRequest.downloadHandler?.text,
+                    "Login failed. Please check your username or password.");
+                Debug.LogError($"Login request failed ({webRequest.responseCode}): {errorMessage}");
+                throw new Exception(errorMessage);
             }
         }
+    }
+
+    private static string ParseErrorMessage(string responseText, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(responseText)) return fallback;
+
+        try
+        {
+            var parsed = JsonUtility.FromJson<LoginErrorResponse>(responseText);
+            if (parsed != null && !string.IsNullOrWhiteSpace(parsed.message))
+            {
+                return parsed.message;
+            }
+        }
+        catch
+        {
+            // Ignore parse errors and use fallback.
+        }
+
+        return fallback;
     }
 }

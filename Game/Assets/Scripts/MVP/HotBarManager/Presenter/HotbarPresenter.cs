@@ -1,153 +1,147 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 public class HotbarPresenter
 {
     private readonly HotbarModel model;
     private readonly HotbarView view;
-    private readonly IHotbarService service;
+    private readonly IInventoryService inventoryService;
 
-    public HotbarPresenter(HotbarModel model, HotbarView view, IHotbarService service)
+    public event Action<ItemData, Vector3, int> OnItemUsed;
+
+    /// <summary>Fired when the selected hotbar slot changes. Parameter is the new item's ItemData (null if empty).</summary>
+    public event Action<ItemData> OnSelectedItemChanged;
+
+    public HotbarPresenter(HotbarModel model, HotbarView view, IInventoryService inventoryService)
     {
         this.model = model;
         this.view = view;
-        this.service = service;
+        this.inventoryService = inventoryService;
 
         SubscribeToEvents();
     }
 
     private void SubscribeToEvents()
     {
-        // Subscribe to View input events
         view.OnSlotKeyPressed += HandleSlotSelection;
         view.OnScrollInput += HandleScrollInput;
         view.OnUseItemInput += HandleUseItem;
-        view.OnUseItemAlternateInput += HandleUseItemAlternate;
 
-        // Subscribe to Model events for UI updates
         model.OnSlotIndexChanged += view.UpdateSelection;
-        model.OnSlotContentChanged += view.UpdateSlotDisplay;
-        model.OnItemUsed += HandleItemUsage;
-        model.OnItemUsedAlternate += HandleItemUsageAlternate;
+        model.OnHotbarRefreshed += RefreshAllSlots;
+
+        inventoryService.OnItemAdded += HandleItemAddedOrRemoved;
+        inventoryService.OnItemRemoved += HandleItemAddedOrRemoved;
+        inventoryService.OnItemsMoved += HandleItemsMoved;
+        inventoryService.OnSlotChanged += HandleSlotChanged;
+        inventoryService.OnInventoryChanged += RefreshAllSlots;
     }
 
     public void UnsubscribeEvents()
     {
-        // Unsubscribe from View
         view.OnSlotKeyPressed -= HandleSlotSelection;
         view.OnScrollInput -= HandleScrollInput;
         view.OnUseItemInput -= HandleUseItem;
-        view.OnUseItemAlternateInput -= HandleUseItemAlternate;
 
-        // Unsubscribe from Model
         model.OnSlotIndexChanged -= view.UpdateSelection;
-        model.OnSlotContentChanged -= view.UpdateSlotDisplay;
-        model.OnItemUsed -= HandleItemUsage;
-        model.OnItemUsedAlternate -= HandleItemUsageAlternate;
-    }
+        model.OnHotbarRefreshed -= RefreshAllSlots;
 
-    #region Input Handlers
+        inventoryService.OnItemAdded -= HandleItemAddedOrRemoved;
+        inventoryService.OnItemRemoved -= HandleItemAddedOrRemoved;
+        inventoryService.OnItemsMoved -= HandleItemsMoved;
+        inventoryService.OnSlotChanged -= HandleSlotChanged;
+        inventoryService.OnInventoryChanged -= RefreshAllSlots;
+    }
 
     private void HandleSlotSelection(int slotIndex)
     {
         model.SelectSlot(slotIndex);
+        NotifySelectedItemChanged();
     }
 
     private void HandleScrollInput(float direction)
     {
-        int currentIndex = model.CurrentSlotIndex;
-        int newIndex;
+        if (direction > 0f)
+            model.SelectPreviousSlot();
+        else
+            model.SelectNextSlot();
+        NotifySelectedItemChanged();
+    }
 
-        if (direction > 0f) // Previous slot
-            newIndex = (currentIndex - 1 + model.HotbarSize) % model.HotbarSize;
-        else // Next slot
-            newIndex = (currentIndex + 1) % model.HotbarSize;
-
-        model.SelectSlot(newIndex);
+    private void NotifySelectedItemChanged()
+    {
+        var item = model.GetCurrentItem();
+        OnSelectedItemChanged?.Invoke(item?.ItemData);
     }
 
     private void HandleUseItem()
     {
-        model.UseCurrentItem();
-    }
+        var item = model.GetCurrentItem();
+        if (item == null)
+        {
+            Debug.Log("No item to use");
+            return;
+        }
 
-    private void HandleUseItemAlternate()
-    {
-        model.UseCurrentItemAlternate();
-    }
-
-    #endregion
-
-    #region Business Logic
-
-    private async void HandleItemUsage(ItemDataSO item, int slotIndex)
-    {
         Vector3 targetPosition = view.GetMouseWorldPosition();
-        Debug.Log($"✨ Using: {item.itemName} at position: {targetPosition}");
+        int inventorySlotIndex = model.GetInventoryIndex(model.CurrentSlotIndex);
 
-        if (service != null)
-        {
-            // Call service layer
-            var result = await service.UseItemAsync(item, slotIndex, targetPosition);
-
-            // Handle result - consume item if needed
-            if (result.WasConsumed)
-            {
-                model.RemoveItemFromSlot(slotIndex, result.ConsumedAmount);
-                Debug.Log($"➖ Consumed {result.ConsumedAmount}x {item.itemName}");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("⚠️ HotbarService not available!");
-        }
+        Debug.Log("Using: " + item.ItemName + " at position: " + targetPosition);
+        OnItemUsed?.Invoke(item.ItemData, targetPosition, inventorySlotIndex);
     }
 
-    private async void HandleItemUsageAlternate(ItemDataSO item, int slotIndex)
+    public void ConsumeCurrentItem(int amount = 1)
     {
-        Vector3 targetPosition = view.GetMouseWorldPosition();
-        Debug.Log($"🔄 Alternate use: {item.itemName} at position: {targetPosition}");
-
-        // For now, same as primary usage - you can implement different logic
-        if (service != null)
-        {
-            var result = await service.UseItemAsync(item, slotIndex, targetPosition);
-            if (result.WasConsumed)
-            {
-                model.RemoveItemFromSlot(slotIndex, result.ConsumedAmount);
-            }
-        }
+        int inventorySlotIndex = model.GetInventoryIndex(model.CurrentSlotIndex);
+        inventoryService.RemoveItemFromSlot(inventorySlotIndex, amount);
+        Debug.Log("Consumed " + amount + "x item from hotbar slot " + (model.CurrentSlotIndex + 1));
     }
 
-    #endregion
+    public void ConsumeItemAtSlot(int localSlotIndex, int amount = 1)
+    {
+        int inventorySlotIndex = model.GetInventoryIndex(localSlotIndex);
+        inventoryService.RemoveItemFromSlot(inventorySlotIndex, amount);
+        Debug.Log("Consumed " + amount + "x item from hotbar slot " + (localSlotIndex + 1));
+    }
 
-    #region Public API
+    private void HandleItemAddedOrRemoved(ItemModel _,int inventorySlotIndex)
+    {
+        RefreshSlotIfHotbar(inventorySlotIndex);
+    }
+
+    private void HandleItemsMoved(int fromSlot, int toSlot)
+    {
+        RefreshSlotIfHotbar(fromSlot);
+        RefreshSlotIfHotbar(toSlot);
+    }
+
+    private void HandleSlotChanged(int inventorySlotIndex)
+    {
+        RefreshSlotIfHotbar(inventorySlotIndex);
+    }
+
+    private void RefreshSlotIfHotbar(int inventorySlotIndex)
+    {
+        if (!model.TryGetLocalIndex(inventorySlotIndex, out int localIndex)) return;
+        var item = model.GetItemAt(localIndex);
+        view.UpdateSlotDisplay(localIndex, item);
+    }
+
+    private void RefreshAllSlots()
+    {
+        for (int i = 0; i < model.HotbarSize; i++)
+        {
+            var item = model.GetItemAt(i);
+            view.UpdateSlotDisplay(i, item);
+        }
+    }
 
     public void Initialize()
     {
-        view.Initialize(model.HotbarSize);
-        view.RefreshAll(model.Slots);
+        RefreshAllSlots();
+        view.UpdateSelection(model.CurrentSlotIndex);
     }
 
-    public bool AddItem(int slotIndex, ItemDataSO item, int quantity = 1)
-    {
-        return model.AddItemToSlot(slotIndex, item, quantity);
-    }
-
-    public bool RemoveItem(int slotIndex, int quantity = 1)
-    {
-        return model.RemoveItemFromSlot(slotIndex, quantity);
-    }
-
-    public void ClearHotbar()
-    {
-        model.ClearHotbar();
-        view.RefreshAll(model.Slots);
-    }
-
-    public void SwapSlots(int indexA, int indexB)
-    {
-        model.SwapSlots(indexA, indexB);
-    }
-
-    #endregion
+    public ItemModel GetCurrentItem() => model.GetCurrentItem();
+    public ItemModel GetItemAt(int localIndex) => model.GetItemAt(localIndex);
 }

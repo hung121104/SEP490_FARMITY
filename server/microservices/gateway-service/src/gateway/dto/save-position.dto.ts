@@ -14,5 +14,5 @@ export class SavePositionDto {
   positionY: number;
 
   @IsNumber()
-  chunkIndex: number;
+  sectionIndex: number;
 }

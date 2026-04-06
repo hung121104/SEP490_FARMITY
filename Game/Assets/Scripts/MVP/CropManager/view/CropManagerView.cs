@@ -3,535 +3,271 @@ using System.Collections.Generic;
 using Photon.Pun;
 
 /// <summary>
-/// Manages crop growth over time by listening to the TimeManagerView's day change events.
-/// Updates crop stages in WorldDataManager and refreshes visual representations.
+/// Pure View layer for crop management.
+/// Responsibilities:
+///   - Wires the TimeManagerView day-change event to ICropGrowthService.
+///   - Listens to ICropGrowthService.OnCropStageChanged and refreshes visuals.
+///   - Manages crop visual GameObjects (sprite renderers per tile).
+///
+/// All business logic (growth math, plant-data lookups, domain rules)
+/// lives in ICropGrowthService / CropGrowthService.
 /// </summary>
 public class CropManagerView : MonoBehaviourPunCallbacks
 {
     public static CropManagerView Instance { get; private set; }
 
+    // ── Inspector references ──────────────────────────────────────────────
     [Header("References")]
-    [Tooltip("Reference to the TimeManagerView to listen for day changes")]
     public TimeManagerView timeManager;
-    
-    [Tooltip("Reference to WorldDataManager for crop data")]
-    private WorldDataManager worldDataManager;
-    
-    [Tooltip("Reference to ChunkLoadingManager for visual updates")]
-    private ChunkLoadingManager chunkLoadingManager;
-    
-    [Tooltip("Reference to ChunkDataSyncManager for network sync")]
-    private ChunkDataSyncManager syncManager;
 
-    [Header("Plant Data")]
-    [Tooltip("Array of all plant data ScriptableObjects indexed by CropTypeID")]
-    public PlantDataSO[] plantDatabase;
+    // Plant data is sourced from PlantCatalogService at runtime — no Inspector array needed.
 
     [Header("Growth Settings")]
-    [Tooltip("Enable/disable automatic crop growth")]
     public bool enableGrowth = true;
-    
-    [Tooltip("Growth speed multiplier (1.0 = normal speed)")]
     [Range(0.1f, 10f)]
     public float growthSpeedMultiplier = 1f;
 
+    [Header("Water Decay Settings")]
+    [Tooltip("How many in-game minutes water lasts before it evaporates.")]
+    [SerializeField] private float waterDecayDurationMinutes = 24f;
+
     [Header("Visual")]
-    [Tooltip("Parent transform for crop visual GameObjects")]
     public Transform cropVisualsParent;
+    // Crop visual prefab is read from ChunkLoadingManager (the primary spawn path).
+    // There is no separate prefab field here — assign it on ChunkLoadingManager in the Inspector.
 
     [Header("Debug")]
     public bool showDebugLogs = true;
-    
-    // Track when each crop was planted (worldX_worldY -> planting day)
-    private Dictionary<string, CropGrowthData> cropGrowthTracker = new Dictionary<string, CropGrowthData>();
-    
-    // Visual representation (worldX_worldY -> GameObject)
-    private Dictionary<string, GameObject> cropVisuals = new Dictionary<string, GameObject>();
 
+    // ── Service ───────────────────────────────────────────────────────────
+    private ICropGrowthService growthService;
+
+    /// <summary>Exposed so other services (harvesting, pollen) can still resolve plant / pollen data.</summary>
+    public ICropGrowthService GrowthService => growthService;
+
+    // ── Visuals ───────────────────────────────────────────────────────────
+    private Dictionary<string, GameObject> cropVisuals = new Dictionary<string, GameObject>();
+    private ChunkLoadingManager chunkLoadingManager;
+
+    // ─────────────────────────────────────────────────────────────────────
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Debug.LogWarning("[CropManagerView] Multiple instances detected. Destroying duplicate.");
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance == null) Instance = this;
+        else { Destroy(gameObject); return; }
     }
 
     private void Start()
     {
-        InitializeManagers();
-        
-        if (cropVisualsParent == null)
-        {
-            GameObject parent = new GameObject("CropVisuals");
-            cropVisualsParent = parent.transform;
-        }
-    }
-
-    private void InitializeManagers()
-    {
-        // Find TimeManagerView if not assigned
+        // Resolve scene dependencies
         if (timeManager == null)
-        {
             timeManager = FindAnyObjectByType<TimeManagerView>();
-            if (timeManager == null)
-            {
-                Debug.LogError("[CropManagerView] TimeManagerView not found in scene!");
-                return;
-            }
-        }
 
-        // Subscribe to day change event
-        timeManager.OnDayChanged += OnDayChanged;
-        
-        // Get WorldDataManager
-        worldDataManager = WorldDataManager.Instance;
-        if (worldDataManager == null)
-        {
-            Debug.LogError("[CropManagerView] WorldDataManager not found!");
-        }
-        
-        // Get ChunkLoadingManager
         chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
-        if (chunkLoadingManager == null)
-        {
-            Debug.LogWarning("[CropManagerView] ChunkLoadingManager not found!");
-        }
-        
-        // Get ChunkDataSyncManager
-        syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
-        if (syncManager == null)
-        {
-            Debug.LogWarning("[CropManagerView] ChunkDataSyncManager not found!");
-        }
+        var syncManager     = FindAnyObjectByType<ChunkDataSyncManager>();
+
+        // Build the growth service — PlantData is resolved from PlantCatalogService at runtime
+        growthService = new CropGrowthService(
+            WorldDataManager.Instance,
+            syncManager);
+
+        growthService.WaterDecayDurationMinutes = waterDecayDurationMinutes;
+
+        // Subscribe to visual-refresh event
+        growthService.OnCropStageChanged += OnCropStageChanged;
+
+        // Subscribe to rain events for auto-watering
+        WeatherView.OnRainStarted += OnRainStarted;
+        WeatherView.OnRainStopped += OnRainStopped;
+        // If it's already raining when we initialize, apply immediately
+        if (WeatherView.IsRaining)
+            OnRainStarted();
+
+        // Visual parent fallback
+        if (cropVisualsParent == null)
+            cropVisualsParent = new GameObject("CropVisuals").transform;
 
         if (showDebugLogs)
-        {
-            Debug.Log("[CropManagerView] Initialized successfully");
-        }
+            Debug.Log("[CropManagerView] Initialized (real-time growth mode).");
     }
 
     private void OnDestroy()
     {
-        if (Instance == this)
-        {
-            Instance = null;
-        }
-
-        // Unsubscribe from events
-        if (timeManager != null)
-        {
-            timeManager.OnDayChanged -= OnDayChanged;
-        }
+        if (Instance == this) Instance = null;
+        if (growthService != null) growthService.OnCropStageChanged -= OnCropStageChanged;
+        WeatherView.OnRainStarted -= OnRainStarted;
+        WeatherView.OnRainStopped -= OnRainStopped;
     }
 
-    /// <summary>
-    /// Called when a new day begins in the game
-    /// </summary>
-    private void OnDayChanged()
+    // ── Rain event handlers ──────────────────────────────────────────────
+    private void OnRainStarted()
+    {
+        if (growthService == null) return;
+        growthService.IsRaining = true;
+
+        // Allow all clients to perform the bulk water locally — no network broadcast needed!
+
+        growthService.WaterAllTilledTiles();
+
+        // Refresh visuals for all loaded chunks so watered overlays appear
+        if (chunkLoadingManager != null && WorldDataManager.Instance != null)
+        {
+            foreach (var config in WorldDataManager.Instance.sectionConfigs)
+            {
+                if (!config.IsActive) continue;
+                var section = WorldDataManager.Instance.GetSection(config.SectionId);
+                if (section == null) continue;
+                foreach (var chunkPos in section.Keys)
+                    chunkLoadingManager.RefreshChunkVisuals(chunkPos);
+            }
+        }
+
+        if (showDebugLogs)
+            Debug.Log("[CropManagerView] Rain started — all tilled tiles watered, decay paused.");
+    }
+
+    private void OnRainStopped()
+    {
+        if (growthService == null) return;
+        growthService.IsRaining = false;
+
+        if (showDebugLogs)
+            Debug.Log("[CropManagerView] Rain stopped — water decay resumed.");
+    }
+
+    // ── Real-time growth tick ─────────────────────────────────────────
+    private void Update()
     {
         if (!enableGrowth) return;
-        
-        // Only Master Client performs crop growth calculations
-        if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient)
+        if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient) return;
+        if (timeManager == null) return;
+
+        // deltaTime * timeSpeed = in-game minutes elapsed this frame
+        // (same formula as TimeManagerView.AdvanceTime)
+        float gameMinutesDelta = Time.deltaTime * timeManager.timeSpeed * growthSpeedMultiplier;
+        growthService?.TickGrowth(gameMinutesDelta);
+
+        // Live-push decay duration changes made in the Inspector during Play mode.
+        if (growthService != null)
+            growthService.WaterDecayDurationMinutes = waterDecayDurationMinutes;
+
+        growthService?.TickWaterDecay(gameMinutesDelta);
+    }
+
+    // ── Visual refresh (driven by service event) ──────────────────────────
+    private void OnCropStageChanged(int worldX, int worldY, byte newStage)
+    {
+        if (chunkLoadingManager != null)
         {
-            if (showDebugLogs)
-                Debug.Log("[CropManagerView] Non-master client waiting for crop updates from Master Client");
+            // ChunkLoadingManager handles the full visual refresh
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(new Vector3(worldX, worldY, 0));
+            chunkLoadingManager.RefreshChunkVisuals(chunkPos);
             return;
         }
 
-        if (showDebugLogs)
-        {
-            Debug.Log($"[CropManagerView] Day changed! Growing all crops...");
-        }
+        // Fallback: update sprite directly
+        WorldDataManager.Instance.TryGetCropAtWorldPosition(new Vector3(worldX, worldY, 0),
+            out UnifiedChunkData.CropTileData td);
+        PlantData plant = growthService.GetPlantData(td.PlantId);
 
-        GrowAllCrops();
+        if (plant == null || newStage >= plant.growthStages.Count) return;
+
+        string key = $"{worldX}_{worldY}";
+        if (cropVisuals.TryGetValue(key, out GameObject go) && go != null)
+        {
+            var sr = go.GetComponent<SpriteRenderer>();
+            if (sr != null) sr.sprite = PlantCatalogService.Instance?.GetStageSprite(td.PlantId, newStage);
+        }
+        else
+        {
+            CreateCropVisual(worldX, worldY, plant, td.PlantId, newStage);
+        }
     }
 
-    /// <summary>
-    /// Grow all crops in the world by one day
-    /// </summary>
-    private void GrowAllCrops()
+    // ── Visual management ─────────────────────────────────────────────────
+    private void CreateCropVisual(int worldX, int worldY, PlantData plant, string plantId, int stage)
     {
-        if (worldDataManager == null) return;
+        if (plant == null || plant.growthStages.Count == 0) return;
+        string key = $"{worldX}_{worldY}";
 
-        int cropsGrown = 0;
-        int cropsHarvested = 0;
+        if (cropVisuals.TryGetValue(key, out GameObject old) && old != null)
+            Destroy(old);
 
-        // Get all sections and iterate through chunks
-        var stats = worldDataManager.GetStats();
-        
-        for (int s = 0; s < worldDataManager.sectionConfigs.Count; s++)
+        // Use the same prefab ChunkLoadingManager uses so both paths produce identical visuals.
+        GameObject prefab = chunkLoadingManager != null ? chunkLoadingManager.cropVisualPrefab : null;
+
+        GameObject go;
+        if (prefab != null)
         {
-            var sectionConfig = worldDataManager.sectionConfigs[s];
-            if (!sectionConfig.IsActive) continue;
-
-            var section = worldDataManager.GetSection(sectionConfig.SectionId);
-            if (section == null) continue;
-
-            foreach (var chunkPair in section)
-            {
-                CropChunkData chunk = chunkPair.Value;
-                bool chunkModified = false;
-
-                // Get all crops in this chunk
-                var allCrops = chunk.GetAllCrops();
-
-                foreach (var tile in allCrops)
-                {
-                    if (!tile.HasCrop) continue;
-
-                    string key = GetCropKey(tile.WorldX, tile.WorldY);
-                    
-                    // Initialize growth data if not tracked yet
-                    if (!cropGrowthTracker.ContainsKey(key))
-                    {
-                        cropGrowthTracker[key] = new CropGrowthData
-                        {
-                            cropTypeID = tile.CropTypeID,
-                            currentStage = tile.CropStage,
-                            totalAge = 0, // Total days since planting
-                            worldX = tile.WorldX,
-                            worldY = tile.WorldY
-                        };
-                    }
-
-                    CropGrowthData growthData = cropGrowthTracker[key];
-                    growthData.totalAge++; // Increment total age each day
-
-                    // Check if crop should advance to next stage based on total age
-                    PlantDataSO plantData = GetPlantData(tile.CropTypeID);
-                    if (plantData != null && growthData.currentStage < plantData.GrowthStages.Count - 1)
-                    {
-                        // Check next stage to see if we should advance
-                        int nextStageIndex = growthData.currentStage + 1;
-                        GrowthStage nextStageData = plantData.GrowthStages[nextStageIndex];
-                        
-                        // Apply growth speed multiplier
-                        int ageRequired = Mathf.RoundToInt(nextStageData.age / growthSpeedMultiplier);
-                        
-                        if (growthData.totalAge >= ageRequired)
-                        {
-                            // Advance to next stage
-                            growthData.currentStage = nextStageIndex;
-                            
-                            // Update in WorldDataManager
-                            worldDataManager.UpdateCropStage(
-                                new Vector3(tile.WorldX, tile.WorldY, 0), 
-                                (byte)growthData.currentStage
-                            );
-                            
-                            // Broadcast crop stage update to other clients
-                            if (PhotonNetwork.IsConnected && syncManager != null)
-                            {
-                                syncManager.BroadcastCropStageUpdated(tile.WorldX, tile.WorldY, (byte)growthData.currentStage);
-                            }
-                            
-                            chunkModified = true;
-                            cropsGrown++;
-
-                            if (showDebugLogs)
-                            {
-                                Debug.Log($"[CropManagerView] Crop {tile.CropTypeID} at ({tile.WorldX}, {tile.WorldY}) " +
-                                         $"advanced to stage {growthData.currentStage} (age: {growthData.totalAge} days)");
-                            }
-
-                            // Update visual
-                            UpdateCropVisual(tile.WorldX, tile.WorldY, plantData, growthData.currentStage);
-
-                            // Check if fully grown (ready to harvest)
-                            if (growthData.currentStage >= plantData.GrowthStages.Count - 1)
-                            {
-                                cropsHarvested++;
-                                if (showDebugLogs)
-                                {
-                                    Debug.Log($"[CropManagerView] Crop {tile.CropTypeID} at ({tile.WorldX}, {tile.WorldY}) " +
-                                             $"is ready to harvest! (Total age: {growthData.totalAge} days)");
-                                }
-                            }
-                        }
-                    }
-
-                    cropGrowthTracker[key] = growthData;
-                }
-
-                // Refresh chunk visuals if modified
-                if (chunkModified && chunkLoadingManager != null)
-                {
-                    Vector2Int chunkPos = chunkPair.Key;
-                    chunkLoadingManager.RefreshChunkVisuals(chunkPos);
-                }
-            }
+            go = Instantiate(prefab,
+                             new Vector3(worldX + 0.5f, worldY + 0.5f, 0f),
+                             Quaternion.identity,
+                             cropVisualsParent);
         }
-
-        if (showDebugLogs && (cropsGrown > 0 || cropsHarvested > 0))
+        else
         {
-            Debug.Log($"[CropManagerView] Growth complete: {cropsGrown} crops advanced, {cropsHarvested} ready to harvest");
+            go = new GameObject($"Crop_{plant.plantName}_{worldX}_{worldY}");
+            go.transform.position = new Vector3(worldX + 0.5f, worldY + 0.5f, 0f);
+            go.transform.SetParent(cropVisualsParent);
         }
+        go.name = $"Crop_{plant.plantName}_{worldX}_{worldY}";
+
+        // Get the SpriteRenderer from the prefab (root or child); add one as fallback.
+        var sr = go.GetComponentInChildren<SpriteRenderer>(true);
+        if (sr == null)
+            sr = go.AddComponent<SpriteRenderer>();
+
+        sr.sortingLayerName = stage == 0 ? "Ground" : "WalkInfront";
+        sr.sortingOrder     = stage == 0 ? 5 : 0;
+        sr.sprite = PlantCatalogService.Instance?.GetStageSprite(plantId, stage);
+
+        cropVisuals[key] = go;
     }
 
-    /// <summary>
-    /// Register a newly planted crop for growth tracking
-    /// </summary>
-    public void RegisterPlantedCrop(int worldX, int worldY, ushort cropTypeID)
-    {
-        string key = GetCropKey(worldX, worldY);
-        
-        cropGrowthTracker[key] = new CropGrowthData
-        {
-            cropTypeID = cropTypeID,
-            currentStage = 0,
-            totalAge = 0, // Start from day 0
-            worldX = worldX,
-            worldY = worldY
-        };
-
-        // Create visual
-        PlantDataSO plantData = GetPlantData(cropTypeID);
-        if (plantData != null)
-        {
-            // If ChunkLoadingManager is available, refresh that chunk's visuals
-            // Otherwise, create our own visual
-            if (chunkLoadingManager != null)
-            {
-                Vector2Int chunkPos = worldDataManager.WorldToChunkCoords(new Vector3(worldX, worldY, 0));
-                chunkLoadingManager.RefreshChunkVisuals(chunkPos);
-            }
-            else
-            {
-                CreateCropVisual(worldX, worldY, plantData, 0);
-            }
-        }
-
-        if (showDebugLogs)
-        {
-            Debug.Log($"[CropManagerView] Registered new crop {cropTypeID} at ({worldX}, {worldY})");
-        }
-    }
-
-    /// <summary>
-    /// Unregister a crop (when harvested or removed)
-    /// </summary>
     public void UnregisterCrop(int worldX, int worldY)
     {
-        string key = GetCropKey(worldX, worldY);
-        
-        cropGrowthTracker.Remove(key);
-        
-        // Remove visual or refresh chunk
+        string key = $"{worldX}_{worldY}";
+
         if (chunkLoadingManager != null)
         {
-            Vector2Int chunkPos = worldDataManager.WorldToChunkCoords(new Vector3(worldX, worldY, 0));
+            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(new Vector3(worldX, worldY, 0));
             chunkLoadingManager.RefreshChunkVisuals(chunkPos);
         }
-        else if (cropVisuals.ContainsKey(key))
+        else if (cropVisuals.TryGetValue(key, out GameObject go))
         {
-            if (cropVisuals[key] != null)
-            {
-                Destroy(cropVisuals[key]);
-            }
+            if (go != null) Destroy(go);
             cropVisuals.Remove(key);
         }
 
         if (showDebugLogs)
-        {
-            Debug.Log($"[CropManagerView] Unregistered crop at ({worldX}, {worldY})");
-        }
+            Debug.Log($"[CropManagerView] Unregistered crop at ({worldX},{worldY}).");
     }
 
-    /// <summary>
-    /// Create visual representation of a crop
-    /// </summary>
-    private void CreateCropVisual(int worldX, int worldY, PlantDataSO plantData, int stage)
+    public void ClearAllVisuals()
     {
-        if (plantData == null || plantData.GrowthStages.Count == 0) return;
-
-        string key = GetCropKey(worldX, worldY);
-        
-        // Remove old visual if exists
-        if (cropVisuals.ContainsKey(key) && cropVisuals[key] != null)
-        {
-            Destroy(cropVisuals[key]);
-        }
-
-        // Create new visual
-        GameObject cropVisual = new GameObject($"Crop_{plantData.PlantName}_{worldX}_{worldY}");
-        cropVisual.transform.position = new Vector3(worldX + 0.5f, worldY + 0.5f, 0);
-        cropVisual.transform.SetParent(cropVisualsParent);
-
-        SpriteRenderer sr = cropVisual.AddComponent<SpriteRenderer>();
-        sr.sprite = plantData.GrowthStages[stage].stageSprite;
-        sr.sortingLayerName = "Default";
-        sr.sortingOrder = 1;
-
-        cropVisuals[key] = cropVisual;
+        foreach (var go in cropVisuals.Values)
+            if (go != null) Destroy(go);
+        cropVisuals.Clear();
     }
 
-    /// <summary>
-    /// Update visual representation of a crop
-    /// </summary>
-    private void UpdateCropVisual(int worldX, int worldY, PlantDataSO plantData, int stage)
-    {
-        // If ChunkLoadingManager is available, it will handle visuals via RefreshChunkVisuals
-        // This method is only used as a fallback when ChunkLoadingManager is not present
-        if (chunkLoadingManager != null)
-        {
-            // ChunkLoadingManager handles visuals, do nothing here
-            return;
-        }
-        
-        if (plantData == null || stage >= plantData.GrowthStages.Count) return;
+    // ── Backward-compat thin delegates (used by existing services) ─────────────
+    // These simply forward to the growth service so callers don't need updating.
 
-        string key = GetCropKey(worldX, worldY);
+    public PlantData GetPlantData(string plantId)            => growthService?.GetPlantData(plantId);
+    public bool IsCropReadyToHarvest(int wx, int wy)         => growthService?.IsCropReadyToHarvest(wx, wy) ?? false;
+    public bool IsCropAtPollenStage(int wx, int wy)          => growthService?.IsCropAtPollenStage(wx, wy) ?? false;
+    public PollenData GetPollenItem(int wx, int wy)          => growthService?.GetPollenItem(wx, wy);
 
-        if (cropVisuals.ContainsKey(key) && cropVisuals[key] != null)
-        {
-            SpriteRenderer sr = cropVisuals[key].GetComponent<SpriteRenderer>();
-            if (sr != null)
-            {
-                sr.sprite = plantData.GrowthStages[stage].stageSprite;
-            }
-        }
-        else
-        {
-            // Create visual if it doesn't exist
-            CreateCropVisual(worldX, worldY, plantData, stage);
-        }
-    }
+    /// <summary>Debug-only: immediately advance the crop one stage.</summary>
+    public void ForceGrowCrop(int worldX, int worldY)        => growthService?.ForceGrowCrop(worldX, worldY);
 
-    /// <summary>
-    /// Get plant data for a specific crop type ID
-    /// </summary>
-    private PlantDataSO GetPlantData(ushort cropTypeID)
-    {
-        if (plantDatabase == null || cropTypeID >= plantDatabase.Length)
-        {
-            Debug.LogWarning($"[CropManagerView] No plant data for crop type {cropTypeID}");
-            return null;
-        }
-        return plantDatabase[cropTypeID];
-    }
-
-    /// <summary>
-    /// Generate unique key for crop position
-    /// </summary>
-    private string GetCropKey(int worldX, int worldY)
-    {
-        return $"{worldX}_{worldY}";
-    }
-
-    /// <summary>
-    /// Check if a crop is ready to harvest
-    /// </summary>
-    public bool IsCropReadyToHarvest(int worldX, int worldY)
-    {
-        string key = GetCropKey(worldX, worldY);
-        
-        if (!cropGrowthTracker.ContainsKey(key)) return false;
-
-        CropGrowthData growthData = cropGrowthTracker[key];
-        PlantDataSO plantData = GetPlantData(growthData.cropTypeID);
-        
-        if (plantData == null) return false;
-
-        return growthData.currentStage >= plantData.GrowthStages.Count - 1;
-    }
-
-    /// <summary>
-    /// Get growth progress of a crop (0-1)
-    /// </summary>
+    /// <summary>0–1 growth progress for UI display.</summary>
     public float GetCropGrowthProgress(int worldX, int worldY)
     {
-        string key = GetCropKey(worldX, worldY);
-        
-        if (!cropGrowthTracker.ContainsKey(key)) return 0f;
-
-        CropGrowthData growthData = cropGrowthTracker[key];
-        PlantDataSO plantData = GetPlantData(growthData.cropTypeID);
-        
-        if (plantData == null || plantData.GrowthStages.Count == 0) return 0f;
-
-        return (float)growthData.currentStage / (plantData.GrowthStages.Count - 1);
+        if (WorldDataManager.Instance == null) return 0f;
+        if (!WorldDataManager.Instance.TryGetCropAtWorldPosition(
+                new Vector3(worldX, worldY, 0), out UnifiedChunkData.CropTileData td)) return 0f;
+        PlantData plant = growthService?.GetPlantData(td.PlantId);
+        if (plant == null || plant.growthStages.Count == 0) return 0f;
+        return (float)td.CropStage / (plant.growthStages.Count - 1);
     }
-
-    /// <summary>
-    /// Force grow a specific crop (for testing/debugging)
-    /// </summary>
-    public void ForceGrowCrop(int worldX, int worldY)
-    {
-        string key = GetCropKey(worldX, worldY);
-        
-        if (!cropGrowthTracker.ContainsKey(key))
-        {
-            Debug.LogWarning($"[CropManagerView] No crop at ({worldX}, {worldY}) to force grow");
-            return;
-        }
-
-        CropGrowthData growthData = cropGrowthTracker[key];
-        PlantDataSO plantData = GetPlantData(growthData.cropTypeID);
-        
-        if (plantData == null) return;
-
-        if (growthData.currentStage < plantData.GrowthStages.Count - 1)
-        {
-            growthData.currentStage++;
-            
-            // Set age to the requirement for this stage
-            if (growthData.currentStage < plantData.GrowthStages.Count)
-            {
-                growthData.totalAge = plantData.GrowthStages[growthData.currentStage].age;
-            }
-            
-            cropGrowthTracker[key] = growthData;
-
-            worldDataManager.UpdateCropStage(
-                new Vector3(worldX, worldY, 0), 
-                (byte)growthData.currentStage
-            );
-
-            UpdateCropVisual(worldX, worldY, plantData, growthData.currentStage);
-
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropManagerView] Force grew crop at ({worldX}, {worldY}) to stage {growthData.currentStage} (age: {growthData.totalAge})");
-            }
-        }
-    }
-
-    /// <summary>
-    /// Clear all growth data (useful when loading a save or starting new game)
-    /// </summary>
-    public void ClearAllGrowthData()
-    {
-        cropGrowthTracker.Clear();
-        
-        foreach (var visual in cropVisuals.Values)
-        {
-            if (visual != null) Destroy(visual);
-        }
-        cropVisuals.Clear();
-
-        if (showDebugLogs)
-        {
-            Debug.Log("[CropManagerView] Cleared all growth data");
-        }
-    }
-}
-
-/// <summary>
-/// Data structure to track individual crop growth
-/// </summary>
-[System.Serializable]
-public struct CropGrowthData
-{
-    public ushort cropTypeID;
-    public int currentStage;
-    public int totalAge; // Total days since planting
-    public int worldX;
-    public int worldY;
 }

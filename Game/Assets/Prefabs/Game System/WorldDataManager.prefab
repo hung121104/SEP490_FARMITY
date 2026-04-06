@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &137186438142730436
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 747796652685310905}
+  - component: {fileID: 5568563279123604000}
+  m_Layer: 0
+  m_Name: WorldDataManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &747796652685310905
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 137186438142730436}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5568563279123604000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 137186438142730436}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9bfa49cfc92dfc48a1580a41f5b5223, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  worldWidthChunks: 10
+  worldHeightChunks: 10
+  chunkSizeTiles: 30
+  sectionConfigs:
+  - SectionId: 0
+    SectionName: Section 1
+    ChunkStartX: -8
+    ChunkStartY: -3
+    ChunksWidth: 11
+    ChunksHeight: 9
+    IsActive: 1
+    DebugColor: {r: 1, g: 0.5, b: 0.5, a: 0.3}
+  showDebugLogs: 0
+  showSectionBounds: 0
+  showChunkGrid: 0
+  worldName: 
+  day: 0
+  month: 0
+  year: 0
+  hour: 0
+  minute: 0
+  gold: 0
+  weatherToday: 0
+  weatherTomorrow: 0

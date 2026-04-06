@@ -12,11 +12,15 @@ import { CharacterController } from './character.controller';
       {
         name: 'AUTH_SERVICE',
         transport: Transport.TCP,
-        options: { host: 'localhost', port: 8877 },
+        options: {
+          host: process.env.AUTH_SERVICE_HOST || 'localhost',
+          port: parseInt(process.env.AUTH_SERVICE_PORT || '8877'),
+        },
       },
     ]),
   ],
   controllers: [CharacterController],
   providers: [CharacterService],
+  exports: [CharacterService],
 })
 export class CharacterModule {}

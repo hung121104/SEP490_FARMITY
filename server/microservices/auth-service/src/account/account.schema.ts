@@ -3,18 +3,16 @@ import { Document } from 'mongoose';
 
 export type AccountDocument = Account & Document;
 
-@Schema()
-export class GameSettings {
-  @Prop({ default: true })
-  audio: boolean;
+export class AccountAchievementProgress {
+  @Prop({ type: [Number], default: [] })
+  progress: number[];
 
-  @Prop({ type: Object, default: { moveup: 'w', attack: 'Left_Click' } })
-  keyBinds: Record<string, string>;
+  @Prop({ default: null })
+  achievedAt: Date | null;
 }
 
-export const GameSettingsSchema = SchemaFactory.createForClass(GameSettings);
 
-@Schema()
+@Schema({ timestamps: true })
 export class Account {
   @Prop({ required: true, unique: true })
   username: string;
@@ -25,8 +23,6 @@ export class Account {
   @Prop({ required: true, unique: true })
   email: string;
 
-  @Prop({ type: GameSettingsSchema, default: () => ({}) })
-  gameSettings: GameSettings;
 
   @Prop({ default: false })
   isAdmin: boolean;
@@ -42,6 +38,17 @@ export class Account {
 
   @Prop()
   resetOtpRequestedAt?: Date;
+
+  @Prop({
+    type: Map,
+    of: {
+      progress: { type: [Number], default: [] },
+      achievedAt: { type: Date, default: null },
+    },
+    default: () => new Map(),
+  })
+  achievementProgress: Map<string, AccountAchievementProgress>;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);
+AccountSchema.index({ isAdmin: 1, createdAt: 1 });

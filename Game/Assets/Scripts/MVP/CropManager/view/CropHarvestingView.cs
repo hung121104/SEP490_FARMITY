@@ -1,293 +1,237 @@
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+using UnityEngine.InputSystem;
 using Photon.Pun;
-
+using System.Reflection;
 public class CropHarvestingView : MonoBehaviourPun
 {
+    // ── Settings ──────────────────────────────────────────────────────────
     [Header("Harvest Settings")]
-    public float checkRadius = 1.5f; // radius (in world units) to search for crops
-    public KeyCode harvestKey = KeyCode.F;
+    public float checkRadius = 2f;
+    public bool allowHoldToHarvest = true;
+    [Tooltip("How often (seconds) to attempt harvesting while holding the harvest key.")]
+    public float harvestRepeatInterval = 0.15f;
     [Tooltip("Tag to find the player GameObject (used to locate CenterPoint child)")]
     public string playerTag = "PlayerEntity";
     [Tooltip("How often (seconds) to scan for nearby harvestable crops")]
-    public float checkInterval = 0.12f; // default ~8 checks/sec
+    public float checkInterval = 0.12f;
+
+
+    // ── Runtime state ─────────────────────────────────────────────────────
     private float nextScanTime = 0f;
-
-    [Header("UI")]
-    public Canvas uiCanvas; // optional: assign a screen-space canvas; if null one will be created on the main camera
-    public TextMeshProUGUI promptText; // optional: assign a TMP UI element to reuse
-
-    private Vector3 currentHarvestTile = Vector3.zero;
-    private bool canHarvestNearby = false;
+    private float holdTimer    = 0f;
+    private bool  _isHoldingHarvest = false;
     private Vector2Int lastHarvestTile = new Vector2Int(int.MinValue, int.MinValue);
 
-    // Cached managers
-    private WorldDataManager worldDataManager;
-    private CropManagerView cropManagerView;
-    private ChunkDataSyncManager syncManager;
-    private ChunkLoadingManager loadingManager;
+    // ── MVP ───────────────────────────────────────────────────────────────
+    private CropHarvestingPresenter presenter;
+    public CropHarvestingPresenter GetPresenter() => presenter;
+
+    // ── Dependencies ──────────────────────────────────────────────────────
     private Transform playerTransform;
 
+    // Hotbar interception
+    private HotbarView hotbarView;
+    private FieldInfo hotbarLeftClickField;
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────
     void Awake()
     {
-        worldDataManager = WorldDataManager.Instance;
-        cropManagerView = FindAnyObjectByType<CropManagerView>();
-        syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
-        loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
+        var cropManagerView  = FindAnyObjectByType<CropManagerView>();
+        var inventoryView    = FindAnyObjectByType<InventoryGameView>();
+        var syncManager      = FindAnyObjectByType<ChunkDataSyncManager>();
+
+        var pollenService = new CropPollenService(
+            WorldDataManager.Instance,
+            cropManagerView,
+            inventoryView,
+            syncManager
+        );
+
+        var service = new CropHarvestingService(
+            WorldDataManager.Instance,
+            cropManagerView,
+            syncManager,
+            FindAnyObjectByType<ChunkLoadingManager>(),
+            inventoryView,
+            pollenService
+        );
+
+        presenter = new CropHarvestingPresenter(this, service);
+
+        hotbarView = FindAnyObjectByType<HotbarView>();
+        if (hotbarView != null)
+            hotbarLeftClickField = typeof(HotbarView).GetField("enableLeftClick", BindingFlags.NonPublic | BindingFlags.Instance);
     }
 
     void Start()
     {
-        if (!photonView.IsMine)
-        {
-            // only the local player should run the UI / input logic
-            enabled = false;
-            return;
-        }
-
-        SetupUIIfNeeded();
+        FindLocalPlayer();
     }
 
+    void OnEnable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.Interact.performed += OnHarvestPerformed;
+        InputManager.Instance.Interact.canceled  += OnHarvestCanceled;
+    }
+
+    void OnDisable()
+    {
+        if (InputManager.Instance == null) return;
+        InputManager.Instance.Interact.performed -= OnHarvestPerformed;
+        InputManager.Instance.Interact.canceled  -= OnHarvestCanceled;
+    }
+
+    private void OnHarvestPerformed(InputAction.CallbackContext ctx)
+    {
+        if (playerTransform == null) return;
+        HandleHarvestInput();
+        if (allowHoldToHarvest)
+        {
+            _isHoldingHarvest = true;
+            holdTimer = harvestRepeatInterval;
+        }
+    }
+
+    private void OnHarvestCanceled(InputAction.CallbackContext ctx)
+    {
+        _isHoldingHarvest = false;
+        holdTimer = 0f;
+        lastHarvestTile = new Vector2Int(int.MinValue, int.MinValue);
+    }
+
+    // ── Update ────────────────────────────────────────────────────────────
     void Update()
     {
-        if (!photonView.IsMine) return;
+        if (playerTransform == null) FindLocalPlayer();
+        if (playerTransform == null) return;
 
-        // Run proximity scan at the configured interval to reduce work per-frame
-        if (Time.time >= nextScanTime)
+        if (allowHoldToHarvest && _isHoldingHarvest)
         {
-            nextScanTime = Time.time + Mathf.Max(0.01f, checkInterval);
-            ScanForNearbyHarvestable();
+            holdTimer -= Time.deltaTime;
+            if (holdTimer <= 0f)
+            {
+                HandleHarvestInput();
+                holdTimer = harvestRepeatInterval;
+            }
         }
 
-        if (Input.GetKeyDown(harvestKey))
+        ManageHotbarInterception();
+    }
+
+    // ── View callbacks (called by Presenter) ──────────────────────────────
+
+    public void OnHarvestSuccess(Vector3 tilePos, ItemData harvestedItem) { }
+
+    public void OnHarvestFailed(Vector3 tilePos) { }
+
+    /// <summary>Called by the Presenter when pollen was successfully collected.</summary>
+    public void OnPollenCollectSuccess(Vector3 tilePos, PollenData pollen)
+    {
+        // TODO: play a VFX/SFX, show a pickup notification, etc.
+        Debug.Log($"[CropHarvestingView] Pollen '{pollen?.itemName}' collected at {tilePos}.");
+    }
+
+    /// <summary>Called by the Presenter when pollen collection failed (wrong stage, full inventory, etc.).</summary>
+    public void OnPollenCollectFailed(Vector3 tilePos)
+    {
+        // TODO: play a failure sound or show a UI hint.
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────
+
+    private void HandleHarvestInput()
+    {
+        // If the player has pollen selected, the left-click is for cross-breeding (via the
+        // hotbar item-use pipeline), not for harvesting or collecting pollen. Skip entirely
+        // to avoid accidentally collecting pollen from the intended breeding target.
+        if (hotbarView?.GetCurrentItem()?.ItemData is PollenData) return;
+
+        Vector3 target = GetDirectionalTileForHarvesting();
+        if (target == Vector3.zero) return;
+
+        // Context-sensitive: prefer pollen collection when the crop is flowering.
+        if (presenter.IsReadyToCollectPollen(target))
+            presenter.HandleCollectPollenAction(target);
+        else
+            presenter.HandleHarvestAction(target);
+    }
+
+    private void ManageHotbarInterception()
+    {
+        if (hotbarView == null || hotbarLeftClickField == null) return;
+
+        bool targetingReadyCrop = false;
+
+        if (Camera.main != null && playerTransform != null)
         {
-            Vector3 target = GetDirectionalTileForHarvesting();
+            // If the player has pollen selected, never suppress the hotbar click —
+            // they intend to APPLY pollen, not collect it or harvest.
+            if (hotbarView.GetCurrentItem()?.ItemData is PollenData)
+            {
+                hotbarLeftClickField.SetValue(hotbarView, true);
+                return;
+            }
+
+            Vector3 playerPos     = playerTransform.position;
+            Vector3 mouseWorldPos = GetMouseWorldPosition();
+            Vector2Int dummyTile  = new Vector2Int(int.MinValue, int.MinValue);
+
+            Vector3 target = CropTileSelector.GetDirectionalTile(playerPos, mouseWorldPos, checkRadius, ref dummyTile);
             if (target != Vector3.zero)
-            {
-                // Only attempt harvest if there's a ready crop
-                int wx = Mathf.FloorToInt(target.x);
-                int wy = Mathf.FloorToInt(target.y);
-                if (worldDataManager != null && worldDataManager.HasCropAtWorldPosition(target) && cropManagerView.IsCropReadyToHarvest(wx, wy))
-                {
-                    PerformHarvest(target);
-                }
-            }
-        }
-    }
-
-    private void SetupUIIfNeeded()
-    {
-        if (promptText != null) return;
-
-        // Ensure there's a Canvas to host the prompt (screen-space overlay)
-        if (uiCanvas == null)
-        {
-            // Try to find existing Canvas on main camera
-            Canvas existing = FindObjectOfType<Canvas>();
-            if (existing != null)
-            {
-                uiCanvas = existing;
-            }
-            else
-            {
-                GameObject canvasGO = new GameObject("HarvestPromptCanvas");
-                uiCanvas = canvasGO.AddComponent<Canvas>();
-                uiCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvasGO.AddComponent<CanvasScaler>();
-                canvasGO.AddComponent<GraphicRaycaster>();
-            }
+                targetingReadyCrop = presenter.IsReadyToHarvest(target)
+                                  || presenter.IsReadyToCollectPollen(target);
         }
 
-        // Create TextMeshProUGUI prompt
-        GameObject txt = new GameObject("HarvestPromptText");
-        txt.transform.SetParent(uiCanvas.transform, false);
-        promptText = txt.AddComponent<TextMeshProUGUI>();
-        promptText.alignment = TextAlignmentOptions.Center;
-        // try to assign default TMP font asset if available
-        try
-        {
-            promptText.font = TMPro.TMP_Settings.defaultFontAsset;
-        }
-        catch { }
-        promptText.fontSize = 18;
-        promptText.color = Color.white;
-        promptText.raycastTarget = false;
-        promptText.enabled = false;
-
-        RectTransform rt = promptText.GetComponent<RectTransform>();
-        rt.pivot = new Vector2(0.5f, 0f);
-        rt.sizeDelta = new Vector2(300, 30);
+        hotbarLeftClickField.SetValue(hotbarView, !targetingReadyCrop);
     }
 
-    private void ScanForNearbyHarvestable()
+    private void FindLocalPlayer()
     {
-        canHarvestNearby = false;
-        currentHarvestTile = Vector3.zero;
+        playerTransform = null;
 
-        if (worldDataManager == null || cropManagerView == null) return;
+        GameObject[] players = GameObject.FindGameObjectsWithTag(playerTag);
+        if (players == null || players.Length == 0)
+            return;
 
-        // Determine player reference (try cached first)
-        if (playerTransform == null)
+        // Online: always prefer the locally owned Photon entity.
+        foreach (GameObject player in players)
         {
-            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
-            if (playerEntity != null)
-            {
-                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
-                playerTransform = centerPoint != null ? centerPoint : playerEntity.transform;
-            }
-        }
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
 
-        Vector3 pos = playerTransform != null ? playerTransform.position : transform.position;
-
-        // check the tile player stands on and immediate neighbors (3x3)
-        int px = Mathf.RoundToInt(pos.x);
-        int py = Mathf.RoundToInt(pos.y);
-
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                Vector3 tilePos = new Vector3(px + dx, py + dy, 0);
-                float dist = Vector2.Distance(new Vector2(pos.x, pos.y), new Vector2(tilePos.x, tilePos.y));
-                if (dist > checkRadius) continue;
-
-                // Is there a crop here?
-                if (!worldDataManager.HasCropAtWorldPosition(tilePos)) continue;
-
-                int worldX = Mathf.FloorToInt(tilePos.x);
-                int worldY = Mathf.FloorToInt(tilePos.y);
-
-                if (cropManagerView.IsCropReadyToHarvest(worldX, worldY))
-                {
-                    canHarvestNearby = true;
-                    currentHarvestTile = tilePos;
-                    ShowPrompt(tilePos);
-                    return;
-                }
-            }
-        }
-
-        HidePrompt();
-    }
-
-    private void ShowPrompt(Vector3 tilePos)
-    {
-        if (promptText == null) return;
-
-        promptText.enabled = true;
-        promptText.text = $"{harvestKey.ToString()} to harvest";
-    }
-
-    private void HidePrompt()
-    {
-        if (promptText == null) return;
-        promptText.enabled = false;
-    }
-
-    private void PerformHarvest(Vector3 tilePos)
-    {
-        if (worldDataManager == null) return;
-
-        int worldX = Mathf.FloorToInt(tilePos.x);
-        int worldY = Mathf.FloorToInt(tilePos.y);
-
-        Vector3 worldPos = new Vector3(worldX, worldY, 0);
-
-        bool removed = worldDataManager.RemoveCropAtWorldPosition(worldPos);
-        if (!removed)
-        {
-            Debug.LogWarning($"[Harvest] Failed to remove crop at ({worldX},{worldY})");
+            Transform center = player.transform.Find("CenterPoint");
+            playerTransform = center != null ? center : player.transform;
             return;
         }
 
-        // Unregister growth/tracker and update visuals
-        if (cropManagerView != null)
-            cropManagerView.UnregisterCrop(worldX, worldY);
-
-        // Broadcast removal to other players
-        if (syncManager != null)
-            syncManager.BroadcastCropRemoved(worldX, worldY);
-
-        // Refresh visuals on this client
-        if (loadingManager != null)
+        // Offline fallback: use the first tagged player entity.
+        if (!PhotonNetwork.IsConnected)
         {
-            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);
-            loadingManager.RefreshChunkVisuals(chunkPos);
+            Transform center = players[0].transform.Find("CenterPoint");
+            playerTransform = center != null ? center : players[0].transform;
         }
-
-        HidePrompt();
     }
 
-    /// <summary>
-    /// Determine directional tile to harvest using same 8-direction logic as plowing.
-    /// Uses player's CenterPoint if available; returns Vector3.zero if invalid.
-    /// </summary>
     private Vector3 GetDirectionalTileForHarvesting()
     {
-        if (playerTransform == null)
-        {
-            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
-            if (playerEntity != null)
-            {
-                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
-                playerTransform = centerPoint != null ? centerPoint : playerEntity.transform;
-            }
-        }
+        if (Camera.main == null || playerTransform == null) return Vector3.zero;
 
-        if (Camera.main == null || playerTransform == null)
-        {
-            return Vector3.zero;
-        }
+        return CropTileSelector.GetDirectionalTile(
+            playerTransform.position,
+            GetMouseWorldPosition(),
+            checkRadius,
+            ref lastHarvestTile);
+    }
 
-        Vector3 playerPos = playerTransform.position;
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.z = 0;
-
-        int playerTileX = Mathf.RoundToInt(playerPos.x);
-        int playerTileY = Mathf.RoundToInt(playerPos.y);
-
-        Vector2 direction = new Vector2(mouseWorldPos.x - playerPos.x, mouseWorldPos.y - playerPos.y);
-        float distance = direction.magnitude;
-
-        // if mouse very close, target player's tile
-        if (distance < 0.5f)
-        {
-            Vector2Int playerTileCoords = new Vector2Int(playerTileX, playerTileY);
-            if (playerTileCoords == lastHarvestTile)
-                return Vector3.zero;
-
-            lastHarvestTile = playerTileCoords;
-            return new Vector3(playerTileX, playerTileY, 0);
-        }
-
-        direction.Normalize();
-
-        int offsetX = 0;
-        int offsetY = 0;
-        if (direction.x > 0.4f) offsetX = 1;
-        else if (direction.x < -0.4f) offsetX = -1;
-        if (direction.y > 0.4f) offsetY = 1;
-        else if (direction.y < -0.4f) offsetY = -1;
-
-        int targetX = playerTileX + offsetX;
-        int targetY = playerTileY + offsetY;
-        Vector2Int targetTile = new Vector2Int(targetX, targetY);
-
-        Vector3 targetTileCenter = new Vector3(targetX, targetY, 0);
-        float distanceToTarget = Vector3.Distance(playerPos, targetTileCenter);
-
-        if (distanceToTarget > checkRadius)
-        {
-            return Vector3.zero;
-        }
-
-        if (targetTile == lastHarvestTile)
-        {
-            return Vector3.zero;
-        }
-
-        lastHarvestTile = targetTile;
-        return new Vector3(targetX, targetY, 0);
+    private Vector3 GetMouseWorldPosition()
+    {
+        Vector2 screenPos = Mouse.current != null
+            ? Mouse.current.position.ReadValue()
+            : Vector2.zero;
+        Vector3 worldPos = Camera.main.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
+        worldPos.z = 0f;
+        return worldPos;
     }
 }

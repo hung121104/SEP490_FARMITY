@@ -1,20 +1,24 @@
 import { Controller, Body } from '@nestjs/common';
 import { MessagePattern } from '@nestjs/microservices';
 import { CharacterService } from './character.service';
-import { SavePositionDto } from './dto/save-position.dto';
-import { GetPositionDto } from './dto/get-position.dto';
+import { GetSkillLoadoutDto } from './dto/get-skill-loadout.dto';
+import { UpdateSkillLoadoutDto } from './dto/update-skill-loadout.dto';
 
 @Controller()
 export class CharacterController {
   constructor(private readonly characterService: CharacterService) {}
 
-  @MessagePattern('save-position')
-  async savePosition(@Body() savePositionDto: SavePositionDto) {
-    return this.characterService.savePosition(savePositionDto);
+  @MessagePattern('get-character-skill-loadout')
+  async getCharacterSkillLoadout(@Body() dto: GetSkillLoadoutDto) {
+    return this.characterService.getSkillLoadout(dto.worldId, dto.accountId);
   }
 
-  @MessagePattern('get-position')
-  async getPosition(@Body() getPositionDto: GetPositionDto) {
-    return this.characterService.getPosition(getPositionDto);
+  @MessagePattern('update-character-skill-loadout')
+  async updateCharacterSkillLoadout(@Body() dto: UpdateSkillLoadoutDto) {
+    return this.characterService.updateSkillLoadout(
+      dto.worldId,
+      dto.accountId,
+      dto.playerSkillSlotIds,
+    );
   }
 }

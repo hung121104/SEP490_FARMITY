@@ -7,6 +7,7 @@ public enum ItemType
     Tool,           // Hoe, Watering Can, Pickaxe, Axe
     Seed,           // All plantable seeds
     Crop,           // Harvested crops
+    Pollen,         // Collected from flowering plants (stage 3) — used for crossbreeding
     Consumable,     // Food, drinks
     Material,       // Wood, stone, ore
     Weapon,         // Swords, rings
@@ -15,7 +16,9 @@ public enum ItemType
     Forage,         // Wild items
     Resource,       // Raw materials
     Gift,           // Special gift items
-    Quest           // Quest-specific items
+    Quest,          // Quest-specific items
+    Structure,      // Placeable structures (Chest, Furnace, Fence…)
+    Fertilizer      // Stackable fertilizer used on planted crops
 }
 
 public enum ItemCategory
@@ -36,15 +39,6 @@ public enum Quality
     Silver,         // 1 star
     Gold,           // 2 stars
     Diamond         // 3 stars
-}
-
-public enum ToolMaterial
-{
-    Basic,
-    Copper,
-    Steel,
-    Gold,
-    Diamond
 }
 
 public enum StatType
@@ -70,6 +64,7 @@ public enum GiftReaction
 public enum ItemUsageType
 {
     Tool,
+    Fertilizer,
     Seed,
     Consumable,
     Weapon,
@@ -83,6 +78,12 @@ public enum Season
 {
     Sunny,
     Rainy
+}
+
+public enum WeatherType
+{
+    Sunny,
+    Rain
 }
 
 public enum DayOfWeek
@@ -104,3 +105,152 @@ public enum PlantingMode
     AroundPlayer,      // Plant in direction of mouse within radius around player (3x3 = 1 tile away)
     FarAroundPlayer    // Plant in direction of mouse within larger radius (5x5 = 2 tiles away)
 }
+
+// ==================== CRAFTING MANAGEMENT ====================
+
+/// <summary>
+/// Defines the type of recipe.
+/// </summary>
+public enum RecipeType
+{
+    Crafting,
+    Cooking
+}
+
+public enum CraftingCategory
+{
+    General,
+    Tools,
+    Food,
+    Materials,
+    Furniture
+}
+
+public enum NotificationType
+{
+    Info,
+    Success,
+    Warning,
+    Error
+}
+
+public enum ToolType
+{
+    Hoe,
+    WateringCan,
+    Pickaxe,
+    Axe,
+    FishingRod
+}
+
+public enum StructureInteractionType
+{
+    Storage,    // Opens Storage UI (Chest)
+    Crafting,   // Opens Crafting UI (Workbench)
+    Smelting,    // Opens Smelting/Furnace UI
+    Fence,
+    Decoration
+}
+
+
+// ==================== QUEST MANAGEMENT ====================
+
+public enum QuestStatus
+{
+    NotAccepted,
+    Active,
+    Completed,
+    TurnedIn
+}
+
+// ==================== NPC INTERACTION ====================
+
+public enum NPCInteractionState
+{
+    Idle,
+    InteractionMenu,
+    Dialogue,
+    Gift,
+    Quest,
+    SimpleDialogue
+}
+public enum CleanupNotificationType
+{
+    Info,
+    Warning
+}
+
+// ==================== AUDIO MANAGEMENT ====================
+
+/// <summary>
+/// Identifies a logical sound effect. Maps to one or more AudioClips via SoundLibrary SO.
+/// </summary>
+public enum SoundId
+{
+    None = 0,
+
+    // ── UI ──
+    UIButtonClick,
+    UIButtonHover,
+    UIPanelOpen,
+    UIPanelClose,
+    UIError,
+    UIConfirm,
+    UICancel,
+
+    // ── Player Actions ──
+    FootstepGrass,
+    FootstepDirt,
+    ToolSwing,
+    PlowSuccess,
+    ChopSuccess,
+    PickaxeSuccess,
+    Watering,
+    PlantSeed,
+    HarvestCrop,
+    HarvestPollen,
+    FishingCast,
+    FishingReel,
+    FishingCatch,
+    EatFood,
+    Sprint,
+
+    // ── Combat ──
+    SwordSwing,
+    SwordHit,
+    EnemyHurt,
+    EnemyDeath,
+    PlayerHurt,
+
+    // ── World / Items ──
+    ItemPickup,
+    ItemDrop,
+    TreeFall,
+    RockBreak,
+    CraftSuccess,
+    CookSuccess,
+    ChestOpen,
+    ChestClose,
+    DoorOpen,
+    DoorClose,
+
+    // ── Ambient (loops) ──
+    AmbientDayBirds,
+    AmbientDayWind,
+    AmbientNightCrickets,
+    AmbientSeaside,
+    AmbientRain,
+    AmbientForest,
+}
+
+/// <summary>
+/// Ambient zone type for AmbientSoundPlayer biome detection.
+/// </summary>
+public enum AmbientZoneType
+{
+    Default,
+    Seaside,
+    Forest,
+    Cave,
+}
+

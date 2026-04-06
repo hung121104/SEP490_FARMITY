@@ -1,27 +1,12 @@
-using System.Threading.Tasks;
+using System;
 using UnityEngine;
 
 public interface IItemUsageService
 {
-    ItemUsageResult ProcessItemUsage(ItemDataSO item, Vector3 targetPosition);
-    Task<ItemUsageResult> ProcessItemUsageAsync(ItemDataSO item, Vector3 targetPosition);
-    bool CanUseItem(ItemDataSO item);
-    string GetUsageDescription(ItemDataSO item);
-}
-
-[System.Serializable]
-public class ItemUsageResult
-{
-    public bool WasSuccessful { get; set; }
-    public bool WasConsumed { get; set; }
-    public int ConsumedAmount { get; set; } = 1;
-    public string Message { get; set; }
-    public ItemUsageType UsageType { get; set; }
-
-    public ItemUsageResult(bool successful = false, bool consumed = false, string message = "")
-    {
-        WasSuccessful = successful;
-        WasConsumed = consumed;
-        Message = message;
-    }
+    bool       UseTool(ItemData item, Vector3 pos);
+    bool       UseFertilizer(ItemData item, Vector3 pos);
+    (bool,int) UseSeed(ItemData item, Vector3 pos);
+    (bool,int) UseConsumable(ItemData item, Vector3 pos);
+    bool       UseWeapon(ItemData item, Vector3 pos);
+    bool       UsePollen(ItemData item, Vector3 pos);
 }

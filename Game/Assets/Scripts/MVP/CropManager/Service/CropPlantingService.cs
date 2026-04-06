@@ -28,7 +28,7 @@ public class CropPlantingService : ICropPlantingService
         }
     }
 
-    public bool CanPlantCrop(Vector3 worldPosition, int cropTypeID)
+    public bool CanPlantCrop(Vector3 worldPosition, string plantId)
     {
         // Check if position is in active section
         if (!IsPositionInActiveSection(worldPosition))
@@ -53,10 +53,10 @@ public class CropPlantingService : ICropPlantingService
         return true;
     }
 
-    public bool PlantCrop(Vector3 worldPosition, int cropTypeID)
+    public bool PlantCrop(Vector3 worldPosition, string plantId)
     {
         // Validate before planting
-        if (!CanPlantCrop(worldPosition, cropTypeID))
+        if (!CanPlantCrop(worldPosition, plantId))
         {
             return false;
         }
@@ -66,19 +66,13 @@ public class CropPlantingService : ICropPlantingService
         int worldY = Mathf.FloorToInt(worldPosition.y);
 
         // Plant the crop in the world data manager
-        bool success = WorldDataManager.Instance.PlantCropAtWorldPosition(worldPosition, (ushort)cropTypeID);
+        bool success = WorldDataManager.Instance.PlantCropAtWorldPosition(worldPosition, plantId);
 
         if (success)
         {
             if (showDebugLogs)
             {
-                Debug.Log($"✓ Planted crop type {cropTypeID} at ({worldX}, {worldY})");
-            }
-
-            // Register crop with CropManagerView for growth tracking
-            if (CropManagerView.Instance != null)
-            {
-                CropManagerView.Instance.RegisterPlantedCrop(worldX, worldY, (ushort)cropTypeID);
+                Debug.Log($"✓ Planted plant '{plantId}' at ({worldX}, {worldY})");
             }
 
             // Refresh chunk visuals
@@ -88,10 +82,23 @@ public class CropPlantingService : ICropPlantingService
                 RefreshChunkVisuals(chunkPos);
             }
 
+            // Mark dirty unconditionally so offline mode saves planting too.
+            // In online mode this also runs — the subsequent broadcast will also call
+            // MarkDirty, which is harmless (_dirtyChunks is a set).
+            if (!PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient)
+            {
+                int cx        = Mathf.FloorToInt(worldX / 30f);
+                int cy        = Mathf.FloorToInt(worldY / 30f);
+                int sectionId = WorldDataManager.Instance != null
+                    ? WorldDataManager.Instance.GetSectionIdFromWorldPosition(worldPosition)
+                    : 0;
+                WorldSaveManager.TryMarkChunkDirty(cx, cy, sectionId);
+            }
+
             // Sync to network if connected
             if (PhotonNetwork.IsConnected && syncManager != null)
             {
-                BroadcastCropPlanted(worldX, worldY, cropTypeID);
+                BroadcastCropPlanted(worldX, worldY, plantId);
             }
 
             return true;
@@ -133,11 +140,11 @@ public class CropPlantingService : ICropPlantingService
         return WorldDataManager.Instance.WorldToChunkCoords(worldPosition);
     }
 
-    public void BroadcastCropPlanted(int worldX, int worldY, int cropTypeID)
+    public void BroadcastCropPlanted(int worldX, int worldY, string plantId)
     {
         if (syncManager != null)
         {
-            syncManager.BroadcastCropPlanted(worldX, worldY, cropTypeID);
+            syncManager.BroadcastCropPlanted(worldX, worldY, plantId);
         }
         else
         {

@@ -18,29 +18,37 @@ public class CropPlowingPresenter
     /// <param name="worldPosition">The world position where the player wants to plow</param>
     public void HandlePlowAction(Vector3 worldPosition)
     {
-        // Convert world position to tile position (using any tilemap for conversion)
-        Tilemap anyTilemap = Object.FindAnyObjectByType<Tilemap>();
-        if (anyTilemap == null)
+        // Hoe on a tile that has a crop → remove the crop, keep the tilled tile
+        if (WorldDataManager.Instance != null &&
+            WorldDataManager.Instance.HasCropAtWorldPosition(worldPosition))
         {
-            Debug.LogError("No tilemap found in scene!");
+            bool removed = cropPlowingService.RemoveCropOnTile(worldPosition);
+            if (removed)
+                view.OnPlowSuccess(Vector3Int.zero, worldPosition);
             return;
         }
-        
-        Vector3Int tilePosition = anyTilemap.WorldToCell(worldPosition);
-        
-        // Attempt to plow the tile
-        bool success = cropPlowingService.PlowTile(tilePosition, worldPosition);
-        
-        // Update the view based on the result
+
+        // Hoe on an already-tilled tile (no crop) → untill it
+        if (WorldDataManager.Instance != null &&
+            WorldDataManager.Instance.IsTilledAtWorldPosition(worldPosition))
+        {
+            bool untilled = cropPlowingService.UntillTile(worldPosition);
+            if (untilled)
+                view.OnPlowSuccess(Vector3Int.zero, worldPosition);
+            else
+                view.OnPlowFailed(Vector3Int.zero);
+            return;
+        }
+
+        // Untilled farmable tile → till it
+        bool success = cropPlowingService.PlowTile(Vector3Int.zero, worldPosition);
+
         if (success)
-        {
-            view.OnPlowSuccess(tilePosition);
-        }
+            view.OnPlowSuccess(Vector3Int.zero, worldPosition);
         else
-        {
-            view.OnPlowFailed(tilePosition);
-        }
+            view.OnPlowFailed(Vector3Int.zero);
     }
+
     
     /// <summary>
     /// Initializes the presenter and service with required references
@@ -48,5 +56,18 @@ public class CropPlowingPresenter
     public void Initialize(TileBase tilledTile)
     {
         cropPlowingService.Initialize(tilledTile);
+    }
+    
+    public bool IsTillable(Vector3 worldPosition)
+    {
+        // Handle hoeing to untill or remove crop (these are valid actions too)
+        if (WorldDataManager.Instance != null && 
+           (WorldDataManager.Instance.HasCropAtWorldPosition(worldPosition) || 
+            WorldDataManager.Instance.IsTilledAtWorldPosition(worldPosition)))
+        {
+            return true;
+        }
+        
+        return cropPlowingService.IsTillable(Vector3Int.zero, worldPosition);
     }
 }

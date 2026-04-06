@@ -1,5 +1,5 @@
 import { connect, connection } from 'mongoose';
-import { Character, CharacterSchema } from './src/character/character.schema';
+import { CharacterSchema } from './microservices/player-data-service/src/character/character.schema';
 
 async function seedDatabase() {
   try {
@@ -16,14 +16,14 @@ async function seedDatabase() {
       const playerID = `player${i}`;
       const positionX = Math.floor(Math.random() * 1000);
       const positionY = Math.floor(Math.random() * 1000);
-      const chunkIndex = Math.floor(Math.random() * 100);
+      const sectionIndex = Math.floor(Math.random() * 100);
 
       documents.push({
         worldId,
         playerID,
         positionX,
         positionY,
-        chunkIndex,
+        sectionIndex,
       });
     }
 

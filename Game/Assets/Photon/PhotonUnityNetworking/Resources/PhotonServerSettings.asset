@@ -19,7 +19,7 @@ MonoBehaviour:
     AppIdVoice: 
     AppVersion: 
     UseNameServer: 1
-    FixedRegion: 
+    FixedRegion: hk
     Server: 
     Port: 0
     ProxyServer: 
@@ -42,6 +42,35 @@ MonoBehaviour:
   - SetLoadedPosition
   - PlowTileRPC
   - RPC_PlantCrop
+  - RPC_RequestHarvest
+  - RPC_RequestHarvestValidation
+  - RPC_RespondHarvestValidation
+  - RPC_RequestFetchPlayer
+  - RPC_RequestFetch
+  - RPC_PlayerEntered
+  - RPC_PlayerExited
+  - RPC_TriggerPlow
+  - RPC_SyncFishingAnimation
+  - RPC_RestoreAppearance
+  - RPC_TriggerWater
+  - RPC_Client_DestroyResource
+  - RPC_Client_PlayHitEffect
+  - RPC_Host_ProcessHit
+  - RPC_SpawnResourceVisual
+  - RPC_TriggerChop
+  - RPC_AllSyncGold
+  - RPC_MasterHandleGoldChange
+  - RPC_ApplyAuthoritativeState
+  - RPC_RequestConsumable
+  - RPC_RequestSleepRestore
+  - RPC_RequestToolConsume
+  - RPC_SetSprintIntent
+  - RPC_FinalPlayerState
+  - RPC_RequestTakeDamage
+  - RPC_RestoreHealthFromMaster
+  - RPC_RestoreProgressionFromMaster
+  - RPC_CombatRestoreHealthFromMaster
+  - RPC_CombatRestoreProgressionFromMaster
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

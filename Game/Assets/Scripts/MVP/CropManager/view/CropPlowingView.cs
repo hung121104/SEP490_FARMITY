@@ -1,16 +1,15 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Photon.Pun;
+using System;
 
 public class CropPlowingView : MonoBehaviour
 {
+    public static event Action<Vector3Int, Vector3> OnPlowSucceeded;
+
     [Header("Tile Reference")]
     [SerializeField] private TileBase tilledTile;
     
-    [Header("Input Settings")]
-    [SerializeField] private KeyCode plowingKey = KeyCode.E;
-    [SerializeField] private bool allowHoldToPlow = true;
-    [Tooltip("How often (seconds) to attempt plowing while holding the plow key.")]
-    [SerializeField] private float plowRepeatInterval = 0.1f;
     
     [Header("Player Settings")]
     [Tooltip("Tag to find the player GameObject")]
@@ -19,225 +18,158 @@ public class CropPlowingView : MonoBehaviour
     [Header("Plowing Settings")]
     [SerializeField] private float plowingRange = 2f;
     [SerializeField] private bool showDebugLogs = false;
-    
+
+    [Header("Mouse Hold to Plow")]
+    [Tooltip("Hold left-click (with Hoe equipped) to keep plowing at intervals.")]
+    [SerializeField] private bool allowMouseHoldToPlow = true;
+    [Tooltip("Seconds between each automatic plow while holding left-click.")]
+    [SerializeField] private float mouseHoldRepeatInterval = 0.3f;
+
+    [Header("Plow Preview")]
+    [Tooltip("Show a sprite preview at the target tile when the Hoe is equipped.")]
+    [SerializeField] private bool showPlowPreview = true;
+    [Tooltip("Sprite to show at the target tile when the Hoe is equipped (drag the tilled dirt sprite here).")]
+    [SerializeField] private Sprite previewSprite;
+    [Range(0f, 1f)][SerializeField] private float previewAlpha = 0.5f;
+    [SerializeField] private string previewSortingLayer = "WalkInfront";
+    [SerializeField] private int    previewSortingOrder = 10;
+
     private CropPlowingPresenter presenter;
+    public CropPlowingPresenter GetPresenter() => presenter;
     private Transform playerTransform;
-    private Vector2Int lastPlowedTile = new Vector2Int(int.MinValue, int.MinValue);
-    private float holdTimer = 0f;
-    
+    private HotbarView hotbarView;
+    private IUseToolService toolUseService;
+    private float _mouseHoldTimer = 0f;
+    private SpriteRenderer _previewSR;
+    private Vector3 _lastMouseWorldPos;  // raw mouse pos before tile snap — used for anim direction    
+
     private void Start()
     {
         // Initialize the MVP pattern
         ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
         ICropPlowingService service = new CropPlowingService(syncManager, showDebugLogs);
         presenter = new CropPlowingPresenter(this, service);
+        toolUseService = new UseToolService();
         
         // Initialize the presenter with tilled tile reference
         presenter.Initialize(tilledTile);
         
         // Validate references
         ValidateReferences();
+
+        // Subscribe to hoe-use event fired by UseToolService
+        UseToolService.OnHoeRequested += HandleHoeUseRequested;
+
+        // Find hotbar (for current item check + preview icon)
+        hotbarView = FindAnyObjectByType<HotbarView>();
+
+        // Build inline preview SpriteRenderer
+        var previewGO = new GameObject("PlowPreview");
+        previewGO.transform.SetParent(transform, false);
+        _previewSR                  = previewGO.AddComponent<SpriteRenderer>();
+        _previewSR.color            = new Color(1f, 1f, 1f, previewAlpha);
+        _previewSR.sortingLayerName = previewSortingLayer;
+        _previewSR.sortingOrder     = previewSortingOrder;
+        _previewSR.enabled          = false;
     }
     
     private void Update()
     {
         // Re-check player if it becomes null
         if (playerTransform == null)
-        {
-            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
-            if (playerEntity != null)
-            {
-                // Try to find CenterPoint child first
-                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
-                playerTransform = centerPoint != null ? centerPoint : playerEntity.transform;
-            }
-        }
+            TryResolvePlayerTransform(out playerTransform);
         
-        // Check for plowing input
-        if (allowHoldToPlow)
+        // Update preview and mouse-hold every frame
+        UpdatePlowPreview();
+        HandleMouseHoldPlow();
+    }
+
+    private void UpdatePlowPreview()
+    {
+        if (_previewSR == null || playerTransform == null || !showPlowPreview)
         {
-            if (Input.GetKeyDown(plowingKey))
+            if (_previewSR != null) _previewSR.enabled = false;
+            return;
+        }
+
+        // Show only when a Hoe is the active hotbar item
+        var currentItem = hotbarView?.GetCurrentItem()?.ItemData as ToolData;
+        if (currentItem == null || currentItem.toolType != ToolType.Hoe)
+        {
+            _previewSR.enabled = false;
+            return;
+        }
+
+        Vector3 tile = GetPreviewTargetTile();
+        if (tile == Vector3.zero || presenter == null || !presenter.IsTillable(tile))
+        {
+            _previewSR.enabled = false;
+            return;
+        }
+
+        _previewSR.sprite  = previewSprite;
+
+        _previewSR.enabled = true;
+        _previewSR.transform.position = new Vector3(
+            Mathf.Floor(tile.x)+.5f,
+            Mathf.Floor(tile.y) + 0.5f,
+            0f);
+    }
+
+    private void HandleMouseHoldPlow()
+    {
+        if (!allowMouseHoldToPlow || presenter == null || playerTransform == null) return;
+
+        // Only active when a Hoe is equipped
+        var currentItem = hotbarView?.GetCurrentItem()?.ItemData as ToolData;
+        if (currentItem == null || currentItem.toolType != ToolType.Hoe) return;
+
+        if (InputManager.Instance?.UseItem.IsPressed() ?? false)
+        {
+            _mouseHoldTimer -= Time.deltaTime;
+            if (_mouseHoldTimer <= 0f)
             {
-                // Immediate plow on key down
-                HandlePlowInput();
-                holdTimer = plowRepeatInterval;
-            }
-            
-            if (Input.GetKey(plowingKey))
-            {
-                holdTimer -= Time.deltaTime;
-                if (holdTimer <= 0f)
-                {
-                    HandlePlowInput();
-                    holdTimer = plowRepeatInterval;
-                }
-            }
-            
-            if (Input.GetKeyUp(plowingKey))
-            {
-                // Reset timer and tile tracking
-                holdTimer = 0f;
-                lastPlowedTile = new Vector2Int(int.MinValue, int.MinValue);
+                _mouseHoldTimer = mouseHoldRepeatInterval;
+                Vector3 mouseWorldPos = Camera.main != null
+                    ? Camera.main.ScreenToWorldPoint(Input.mousePosition)
+                    : Vector3.zero;
+                mouseWorldPos.z = 0f;
+                _lastMouseWorldPos = mouseWorldPos;  // store before snap
+
+                Vector2Int dummy = new Vector2Int(int.MinValue, int.MinValue);
+                Vector3 snappedTile = CropTileSelector.GetDirectionalTile(
+                    playerTransform.position, mouseWorldPos, plowingRange, ref dummy);
+
+                if (snappedTile != Vector3.zero && presenter.IsTillable(snappedTile))
+                    toolUseService?.UseHoe(currentItem, mouseWorldPos);
             }
         }
         else
         {
-            if (Input.GetKeyDown(plowingKey))
-            {
-                HandlePlowInput();
-            }
-            
-            // Reset last plowed tile when key is released
-            if (Input.GetKeyUp(plowingKey))
-            {
-                lastPlowedTile = new Vector2Int(int.MinValue, int.MinValue);
-            }
+            _mouseHoldTimer = 0f;  // reset so next press fires immediately
         }
     }
-    
-    
-    private void HandlePlowInput()
+
+    // Used by UpdatePlowPreview — no deduplication, fresh each frame
+    private Vector3 GetPreviewTargetTile()
     {
-        if (playerTransform == null)
-        {
-            Debug.LogWarning("Player transform is not assigned!");
-            return;
-        }
-        
-        // Get directional tile position
-        Vector3 targetTilePos = GetDirectionalTileForPlowing();
-        
-        if (targetTilePos != Vector3.zero)
-        {
-            // Tell the presenter to handle the plow action
-            presenter.HandlePlowAction(targetTilePos);
-        }
-    }
-    
-    /// <summary>
-    /// Gets the tile in the direction of the mouse, within range of player.
-    /// Returns the specific tile based on 8-directional input (or player's own tile).
-    /// </summary>
-    private Vector3 GetDirectionalTileForPlowing()
-    {
-        if (Camera.main == null || playerTransform == null)
-        {
-            if (showDebugLogs)
-            {
-                Debug.LogWarning("[CropPlowingView] Camera or Player not found. Cannot calculate tile.");
-            }
-            return Vector3.zero;
-        }
-        
-        Vector3 playerPos = playerTransform.position;
+        if (Camera.main == null) return Vector3.zero;
         Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.z = 0;
-        
-        // Get player tile position
-        int playerTileX = Mathf.RoundToInt(playerPos.x);
-        int playerTileY = Mathf.RoundToInt(playerPos.y);
-        
-        // Calculate direction from player to mouse
-        Vector2 direction = new Vector2(mouseWorldPos.x - playerPos.x, mouseWorldPos.y - playerPos.y);
-        float distance = direction.magnitude;
-        
-        // If mouse is very close to player (within 0.5 units), plow at player's tile
-        if (distance < 0.5f)
-        {
-            Vector2Int playerTileCoords = new Vector2Int(playerTileX, playerTileY);
-            
-            if (playerTileCoords == lastPlowedTile)
-            {
-                return Vector3.zero;
-            }
-            
-            lastPlowedTile = playerTileCoords;
-            
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlowingView] Plowing at player tile ({playerTileX}, {playerTileY})");
-            }
-            
-            return new Vector3(playerTileX, playerTileY, 0);
-        }
-        
-        // Normalize direction
-        direction.Normalize();
-        
-        // Determine offset based on 8-directional input
-        int offsetX = 0;
-        int offsetY = 0;
-        
-        // Determine horizontal component
-        if (direction.x > 0.4f) offsetX = 1;
-        else if (direction.x < -0.4f) offsetX = -1;
-        
-        // Determine vertical component
-        if (direction.y > 0.4f) offsetY = 1;
-        else if (direction.y < -0.4f) offsetY = -1;
-        
-        int targetX = playerTileX + offsetX;
-        int targetY = playerTileY + offsetY;
-        Vector2Int targetTile = new Vector2Int(targetX, targetY);
-        
-        // Check if target tile is within plowing range from player position
-        Vector3 targetTileCenter = new Vector3(targetX, targetY, 0);
-        float distanceToTarget = Vector3.Distance(playerPos, targetTileCenter);
-        
-        if (distanceToTarget > plowingRange)
-        {
-            if (showDebugLogs)
-            {
-                Debug.Log($"[CropPlowingView] Target tile too far: {distanceToTarget:F2} > {plowingRange}");
-            }
-            return Vector3.zero;
-        }
-        
-        // Prevent replowing same tile
-        if (targetTile == lastPlowedTile)
-        {
-            return Vector3.zero;
-        }
-        
-        lastPlowedTile = targetTile;
-        
-        Vector3 plowPosition = new Vector3(targetX, targetY, 0);
-        
-        if (showDebugLogs)
-        {
-            string directionName = GetDirectionName(offsetX, offsetY);
-            Debug.Log($"[CropPlowingView] Plowing {directionName} of player at ({targetX}, {targetY})");
-        }
-        
-        return plowPosition;
+        mouseWorldPos.z = 0f;
+        Vector2Int dummy = new Vector2Int(int.MinValue, int.MinValue);
+        return CropTileSelector.GetDirectionalTile(
+            playerTransform.position, mouseWorldPos, plowingRange, ref dummy);
     }
-    
-    /// <summary>
-    /// Gets a human-readable direction name for debugging.
-    /// </summary>
-    private string GetDirectionName(int offsetX, int offsetY)
-    {
-        if (offsetX == 0 && offsetY == 1) return "above";
-        if (offsetX == 0 && offsetY == -1) return "below";
-        if (offsetX == 1 && offsetY == 0) return "right";
-        if (offsetX == -1 && offsetY == 0) return "left";
-        if (offsetX == 1 && offsetY == 1) return "top-right";
-        if (offsetX == -1 && offsetY == 1) return "top-left";
-        if (offsetX == 1 && offsetY == -1) return "bottom-right";
-        if (offsetX == -1 && offsetY == -1) return "bottom-left";
-        return "at player";
-    }
-    
+
     /// <summary>
     /// Called when plowing is successful
     /// </summary>
-    public void OnPlowSuccess(Vector3Int tilePosition)
+    public void OnPlowSuccess(Vector3Int tilePosition, Vector3 worldPosition)
     {
         Debug.Log($"Successfully plowed tile at {tilePosition}");
-        // You can add visual/audio feedback here
-        // PlayPlowSound();
-        // SpawnPlowParticles(tilePosition);
+        OnPlowSucceeded?.Invoke(tilePosition, worldPosition);
     }
+
     
     /// <summary>
     /// Called when plowing fails
@@ -252,10 +184,39 @@ public class CropPlowingView : MonoBehaviour
     private void ValidateReferences()
     {
         if (tilledTile == null)
-        {
             Debug.LogError("TilledTile is not assigned in CropPlowingView!");
-        }
     }
+
+    private void OnDestroy()
+    {
+        UseToolService.OnHoeRequested -= HandleHoeUseRequested;
+    }
+
+    // ── Hoe-use event handler ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Received from UseToolService.OnHoeRequested.
+    /// Plows the directional tile at the given mouse world position.
+    /// </summary>
+    private void HandleHoeUseRequested(ToolData tool, Vector3 mouseWorldPos)
+    {
+        if (presenter == null || playerTransform == null) return;
+
+        _lastMouseWorldPos = mouseWorldPos;  // store before snap
+
+        // Reset the mouse-hold timer so HandleMouseHoldPlow does NOT fire again
+        // in the same frame — preventing the double-action that was cancelling itself out.
+        _mouseHoldTimer = mouseHoldRepeatInterval;
+
+        Vector2Int dummy = new Vector2Int(int.MinValue, int.MinValue);
+        Vector3 snappedTile = CropTileSelector.GetDirectionalTile(
+            playerTransform.position, mouseWorldPos, plowingRange, ref dummy);
+
+        if (snappedTile == Vector3.zero) return;
+
+        presenter.HandlePlowAction(snappedTile);
+    }
+
     
     private void OnDrawGizmosSelected()
     {
@@ -263,15 +224,7 @@ public class CropPlowingView : MonoBehaviour
         Transform targetTransform = playerTransform;
         
         if (targetTransform == null)
-        {
-            GameObject playerEntity = GameObject.FindGameObjectWithTag(playerTag);
-            if (playerEntity != null)
-            {
-                // Try to find CenterPoint child first
-                Transform centerPoint = playerEntity.transform.Find("CenterPoint");
-                targetTransform = centerPoint != null ? centerPoint : playerEntity.transform;
-            }
-        }
+            TryResolvePlayerTransform(out targetTransform);
         
         // Draw the plowing range gizmo if we have a target transform
         if (targetTransform != null)
@@ -289,6 +242,37 @@ public class CropPlowingView : MonoBehaviour
             // Draw grid overlay to show tile boundaries
             DrawTileGrid(targetTransform.position, plowingRange);
         }
+    }
+
+    private bool TryResolvePlayerTransform(out Transform resolvedTransform)
+    {
+        resolvedTransform = null;
+
+        GameObject[] players = GameObject.FindGameObjectsWithTag(playerTag);
+        if (players == null || players.Length == 0)
+            return false;
+
+        // Online: always prefer the locally owned Photon entity.
+        foreach (GameObject player in players)
+        {
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (PhotonNetwork.IsConnected && (pv == null || !pv.IsMine))
+                continue;
+
+            Transform centerPoint = player.transform.Find("CenterPoint");
+            resolvedTransform = centerPoint != null ? centerPoint : player.transform;
+            return true;
+        }
+
+        // Offline fallback: use the first tagged player entity.
+        if (!PhotonNetwork.IsConnected)
+        {
+            Transform centerPoint = players[0].transform.Find("CenterPoint");
+            resolvedTransform = centerPoint != null ? centerPoint : players[0].transform;
+            return true;
+        }
+
+        return false;
     }
     
     private void DrawDiscGizmo(Vector3 center, float radius)

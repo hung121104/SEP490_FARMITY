@@ -1,7 +1,13 @@
 ﻿using UnityEngine;
+using UnityEngine.InputSystem;
+using CombatManager.Presenter;
 
 public class HotbarView : MonoBehaviour
 {
+    [Header("Configuration")]
+    [SerializeField] private int hotbarSize = 9;
+    [SerializeField] private int inventoryHotbarStartIndex = 27;
+
     [Header("UI References")]
     [SerializeField] private GameObject slotPrefab;
     [SerializeField] private Transform slotsContainer;
@@ -13,107 +19,188 @@ public class HotbarView : MonoBehaviour
     [Header("Input Settings")]
     [SerializeField] private bool enableScrollWheel = true;
     [SerializeField] private bool enableLeftClick = true;
-    [SerializeField] private bool enableRightClick = false;
+
+    [Header("Inventory Integration")]
+    [SerializeField] private InventoryGameView inventoryGameView;
 
     private HotbarSlotUI[] slotUIs;
+    private HotbarModel model;
+    private HotbarPresenter presenter;
+    private bool isInitialized = false;
 
-    // Events for Presenter to subscribe
+    // Stored delegates so we can properly unsubscribe (lambdas can't be unsubscribed)
+    private System.Action<InputAction.CallbackContext>[] _slotCallbacks;
+
+    // Events
     public System.Action<int> OnSlotKeyPressed;
     public System.Action<float> OnScrollInput;
     public System.Action OnUseItemInput;
-    public System.Action OnUseItemAlternateInput;
 
-    #region Unity Lifecycle
-
-    private void Update()
+    private void Awake()
     {
-        HandleInput();
-    }
-
-    #endregion
-
-    #region Input Handling - From Player/Game Screen
-
-    private void HandleInput()
-    {
-        HandleSlotSelection();
-        HandleItemUsage();
-    }
-
-    private void HandleSlotSelection()
-    {
-        // Number keys 1-9 for slot selection
+        // Pre-build the 9 slot callbacks so OnEnable/OnDisable use the same delegate references
+        _slotCallbacks = new System.Action<InputAction.CallbackContext>[9];
         for (int i = 0; i < 9; i++)
         {
-            if (Input.GetKeyDown(KeyCode.Alpha1 + i))
-            {
-                OnSlotKeyPressed?.Invoke(i);
-                return;
-            }
+            int slotIndex = i; // capture for closure
+            _slotCallbacks[i] = ctx => OnHotbarSlotPressed(slotIndex);
         }
 
-        // Mouse scroll wheel for slot navigation
-        if (enableScrollWheel)
-        {
-            float scroll = Input.GetAxis("Mouse ScrollWheel");
-            if (scroll > 0f)
-            {
-                OnScrollInput?.Invoke(1f); // Previous slot
-            }
-            else if (scroll < 0f)
-            {
-                OnScrollInput?.Invoke(-1f); // Next slot
-            }
-        }
-    }
-
-    private void HandleItemUsage()
-    {
-        // Primary use (left click)
-        if (enableLeftClick && Input.GetMouseButtonDown(0))
-        {
-            OnUseItemInput?.Invoke();
-        }
-
-        // Secondary use (right click)
-        if (enableRightClick && Input.GetMouseButtonDown(1))
-        {
-            OnUseItemAlternateInput?.Invoke();
-        }
-    }
-
-    public Vector3 GetMouseWorldPosition()
-    {
-        Vector3 mousePos = Input.mousePosition;
-        mousePos.z = 10f;
-        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
-        worldPos.z = 0;
-        return worldPos;
-    }
-
-    #endregion
-
-    #region UI Rendering - Called by Presenter
-
-    public void Initialize(int hotbarSize)
-    {
         CreateSlotUIs(hotbarSize);
     }
 
+    private void Start()
+    {
+        InitializeHotbarSystem();
+    }
+
+    private void InitializeHotbarSystem()
+    {
+        if (isInitialized) return;
+
+        if (inventoryGameView == null)
+        {
+            inventoryGameView = FindFirstObjectByType<InventoryGameView>();
+        }
+
+        if (inventoryGameView == null)
+        {
+            Debug.LogError("HotbarView: InventoryGameView not found");
+            return;
+        }
+
+        var inventoryService = inventoryGameView.GetInventoryService();
+        var inventoryModel = inventoryGameView.GetInventoryModel();
+
+        if (inventoryService == null || inventoryModel == null)
+        {
+            Debug.LogWarning("HotbarView: Inventory not ready, retrying...");
+            Invoke(nameof(InitializeHotbarSystem), 0.1f);
+            return;
+        }
+
+        model = new HotbarModel(inventoryModel, inventoryHotbarStartIndex, hotbarSize);
+        presenter = new HotbarPresenter(model, this, inventoryService);
+        presenter.Initialize();
+
+        isInitialized = true;
+        // OnEnable fired before Start and skipped subscription because InputManager wasn't
+        // ready. Now that everything is ready, subscribe to input for the first time.
+        SubscribeInputEvents();
+        Debug.Log("HotbarView: Initialized successfully");
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // New Input System – subscribe / unsubscribe
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private void OnEnable()
+    {
+        // On the very first enable, InputManager may not be ready yet and isInitialized is
+        // still false.  Subscription is handled at the end of InitializeHotbarSystem() instead.
+        // For all subsequent re-enables (e.g. after inventory open/close) we subscribe here.
+        if (!isInitialized) return;
+        SubscribeInputEvents();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeInputEvents();
+    }
+
+    private void SubscribeInputEvents()
+    {
+        if (InputManager.Instance == null) return;
+
+        // Hotbar slot keys 1-9 (stored delegates for proper unsubscription)
+        for (int i = 0; i < 9; i++)
+        {
+            InputAction slotAction = InputManager.Instance.GetHotbarSlotAction(i);
+            if (slotAction != null)
+                slotAction.performed += _slotCallbacks[i];
+        }
+
+        // Scroll wheel
+        if (enableScrollWheel)
+            InputManager.Instance.ScrollItem.performed += OnScrollPerformed;
+
+        // Use item (left click) — always subscribe; enableLeftClick is checked at fire time.
+        InputManager.Instance.UseItem.performed += OnUseItemPerformed;
+    }
+
+    private void UnsubscribeInputEvents()
+    {
+        if (InputManager.Instance == null) return;
+
+        for (int i = 0; i < 9; i++)
+        {
+            InputAction slotAction = InputManager.Instance.GetHotbarSlotAction(i);
+            if (slotAction != null)
+                slotAction.performed -= _slotCallbacks[i];
+        }
+
+        if (enableScrollWheel)
+            InputManager.Instance.ScrollItem.performed -= OnScrollPerformed;
+
+        // Always unsubscribe unconditionally to match the unconditional subscribe above.
+        InputManager.Instance.UseItem.performed -= OnUseItemPerformed;
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Input callbacks
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private void OnHotbarSlotPressed(int slotIndex)
+    {
+        if (!isInitialized) return;
+        OnSlotKeyPressed?.Invoke(slotIndex);
+    }
+
+    private void OnScrollPerformed(InputAction.CallbackContext ctx)
+    {
+        if (!isInitialized) return;
+        float scrollValue = ctx.ReadValue<float>();
+        if (scrollValue != 0f)
+        {
+            OnScrollInput?.Invoke(scrollValue);
+        }
+    }
+
+    private void OnUseItemPerformed(InputAction.CallbackContext ctx)
+    {
+        if (!isInitialized) return;
+        if (SkillManagementPresenter.Instance != null && SkillManagementPresenter.Instance.IsPanelOpen()) return;
+        if (!enableLeftClick) return;   // suppressed by CropHarvestingView when targeting a crop
+
+        // Left-click is also attack input. If combat mode is active with a weapon selected,
+        // let PlayerAttackPresenter consume the click and skip hotbar item-use.
+        var currentItem = presenter?.GetCurrentItem();
+        if (currentItem?.ItemData is WeaponData &&
+            CombatModePresenter.Instance != null &&
+            CombatModePresenter.Instance.IsCombatModeActive())
+        {
+            return;
+        }
+
+        OnUseItemInput?.Invoke();
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Unchanged methods
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     private void CreateSlotUIs(int size)
     {
-        // Clear existing slot UI elements
         foreach (Transform child in slotsContainer)
         {
             Destroy(child.gameObject);
         }
 
-        // Create new slot UI elements
         slotUIs = new HotbarSlotUI[size];
         for (int i = 0; i < size; i++)
         {
             GameObject slotObj = Instantiate(slotPrefab, slotsContainer);
-            slotObj.name = $"Slot_{i}";
+            slotObj.name = "HotbarSlot_" + i;
 
             HotbarSlotUI slotUI = slotObj.GetComponent<HotbarSlotUI>();
             if (slotUI != null)
@@ -121,20 +208,23 @@ public class HotbarView : MonoBehaviour
                 slotUI.Initialize(i, this);
                 slotUIs[i] = slotUI;
             }
-            else
-            {
-                Debug.LogError($"❌ SlotPrefab missing HotbarSlotUI component!");
-            }
         }
-
-        Debug.Log($"✅ Created {slotUIs.Length} hotbar slots");
     }
 
-    public void UpdateSlotDisplay(int index, HotbarSlot slot)
+    public Vector3 GetMouseWorldPosition()
+    {
+        Vector3 mousePos = Mouse.current.position.ReadValue();
+        mousePos.z = 10f;
+        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
+        worldPos.z = 0;
+        return worldPos;
+    }
+
+    public void UpdateSlotDisplay(int index, ItemModel item)
     {
         if (index >= 0 && index < slotUIs.Length)
         {
-            slotUIs[index].UpdateDisplay(slot);
+            slotUIs[index].UpdateDisplay(item);
         }
     }
 
@@ -146,27 +236,14 @@ public class HotbarView : MonoBehaviour
         }
     }
 
-    public void RefreshAll(HotbarSlot[] slots)
-    {
-        for (int i = 0; i < slotUIs.Length && i < slots.Length; i++)
-        {
-            UpdateSlotDisplay(i, slots[i]);
-        }
-    }
-
     public Color GetNormalColor() => normalColor;
     public Color GetSelectedColor() => selectedColor;
+    public HotbarPresenter GetPresenter() => presenter;
+    public ItemModel GetCurrentItem() => presenter?.GetCurrentItem();
+    public bool IsInitialized() => isInitialized;
 
-    #endregion
-
-    #region Public API - For debugging/external access
-
-    public void SetInputEnabled(bool enabled)
+    private void OnDestroy()
     {
-        enableLeftClick = enabled;
-        enableScrollWheel = enabled;
-        enableRightClick = enabled;
+        presenter?.UnsubscribeEvents();
     }
-
-    #endregion
 }

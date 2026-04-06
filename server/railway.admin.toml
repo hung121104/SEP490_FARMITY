@@ -1,0 +1,5 @@
+[build]
+buildCommand = "npm install -g pnpm && pnpm install && pnpm --filter admin-service build"
+
+[deploy]
+startCommand = "node microservices/admin-service/dist/main"
