@@ -929,6 +929,7 @@ export class AccountService implements OnModuleInit {
       port,
       secure,
       auth: { user, pass },
+      family: 4,
     });
 
     const subject = template.getSubject();

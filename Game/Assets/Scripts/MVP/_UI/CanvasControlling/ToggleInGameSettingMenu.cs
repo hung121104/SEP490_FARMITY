@@ -96,7 +96,7 @@ public class ToggleInGameSettingMenu : MonoBehaviour
             ShowInGameSettingMenu();
     }
 
-    private void ShowInGameSettingMenu()
+    public void ShowInGameSettingMenu()
     {
         inGameSettingMenuCanvasGroup.Show();
         _UICanvasGroup.Hide();
@@ -104,7 +104,7 @@ public class ToggleInGameSettingMenu : MonoBehaviour
         BlockPlayerInput();
     }
 
-    private void HideInGameSettingMenu()
+    public void HideInGameSettingMenu()
     {
         inGameSettingMenuCanvasGroup.Hide();
         _UICanvasGroup.Show();
