@@ -25,6 +25,10 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
     [SerializeField] private float sprintSpeedMultiplier = 1.5f;
     [SerializeField] private Text _text;
 
+    [Header("Runtime Buffs")]
+    [SerializeField] private float externalSpeedMultiplier = 1f;
+    [SerializeField] private float externalSpeedBuffRemaining = 0f;
+
     void Awake()
     {
         rb             = GetComponent<Rigidbody2D>();
@@ -67,6 +71,8 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
         // Only read input and set movement for local player
         if (photonView.IsMine)
         {
+            UpdateExternalSpeedBuffTimer();
+
             // Block input while an action (plow, water, attack) is running
             if (animationView?.IsMovementLocked == true)
             {
@@ -113,7 +119,39 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
         if (sprintIntent && staminaView != null && staminaView.CanSprintLocally)
             speedMultiplier = sprintSpeedMultiplier;
 
+        speedMultiplier *= externalSpeedMultiplier;
+
         rb.linearVelocity = presenter.calculatePlayerVelocity(moveInput, moveSpeed * speedMultiplier);
+    }
+
+    private void UpdateExternalSpeedBuffTimer()
+    {
+        if (externalSpeedBuffRemaining <= 0f)
+            return;
+
+        externalSpeedBuffRemaining -= Time.deltaTime;
+        if (externalSpeedBuffRemaining > 0f)
+            return;
+
+        externalSpeedBuffRemaining = 0f;
+        externalSpeedMultiplier = 1f;
+        Debug.Log("[PlayerMovement] External speed buff expired.");
+    }
+
+    public void ApplyExternalSpeedBuff(float multiplier, float durationSeconds)
+    {
+        if (!photonView.IsMine)
+            return;
+
+        float clampedMultiplier = Mathf.Clamp(multiplier, 0.1f, 5f);
+        float clampedDuration = Mathf.Max(0.1f, durationSeconds);
+
+        if (clampedMultiplier > externalSpeedMultiplier)
+            externalSpeedMultiplier = clampedMultiplier;
+
+        externalSpeedBuffRemaining = Mathf.Max(externalSpeedBuffRemaining, clampedDuration);
+
+        Debug.Log($"[PlayerMovement] External speed buff applied x{externalSpeedMultiplier:F2} for {externalSpeedBuffRemaining:F1}s");
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)

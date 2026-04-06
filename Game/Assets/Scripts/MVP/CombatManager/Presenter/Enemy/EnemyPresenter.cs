@@ -58,7 +58,7 @@ namespace CombatManager.Presenter
         private Vector3 remotePosition;
         private Vector2 remoteVelocity;
         private bool remoteIsWalking;
-        private bool remoteFlipX;
+        private bool remoteFacingRight;
         private int remoteAttackSequence;
         private int lastAppliedRemoteAttackSequence = -1;
         private Vector3 attackHitboxBaseLocalPosition;
@@ -66,6 +66,7 @@ namespace CombatManager.Presenter
         private int lastAppliedHitToken = int.MinValue;
         private Coroutine knockbackEffectRoutine;
         private Coroutine flashEffectRoutine;
+        private Coroutine deathFinalizeFallbackRoutine;
         private float lastDamagePopupAt = -10f;
         private const float DAMAGE_POPUP_INTERVAL = 0.1f;
         private const string ATTACK_TRIGGER = "Attack";
@@ -76,6 +77,11 @@ namespace CombatManager.Presenter
         private int runtimeBaseExp = 10;
 
         private readonly List<Collider2D> activeAttackTargets = new List<Collider2D>();
+
+        [Header("Death Animation")]
+        [SerializeField] private string deathTriggerName = "Death";
+        [SerializeField] private bool finishDeathByAnimationEvent = true;
+        [SerializeField] private float deathDespawnFallbackSeconds = 1.2f;
 
         private bool IsAuthoritative => !PhotonNetwork.IsConnected || PhotonNetwork.IsMasterClient;
 
@@ -97,6 +103,12 @@ namespace CombatManager.Presenter
             PhotonNetwork.RemoveCallbackTarget(this);
             if (EnemySyncManager.Instance != null)
                 EnemySyncManager.Instance.UnregisterEnemy(this);
+
+            if (deathFinalizeFallbackRoutine != null)
+            {
+                StopCoroutine(deathFinalizeFallbackRoutine);
+                deathFinalizeFallbackRoutine = null;
+            }
         }
 
         private void Update()
@@ -126,10 +138,13 @@ namespace CombatManager.Presenter
             }
             else
             {
-                ApplyRemoteState();
-
                 if (healthService.IsDead())
+                {
                     HandleDeath(false);
+                    return;
+                }
+
+                ApplyRemoteState();
             }
         }
 
@@ -237,6 +252,7 @@ namespace CombatManager.Presenter
 
             // ✅ NEW: Sync from EnemyDataSO instead of inspector
             SyncFromEnemyData();
+            TryApplyCatalogOverridesOnInitialize();
             ApplyRuntimeProgression();
 
             healthService = new EnemyHealthService(model);
@@ -261,7 +277,7 @@ namespace CombatManager.Presenter
             remotePosition = transform.position;
             remoteVelocity = Vector2.zero;
             remoteIsWalking = false;
-            remoteFlipX = spriteRenderer != null && spriteRenderer.flipX;
+            remoteFacingRight = transform.localScale.x >= 0f;
             remoteAttackSequence = 0;
 
             if (attackHitbox != null)
@@ -361,6 +377,18 @@ namespace CombatManager.Presenter
             model.maxHealth = Mathf.Max(1, Mathf.RoundToInt(enemyData.maxHealth * hpMultiplier));
             model.currentHealth = model.maxHealth;
             model.damageAmount = Mathf.Max(1, Mathf.RoundToInt(enemyData.damageAmount * damageMultiplier));
+        }
+
+        private void TryApplyCatalogOverridesOnInitialize()
+        {
+            EnemyStatsCatalogManager catalog = EnemyStatsCatalogManager.EnsureInstance();
+            if (catalog == null)
+                return;
+
+            if (catalog.TryGetEnemyStats(enemyId, out EnemyStatsCatalogEntry entry))
+            {
+                ApplyCatalogStatsOverride(entry, preserveHealthRatio: false);
+            }
         }
 
         private void RefreshPotentialTargets()
@@ -685,6 +713,75 @@ namespace CombatManager.Presenter
             ApplyRuntimeProgression();
         }
 
+        public void ApplyCatalogStatsOverride(EnemyStatsCatalogEntry entry, bool preserveHealthRatio)
+        {
+            if (entry == null)
+                return;
+
+            int oldMaxHealth = Mathf.Max(1, model.maxHealth);
+            int oldCurrentHealth = healthService != null
+                ? Mathf.Clamp(healthService.GetCurrentHealth(), 0, oldMaxHealth)
+                : Mathf.Clamp(model.currentHealth, 0, oldMaxHealth);
+
+            model.maxHealth = Mathf.Max(1, entry.maxHealth);
+            model.damageAmount = Mathf.Max(1, entry.damageAmount);
+            model.baseExp = Mathf.Max(1, entry.baseExp);
+            model.knockbackForce = Mathf.Max(0f, entry.knockbackForce);
+
+            model.enableOutOfCombatRegen = entry.enableOutOfCombatRegen;
+            model.regenDelaySeconds = Mathf.Max(0f, entry.regenDelaySeconds);
+            model.regenHpPerSecond = Mathf.Max(0f, entry.regenHpPerSecond);
+            model.regenRequireNearGuardAnchor = entry.regenRequireNearGuardAnchor;
+            model.regenGuardProximity = Mathf.Max(0f, entry.regenGuardProximity);
+
+            model.moveSpeed = Mathf.Max(0f, entry.moveSpeed);
+            model.chaseSpeed = Mathf.Max(0f, entry.chaseSpeed);
+            model.wanderSpeed = Mathf.Max(0f, entry.wanderSpeed);
+            model.wanderRange = Mathf.Max(0f, entry.wanderRange);
+            model.enableSeparation = entry.enableSeparation;
+            model.separationRadius = Mathf.Max(0f, entry.separationRadius);
+            model.separationForce = Mathf.Max(0f, entry.separationForce);
+
+            model.detectionRange = Mathf.Max(0f, entry.detectionRange);
+            model.attackRange = Mathf.Max(0f, entry.attackRange);
+            model.fieldOfViewAngle = Mathf.Clamp(entry.fieldOfViewAngle, 0f, 360f);
+
+            model.guardDuration = Mathf.Max(0f, entry.guardDuration);
+            model.guardLookDuration = Mathf.Max(0f, entry.guardLookDuration);
+
+            model.damageThrottleTime = Mathf.Max(0f, entry.damageThrottleTime);
+            model.useActiveAttack = entry.useActiveAttack;
+            model.attackCooldown = Mathf.Max(0f, entry.attackCooldown);
+            model.attackRecovery = Mathf.Max(0f, entry.attackRecovery);
+            model.attackFrontDotThreshold = Mathf.Clamp(entry.attackFrontDotThreshold, -1f, 1f);
+
+            model.knockbackDuration = Mathf.Max(0f, entry.knockbackDuration);
+            model.squashPixels = Mathf.Max(0f, entry.squashPixels);
+            model.stretchPixels = Mathf.Max(0f, entry.stretchPixels);
+            model.waveDuration = Mathf.Max(0f, entry.waveDuration);
+            model.flashDuration = Mathf.Max(0f, entry.flashDuration);
+            model.flashCount = Mathf.Max(0, entry.flashCount);
+
+            if (healthService == null)
+            {
+                model.currentHealth = Mathf.Clamp(oldCurrentHealth, 0, model.maxHealth);
+                return;
+            }
+
+            int nextCurrentHealth;
+            if (preserveHealthRatio && oldMaxHealth > 0)
+            {
+                float ratio = oldCurrentHealth / (float)oldMaxHealth;
+                nextCurrentHealth = Mathf.Clamp(Mathf.RoundToInt(model.maxHealth * ratio), 0, model.maxHealth);
+            }
+            else
+            {
+                nextCurrentHealth = Mathf.Clamp(oldCurrentHealth, 0, model.maxHealth);
+            }
+
+            model.currentHealth = nextCurrentHealth;
+        }
+
         private void ApplyGuardAnchorOverrideIfPresent()
         {
             if (!hasGuardAnchorOverride)
@@ -718,14 +815,95 @@ namespace CombatManager.Presenter
                 OnEnemyAuthoritativeDeath?.Invoke(model.runtimeEnemyId, enemyId, transform.position);
             }
 
-            aiService.Stop();
+            HardStopEnemyForDeath();
 
             if (model.animator != null)
             {
-                model.animator.SetTrigger("Death");
+                model.animator.SetBool("isWalking", false);
+                model.animator.ResetTrigger(ATTACK_TRIGGER);
+                model.animator.SetTrigger(string.IsNullOrWhiteSpace(deathTriggerName) ? "Death" : deathTriggerName);
             }
 
-            Destroy(gameObject, 1f);
+            if (deathFinalizeFallbackRoutine != null)
+                StopCoroutine(deathFinalizeFallbackRoutine);
+
+            deathFinalizeFallbackRoutine = StartCoroutine(DeathFinalizeFallbackCoroutine());
+        }
+
+        // Called by enemy death animation event at the final frame.
+        public void OnDeathAnimationFinishedEvent()
+        {
+            if (!deathHandled)
+                return;
+
+            FinalizeDeathDestroy();
+        }
+
+        private IEnumerator DeathFinalizeFallbackCoroutine()
+        {
+            float waitSeconds = Mathf.Max(0.05f, deathDespawnFallbackSeconds);
+            yield return new WaitForSeconds(waitSeconds);
+
+            // If animator event was missed/not configured, fallback still cleans up.
+            FinalizeDeathDestroy();
+        }
+
+        private void FinalizeDeathDestroy()
+        {
+            if (this == null || gameObject == null)
+                return;
+
+            if (deathFinalizeFallbackRoutine != null)
+            {
+                StopCoroutine(deathFinalizeFallbackRoutine);
+                deathFinalizeFallbackRoutine = null;
+            }
+
+            Destroy(gameObject);
+        }
+
+        private void HardStopEnemyForDeath()
+        {
+            aiService?.Stop();
+
+            if (knockbackEffectRoutine != null)
+            {
+                StopCoroutine(knockbackEffectRoutine);
+                knockbackEffectRoutine = null;
+            }
+
+            if (flashEffectRoutine != null)
+            {
+                StopCoroutine(flashEffectRoutine);
+                flashEffectRoutine = null;
+            }
+
+            // If knockback flash coroutine was interrupted mid-red frame,
+            // force visual state back to the enemy's base sprite color before death anim starts.
+            if (model.spriteRenderer != null)
+                model.spriteRenderer.color = model.originalColor;
+
+            // If squash/stretch was interrupted, restore base scale for clean death VFX.
+            transform.localScale = model.originalScale;
+
+            model.isKnockedBack = false;
+            model.isAttackAnimating = false;
+            model.pendingAttackTrigger = false;
+            model.hasAppliedImpactThisAttack = false;
+
+            if (model.rb != null)
+            {
+                model.rb.linearVelocity = Vector2.zero;
+                model.rb.angularVelocity = 0f;
+                model.rb.simulated = false;
+            }
+
+            if (attackHitbox != null)
+                attackHitbox.enabled = false;
+
+            Collider2D[] colliders = GetComponentsInChildren<Collider2D>(true);
+            for (int i = 0; i < colliders.Length; i++)
+                colliders[i].enabled = false;
         }
 
         private string BuildDefaultRuntimeEnemyId()
@@ -747,7 +925,7 @@ namespace CombatManager.Presenter
                 return;
 
             bool isWalking = model.animator != null && model.animator.GetBool("isWalking");
-            bool flipX = model.spriteRenderer != null && model.spriteRenderer.flipX;
+            bool facingRight = transform.localScale.x >= 0f;
 
             object[] payload =
             {
@@ -763,7 +941,7 @@ namespace CombatManager.Presenter
                 model.isAlerted,
                 model.isKnockedBack,
                 isWalking,
-                flipX,
+                facingRight,
                 model.facingDirection.x,
                 model.facingDirection.y,
                 aiService != null ? aiService.GetAttackSequence() : 0,
@@ -789,8 +967,7 @@ namespace CombatManager.Presenter
 
             TryApplyRemoteAttackAnimation();
 
-            if (model.spriteRenderer != null)
-                model.spriteRenderer.flipX = remoteFlipX;
+            ApplyRemoteFacing(remoteFacingRight);
         }
 
         public void OnEvent(EventData photonEvent)
@@ -816,7 +993,7 @@ namespace CombatManager.Presenter
                 !TryGetBool(payload, 9, out bool isAlerted) ||
                 !TryGetBool(payload, 10, out bool isKnockedBack) ||
                 !TryGetBool(payload, 11, out bool isWalking) ||
-                !TryGetBool(payload, 12, out bool flipX) ||
+                !TryGetBool(payload, 12, out bool facingRight) ||
                 !TryGetFloat(payload, 13, out float faceX) ||
                 !TryGetFloat(payload, 14, out float faceY) ||
                 !TryGetInt(payload, 15, out int attackSequence))
@@ -827,7 +1004,7 @@ namespace CombatManager.Presenter
             remotePosition = new Vector3(posX, posY, posZ);
             remoteVelocity = new Vector2(velX, velY);
             remoteIsWalking = isWalking;
-            remoteFlipX = flipX;
+            remoteFacingRight = facingRight;
             model.currentHealth = hp;
             model.maxHealth = maxHp;
             model.currentState = (EnemyState)stateValue;
@@ -849,6 +1026,20 @@ namespace CombatManager.Presenter
             model.animator.SetTrigger(ATTACK_TRIGGER);
         }
 
+        private void ApplyRemoteFacing(bool facingRight)
+        {
+            Vector3 scale = transform.localScale;
+            float absX = Mathf.Abs(scale.x);
+            if (absX <= 0.0001f)
+                absX = 1f;
+
+            scale.x = facingRight ? absX : -absX;
+            transform.localScale = scale;
+
+            if (model.spriteRenderer != null)
+                model.spriteRenderer.flipX = false;
+        }
+
         private void UpdateAttackHitboxFacing()
         {
             if (attackHitbox == null)
@@ -864,9 +1055,15 @@ namespace CombatManager.Presenter
             if (Mathf.Abs(facingX) < 0.001f)
                 return;
 
-            float directionSign = facingX >= 0f ? 1f : -1f;
+            // Desired world-space side comes from facingDirection.
+            // Because enemy visual facing now uses transform.localScale.x mirroring,
+            // local hitbox X must compensate for parent scale sign.
+            float desiredWorldSign = facingX >= 0f ? 1f : -1f;
+            float parentScaleSign = transform.localScale.x >= 0f ? 1f : -1f;
+            float localDirectionSign = desiredWorldSign * parentScaleSign;
+
             Vector3 local = attackHitbox.transform.localPosition;
-            local.x = Mathf.Abs(attackHitboxBaseLocalPosition.x) * directionSign;
+            local.x = Mathf.Abs(attackHitboxBaseLocalPosition.x) * localDirectionSign;
             attackHitbox.transform.localPosition = local;
         }
 

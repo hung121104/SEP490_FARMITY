@@ -43,15 +43,6 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "UseSkill",
-                    "type": "Button",
-                    "id": "66666666-6666-6666-6666-666666666666",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
                     "name": "SkillConfirm",
                     "type": "Button",
                     "id": "6a6a6a6a-6a6a-6a6a-6a6a-6a6a6a6a6a6a",
@@ -70,7 +61,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "WeaponSkillTrigger",
+                    "name": "UseWeaponSkill",
                     "type": "Button",
                     "id": "6c6c6c6c-6c6c-6c6c-6c6c-6c6c6c6c6c6c",
                     "expectedControlType": "Button",
@@ -79,7 +70,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "SkillManagementToggle",
+                    "name": "OpenCharacterProgression",
                     "type": "Button",
                     "id": "6d6d6d6d-6d6d-6d6d-6d6d-6d6d6d6d6d6d",
                     "expectedControlType": "Button",
@@ -88,7 +79,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "SkillSlot1",
+                    "name": "UseSkillSlot1",
                     "type": "Button",
                     "id": "6e6e6e6e-6e6e-6e6e-6e6e-6e6e6e6e6e6e",
                     "expectedControlType": "Button",
@@ -97,7 +88,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "SkillSlot2",
+                    "name": "UseSkillSlot2",
                     "type": "Button",
                     "id": "6f6f6f6f-6f6f-6f6f-6f6f-6f6f6f6f6f6f",
                     "expectedControlType": "Button",
@@ -106,7 +97,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "SkillSlot3",
+                    "name": "UseSkillSlot3",
                     "type": "Button",
                     "id": "70707070-7070-7070-7070-707070707070",
                     "expectedControlType": "Button",
@@ -115,7 +106,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "SkillSlot4",
+                    "name": "UseSkillSlot4",
                     "type": "Button",
                     "id": "71717171-7171-7171-7171-717171717171",
                     "expectedControlType": "Button",
@@ -378,17 +369,6 @@
                 },
                 {
                     "name": "",
-                    "id": "b0000007-0001-0001-0001-000000000001",
-                    "path": "<Keyboard>/q",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "UseSkill",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
                     "id": "b0000007-0001-0001-0001-000000000002",
                     "path": "<Keyboard>/space",
                     "interactions": "",
@@ -416,7 +396,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
-                    "action": "WeaponSkillTrigger",
+                    "action": "UseWeaponSkill",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -427,7 +407,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
-                    "action": "SkillManagementToggle",
+                    "action": "OpenCharacterProgression",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -438,7 +418,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
-                    "action": "SkillSlot1",
+                    "action": "UseSkillSlot1",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -449,7 +429,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
-                    "action": "SkillSlot2",
+                    "action": "UseSkillSlot2",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -460,7 +440,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
-                    "action": "SkillSlot3",
+                    "action": "UseSkillSlot3",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -471,7 +451,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
-                    "action": "SkillSlot4",
+                    "action": "UseSkillSlot4",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
