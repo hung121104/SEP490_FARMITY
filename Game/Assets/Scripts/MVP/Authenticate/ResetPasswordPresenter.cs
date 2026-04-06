@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class ResetPasswordPresenter
@@ -16,6 +17,8 @@ public class ResetPasswordPresenter
     // Step 1: Send OTP to user email.
     public async void RequestOtp()
     {
+        Debug.Log("[ResetPasswordPresenter] RequestOtp called.");
+
         string email = view.GetEmail();
 
         if (string.IsNullOrWhiteSpace(email))
@@ -26,28 +29,39 @@ public class ResetPasswordPresenter
 
         view.SetInteractable(false);
 
-        var request = new RequestResetPasswordRequest
+        try
         {
-            email = email
-        };
+            var request = new RequestResetPasswordRequest
+            {
+                email = email
+            };
 
-        RequestResetPasswordResponse response = await resetPasswordService.RequestResetOtp(request);
+            RequestResetPasswordResponse response = await resetPasswordService.RequestResetOtp(request);
 
-        view.SetInteractable(true);
+            view.SetInteractable(true);
 
-        if (response != null && response.ok)
-        {
-            pendingEmail = email;
-            view.ShowOtpPanel();
-            return;
+            if (response != null && response.ok)
+            {
+                pendingEmail = email;
+                view.ShowOtpPanel();
+                return;
+            }
+
+            view.ShowError(response?.message ?? "Could not send reset code. Please try again.");
         }
-
-        view.ShowError(response?.message ?? "Could not send reset code. Please try again.");
+        catch (Exception ex)
+        {
+            Debug.LogError($"[ResetPasswordPresenter] RequestOtp exception: {ex.Message}\n{ex.StackTrace}");
+            view.SetInteractable(true);
+            view.ShowError("An unexpected error occurred. Please try again.");
+        }
     }
 
     // Step 2: Verify OTP and set a new password.
     public async void ConfirmReset()
     {
+        Debug.Log("[ResetPasswordPresenter] ConfirmReset called.");
+
         string otp = view.GetOtp();
         string newPassword = view.GetNewPassword();
         string confirmPassword = view.GetConfirmPassword();
@@ -74,24 +88,33 @@ public class ResetPasswordPresenter
 
         view.SetInteractable(false);
 
-        var request = new ConfirmResetPasswordRequest
+        try
         {
-            email = emailToUse,
-            otp = otp,
-            newPassword = newPassword
-        };
+            var request = new ConfirmResetPasswordRequest
+            {
+                email = emailToUse,
+                otp = otp,
+                newPassword = newPassword
+            };
 
-        ConfirmResetPasswordResponse response = await resetPasswordService.ConfirmReset(request);
+            ConfirmResetPasswordResponse response = await resetPasswordService.ConfirmReset(request);
 
-        view.SetInteractable(true);
+            view.SetInteractable(true);
 
-        if (response != null && response.ok)
-        {
-            Debug.Log("[ResetPasswordPresenter] Password reset successful.");
-            view.OnResetSuccess();
-            return;
+            if (response != null && response.ok)
+            {
+                Debug.Log("[ResetPasswordPresenter] Password reset successful.");
+                view.OnResetSuccess();
+                return;
+            }
+
+            view.ShowError(response?.message ?? "Reset failed. Please check OTP and try again.");
         }
-
-        view.ShowError(response?.message ?? "Reset failed. Please check OTP and try again.");
+        catch (Exception ex)
+        {
+            Debug.LogError($"[ResetPasswordPresenter] ConfirmReset exception: {ex.Message}\n{ex.StackTrace}");
+            view.SetInteractable(true);
+            view.ShowError("An unexpected error occurred. Please try again.");
+        }
     }
 }

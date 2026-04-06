@@ -60,7 +60,14 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
     private void OnDestroy()
     {
         isDestroyed = true;
-        if (Instance == this) Instance = null;
+        // Unsubscribe from external static events (safety net — OnDisable may be skipped during Photon scene loads)
+        PhotonNetwork.NetworkingClient.EventReceived -= OnPhotonEvent;
+        CatalogSseListener.OnSseEventForRoom -= HandleSseEventFromListener;
+        if (Instance == this)
+        {
+            OnCatalogChanged = null;
+            Instance = null;
+        }
     }
 
     public override void OnEnable()
@@ -112,7 +119,7 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
 
         // Extract readable names for notification
         string entityName = CatalogSseListener.ExtractName(sseEvent.entity, sseEvent.data);
-        string typeName = CatalogSseListener.ExtractTypeName(sseEvent.entity, sseEvent.data);
+        string typeName = CatalogSseListener.ExtractTypeName(sseEvent.entity);
         string jsonData = sseEvent.data?.ToString(Formatting.None) ?? "";
 
         // Broadcast to all clients via Photon

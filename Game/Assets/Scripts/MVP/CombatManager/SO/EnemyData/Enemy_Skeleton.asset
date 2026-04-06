@@ -19,7 +19,8 @@ MonoBehaviour:
   enemyPrefab: {fileID: 7112447425611430327, guid: 6a5f774100a7d9e4a9b412b637dfa288, type: 3}
   respawnDelaySeconds: 50
   maxHealth: 100
-  damageAmount: 1
+  damageAmount: 5
+  baseExp: 50
   knockbackForce: 10
   enableOutOfCombatRegen: 1
   regenDelaySeconds: 10

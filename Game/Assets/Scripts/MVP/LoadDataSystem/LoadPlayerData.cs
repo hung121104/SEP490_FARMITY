@@ -8,6 +8,9 @@ using Newtonsoft.Json;
 
 public class LoadPlayerData : MonoBehaviourPunCallbacks
 {
+    private const string TRACE = "[HPTRACE]";
+    private const string PROGTRACE = "[PROGTRACE]";
+
     void Start()
     {
         StartCoroutine(WaitAndApplyAllPositions());
@@ -92,6 +95,21 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
         targetView.RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
         Debug.Log($"[LoadPlayerData] Applied position for joining player '{playerId}': {loadedPos}");
 
+        int restoredLevel = Mathf.Max(1, data.level);
+        int restoredCurrentExp = Mathf.Max(0, data.currentExp);
+        int restoredExpToNext = Mathf.Max(1, data.expToNextLevel);
+        targetView.RPC(
+            "RPC_CombatRestoreProgressionFromMaster",
+            targetView.Owner,
+            restoredLevel,
+            restoredCurrentExp,
+            restoredExpToNext);
+        Debug.Log($"{PROGTRACE} [LoadPlayerData] Sent progression restore RPC to joining player '{playerId}' lv={restoredLevel} exp={restoredCurrentExp}/{restoredExpToNext}");
+
+        int restoredHealth = Mathf.Max(0, Mathf.RoundToInt(data.currentHealth));
+        targetView.RPC("RPC_CombatRestoreHealthFromMaster", targetView.Owner, restoredHealth);
+        Debug.Log($"{TRACE} [LoadPlayerData] Sent health restore RPC to joining player '{playerId}' health={restoredHealth} (after progression RPC)");
+
         // Restore saved appearance via Custom Properties so all clients see it
         var appearance = targetView.GetComponent<PlayerAppearanceSync>();
         if (appearance != null)
@@ -139,7 +157,11 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
                 continue;
             }
 
-            string userId = view.Owner.UserId;
+            string userId = null;
+            if (view.Owner.CustomProperties.TryGetValue("accountId", out object rawAccountId) && rawAccountId is string accountIdProp && !string.IsNullOrEmpty(accountIdProp))
+                userId = accountIdProp;
+            else
+                userId = view.Owner.UserId;
 
             if (!PlayerDataManager.Instance.players.Exists(p => p.accountId == userId))
             {
@@ -152,6 +174,21 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
 
             view.RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
             Debug.Log($"[LoadPlayerData] Synced position for {userId}: {loadedPos}");
+
+            int restoredLevel = Mathf.Max(1, data.level);
+            int restoredCurrentExp = Mathf.Max(0, data.currentExp);
+            int restoredExpToNext = Mathf.Max(1, data.expToNextLevel);
+            view.RPC(
+                "RPC_CombatRestoreProgressionFromMaster",
+                view.Owner,
+                restoredLevel,
+                restoredCurrentExp,
+                restoredExpToNext);
+            Debug.Log($"{PROGTRACE} [LoadPlayerData] Sent progression restore RPC to '{userId}' lv={restoredLevel} exp={restoredCurrentExp}/{restoredExpToNext}");
+
+            int restoredHealth = Mathf.Max(0, Mathf.RoundToInt(data.currentHealth));
+            view.RPC("RPC_CombatRestoreHealthFromMaster", view.Owner, restoredHealth);
+            Debug.Log($"{TRACE} [LoadPlayerData] Sent health restore RPC to '{userId}' health={restoredHealth} (after progression RPC)");
 
             // Restore saved appearance for this player
             var appearanceSync = player.GetComponent<PlayerAppearanceSync>();
@@ -244,6 +281,42 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
             localPlayer.GetComponent<PhotonView>().RPC("SetLoadedPosition", RpcTarget.All, loadedPos);
             Debug.Log($"[LoadPlayerData] Self-loaded position for '{accountId}': {loadedPos}");
 
+            var statsPresenter = FindObjectOfType<CombatManager.Presenter.StatsPresenter>();
+            if (statsPresenter != null)
+            {
+                statsPresenter.SetProgressionFromSave(
+                    Mathf.Max(1, myEntry.level),
+                    Mathf.Max(0, myEntry.currentExp),
+                    Mathf.Max(1, myEntry.expToNextLevel));
+                Debug.Log($"{PROGTRACE} [LoadPlayerData] Self-loaded progression for '{accountId}': lv={myEntry.level} exp={myEntry.currentExp}/{myEntry.expToNextLevel}");
+            }
+            else
+            {
+                Debug.LogWarning($"{PROGTRACE} [LoadPlayerData] StatsPresenter missing for self progression apply '{accountId}'. Queueing retry.");
+                StartCoroutine(ApplySelfProgressionWhenReady(
+                    accountId,
+                    Mathf.Max(1, myEntry.level),
+                    Mathf.Max(0, myEntry.currentExp),
+                    Mathf.Max(1, myEntry.expToNextLevel)));
+            }
+
+            var healthPresenter = localPlayer.GetComponent<CombatManager.Presenter.PlayerHealthPresenter>();
+            int restoredHealth = Mathf.Max(0, Mathf.RoundToInt(myEntry.currentHealth));
+            if (restoredHealth <= 0 && Mathf.Max(1, myEntry.level) <= 1 && Mathf.Max(0, myEntry.currentExp) <= 0)
+            {
+                Debug.LogWarning($"{TRACE} [LoadPlayerData] Self-load got zero health with lv1/exp0 for '{accountId}'. Treating as potential unsaved default; presenter will resolve fallback-to-max if needed.");
+            }
+            if (healthPresenter != null)
+            {
+                healthPresenter.SetHealthFromSave(restoredHealth);
+                Debug.Log($"{TRACE} [LoadPlayerData] Self-loaded health for '{accountId}' from world API via presenter: {restoredHealth}");
+            }
+            else
+            {
+                Debug.LogWarning($"{TRACE} [LoadPlayerData] Presenter missing for self-apply health '{accountId}'. Queueing retry. expectedHealth={restoredHealth}");
+                StartCoroutine(ApplySelfHealthWhenReady(restoredHealth, accountId));
+            }
+
             // Restore saved appearance — broadcast via Custom Properties
             var appearance = localPlayer.GetComponent<PlayerAppearanceSync>();
             if (appearance != null)
@@ -260,5 +333,66 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
     private class AcceptAllCertificatesHandler : UnityEngine.Networking.CertificateHandler
     {
         protected override bool ValidateCertificate(byte[] certificateData) => true;
+    }
+
+    private IEnumerator ApplySelfHealthWhenReady(int restoredHealth, string accountId)
+    {
+        float timeout = 10f;
+        float elapsed = 0f;
+
+        while (elapsed < timeout)
+        {
+            GameObject localPlayer = null;
+            foreach (var go in GameObject.FindGameObjectsWithTag("PlayerEntity"))
+            {
+                PhotonView pv = go.GetComponent<PhotonView>();
+                if (pv != null && pv.IsMine)
+                {
+                    localPlayer = go;
+                    break;
+                }
+            }
+
+            var healthPresenter = localPlayer != null
+                ? localPlayer.GetComponent<CombatManager.Presenter.PlayerHealthPresenter>()
+                : null;
+            if (healthPresenter != null)
+            {
+                healthPresenter.SetHealthFromSave(Mathf.Max(0, restoredHealth));
+                Debug.Log($"{TRACE} [LoadPlayerData] Deferred self-apply health succeeded for '{accountId}' health={restoredHealth}");
+                yield break;
+            }
+
+            elapsed += 0.1f;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        Debug.LogWarning($"{TRACE} [LoadPlayerData] Deferred self-apply health timed out for '{accountId}' expectedHealth={restoredHealth}");
+    }
+
+    private IEnumerator ApplySelfProgressionWhenReady(
+        string accountId,
+        int level,
+        int currentExp,
+        int expToNextLevel)
+    {
+        float timeout = 10f;
+        float elapsed = 0f;
+
+        while (elapsed < timeout)
+        {
+            var statsPresenter = FindObjectOfType<CombatManager.Presenter.StatsPresenter>();
+            if (statsPresenter != null)
+            {
+                statsPresenter.SetProgressionFromSave(level, currentExp, expToNextLevel);
+                Debug.Log($"{PROGTRACE} [LoadPlayerData] Deferred self-apply progression succeeded for '{accountId}': lv={level} exp={currentExp}/{expToNextLevel}");
+                yield break;
+            }
+
+            elapsed += 0.1f;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        Debug.LogWarning($"{PROGTRACE} [LoadPlayerData] Deferred self-apply progression timed out for '{accountId}'. expected lv={level} exp={currentExp}/{expToNextLevel}");
     }
 }

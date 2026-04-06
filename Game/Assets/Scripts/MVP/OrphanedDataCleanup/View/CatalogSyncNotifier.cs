@@ -29,7 +29,7 @@ public class CatalogSyncNotifier : MonoBehaviour
     {
         if (notificationView == null) return;
 
-        string message = BuildMessage(changeType, entityType, entityName, typeName);
+        string message = BuildMessage(changeType, entityType, entityName);
         if (string.IsNullOrEmpty(message)) return;
 
         var entries = new List<CleanupNotificationData>
@@ -40,16 +40,15 @@ public class CatalogSyncNotifier : MonoBehaviour
         notificationView.ShowNotification(entries, messageDuration);
     }
 
-    private static string BuildMessage(string changeType, string entityType, string entityName, string typeName)
+    private static string BuildMessage(string changeType, string entityType, string entityName)
     {
-        string typeLabel = string.IsNullOrEmpty(typeName) ? "" : $" ({typeName})";
         string entityLabel = FormatEntityType(entityType);
 
         return changeType switch
         {
-            "create" => $"New {entityLabel} added: {entityName}{typeLabel}",
-            "update" => $"{entityLabel} updated: {entityName}{typeLabel}",
-            "delete" => $"{entityLabel} removed: {entityName}{typeLabel}",
+            "create" => $"New {entityLabel} added: {entityName}",
+            "update" => $"{entityLabel} updated: {entityName}",
+            "delete" => $"{entityLabel} removed: {entityName}",
             _ => null
         };
     }
@@ -58,16 +57,16 @@ public class CatalogSyncNotifier : MonoBehaviour
     {
         return entityType switch
         {
-            "item" => "item",
-            "plant" => "plant",
-            "recipe" => "recipe",
-            "achievement" => "achievement",
-            "material" => "material",
-            "quest" => "quest",
-            "combat-skill" => "combat skill",
-            "combat-catalog" => "combat catalog",
-            "resource-config" => "resource",
-            "skin-config" => "skin config",
+            "item" => "Item",
+            "plant" => "Plant",
+            "recipe" => "Recipe",
+            "achievement" => "Achievement",
+            "material" => "Material",
+            "quest" => "Quest",
+            "combat-skill" => "Combat Skill",
+            "combat-catalog" => "Combat Catalog",
+            "resource-config" => "Resource",
+            "skin-config" => "Skin Config",
             _ => entityType
         };
     }

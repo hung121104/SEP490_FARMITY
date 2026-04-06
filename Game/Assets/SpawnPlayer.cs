@@ -100,6 +100,23 @@ public class SpawnPlayer : MonoBehaviour
             return;
         }
 
+        // For a brand-new world the player should spawn with no skin equipped so they
+        // can choose one through the Skin Picker.  Clear any appearance custom properties
+        // that may have persisted from a previous session before the prefab is instantiated
+        // (PlayerAppearanceSync.Start reads these properties, so clearing them here
+        // guarantees the player spawns with a blank paper-doll).
+        if (WorldSelectionManager.Instance != null && WorldSelectionManager.Instance.IsNewWorld)
+        {
+            PhotonNetwork.LocalPlayer.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+            {
+                { "apHair",   string.Empty },
+                { "apOutfit", string.Empty },
+                { "apHat",    string.Empty },
+                { "apTool",   string.Empty },
+            });
+            Debug.Log("[SpawnPlayer] New world — cleared appearance custom properties so player spawns without a skin.");
+        }
+
         Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
         Quaternion spawnRot = Quaternion.Euler(0f, 0f, spawnPoint.rotation.eulerAngles.z);
         GameObject spawned = PhotonNetwork.Instantiate(playerPrefab.name, spawnPoint.position, spawnRot);

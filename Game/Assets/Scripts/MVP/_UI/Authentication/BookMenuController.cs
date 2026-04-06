@@ -82,6 +82,7 @@ public class BookMenuController : MonoBehaviour
         PlayAnimation(onShowBookAnimationTrigger);
         if (_movingCoroutine != null) StopCoroutine(_movingCoroutine);
         _movingCoroutine = StartCoroutine(MoveBook());
+        openBookBtn.interactable = false;
     }
 
     [ContextMenu("Transtion In")]

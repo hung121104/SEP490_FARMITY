@@ -43,10 +43,14 @@ public class PlayerDataManager : MonoBehaviour
 				toolConfigId   = c.toolConfigId,
 				currentStamina = c.currentStamina,
 				viableStamina  = c.viableStamina,
+				currentHealth  = c.currentHealth,
 				regenBoostMultiplier    = c.regenBoostMultiplier,
 				regenBoostRemaining     = c.regenBoostRemaining,
 				toolEfficiencyReduction = c.toolEfficiencyReduction,
 				toolEfficiencyRemaining = c.toolEfficiencyRemaining,
+				level          = c.level,
+				currentExp     = c.currentExp,
+				expToNextLevel = c.expToNextLevel,
 			});
 		}
 		Debug.Log($"[PlayerDataManager] Populated {players.Count} characters.");

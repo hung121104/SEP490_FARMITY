@@ -54,6 +54,7 @@ export class CharacterService implements OnModuleInit {
       sectionIndex: 0,
       currentStamina: 200,
       viableStamina: 200,
+      currentHealth: 0,
     } as Partial<Character>;
 
     // Use array form to support passing session option
@@ -116,10 +117,14 @@ export class CharacterService implements OnModuleInit {
     if (dto.toolConfigId   !== undefined) update.toolConfigId   = dto.toolConfigId;
     if (dto.currentStamina !== undefined) update.currentStamina = dto.currentStamina;
     if (dto.viableStamina  !== undefined) update.viableStamina  = dto.viableStamina;
+    if (dto.currentHealth  !== undefined) update.currentHealth  = dto.currentHealth;
     if (dto.regenBoostMultiplier    !== undefined) update.regenBoostMultiplier    = dto.regenBoostMultiplier;
     if (dto.regenBoostRemaining     !== undefined) update.regenBoostRemaining     = dto.regenBoostRemaining;
     if (dto.toolEfficiencyReduction !== undefined) update.toolEfficiencyReduction = dto.toolEfficiencyReduction;
     if (dto.toolEfficiencyRemaining !== undefined) update.toolEfficiencyRemaining = dto.toolEfficiencyRemaining;
+    if (dto.level !== undefined) update.level = dto.level;
+    if (dto.currentExp !== undefined) update.currentExp = dto.currentExp;
+    if (dto.expToNextLevel !== undefined) update.expToNextLevel = dto.expToNextLevel;
 
     const setOnInsert: Record<string, any> = {
       worldId: worldOid,
@@ -131,10 +136,14 @@ export class CharacterService implements OnModuleInit {
     if (dto.sectionIndex === undefined) setOnInsert.sectionIndex = 0;
     if (dto.currentStamina === undefined) setOnInsert.currentStamina = 200;
     if (dto.viableStamina === undefined) setOnInsert.viableStamina = 200;
+    if (dto.currentHealth === undefined) setOnInsert.currentHealth = 0;
     if (dto.regenBoostMultiplier    === undefined) setOnInsert.regenBoostMultiplier    = 1;
     if (dto.regenBoostRemaining     === undefined) setOnInsert.regenBoostRemaining     = 0;
     if (dto.toolEfficiencyReduction === undefined) setOnInsert.toolEfficiencyReduction = 0;
     if (dto.toolEfficiencyRemaining === undefined) setOnInsert.toolEfficiencyRemaining = 0;
+    if (dto.level === undefined) setOnInsert.level = 1;
+    if (dto.currentExp === undefined) setOnInsert.currentExp = 0;
+    if (dto.expToNextLevel === undefined) setOnInsert.expToNextLevel = 100;
 
     const result = await this.characterModel.findOneAndUpdate(
       { worldId: worldOid, accountId: accountOid },
