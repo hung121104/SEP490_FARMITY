@@ -6,109 +6,109 @@ export type EnemyStatsDocument = EnemyStats & Document;
 @Schema({ timestamps: true })
 export class EnemyStats {
   @Prop({ required: true, unique: true })
-  enemyId: string;
+  enemyId!: string;
 
   @Prop({ required: true })
-  enemyName: string;
+  enemyName!: string;
 
   @Prop({ default: 20 })
-  respawnDelaySeconds: number;
+  respawnDelaySeconds!: number;
 
   @Prop({ default: 10 })
-  maxHealth: number;
+  maxHealth!: number;
 
   @Prop({ default: 1 })
-  damageAmount: number;
+  damageAmount!: number;
 
   @Prop({ default: 10 })
-  baseExp: number;
+  baseExp!: number;
 
   @Prop({ default: 30 })
-  knockbackForce: number;
+  knockbackForce!: number;
 
   @Prop({ default: true })
-  enableOutOfCombatRegen: boolean;
+  enableOutOfCombatRegen!: boolean;
 
   @Prop({ default: 10 })
-  regenDelaySeconds: number;
+  regenDelaySeconds!: number;
 
   @Prop({ default: 2 })
-  regenHpPerSecond: number;
+  regenHpPerSecond!: number;
 
   @Prop({ default: true })
-  regenRequireNearGuardAnchor: boolean;
+  regenRequireNearGuardAnchor!: boolean;
 
   @Prop({ default: 1.5 })
-  regenGuardProximity: number;
+  regenGuardProximity!: number;
 
   @Prop({ default: 2 })
-  moveSpeed: number;
+  moveSpeed!: number;
 
   @Prop({ default: 3 })
-  chaseSpeed: number;
+  chaseSpeed!: number;
 
   @Prop({ default: 1 })
-  wanderSpeed: number;
+  wanderSpeed!: number;
 
   @Prop({ default: 5 })
-  wanderRange: number;
+  wanderRange!: number;
 
   @Prop({ default: true })
-  enableSeparation: boolean;
+  enableSeparation!: boolean;
 
   @Prop({ default: 0.8 })
-  separationRadius: number;
+  separationRadius!: number;
 
   @Prop({ default: 2.5 })
-  separationForce: number;
+  separationForce!: number;
 
   @Prop({ default: 8 })
-  detectionRange: number;
+  detectionRange!: number;
 
   @Prop({ default: 1.5 })
-  attackRange: number;
+  attackRange!: number;
 
   @Prop({ default: 120 })
-  fieldOfViewAngle: number;
+  fieldOfViewAngle!: number;
 
   @Prop({ default: 2 })
-  guardDuration: number;
+  guardDuration!: number;
 
   @Prop({ default: 1 })
-  guardLookDuration: number;
+  guardLookDuration!: number;
 
   @Prop({ default: 0.5 })
-  damageThrottleTime: number;
+  damageThrottleTime!: number;
 
   @Prop({ default: true })
-  useActiveAttack: boolean;
+  useActiveAttack!: boolean;
 
   @Prop({ default: 1.2 })
-  attackCooldown: number;
+  attackCooldown!: number;
 
   @Prop({ default: 0.1 })
-  attackRecovery: number;
+  attackRecovery!: number;
 
   @Prop({ default: 0.25 })
-  attackFrontDotThreshold: number;
+  attackFrontDotThreshold!: number;
 
   @Prop({ default: 0.3 })
-  knockbackDuration: number;
+  knockbackDuration!: number;
 
   @Prop({ default: 0.05 })
-  squashPixels: number;
+  squashPixels!: number;
 
   @Prop({ default: 0.05 })
-  stretchPixels: number;
+  stretchPixels!: number;
 
   @Prop({ default: 0.3 })
-  waveDuration: number;
+  waveDuration!: number;
 
   @Prop({ default: 0.2 })
-  flashDuration: number;
+  flashDuration!: number;
 
   @Prop({ default: 2 })
-  flashCount: number;
+  flashCount!: number;
 }
 
 export const EnemyStatsSchema = SchemaFactory.createForClass(EnemyStats);

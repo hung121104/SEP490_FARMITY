@@ -4,11 +4,11 @@ import { Type } from 'class-transformer';
 export class RegisterEnemyStatsEntryDto {
   @IsString()
   @IsNotEmpty()
-  enemyId: string;
+  enemyId!: string;
 
   @IsString()
   @IsNotEmpty()
-  enemyName: string;
+  enemyName!: string;
 
   @IsOptional()
   @IsNumber()
@@ -177,5 +177,5 @@ export class RegisterEnemyStatsEntryDto {
 export class RegisterEnemyStatsBatchDto {
   @ValidateNested({ each: true })
   @Type(() => RegisterEnemyStatsEntryDto)
-  entries: RegisterEnemyStatsEntryDto[];
+  entries!: RegisterEnemyStatsEntryDto[];
 }
