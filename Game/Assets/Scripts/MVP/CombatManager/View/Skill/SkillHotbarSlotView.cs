@@ -35,6 +35,8 @@ namespace CombatManager.View
         private Vector3 originalLocalPosition;
         private Transform hotbarParent;
         private bool isDragging = false;
+        private Color defaultSlotBackgroundColor = Color.white;
+        private bool hasDefaultSlotBackgroundColor = false;
 
         // Events → Presenter listens
         public System.Action<int, SkillData> OnDroppedOnSlot;       // from ManagementPanel drag
@@ -56,6 +58,12 @@ namespace CombatManager.View
             canvasGroup = GetComponent<CanvasGroup>();
             if (canvasGroup == null)
                 canvasGroup = gameObject.AddComponent<CanvasGroup>();
+
+            if (slotBackground != null)
+            {
+                defaultSlotBackgroundColor = slotBackground.color;
+                hasDefaultSlotBackgroundColor = true;
+            }
 
             // Set hotkey label
             if (hotkeyLabel != null)
@@ -136,6 +144,7 @@ namespace CombatManager.View
             }
 
             // ✅ Don't touch slotBackground color - keep it as designed in prefab
+            RestoreDefaultSlotBackgroundColor();
 
             if (cooldownFill != null)
             {
@@ -169,6 +178,7 @@ namespace CombatManager.View
                 SkillData droppedSkill = draggedItem.GetSkillData();
                 if (droppedSkill != null)
                 {
+                    RestoreDefaultSlotBackgroundColor();
                     OnDroppedOnSlot?.Invoke(slotIndex, droppedSkill);
                     Debug.Log($"[SkillHotbarSlotView] Slot {slotIndex} received: {droppedSkill.skillName} from ManagementPanel");
                 }
@@ -201,9 +211,18 @@ namespace CombatManager.View
         {
             // ✅ Restore to original prefab color (white, full alpha) not emptySlotColor
             if (slotBackground != null && currentSkillData == null)
-                slotBackground.color = Color.white;
+                RestoreDefaultSlotBackgroundColor();
 
             OnSlotHoverExit?.Invoke(slotIndex);
+        }
+
+        private void RestoreDefaultSlotBackgroundColor()
+        {
+            if (slotBackground == null)
+                return;
+
+            if (hasDefaultSlotBackgroundColor)
+                slotBackground.color = defaultSlotBackgroundColor;
         }
 
         #endregion
