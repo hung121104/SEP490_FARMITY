@@ -925,13 +925,7 @@ export class AccountService implements OnModuleInit {
       throw new RpcException({ status: 500, message: 'Email configuration is missing' });
     }
 
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: { user, pass },
-      family: 4,
-    });
+    const transporter = nodemailer.createTransport({ host, port, secure, auth: { user, pass }, family: 4 } as any);
 
     const subject = template.getSubject();
     const text = template.getText(username, otp);
