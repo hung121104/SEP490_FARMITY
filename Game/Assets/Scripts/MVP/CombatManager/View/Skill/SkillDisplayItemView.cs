@@ -12,7 +12,8 @@ namespace CombatManager.View
     /// Drag behavior: item itself moves with mouse (mirrors old SkillDisplayItem).
     /// </summary>
     public class SkillDisplayItemView : MonoBehaviour,
-        IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
+        IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler,
+        IPointerEnterHandler, IPointerExitHandler
     {
         [Header("UI References - Assign in Inspector")]
         [SerializeField] private Image skillIcon;
@@ -35,12 +36,16 @@ namespace CombatManager.View
         public System.Action<SkillDisplayItemView> OnDragEvent;
         public System.Action<SkillDisplayItemView> OnEndDragEvent;
         public System.Action<SkillDisplayItemView> OnSelectEvent;
+        public System.Action<SkillDisplayItemView, Vector2> OnHoverEnterEvent;
+        public System.Action<SkillDisplayItemView> OnHoverExitEvent;
 
         #region Setup
 
         public void Initialize(SkillData data)
         {
             skillData = data;
+
+            EnsureRaycastTarget();
 
             // Setup components
             rectTransform = GetComponent<RectTransform>();
@@ -83,6 +88,21 @@ namespace CombatManager.View
 
             if (skillDescriptionText != null)
                 skillDescriptionText.text = skillData.skillDescription;
+        }
+
+        private void EnsureRaycastTarget()
+        {
+            Graphic rootGraphic = GetComponent<Graphic>();
+            if (rootGraphic != null)
+            {
+                rootGraphic.raycastTarget = true;
+                return;
+            }
+
+            // Add invisible raycast receiver so pointer enter/exit and click can work reliably.
+            Image raycastImage = gameObject.AddComponent<Image>();
+            raycastImage.color = new Color(0f, 0f, 0f, 0f);
+            raycastImage.raycastTarget = true;
         }
 
         #endregion
@@ -163,6 +183,36 @@ namespace CombatManager.View
             if (eventData.button != PointerEventData.InputButton.Left) return;
             if (isDragging) return;
             OnSelectClicked();
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (skillData == null)
+            {
+                Debug.Log("[SkillDisplayItemView] Hover enter ignored: skillData is null.");
+                return;
+            }
+
+            if (isDragging)
+            {
+                Debug.Log($"[SkillDisplayItemView] Hover enter ignored while dragging: {skillData.skillName}");
+                return;
+            }
+
+            Debug.Log($"[SkillDisplayItemView] Hover enter: {skillData.skillName} at {eventData.position}");
+            OnHoverEnterEvent?.Invoke(this, eventData.position);
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            if (skillData == null)
+            {
+                Debug.Log("[SkillDisplayItemView] Hover exit ignored: skillData is null.");
+                return;
+            }
+
+            Debug.Log($"[SkillDisplayItemView] Hover exit: {skillData.skillName}");
+            OnHoverExitEvent?.Invoke(this);
         }
 
         private void OnSelectClicked()

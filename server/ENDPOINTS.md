@@ -233,10 +233,10 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
   }
   ```
 
-### Player Heartbeat (Game Client)
+### Session Heartbeat (Game + Web Frontend)
 
-- **POST** `/player-data/heartbeat`: Confirm player is still online (authenticated player endpoint).
-  - Headers: `Authorization: Bearer <token>`
+- **POST** `/player-data/heartbeat`: Keep authenticated session active and report online presence.
+  - Headers: `Authorization: Bearer <token>` OR Cookie: `access_token`
   - Body (optional):
     ```json
     {
@@ -252,40 +252,76 @@ All requests go through the gateway at `https://0.0.0.0:3000` (HTTPS - accessibl
       "cumulativeHeartbeatMs": 312000
     }
     ```
-  - Note: Client sends this every 15 seconds during gameplay while authenticated.
-  - Note: If heartbeat is missing for configured timeout (default 45 seconds), user is removed from realtime concurrent count.
-  - Note: Session becomes legit after cumulative heartbeat-confirmed active time reaches 5 minutes.
+
+#### Behavior
+
+- Supported clients: Unity game client and web frontend (admin web can use the same endpoint).
+- Session validation is strict: if token/session is invalid, revoked, or inactive, endpoint returns `401`.
+- Successful heartbeat updates:
+  - `lastHeartbeatAt`
+  - `lastActivityAt`
+  - cumulative active duration (`cumulativeHeartbeatMs`)
+- `isLegit` becomes `true` after cumulative active heartbeat time reaches configured threshold (default 5 minutes).
+- Game currently sends heartbeat every 10 seconds while authenticated.
+- Presence freshness for concurrent metrics uses `HEARTBEAT_OFFLINE_TIMEOUT_SECONDS` (default 300s).
 
 #### Error Responses
 
-- `401 Unauthorized` (missing/invalid token or non-admin user):
+- `401 Unauthorized` (missing/invalid token or session inactive/revoked):
   ```json
   {
     "statusCode": 401,
-    "message": "Admin privileges required"
+    "message": "Session inactive or revoked"
   }
   ```
 
-- `400 Bad Request` (invalid query):
+- `404 Not Found` (session not found during heartbeat write):
   ```json
   {
-    "statusCode": 400,
-    "message": "startDate must be earlier than endDate"
+    "statusCode": 404,
+    "message": "Session not found"
   }
   ```
 
-#### Frontend/UI Notes (for web AI)
+#### Frontend Integration Guide (for web repo AI)
 
-- Recommended dashboard cards:
-  - Total Users
-  - Daily Active Users (DAU)
-  - Concurrent Players (show badge using `concurrentSource`)
-  - New Users
-  - Returning Users
-- Date range picker should send UTC ISO strings.
-- Use `generatedAtUtc` for "Last updated" text.
-- Show fallback state in UI when `concurrentSource = "mongo-fallback"` (for observability/transparency).
-- For number formatting, prefer localized separators (e.g., `1,200`).
+- Start heartbeat loop immediately after login success.
+- Recommended interval:
+  - 10s to match game behavior, or
+  - 15-30s for admin dashboard if lower request volume is preferred.
+- On `401` from heartbeat:
+  - clear auth state,
+  - clear token/cookie client state,
+  - redirect to login page.
+- Pause or slow heartbeat when tab is hidden, resume on visibility return.
+- Keep using `GET /auth/admin-check` for one-off route guarding; use heartbeat for continuous session liveness.
+
+#### Example (Web)
+
+```ts
+async function sendHeartbeat(token: string) {
+  const res = await fetch(`${API_BASE}/player-data/heartbeat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify({ clientUnixMs: Date.now() }),
+  });
+
+  if (res.status === 401) {
+    // Force logout flow
+    return { shouldLogout: true };
+  }
+
+  if (!res.ok) {
+    return { ok: false };
+  }
+
+  const payload = await res.json();
+  return { ok: true, payload };
+}
+```
 
 ### Password Reset
 
