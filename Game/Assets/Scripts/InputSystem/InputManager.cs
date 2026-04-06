@@ -22,11 +22,10 @@ public class InputManager : MonoBehaviour
     public InputAction Interact      => _actions.Player.Interact;
     public InputAction OpenInventory => _actions.Player.OpenInventory;
     public InputAction Attack        => _actions.Player.Attack;
-    public InputAction UseSkill      => _actions.Player.UseSkill;
     public InputAction SkillConfirm  => _actions.Player.SkillConfirm;
     public InputAction SkillCancel   => _actions.Player.SkillCancel;
-    public InputAction WeaponSkillTrigger => _actions.Player.WeaponSkillTrigger;
-    public InputAction SkillManagementToggle => _actions.Player.SkillManagementToggle;
+    public InputAction UseWeaponSkill => _actions.Player.UseWeaponSkill;
+    public InputAction OpenCharacterProgression => _actions.Player.OpenCharacterProgression;
     public InputAction SkillSlot1    => _actions.Player.SkillSlot1;
     public InputAction SkillSlot2    => _actions.Player.SkillSlot2;
     public InputAction SkillSlot3    => _actions.Player.SkillSlot3;
@@ -173,6 +172,29 @@ public class InputManager : MonoBehaviour
                 {
                     action.ApplyBindingOverride(i, PlayerPrefs.GetString(key));
                     loaded++;
+                    continue;
+                }
+
+                // Backward compatibility for renamed action: SkillManagementToggle -> OpenCharacterProgression
+                if (action.name == "OpenCharacterProgression")
+                {
+                    string legacyKey = BINDINGS_KEY + "_SkillManagementToggle_" + i;
+                    if (PlayerPrefs.HasKey(legacyKey))
+                    {
+                        action.ApplyBindingOverride(i, PlayerPrefs.GetString(legacyKey));
+                        loaded++;
+                    }
+                }
+
+                // Backward compatibility for renamed action: WeaponSkillTrigger -> UseWeaponSkill
+                if (action.name == "UseWeaponSkill")
+                {
+                    string legacyKey = BINDINGS_KEY + "_WeaponSkillTrigger_" + i;
+                    if (PlayerPrefs.HasKey(legacyKey))
+                    {
+                        action.ApplyBindingOverride(i, PlayerPrefs.GetString(legacyKey));
+                        loaded++;
+                    }
                 }
             }
         }

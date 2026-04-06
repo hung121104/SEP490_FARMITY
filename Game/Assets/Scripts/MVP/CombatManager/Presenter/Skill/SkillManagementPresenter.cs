@@ -343,7 +343,7 @@ namespace CombatManager.Presenter
             if (inputManager == null)
                 return;
 
-            if (inputManager.SkillManagementToggle.WasPressedThisFrame())
+            if (inputManager.OpenCharacterProgression.WasPressedThisFrame())
                 TogglePanel();
 
             if (inputManager.SkillCancel.WasPressedThisFrame() && service.IsAnySkillDragging())

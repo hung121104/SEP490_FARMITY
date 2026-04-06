@@ -640,7 +640,7 @@ namespace CombatManager.Presenter
         {
             InputManager inputManager = InputManager.Instance;
             if (inputManager == null) return;
-            if (!inputManager.WeaponSkillTrigger.WasPressedThisFrame()) return;
+            if (!inputManager.UseWeaponSkill.WasPressedThisFrame()) return;
             if (CombatModePresenter.Instance == null ||
                 !CombatModePresenter.Instance.IsCombatModeActive()) return;
             if (WeaponEquipPresenter.Instance == null ||
