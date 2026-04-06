@@ -46,6 +46,7 @@ public class ResetPasswordService : IResetPasswordService
     public async Task<RequestResetPasswordResponse> RequestResetOtp(RequestResetPasswordRequest request)
     {
         string json = JsonUtility.ToJson(request);
+        Debug.Log($"[ResetPasswordService] RequestResetOtp URL={RequestResetUrl} body={json}");
 
         using (UnityWebRequest webRequest = new UnityWebRequest(RequestResetUrl, "POST"))
         {
@@ -55,7 +56,9 @@ public class ResetPasswordService : IResetPasswordService
             webRequest.SetRequestHeader("Content-Type", "application/json");
             webRequest.certificateHandler = new AcceptAllCertificatesHandler();
 
+            Debug.Log("[ResetPasswordService] Sending web request...");
             await webRequest.SendWebRequest();
+            Debug.Log($"[ResetPasswordService] Response received: {webRequest.result} ({webRequest.responseCode})");
 
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
