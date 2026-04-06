@@ -250,12 +250,12 @@ public class NPCInteractionPresenter
                 currentState = NPCInteractionState.Dialogue;
                 dialoguePresenter.StartDialogue();
             }
-            else if (i == 1) // Gift
-            {
-                dialogueView.Hide();
-                StartGiftMode();
-            }
-            else if (i == 2) // Quest
+            // else if (i == 1) // Gift — Hidden, not used
+            // {
+            //     dialogueView.Hide();
+            //     StartGiftMode();
+            // }
+            else if (i == 1) // Quest
             {
                 dialogueView.Hide();
                 HandleQuestInteraction();
@@ -475,9 +475,9 @@ public class NPCInteractionPresenter
             dialogueText = "What do you want to do?",
             options = new List<DialogueOption>
             {
-                new DialogueOption { optionText = "Talk",      nextNodeIndex = -1 },
-                new DialogueOption { optionText = "Send Gift", nextNodeIndex = -1 },
-                new DialogueOption { optionText = "Quest",     nextNodeIndex = -1 }
+                new DialogueOption { optionText = "Talk",  nextNodeIndex = -1 },
+                // new DialogueOption { optionText = "Send Gift", nextNodeIndex = -1 }, // Hidden — not used
+                new DialogueOption { optionText = "Quest", nextNodeIndex = -1 }
             }
         };
     }
