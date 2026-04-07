@@ -115,6 +115,7 @@ namespace AchievementManager.Presenter
         private void OnFetchSuccess(List<AchievementData> playerAchievements)
         {
             List<AchievementData> mergedAchievements = MergeCatalogWithPlayerAchievements(playerAchievements);
+            ReconcileMergedProgressWithLocalCounters(mergedAchievements);
 
             foreach (AchievementData data in mergedAchievements)
                 model.UpsertAchievement(data);
@@ -134,6 +135,34 @@ namespace AchievementManager.Presenter
 
             Debug.Log($"[AchievementPresenter] Loaded {mergedAchievements.Count} merged achievements ✅");
             Debug.Log($"[AchievementPresenter] Tracker ready: {tracker.IsInitialized} | Model loaded: {model.isLoaded}");
+        }
+
+        private void ReconcileMergedProgressWithLocalCounters(List<AchievementData> achievements)
+        {
+            if (achievements == null || model == null)
+                return;
+
+            foreach (AchievementData achievement in achievements)
+            {
+                if (achievement == null || achievement.requirements == null || achievement.progress == null)
+                    continue;
+
+                int count = Mathf.Min(achievement.requirements.Count, achievement.progress.Count);
+                for (int i = 0; i < count; i++)
+                {
+                    AchievementRequirement req = achievement.requirements[i];
+                    if (req == null || string.IsNullOrEmpty(req.type))
+                        continue;
+
+                    string key = string.IsNullOrEmpty(req.entityId)
+                        ? req.type
+                        : $"{req.type}_{req.entityId}";
+
+                    int localCounter = model.GetCounter(key);
+                    if (localCounter > achievement.progress[i])
+                        achievement.progress[i] = localCounter;
+                }
+            }
         }
 
         private void OnFetchError(string error)
