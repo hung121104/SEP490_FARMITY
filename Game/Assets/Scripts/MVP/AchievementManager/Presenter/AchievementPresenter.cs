@@ -5,6 +5,7 @@ using AchievementManager.Model;
 using AchievementManager.Service;
 using AchievementManager.View;
 using System;
+using UnityEngine.UI;
 
 namespace AchievementManager.Presenter
 {
@@ -33,6 +34,9 @@ namespace AchievementManager.Presenter
         [Header("Views")]
         [SerializeField] private AchievementPanelView panelView;
         [SerializeField] private AchievementUnlockPopupView unlockPopupView;
+
+        [Header("Buttons")]
+        [SerializeField] private Button openPanelButton;
 
         [Header("Settings")]
         [SerializeField] private float fetchDelay = 1f;
@@ -65,6 +69,16 @@ namespace AchievementManager.Presenter
             tracker.Initialize(model, service, this);
 
             Debug.Log("[AchievementPresenter] Components initialized");
+        }
+
+        private void Start()
+        {
+            WireOpenPanelButton(openPanelButton);
+        }
+
+        private void OnDestroy()
+        {
+            UnwireOpenPanelButton(openPanelButton);
         }
 
         #endregion
@@ -325,6 +339,16 @@ namespace AchievementManager.Presenter
 
         #region Panel Control
 
+        public void SetOpenPanelButton(Button button)
+        {
+            if (ReferenceEquals(openPanelButton, button))
+                return;
+
+            UnwireOpenPanelButton(openPanelButton);
+            openPanelButton = button;
+            WireOpenPanelButton(openPanelButton);
+        }
+
         public void OpenPanel()
         {
             panelView?.Show();
@@ -357,6 +381,23 @@ namespace AchievementManager.Presenter
         {
             yield return FetchAllAchievements();
             panelView?.Populate(model.GetAllAchievements());
+        }
+
+        private void WireOpenPanelButton(Button button)
+        {
+            if (button == null)
+                return;
+
+            button.onClick.RemoveListener(OpenPanel);
+            button.onClick.AddListener(OpenPanel);
+        }
+
+        private void UnwireOpenPanelButton(Button button)
+        {
+            if (button == null)
+                return;
+
+            button.onClick.RemoveListener(OpenPanel);
         }
 
         #endregion
