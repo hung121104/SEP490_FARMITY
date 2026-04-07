@@ -2357,7 +2357,7 @@ GameObject:
   - component: {fileID: 98387091}
   - component: {fileID: 98387092}
   m_Layer: 5
-  m_Name: UseSkill
+  m_Name: UseWeaponSkill
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2396,7 +2396,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 308006925d70bb54fab8956f6019692d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  actionName: UseSkill
+  actionName: UseWeaponSkill
   bindingIndex: 0
   bindingLabel: {fileID: 1090382409}
   rebindButton: {fileID: 753835638}

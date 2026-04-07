@@ -55,6 +55,7 @@ export class GatewayModule implements NestModule {
         { path: 'auth/logout', method: RequestMethod.POST },
         { path: 'player-data/heartbeat', method: RequestMethod.POST },
         { path: 'player-data/world', method: RequestMethod.ALL },
+        { path: 'player-data/world/enemy-stats/register-missing', method: RequestMethod.POST },
         { path: 'player-data/world/blacklist', method: RequestMethod.ALL },
         { path: 'player-data/worlds', method: RequestMethod.ALL },
         {
@@ -107,6 +108,7 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/quests', method: RequestMethod.POST },
         { path: 'game-data/quests/:questId', method: RequestMethod.PUT },
         { path: 'game-data/quests/:questId', method: RequestMethod.DELETE },
+        { path: 'game-data/enemy-stats/:enemyId', method: RequestMethod.PUT },
       );
 
     // enforce admin only on admin routes
@@ -151,6 +153,7 @@ export class GatewayModule implements NestModule {
         { path: 'game-data/quests', method: RequestMethod.POST },
         { path: 'game-data/quests/:questId', method: RequestMethod.PUT },
         { path: 'game-data/quests/:questId', method: RequestMethod.DELETE },
+        { path: 'game-data/enemy-stats/:enemyId', method: RequestMethod.PUT },
       );
   }
 }

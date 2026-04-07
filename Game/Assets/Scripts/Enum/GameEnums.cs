@@ -254,3 +254,14 @@ public enum AmbientZoneType
     Cave,
 }
 
+// ==================== COMBAT SKILL MANAGEMENT ====================
+
+public enum BuffSkillSubCategory
+{
+    None,
+    InstantHeal,
+    HealOverTime,
+    StaminaRegen,
+    MoveSpeedPercent,
+}
+
