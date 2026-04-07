@@ -199,7 +199,10 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
     }
     
     /// <summary>
-    /// Load time from room custom properties (for clients joining)
+    /// Load time from room custom properties (for clients joining).
+    /// Fires change events after applying so subscribers (SeasonManagerView,
+    /// WeatherView, etc.) that have already called OnEnable are notified
+    /// of the correct initial state regardless of Start() execution order.
     /// </summary>
     private void LoadTimeFromRoomProperties()
     {
@@ -208,20 +211,32 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
         
         Hashtable props = PhotonNetwork.CurrentRoom.CustomProperties;
         
-        if (props.ContainsKey(PROP_YEAR))
+        if (!props.ContainsKey(PROP_YEAR))
+            return;
+
+        int prevMonth = month;
+        int prevDay   = day;
+
+        year   = (int)props[PROP_YEAR];
+        month  = (int)props[PROP_MONTH];
+        day    = (int)props[PROP_DAY];
+        hour   = (int)props[PROP_HOUR];
+        minute = props[PROP_MINUTE] is double d ? (float)d : (float)props[PROP_MINUTE];
+
+        // Recalculate derived values
+        season = (Season)(month - 1);
+        week   = ((day - 1) / DaysPerWeek) + 1;
+
+        if (showDebugLogs)
+            Debug.Log($"[TimeManager] Loaded time from room: {GetCurrentTimeString()}");
+
+        // Always fire events so downstream systems (SeasonManagerView, WeatherView, etc.)
+        // initialise to the correct state no matter which Start() ran first.
+        OnDayChanged?.Invoke();
+        if (month != prevMonth)
         {
-            year = (int)props[PROP_YEAR];
-            month = (int)props[PROP_MONTH];
-            day = (int)props[PROP_DAY];
-            hour = (int)props[PROP_HOUR];
-            minute = (float)props[PROP_MINUTE];
-            
-            // Recalculate derived values
-            season = (Season)(month - 1);
-            week = ((day - 1) / DaysPerWeek) + 1;
-            
-            if (showDebugLogs)
-                Debug.Log($"[TimeManager] Loaded time from room: {GetCurrentTimeString()}");
+            OnMonthChanged?.Invoke();
+            OnSeasonChanged?.Invoke();
         }
     }
     
@@ -271,7 +286,8 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
             }
             if (propertiesThatChanged.ContainsKey(PROP_MINUTE))
             {
-                minute = (float)propertiesThatChanged[PROP_MINUTE];
+                object rawMin = propertiesThatChanged[PROP_MINUTE];
+                minute = rawMin is double dm ? (float)dm : (float)rawMin;
                 timeUpdated = true;
             }
             
