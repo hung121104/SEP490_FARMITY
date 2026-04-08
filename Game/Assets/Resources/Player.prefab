@@ -373,6 +373,8 @@ MonoBehaviour:
   moveSpeed: 4
   sprintSpeedMultiplier: 1.5
   _text: {fileID: 5692749827172287735}
+  externalSpeedMultiplier: 1
+  externalSpeedBuffRemaining: 0
 --- !u!114 &470869259128668884
 MonoBehaviour:
   m_ObjectHideFlags: 0

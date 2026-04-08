@@ -39,8 +39,14 @@ public class CraftingService : ICraftingService
                 return false;
         }
 
-        // Check if inventory has space for result
-        if (!inventory.HasSpace())
+        // Check if inventory has space for result (including stackable merging)
+        ItemData resultData = ItemCatalogService.Instance?.GetItemData(recipe.ResultItemId);
+        if (resultData == null)
+            return false;
+
+        int resultAmount = recipe.ResultQuantity;
+        int addableQuantity = inventory.GetAddableQuantity(resultData, resultAmount);
+        if (addableQuantity < resultAmount)
             return false;
 
         return true;
@@ -74,8 +80,17 @@ public class CraftingService : ICraftingService
             }
         }
 
-        // Check space
-        if (!inventory.HasSpace())
+        // Check space (including stackable merging)
+        int resultAmount = recipe.ResultQuantity * amount;
+        ItemData resultData = ItemCatalogService.Instance?.GetItemData(recipe.ResultItemId);
+        if (resultData == null)
+        {
+            OnCraftFailed?.Invoke("Result item not found in catalog");
+            return false;
+        }
+
+        int addableQuantity = inventory.GetAddableQuantity(resultData, resultAmount);
+        if (addableQuantity < resultAmount)
         {
             OnCraftFailed?.Invoke("Inventory is full");
             return false;
@@ -96,8 +111,6 @@ public class CraftingService : ICraftingService
             }
         }
 
-        // Add result item
-        int resultAmount = recipe.ResultQuantity * amount;
         bool added = inventory.AddItem(recipe.ResultItemId, resultAmount);
 
         if (!added)

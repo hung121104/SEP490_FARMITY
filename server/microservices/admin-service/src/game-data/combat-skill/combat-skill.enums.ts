@@ -12,6 +12,14 @@ export enum CombatSkillCategory {
   Summon = 'Summon',
 }
 
+export enum CombatBuffSubCategory {
+  None = 'None',
+  InstantHeal = 'InstantHeal',
+  HealOverTime = 'HealOverTime',
+  StaminaRegen = 'StaminaRegen',
+  MoveSpeedPercent = 'MoveSpeedPercent',
+}
+
 export enum CombatDiceTier {
   D6 = 'D6',
   D8 = 'D8',

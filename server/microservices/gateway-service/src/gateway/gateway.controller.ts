@@ -262,6 +262,7 @@ export class GatewayController {
     };
 
     const numericFields = [
+      'unlockLevel',
       'requiredWeaponType',
       'cooldown',
       'skillMultiplier',
@@ -273,6 +274,12 @@ export class GatewayController {
       'slashVfxPositionOffsetX',
       'slashVfxPositionOffsetY',
       'slashKnockbackForce',
+      'aoeCastRange',
+      'aoeRadius',
+      'aoeVfxDuration',
+      'buffValue',
+      'buffDuration',
+      'buffTickInterval',
     ];
 
     for (const field of numericFields) {
@@ -292,6 +299,7 @@ export class GatewayController {
     if (iconUrl) dto.iconUrl = iconUrl;
 
     const numericFields = [
+      'unlockLevel',
       'requiredWeaponType',
       'cooldown',
       'skillMultiplier',
@@ -303,6 +311,12 @@ export class GatewayController {
       'slashVfxPositionOffsetX',
       'slashVfxPositionOffsetY',
       'slashKnockbackForce',
+      'aoeCastRange',
+      'aoeRadius',
+      'aoeVfxDuration',
+      'buffValue',
+      'buffDuration',
+      'buffTickInterval',
     ];
 
     for (const field of numericFields) {
@@ -900,6 +914,128 @@ export class GatewayController {
         this.adminClient.send('delete-resource-config', { resourceId }),
       );
       return this.unpackCatalogChange(result);
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  // ── Game Data: Enemy Stats ─────────────────────────────────────────────────
+
+  @Get('game-data/enemy-stats/catalog')
+  async getEnemyStatsCatalog() {
+    try {
+      return await firstValueFrom(
+        this.adminClient.send('get-enemy-stats-catalog', {}),
+      );
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Put('game-data/enemy-stats/:enemyId')
+  async updateEnemyStats(
+    @Param('enemyId') enemyId: string,
+    @Body() body: any,
+  ) {
+    try {
+      const dto: any = {};
+
+      const numericFields = [
+        'respawnDelaySeconds',
+        'maxHealth',
+        'damageAmount',
+        'baseExp',
+        'knockbackForce',
+        'regenDelaySeconds',
+        'regenHpPerSecond',
+        'regenGuardProximity',
+        'moveSpeed',
+        'chaseSpeed',
+        'wanderSpeed',
+        'wanderRange',
+        'separationRadius',
+        'separationForce',
+        'detectionRange',
+        'attackRange',
+        'fieldOfViewAngle',
+        'guardDuration',
+        'guardLookDuration',
+        'damageThrottleTime',
+        'attackCooldown',
+        'attackRecovery',
+        'attackFrontDotThreshold',
+        'knockbackDuration',
+        'squashPixels',
+        'stretchPixels',
+        'waveDuration',
+        'flashDuration',
+        'flashCount',
+      ];
+
+      for (const field of numericFields) {
+        if (body[field] !== undefined) {
+          dto[field] = this.parseNumericField(body[field]);
+        }
+      }
+
+      const boolFields = [
+        'enableOutOfCombatRegen',
+        'regenRequireNearGuardAnchor',
+        'enableSeparation',
+        'useActiveAttack',
+      ];
+
+      for (const field of boolFields) {
+        if (body[field] !== undefined) {
+          if (typeof body[field] === 'boolean') {
+            dto[field] = body[field];
+          } else if (typeof body[field] === 'string') {
+            dto[field] = body[field].toLowerCase() === 'true';
+          }
+        }
+      }
+
+      if (body.enemyName !== undefined) {
+        dto.enemyName = String(body.enemyName).trim();
+      }
+
+      const result = await firstValueFrom(
+        this.adminClient.send('update-enemy-stats', { enemyId, dto }),
+      );
+      return this.unpackCatalogChange(result);
+    } catch (err) {
+      throw this.rpcError(err);
+    }
+  }
+
+  @Post('player-data/world/enemy-stats/register-missing')
+  async registerMissingEnemyStats(
+    @Body() body: any,
+    @Req() req: Request,
+  ) {
+    const ownerIdRaw = req['user']?.sub;
+    const ownerId = ownerIdRaw ? String(ownerIdRaw) : undefined;
+    if (!ownerId) throw new UnauthorizedException('Missing owner');
+
+    try {
+      const worldId = body?.worldId ? String(body.worldId) : '';
+      if (!worldId) {
+        throw new BadRequestException('worldId is required.');
+      }
+
+      // Verify requester actually owns this world before allowing internal register-missing sync.
+      await firstValueFrom(
+        this.playerDataClient.send('get-world', { _id: worldId, ownerId }),
+      );
+
+      const entries = Array.isArray(body?.entries) ? body.entries : [];
+      return await firstValueFrom(
+        this.adminClient.send('register-missing-enemy-stats', {
+          ownerId,
+          worldId,
+          entries,
+        }),
+      );
     } catch (err) {
       throw this.rpcError(err);
     }

@@ -218,8 +218,8 @@ public class InventoryService : IInventoryService
 
             if (item.Quantity <= 0)
             {
-                OnItemRemoved?.Invoke(item, slotIndex);
                 model.ClearSlot(slotIndex);
+                OnItemRemoved?.Invoke(item, slotIndex);
             }
             else
             {
@@ -242,8 +242,8 @@ public class InventoryService : IInventoryService
 
         if (item.Quantity <= 0)
         {
-            OnItemRemoved?.Invoke(item, slotIndex);
             model.ClearSlot(slotIndex);
+            OnItemRemoved?.Invoke(item, slotIndex);
         }
         else
         {

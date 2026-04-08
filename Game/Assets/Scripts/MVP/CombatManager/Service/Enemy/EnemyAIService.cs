@@ -494,11 +494,7 @@ namespace CombatManager.Service
             }
 
             model.facingDirection = new Vector2(model.guardDirection, 0f);
-
-            if (model.spriteRenderer != null)
-            {
-                model.spriteRenderer.flipX = model.guardDirection > 0;
-            }
+            ApplyFacingFromDirectionX(model.guardDirection);
         }
 
         #endregion
@@ -567,10 +563,7 @@ namespace CombatManager.Service
             model.rb.linearVelocity = direction * model.wanderSpeed;
 
             model.facingDirection = direction;
-            if (model.spriteRenderer != null)
-            {
-                model.spriteRenderer.flipX = direction.x > 0;
-            }
+            ApplyFacingFromDirectionX(direction.x);
         }
 
         #endregion
@@ -586,10 +579,7 @@ namespace CombatManager.Service
             model.rb.linearVelocity = direction * model.chaseSpeed;
 
             model.facingDirection = direction;
-            if (model.spriteRenderer != null)
-            {
-                model.spriteRenderer.flipX = direction.x > 0;
-            }
+            ApplyFacingFromDirectionX(direction.x);
         }
 
         private void ApplyEnemySeparation()
@@ -643,9 +633,26 @@ namespace CombatManager.Service
 
             direction.Normalize();
             model.facingDirection = direction;
+            ApplyFacingFromDirectionX(direction.x);
+        }
+
+        private void ApplyFacingFromDirectionX(float directionX)
+        {
+            if (enemyTransform == null || Mathf.Abs(directionX) <= 0.0001f)
+                return;
+
+            // Enemy sprites are authored with opposite default orientation, so we invert X sign.
+            float sign = directionX > 0f ? -1f : 1f;
+            Vector3 scale = enemyTransform.localScale;
+            float absX = Mathf.Abs(scale.x);
+            if (absX <= 0.0001f)
+                absX = 1f;
+
+            scale.x = absX * sign;
+            enemyTransform.localScale = scale;
 
             if (model.spriteRenderer != null)
-                model.spriteRenderer.flipX = direction.x > 0f;
+                model.spriteRenderer.flipX = false;
         }
 
         #endregion
