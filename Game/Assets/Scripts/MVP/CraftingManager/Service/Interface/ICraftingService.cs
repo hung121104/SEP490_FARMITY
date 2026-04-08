@@ -9,8 +9,8 @@ public interface ICraftingService
     event Action<string> OnRecipeUnlocked;
 
     // Crafting Operations
-    bool CanCraftRecipe(string recipeID, IInventoryService inventory);
-    bool CraftRecipe(string recipeID, IInventoryService inventory, int amount = 1);
+    bool CanCraftRecipe(string recipeID);
+    bool CraftRecipe(string recipeID, int amount = 1);
 
     // Recipe Management
     void LoadRecipes(IEnumerable<RecipeData> recipeDataList);
@@ -29,8 +29,8 @@ public interface ICraftingService
     List<RecipeModel> GetCookingRecipes();
     List<RecipeModel> GetCraftingRecipesByLevel(int stationLevel);
     List<RecipeModel> GetCookingRecipesByLevel(int stationLevel);
-    List<RecipeModel> GetCraftableRecipes(IInventoryService inventory);
+    List<RecipeModel> GetCraftableRecipes();
 
     // Ingredient Check
-    Dictionary<string, int> GetMissingIngredients(string recipeID, IInventoryService inventory);
+    Dictionary<string, int> GetMissingIngredients(string recipeID);
 }
