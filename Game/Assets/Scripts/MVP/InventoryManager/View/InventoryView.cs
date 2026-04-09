@@ -46,6 +46,10 @@ public class InventoryView : MonoBehaviour, IInventoryView
     private Transform originalParent;
     private Vector2 originalPosition;
 
+    // Minecraft-style carry state
+    private bool isCarryingFromHere = false;
+    private int hoveredSlotIndex = -1;
+
     public bool IsVisible => inventoryPanel != null && inventoryPanel.activeSelf;
 
     #region Events
@@ -165,12 +169,17 @@ public class InventoryView : MonoBehaviour, IInventoryView
             int capturedIndex = slotIndex;
             // Subscribe to slot events
             slotView.OnClickedRequested += (slot) => HandleSlotClicked(slot);
-            slotView.OnBeginDragRequested += (slot) => OnSlotBeginDrag?.Invoke(slot);
-            slotView.OnDragRequested += (pos) => OnSlotDrag?.Invoke(pos);
-            slotView.OnEndDragRequested += () => OnSlotEndDrag?.Invoke();
-            slotView.OnDropRequested += (slot) => OnSlotDrop?.Invoke(slot);
-            slotView.OnPointerEnterRequested += (slot, pos) => OnSlotHoverEnter?.Invoke(slot, pos);
-            slotView.OnPointerExitRequested += (slot) => OnSlotHoverExit?.Invoke(slot);
+            slotView.OnPointerDownRequested += (slot) => HandleSlotPointerDown(slot);
+            slotView.OnPointerEnterRequested += (slot, pos) =>
+            {
+                hoveredSlotIndex = slot;
+                OnSlotHoverEnter?.Invoke(slot, pos);
+            };
+            slotView.OnPointerExitRequested += (slot) =>
+            {
+                if (hoveredSlotIndex == slot) hoveredSlotIndex = -1;
+                OnSlotHoverExit?.Invoke(slot);
+            };
 
             slotViews.Add(slotView);
             slotIndex++;
@@ -352,6 +361,14 @@ public class InventoryView : MonoBehaviour, IInventoryView
 
     public void CancelAllActions()
     {
+        // Reset Minecraft-style carry state if this view owns the carry
+        if (isCarryingFromHere && InventoryCarryState.IsCarrying)
+        {
+            InventoryCarryState.EndCarry();
+        }
+        isCarryingFromHere = false;
+        hoveredSlotIndex = -1;
+
         ForceStopDragInEventSystem();
 
         // 1. Hide drag preview
@@ -471,6 +488,110 @@ public class InventoryView : MonoBehaviour, IInventoryView
     private void HandleSlotClicked(int slotIndex)
     {
         OnSlotClicked?.Invoke(slotIndex);
+    }
+
+    /// <summary>
+    /// Minecraft-style click-to-pick / click-to-place handler.
+    /// Called on mouse DOWN on any inventory slot.
+    /// </summary>
+    private void HandleSlotPointerDown(int slotIndex)
+    {
+        if (InventoryCarryState.IsCarrying)
+        {
+            // --- PLACE / SWAP ---
+            OnSlotDrop?.Invoke(slotIndex);
+            InventoryCarryState.EndCarry();
+        }
+        else
+        {
+            // --- PICK UP ---
+            if (slotIndex < 0 || slotIndex >= slotViews.Count) return;
+            var slotView = slotViews[slotIndex];
+            var item = slotView.GetCurrentItem();
+            if (item == null || slotView.IsLocked) return;
+
+            isCarryingFromHere = true;
+
+            // Hide the source slot visuals
+            slotView.SetSlotVisuals(false);
+
+            // Show drag preview
+            ShowDragPreview(item);
+
+            // Fire begin drag for presenters
+            OnSlotBeginDrag?.Invoke(slotIndex);
+
+            // Register shared carry state with cleanup callback
+            int sourceSlot = slotIndex;
+            InventoryCarryState.StartCarry(slotIndex, () =>
+            {
+                // Restore source slot visuals
+                if (sourceSlot >= 0 && sourceSlot < slotViews.Count && slotViews[sourceSlot] != null)
+                {
+                    var srcItem = slotViews[sourceSlot].GetCurrentItem();
+                    if (srcItem != null)
+                        slotViews[sourceSlot].SetSlotVisuals(true);
+                }
+                HideDragPreview();
+                OnSlotEndDrag?.Invoke();
+                isCarryingFromHere = false;
+            });
+        }
+    }
+
+    private void Update()
+    {
+        if (!isCarryingFromHere || !InventoryCarryState.IsCarrying) return;
+
+        // Move drag preview to cursor
+        Vector2 mousePos = Input.mousePosition;
+        OnSlotDrag?.Invoke(mousePos);
+        UpdateDragPreview(mousePos);
+
+        // Right-click or Escape to cancel (put item back)
+        if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.Escape))
+        {
+            InventoryCarryState.EndCarry();
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (isCarryingFromHere && InventoryCarryState.IsCarrying && Input.GetMouseButtonDown(0))
+        {
+            if (!InventoryCarryState.SlotInteractedThisFrame)
+            {
+                // Left-clicked on empty space (no slot was pressed this frame)
+                // Check if over delete zone
+                Vector2 mousePos = Input.mousePosition;
+                if (itemDeleteView != null && itemDeleteView.gameObject.activeInHierarchy
+                    && IsPositionInsideRect(itemDeleteView.GetComponent<RectTransform>(), mousePos))
+                {
+                    OnItemDeleteRequested?.Invoke(InventoryCarryState.SourceSlot);
+                    InventoryCarryState.EndCarry();
+                }
+                else
+                {
+                    // EndCarry callback fires OnSlotEndDrag → presenter checks if outside inventory → drop to world
+                    InventoryCarryState.EndCarry();
+                }
+            }
+        }
+
+        // Reset the per-frame flag (only the carrying view resets it)
+        if (isCarryingFromHere)
+        {
+            InventoryCarryState.SlotInteractedThisFrame = false;
+        }
+    }
+
+    private bool IsPositionInsideRect(RectTransform rect, Vector2 screenPosition)
+    {
+        if (rect == null) return false;
+        Canvas canvas = rect.GetComponentInParent<Canvas>();
+        Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            ? canvas.worldCamera : null;
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, screenPosition, cam);
     }
 
     /// <summary>

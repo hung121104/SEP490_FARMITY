@@ -28,6 +28,11 @@ public class ChestPresenter
     // Drag state
     private int draggedSlot = -1;
     private bool dragFromChest = false;
+
+    // True while the presenter is writing its own slot changes to the module (master only).
+    // Prevents the re-entrant OnChestChanged callback from overwriting the already-correct model.
+    private bool isApplyingLocalSync = false;
+    public bool IsApplyingLocalSync => isApplyingLocalSync;
     private Vector2 lastKnownCursorPosition;
 
     // Action cooldown for network sync
@@ -117,8 +122,16 @@ public class ChestPresenter
         chestInventoryService.OnInventoryChanged -= HandleChestInventoryChanged;
     }
 
-    private void HandleChestItemAdded(ItemModel item, int slot) => chestView?.UpdateSlot(slot, item);
-    private void HandleChestItemRemoved(ItemModel item, int slot) => chestView?.ClearSlot(slot);
+    private void HandleChestItemAdded(ItemModel item, int slot)
+    {
+        if (dragFromChest && draggedSlot == slot) return; // skip carried slot
+        chestView?.UpdateSlot(slot, item);
+    }
+    private void HandleChestItemRemoved(ItemModel item, int slot)
+    {
+        if (dragFromChest && draggedSlot == slot) return; // skip carried slot
+        chestView?.ClearSlot(slot);
+    }
     private void HandleChestItemsMoved(int fromSlot, int toSlot)
     {
         var fromItem = chestInventoryService.GetItemAtSlot(fromSlot);
@@ -128,6 +141,7 @@ public class ChestPresenter
     }
     private void HandleChestSlotChanged(int slot)
     {
+        if (dragFromChest && draggedSlot == slot) return; // skip carried slot
         var item = chestInventoryService.GetItemAtSlot(slot);
         chestView?.UpdateSlot(slot, item);
     }
@@ -288,6 +302,11 @@ public class ChestPresenter
         chestView?.HideDragPreview();
         draggedSlot = -1;
 
+        // Refresh the chest view now that carry ended —
+        // picks up any remote changes that were skipped for the carried slot
+        if (wasDragFromChest)
+            RefreshChestView();
+
         // Notify other players this slot is no longer being dragged
         if (previousDragSlot != -1 && wasDragFromChest)
             ChestSyncManager.Instance?.NotifySlotDragEnd(chestData.ChestId, (byte)previousDragSlot);
@@ -301,7 +320,9 @@ public class ChestPresenter
         {
             OnItemDropped?.Invoke(item);
             chestInventoryService.RemoveItemFromSlot(slotIndex, item.Quantity);
+            isApplyingLocalSync = true;
             SyncChestSlot(slotIndex);
+            isApplyingLocalSync = false;
             Debug.Log($"[ChestPresenter] Dropped chest item to world from slot {slotIndex}: {item.ItemName}");
         }
     }
@@ -349,9 +370,11 @@ public class ChestPresenter
                 transferService.MoveWithinChest(chestModel, draggedSlot, targetSlot);
                 RefreshChestSlot(draggedSlot);
                 RefreshChestSlot(targetSlot);
+                isApplyingLocalSync = true;
                 SyncChestSlot(draggedSlot);
                 SyncChestSlot(targetSlot);
                 chestInventoryService.NotifyInventoryChangedExternal();
+                isApplyingLocalSync = false;
             }
         }
         else
@@ -360,13 +383,14 @@ public class ChestPresenter
             sync?.NotifySlotDragStart(chestData.ChestId, (byte)targetSlot);
 
             transferService.TransferToChest(inventoryModel, draggedSlot, chestModel, targetSlot);
-            SyncChestSlot(targetSlot);
-            SyncPlayerSlot(draggedSlot);
             RefreshPlayerSlot(draggedSlot);
             RefreshChestSlot(targetSlot);
-
+            isApplyingLocalSync = true;
+            SyncChestSlot(targetSlot);
+            SyncPlayerSlot(draggedSlot);
             chestInventoryService.NotifyInventoryChangedExternal();
             playerInventoryService.NotifyInventoryChangedExternal();
+            isApplyingLocalSync = false;
 
             // Release target lock after sync is sent
             sync?.NotifySlotDragEnd(chestData.ChestId, (byte)targetSlot);
@@ -400,14 +424,14 @@ public class ChestPresenter
         {
             // Chest → Player: transfer with swap support
             transferService.TransferToPlayer(chestModel, draggedSlot, inventoryModel, targetSlot);
-            SyncChestSlot(draggedSlot);
-            SyncPlayerSlot(targetSlot);
-            // Refresh both views
             RefreshChestSlot(draggedSlot);
             RefreshPlayerSlot(targetSlot);
-
+            isApplyingLocalSync = true;
+            SyncChestSlot(draggedSlot);
+            SyncPlayerSlot(targetSlot);
             chestInventoryService.NotifyInventoryChangedExternal();
             playerInventoryService.NotifyInventoryChangedExternal();
+            isApplyingLocalSync = false;
         }
 
         chestView?.HideDragPreview();
@@ -455,7 +479,9 @@ public class ChestPresenter
         string itemName = item.ItemName;
 
         chestInventoryService.RemoveItemFromSlot(slotIndex, quantity);
+        isApplyingLocalSync = true;
         SyncChestSlot(slotIndex);
+        isApplyingLocalSync = false;
 
         Debug.Log($"[ChestPresenter] Deleted chest item {itemName} x{quantity} from slot {slotIndex}");
 
@@ -516,6 +542,9 @@ public class ChestPresenter
         if (chestView == null) return;
         for (int i = 0; i < chestModel.maxSlots; i++)
         {
+            // Skip the slot the local player is currently carrying from the chest
+            if (dragFromChest && draggedSlot == i) continue;
+
             var item = chestModel.GetItemAtSlot(i);
             if (item != null)
                 chestView.UpdateSlot(i, item);
