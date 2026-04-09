@@ -149,11 +149,8 @@ public class StructureService : IStructureService
     /// </summary>
     public bool RequestHit(Vector3Int pos, int damage, string playerActorId)
     {
-        if (!WorldDataManager.Instance.HasStructureAtWorldPosition(pos))
-            return false;
-
         UnifiedChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(pos);
-        if (chunk == null || !chunk.TryGetStructure(pos.x, pos.y, out var structureData))
+        if (chunk == null || !chunk.HasStructure(pos.x, pos.y))
             return false;
 
         int currentHp = chunk.GetStructureHp(pos.x, pos.y);
