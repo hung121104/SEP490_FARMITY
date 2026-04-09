@@ -99,6 +99,19 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     }
 
     // ── Rain event handlers ──────────────────────────────────────────────
+    /// <summary>
+    /// Called after world-sync completes on joined clients to re-apply rain
+    /// watering that may have fired before chunk data was available.
+    /// Only updates RAM; visual refresh is handled by RebuildVisualsAfterSync.
+    /// </summary>
+    public void ReapplyRainWatering()
+    {
+        if (!WeatherView.IsRaining || growthService == null) return;
+        growthService.IsRaining = true;
+        growthService.WaterAllTilledTiles();
+        Debug.Log("[CropManagerView] ReapplyRainWatering — re-watered all tilled tiles after world sync.");
+    }
+
     private void OnRainStarted()
     {
         if (growthService == null) return;

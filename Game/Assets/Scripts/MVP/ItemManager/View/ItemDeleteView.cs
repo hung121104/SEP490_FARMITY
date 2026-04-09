@@ -120,7 +120,14 @@ public class ItemDeleteView : MonoBehaviour, IDropHandler, IPointerEnterHandler,
         if (!acceptingDrops)
             return;
 
-        // Check if something is genuinely being dragged (not a stale EventSystem reference)
+        // Show hover state if carrying an item (Minecraft-style)
+        if (InventoryCarryState.IsCarrying)
+        {
+            SetHoverState(true);
+            return;
+        }
+
+        // Legacy: Check if something is genuinely being dragged
         if (eventData.pointerDrag != null)
         {
             var draggedSlot = eventData.pointerDrag.GetComponent<InventorySlotView>();

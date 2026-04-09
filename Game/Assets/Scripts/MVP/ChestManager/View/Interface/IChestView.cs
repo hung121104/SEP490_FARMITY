@@ -17,6 +17,8 @@ public interface IChestView
     event Action<int> OnSlotDrop;
     event Action<int, Vector2> OnSlotHoverEnter;
     event Action<int> OnSlotHoverExit;
+    event Action<int> OnSlotSplitRequested;
+    event Action<int> OnSlotShiftClickRequested;
 
     // Slot operations
     void InitializeSlots(int count);
@@ -28,6 +30,7 @@ public interface IChestView
     void ShowDragPreview(ItemModel item);
     void UpdateDragPreview(Vector2 position);
     void HideDragPreview();
+    void StartCarryFromSplit(int slotIndex, ItemModel previewItem);
 
     // Visibility
     void Show();
