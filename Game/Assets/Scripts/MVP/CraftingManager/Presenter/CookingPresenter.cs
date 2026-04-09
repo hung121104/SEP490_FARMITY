@@ -217,11 +217,11 @@ public class CookingPresenter
         }
 
         // Check if can cook
-        bool canCook = craftingService.CanCraftRecipe(recipeID, inventoryService);
+        bool canCook = craftingService.CanCraftRecipe(recipeID);
 
         if (!canCook)
         {
-            var missingIngredients = craftingService.GetMissingIngredients(recipeID, inventoryService);
+            var missingIngredients = craftingService.GetMissingIngredients(recipeID);
             if (missingIngredients.Count > 0)
             {
                 string missingText = "Missing: " + string.Join(", ",
@@ -236,7 +236,7 @@ public class CookingPresenter
         }
 
         // Attempt to cook
-        bool success = craftingService.CraftRecipe(recipeID, inventoryService, amount);
+        bool success = craftingService.CraftRecipe(recipeID, amount);
 
         if (!success)
         {
@@ -293,7 +293,7 @@ public class CookingPresenter
         // Update cookable status for each recipe
         foreach (var recipe in recipes)
         {
-            bool canCook = craftingService.CanCraftRecipe(recipe.RecipeID, inventoryService);
+            bool canCook = craftingService.CanCraftRecipe(recipe.RecipeID);
             recipeListView.UpdateRecipeSlot(recipe.RecipeID, canCook);
         }
     }
@@ -305,7 +305,7 @@ public class CookingPresenter
         var recipes = GetFilteredRecipes();
         foreach (var recipe in recipes)
         {
-            bool canCook = craftingService.CanCraftRecipe(recipe.RecipeID, inventoryService);
+            bool canCook = craftingService.CanCraftRecipe(recipe.RecipeID);
             recipeListView.UpdateRecipeSlot(recipe.RecipeID, canCook);
         }
     }
@@ -344,8 +344,8 @@ public class CookingPresenter
             return;
         }
 
-        bool canCook = craftingService.CanCraftRecipe(recipeID, inventoryService);
-        var missingIngredients = craftingService.GetMissingIngredients(recipeID, inventoryService);
+        bool canCook = craftingService.CanCraftRecipe(recipeID);
+        var missingIngredients = craftingService.GetMissingIngredients(recipeID);
 
         // Calculate max cookable amount
         int maxAmount = CalculateMaxCraftableAmount(recipe, missingIngredients);
@@ -457,7 +457,7 @@ public class CookingPresenter
     /// </summary>
     public List<RecipeModel> GetCookableRecipes()
     {
-        return craftingService.GetCraftableRecipes(inventoryService)
+        return craftingService.GetCraftableRecipes()
             .Where(r => r.RecipeType == RecipeType.Cooking)
             .ToList();
     }
