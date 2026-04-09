@@ -71,15 +71,15 @@ public class CropHarvestingView : MonoBehaviourPun
     void OnEnable()
     {
         if (InputManager.Instance == null) return;
-        InputManager.Instance.Interact.performed += OnHarvestPerformed;
-        InputManager.Instance.Interact.canceled  += OnHarvestCanceled;
+        InputManager.Instance.Interact.started  += OnHarvestPerformed;
+        InputManager.Instance.Interact.canceled += OnHarvestCanceled;
     }
 
     void OnDisable()
     {
         if (InputManager.Instance == null) return;
-        InputManager.Instance.Interact.performed -= OnHarvestPerformed;
-        InputManager.Instance.Interact.canceled  -= OnHarvestCanceled;
+        InputManager.Instance.Interact.started  -= OnHarvestPerformed;
+        InputManager.Instance.Interact.canceled -= OnHarvestCanceled;
     }
 
     private void OnHarvestPerformed(InputAction.CallbackContext ctx)
@@ -111,6 +111,8 @@ public class CropHarvestingView : MonoBehaviourPun
             holdTimer -= Time.deltaTime;
             if (holdTimer <= 0f)
             {
+                // Reset deduplication so the same tile can be targeted again on repeat ticks.
+                lastHarvestTile = new Vector2Int(int.MinValue, int.MinValue);
                 HandleHarvestInput();
                 holdTimer = harvestRepeatInterval;
             }

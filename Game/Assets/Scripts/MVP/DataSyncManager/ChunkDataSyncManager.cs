@@ -536,6 +536,12 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
             yield break;
         }
 
+        // If it's currently raining, re-water all tilled tiles in RAM before the
+        // visual pass so the watered overlay renders correctly for joined clients.
+        // (WaterAllTilledTiles fired during CropManagerView.Start but world data
+        // wasn't synced yet, so it had nothing to water.)
+        CropManagerView.Instance?.ReapplyRainWatering();
+
         var loaded = clm.GetLoadedChunks();
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] RebuildVisualsAfterSync — refreshing {loaded.Count} chunk(s).");
@@ -580,6 +586,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.PlantCropAtWorldPosition(worldPos, plantId);
+        MarkDirty(worldX, worldY);
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received crop planted: '{plantId}' at ({worldX}, {worldY})");
@@ -630,6 +637,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.RemoveCropAtWorldPosition(worldPos);
+        MarkDirty(worldX, worldY);
         
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received crop removed at ({worldX}, {worldY})");
@@ -681,6 +689,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.UpdateCropStage(worldPos, newStage);
+        MarkDirty(worldX, worldY);
         
         // Refresh chunk visuals to show the updated crop stage
         if (chunkLoadingManager != null)
@@ -752,6 +761,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.TillTileAtWorldPosition(worldPos);
+        MarkDirty(worldX, worldY);
         
         if (WeatherView.IsRaining)
         {
@@ -779,6 +789,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.UntillTileAtWorldPosition(worldPos);
+        MarkDirty(worldX, worldY);
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received tile untiled at ({worldX}, {worldY})");
@@ -836,6 +847,8 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                 chunk.IncrementPollenHarvestCount(worldX, worldY);
         }
 
+        MarkDirty(worldX, worldY);
+
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Pollen harvested at ({worldX},{worldY}), count now {newCount}.");
     }
@@ -864,11 +877,12 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Notify WorldSaveManager that a tile at (worldX, worldY) has changed.
-    /// Only runs on the MasterClient — non-masters skip silently.
+    /// Safe to call on any client — WorldSaveManager.TryMarkChunkDirty is a no-op
+    /// when Instance is null (i.e. non-master clients where WorldSaveManager
+    /// self-destructs in Awake).
     /// </summary>
     private void MarkDirty(int worldX, int worldY)
     {
-        if (!PhotonNetwork.IsMasterClient) return;
         int chunkX    = Mathf.FloorToInt(worldX / 30f);
         int chunkY    = Mathf.FloorToInt(worldY / 30f);
         int sectionId = WorldDataManager.Instance != null
@@ -927,6 +941,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         }
 
         WorldDataManager.Instance.PlaceStructureAtWorldPosition(worldPos, structureId, initialHp, structureLevel);
+        MarkDirty(worldX, worldY);
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received structure placed: '{structureId}' at ({worldX},{worldY}) HP={initialHp} level={structureLevel}");
@@ -1003,6 +1018,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
         }
 
         WorldDataManager.Instance.RemoveStructureAtWorldPosition(worldPos);
+        MarkDirty(worldX, worldY);
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received structure removed at ({worldX},{worldY})" +
@@ -1247,6 +1263,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.WaterTileAtWorldPosition(worldPos);
+        MarkDirty(worldX, worldY);
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received tile watered at ({worldX},{worldY})");
@@ -1291,6 +1308,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.UnwaterTileAtWorldPosition(worldPos);
+        MarkDirty(worldX, worldY);
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received tile unwatered (decay) at ({worldX},{worldY})");
@@ -1333,6 +1351,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.FertilizeTileAtWorldPosition(worldPos);
+        MarkDirty(worldX, worldY);
 
         if (showDebugLogs)
             Debug.Log($"[ChunkSync] Received tile fertilized at ({worldX},{worldY})");
@@ -1469,6 +1488,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         // Add to local RAM
         WorldDataManager.Instance.PlaceResourceAtWorldPosition(worldPos, resourceId, currentHp);
+        MarkDirty(worldX, worldY);
 
         // Fire C# event so ResourceSpawnerManager can instantiate the visual GameObject
         OnResourceSpawned?.Invoke(worldX, worldY, resourceId);
@@ -1710,6 +1730,7 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
 
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         WorldDataManager.Instance.SetCropPlantId(worldPos, plantId, stage);
+        MarkDirty(worldX, worldY);
 
         // Refresh visuals for the affected chunk
         Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(worldPos);

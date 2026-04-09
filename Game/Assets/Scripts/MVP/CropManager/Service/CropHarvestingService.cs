@@ -74,10 +74,9 @@ public class CropHarvestingService : ICropHarvestingService
             return false;
         }
 
-        cropManagerView?.UnregisterCrop(worldX, worldY);
-        syncManager?.BroadcastCropRemoved(worldX, worldY);
-
-        // If it's raining, re-water the remaining tilled tile
+        // Re-water in RAM BEFORE the visual refresh so the first (and only) chunk refresh
+        // already sees IsWatered = true. RemoveCrop resets slot.Crop to default which clears
+        // IsWatered; without this, UnregisterCrop's RefreshChunkVisuals renders a dry tile.
         if (WeatherView.IsRaining && worldData.IsTilledAtWorldPosition(snappedPos))
         {
             worldData.WaterTileAtWorldPosition(snappedPos);
@@ -86,11 +85,8 @@ public class CropHarvestingService : ICropHarvestingService
                 syncManager.BroadcastTileWatered(worldX, worldY);
         }
 
-        if (loadingManager != null)
-        {
-            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(snappedPos);
-            loadingManager.RefreshChunkVisuals(chunkPos);
-        }
+        cropManagerView?.UnregisterCrop(worldX, worldY);
+        syncManager?.BroadcastCropRemoved(worldX, worldY);
 
         // Add item to inventory
         if (harvestedItem != null)
