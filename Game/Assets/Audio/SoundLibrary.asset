@@ -33,11 +33,10 @@ MonoBehaviour:
     pitchMax: 0
   - id: 8
     clips:
-    - {fileID: 8300000, guid: 0737ee862dee0214ca47f7675e49f4b6, type: 3}
-    - {fileID: 8300000, guid: 660f7c288135ab74cb9b86c5562888c3, type: 3}
+    - {fileID: 8300000, guid: 34006f67b6305e84eaf766b560872a85, type: 3}
     volume: 1
     pitchMin: 0.8
-    pitchMax: 0.8
+    pitchMax: 1.2
   - id: 12
     clips:
     - {fileID: 8300000, guid: 8f475990dd27da149bb2ac20bfe7e1c5, type: 3}

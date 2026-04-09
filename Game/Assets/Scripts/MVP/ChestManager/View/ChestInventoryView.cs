@@ -22,6 +22,10 @@ public class ChestInventoryView : MonoBehaviour, IChestView
 
     private List<InventorySlotView> slotViews = new List<InventorySlotView>();
 
+    // Minecraft-style carry state
+    private bool isCarryingFromHere = false;
+    private int hoveredSlotIndex = -1;
+
     public bool IsVisible => chestPanel != null && chestPanel.activeSelf;
 
     #region Events
@@ -33,6 +37,8 @@ public class ChestInventoryView : MonoBehaviour, IChestView
     public event Action<int> OnSlotDrop;
     public event Action<int, Vector2> OnSlotHoverEnter;
     public event Action<int> OnSlotHoverExit;
+    public event Action<int> OnSlotSplitRequested;
+    public event Action<int> OnSlotShiftClickRequested;
 
     #endregion
 
@@ -68,12 +74,19 @@ public class ChestInventoryView : MonoBehaviour, IChestView
             slotView.Initialize(i);
 
             slotView.OnClickedRequested += (slot) => OnSlotClicked?.Invoke(slot);
-            slotView.OnBeginDragRequested += (slot) => OnSlotBeginDrag?.Invoke(slot);
-            slotView.OnDragRequested += (pos) => OnSlotDrag?.Invoke(pos);
-            slotView.OnEndDragRequested += () => OnSlotEndDrag?.Invoke();
-            slotView.OnDropRequested += (slot) => OnSlotDrop?.Invoke(slot);
-            slotView.OnPointerEnterRequested += (slot, pos) => OnSlotHoverEnter?.Invoke(slot, pos);
-            slotView.OnPointerExitRequested += (slot) => OnSlotHoverExit?.Invoke(slot);
+            slotView.OnPointerDownRequested += (slot) => HandleSlotPointerDown(slot);
+            slotView.OnRightClickRequested += (slot) => HandleSlotRightClick(slot);
+            slotView.OnShiftClickRequested += (slot) => OnSlotShiftClickRequested?.Invoke(slot);
+            slotView.OnPointerEnterRequested += (slot, pos) =>
+            {
+                hoveredSlotIndex = slot;
+                OnSlotHoverEnter?.Invoke(slot, pos);
+            };
+            slotView.OnPointerExitRequested += (slot) =>
+            {
+                if (hoveredSlotIndex == slot) hoveredSlotIndex = -1;
+                OnSlotHoverExit?.Invoke(slot);
+            };
 
             slotViews.Add(slotView);
         }
@@ -121,6 +134,28 @@ public class ChestInventoryView : MonoBehaviour, IChestView
             dragPreviewObject.SetActive(false);
     }
 
+    public void StartCarryFromSplit(int slotIndex, ItemModel previewItem)
+    {
+        if (slotIndex < 0 || slotIndex >= slotViews.Count) return;
+
+        isCarryingFromHere = true;
+        ShowDragPreview(previewItem);
+
+        int sourceSlot = slotIndex;
+        InventoryCarryState.StartCarry(slotIndex, () =>
+        {
+            if (sourceSlot >= 0 && sourceSlot < slotViews.Count && slotViews[sourceSlot] != null)
+            {
+                var srcItem = slotViews[sourceSlot].GetCurrentItem();
+                if (srcItem != null)
+                    slotViews[sourceSlot].SetSlotVisuals(true);
+            }
+            HideDragPreview();
+            OnSlotEndDrag?.Invoke();
+            isCarryingFromHere = false;
+        });
+    }
+
     public void Show()
     {
         if (chestPanel != null) chestPanel.SetActive(true);
@@ -134,9 +169,111 @@ public class ChestInventoryView : MonoBehaviour, IChestView
 
     public void CancelAllActions()
     {
+        // Reset Minecraft-style carry state if this view owns the carry
+        if (isCarryingFromHere && InventoryCarryState.IsCarrying)
+        {
+            InventoryCarryState.EndCarry();
+        }
+        isCarryingFromHere = false;
+        hoveredSlotIndex = -1;
+
         HideDragPreview();
         foreach (var slotView in slotViews)
             if (slotView != null) slotView.ForceResetState();
+    }
+
+    /// <summary>
+    /// Minecraft-style click-to-pick / click-to-place handler.
+    /// Called on mouse DOWN on any chest slot.
+    /// </summary>
+    private void HandleSlotPointerDown(int slotIndex)
+    {
+        if (InventoryCarryState.IsCarrying)
+        {
+            // --- PLACE / SWAP ---
+            OnSlotDrop?.Invoke(slotIndex);
+            InventoryCarryState.EndCarry();
+        }
+        else
+        {
+            // --- PICK UP ---
+            if (slotIndex < 0 || slotIndex >= slotViews.Count) return;
+            var slotView = slotViews[slotIndex];
+            var item = slotView.GetCurrentItem();
+            if (item == null || slotView.IsLocked) return;
+
+            isCarryingFromHere = true;
+
+            // Hide the source slot visuals
+            slotView.SetSlotVisuals(false);
+
+            // Show drag preview
+            ShowDragPreview(item);
+
+            // Fire begin drag for presenters
+            OnSlotBeginDrag?.Invoke(slotIndex);
+
+            // Register shared carry state with cleanup callback
+            int sourceSlot = slotIndex;
+            InventoryCarryState.StartCarry(slotIndex, () =>
+            {
+                // Restore source slot visuals
+                if (sourceSlot >= 0 && sourceSlot < slotViews.Count && slotViews[sourceSlot] != null)
+                {
+                    var srcItem = slotViews[sourceSlot].GetCurrentItem();
+                    if (srcItem != null)
+                        slotViews[sourceSlot].SetSlotVisuals(true);
+                }
+                HideDragPreview();
+                OnSlotEndDrag?.Invoke();
+                isCarryingFromHere = false;
+            });
+        }
+    }
+
+    /// <summary>
+    /// Right-click handler: split a stack in half and start carrying the split portion.
+    /// If already carrying, behaves the same as left-click (place/swap).
+    /// </summary>
+    private void HandleSlotRightClick(int slotIndex)
+    {
+        if (InventoryCarryState.IsCarrying)
+        {
+            // Same as left-click place
+            OnSlotDrop?.Invoke(slotIndex);
+            InventoryCarryState.EndCarry();
+            return;
+        }
+
+        // Fire split event — presenter handles model mutation
+        OnSlotSplitRequested?.Invoke(slotIndex);
+    }
+
+    private void Update()
+    {
+        if (!isCarryingFromHere || !InventoryCarryState.IsCarrying) return;
+
+        // Move drag preview to cursor
+        Vector2 mousePos = Input.mousePosition;
+        OnSlotDrag?.Invoke(mousePos);
+        UpdateDragPreview(mousePos);
+    }
+
+    private void LateUpdate()
+    {
+        if (isCarryingFromHere && InventoryCarryState.IsCarrying && Input.GetMouseButtonDown(0))
+        {
+            if (!InventoryCarryState.SlotInteractedThisFrame)
+            {
+                // Left-clicked on empty space — EndCarry fires EndDrag
+                InventoryCarryState.EndCarry();
+            }
+        }
+
+        if (isCarryingFromHere)
+        {
+            InventoryCarryState.SlotInteractedThisFrame = false;
+        }
     }
 
     #endregion
