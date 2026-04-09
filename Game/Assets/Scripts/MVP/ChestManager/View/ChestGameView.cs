@@ -231,7 +231,10 @@ public class ChestGameView : MonoBehaviour
     private void HandleRemoteChestChanged(string chestId)
     {
         if (activeChestData == null || activeChestData.ChestId != chestId) return;
-        if (presenter != null && !presenter.IsReadyToSync()) return;
+        // Skip if this event was caused by the presenter's own sync writing to the master's module.
+        // The model and view are already correct in that case; reloading from the partially-updated
+        // module would overwrite correct data with stale data.
+        if (presenter != null && presenter.IsApplyingLocalSync) return;
         LoadChestStateFromModule();
     }
 

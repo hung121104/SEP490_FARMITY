@@ -18,6 +18,7 @@ public interface IInventoryService
     bool RemoveItemFromSlot(int slotIndex, int quantity);
     bool MoveItem(int fromSlot, int toSlot);
     bool SwapItems(int slotA, int slotB);
+    bool PlaceItemAtSlot(int slotIndex, ItemData itemData, Quality quality, int quantity);
 
     // Query Operations
     ItemModel         GetItemAtSlot(int slotIndex);

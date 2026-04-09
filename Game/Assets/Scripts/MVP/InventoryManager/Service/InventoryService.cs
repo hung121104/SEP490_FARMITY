@@ -218,8 +218,8 @@ public class InventoryService : IInventoryService
 
             if (item.Quantity <= 0)
             {
-                OnItemRemoved?.Invoke(item, slotIndex);
                 model.ClearSlot(slotIndex);
+                OnItemRemoved?.Invoke(item, slotIndex);
             }
             else
             {
@@ -242,8 +242,8 @@ public class InventoryService : IInventoryService
 
         if (item.Quantity <= 0)
         {
-            OnItemRemoved?.Invoke(item, slotIndex);
             model.ClearSlot(slotIndex);
+            OnItemRemoved?.Invoke(item, slotIndex);
         }
         else
         {
@@ -326,6 +326,36 @@ public class InventoryService : IInventoryService
         OnItemsMoved?.Invoke(slotA, slotB);
         SyncSlotToNetwork(slotA);
         SyncSlotToNetwork(slotB);
+        return true;
+    }
+
+    public bool PlaceItemAtSlot(int slotIndex, ItemData itemData, Quality quality, int quantity)
+    {
+        if (!model.IsSlotValid(slotIndex) || itemData == null || quantity <= 0)
+            return false;
+
+        var existing = model.GetItemAtSlot(slotIndex);
+        if (existing != null)
+        {
+            // Merge into existing stack if same item and stackable
+            if (existing.ItemId == itemData.itemID && existing.Quality == quality && existing.IsStackable)
+            {
+                int canAdd = Mathf.Min(quantity, existing.MaxStack - existing.Quantity);
+                if (canAdd <= 0) return false;
+                existing.AddQuantity(canAdd);
+                OnSlotChanged?.Invoke(slotIndex);
+                SyncSlotToNetwork(slotIndex);
+                return canAdd == quantity;
+            }
+            return false; // slot occupied with different item
+        }
+
+        // Empty slot — create new item
+        int stackSize = itemData.isStackable ? Mathf.Min(quantity, itemData.maxStack) : 1;
+        var newItem = new ItemModel(itemData, quality, stackSize, slotIndex);
+        model.SetItemAtSlot(slotIndex, newItem);
+        OnItemAdded?.Invoke(newItem, slotIndex);
+        SyncSlotToNetwork(slotIndex);
         return true;
     }
 

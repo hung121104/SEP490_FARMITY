@@ -170,20 +170,10 @@ public class PlayerSoundPlayer : MonoBehaviour
             return;
         }
 
-        if (Time.time < _nextFootstepTime)
+        if (!_footstepSource.isPlaying)
         {
-            MaybeLogFootstepSkip("footstep interval cooldown");
-            return;
+            StartFootstepLoop();
         }
-
-        // Detect sprint: check InputManager sprint input
-        bool sprinting = InputManager.Instance != null
-            && InputManager.Instance.Sprint.ReadValue<float>() > 0.5f;
-
-        _nextFootstepTime = Time.time + (sprinting ? sprintFootstepInterval : footstepInterval);
-
-        PlayFootstep(SoundId.FootstepGrass);
-        Log("FootstepGrass");
     }
 
     /// <summary>
@@ -192,9 +182,8 @@ public class PlayerSoundPlayer : MonoBehaviour
     /// </summary>
     public void OnFootstep()
     {
-        if (Time.time < _nextFootstepTime) return;
-        _nextFootstepTime = Time.time + footstepInterval;
-        PlayFootstep(SoundId.FootstepGrass);
+        if (_footstepSource.isPlaying) return;
+        StartFootstepLoop();
     }
 
     #endregion
@@ -342,16 +331,26 @@ public class PlayerSoundPlayer : MonoBehaviour
         AudioManager.Instance.PlayOnSource(id, _source);
     }
 
-    private void PlayFootstep(SoundId id)
+    private void StartFootstepLoop()
     {
         if (AudioManager.Instance == null) return;
-        AudioManager.Instance.PlayOnSource(id, _footstepSource);
+        if (AudioManager.Instance.Library == null) return;
+        if (!AudioManager.Instance.Library.TryGet(SoundId.FootstepGrass, out var entry)) return;
+        var clip = entry.GetRandomClip();
+        if (clip == null) return;
+
+        _footstepSource.clip = clip;
+        _footstepSource.loop = true;
+        _footstepSource.volume = entry.volume;
+        _footstepSource.pitch = entry.GetRandomPitch();
+        _footstepSource.Play();
     }
 
     private void StopFootstepsImmediately()
     {
         if (_footstepSource == null) return;
         if (!_footstepSource.isPlaying) return;
+        _footstepSource.loop = false;
         _footstepSource.Stop();
     }
 

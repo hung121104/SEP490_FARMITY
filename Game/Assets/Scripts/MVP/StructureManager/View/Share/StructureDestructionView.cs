@@ -37,7 +37,7 @@ public class StructureDestructionView : MonoBehaviour
 
         // Wire static delegate so Service can add items to inventory
         // without depending on InventoryGameView (View class) directly
-        StructureService.OnAddItemToInventory = (id, qty, quality) =>
+        StructureService.OnAddItemToInventory = (id, qty) =>
         {
             var invView = FindAnyObjectByType<InventoryGameView>();
             return invView != null && invView.AddItem(id, qty);

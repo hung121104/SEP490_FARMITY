@@ -293,14 +293,20 @@ public class CropGrowthService : ICropGrowthService
             foreach (var chunkPair in section)
             {
                 UnifiedChunkData chunk = chunkPair.Value;
+                bool chunkModified = false;
 
                 foreach (var tile in chunk.GetAllTiles())
                 {
                     if (!tile.IsTilled || tile.Crop.IsWatered) continue;
 
                     chunk.WaterTile(tile.WorldX, tile.WorldY);
+                    chunkModified = true;
                     count++;
                 }
+
+                // Persist rain-watered state so auto-save / quit-flush includes it.
+                if (chunkModified)
+                    WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, sectionConfig.SectionId);
             }
         }
 
