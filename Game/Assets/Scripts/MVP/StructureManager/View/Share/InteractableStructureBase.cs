@@ -39,6 +39,13 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private bool _inputSubscribed = false;
     private bool _isBeingPooled = false;
 
+    // ── Structure UI active tracking ─────────────────────────────────────
+    private static InteractableStructureBase _activeStructure;
+    public static InteractableStructureBase ActiveStructure => _activeStructure;
+
+    private InputAction _escCloseAction;
+    private bool _closeInputSubscribed = false;
+
     // ── Structure Interaction Badge ───────────────────────────────────────
     private GameObject _structureInteractionBadge;
     private SpriteRenderer _structureInteractionRenderer;
@@ -133,6 +140,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private void OnDisable()
     {
         UnsubscribeInput();
+        if (_activeStructure == this) OnStructureClosed();
         OnStructureDisabled();
 
         if (_isBeingPooled)
@@ -149,12 +157,20 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private void OnDestroy()
     {
         UnsubscribeInput();
+        if (_activeStructure == this) OnStructureClosed();
         OnStructureDestroyed();
 
         if (mouseHoverTrigger != null)
         {
             mouseHoverTrigger.OnHoverEnter -= HandleHoverEnter;
             mouseHoverTrigger.OnHoverExit -= HandleHoverExit;
+        }
+
+        if (_escCloseAction != null)
+        {
+            _escCloseAction.performed -= OnCloseInputPressed;
+            _escCloseAction.Dispose();
+            _escCloseAction = null;
         }
     }
 
@@ -188,7 +204,10 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
             _playerInRange = foundPlayer;
 
             if (!_playerInRange && IsUIOpen())
+            {
                 CloseUI();
+                OnStructureClosed();
+            }
 
             EvaluateTargetState();
         }
@@ -241,15 +260,8 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
         if (Time.frameCount == _lastInteractFrame) return;
 
-        if (IsUIOpen())
-        {
-            if (IsPlayerInRange)
-            {
-                _lastInteractFrame = Time.frameCount;
-                CloseUI();
-            }
-            return;
-        }
+        // Block opening another structure while one is already open
+        if (_activeStructure != null) return;
 
         // Block interaction when the pointer is over a UI element
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
@@ -348,6 +360,92 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     public void Interact()
     {
         OpenUI();
+        OnStructureOpened();
+    }
+
+    /// <summary>
+    /// Called after a structure UI opens.
+    /// Disables most player input (except OpenInventory) and subscribes ESC/Inventory to close.
+    /// </summary>
+    private void OnStructureOpened()
+    {
+        _activeStructure = this;
+
+        // Disable all player input
+        if (InputManager.Instance != null)
+            InputManager.Instance.DisablePlayerActions();
+
+        // Subscribe close triggers: OpenInventory and ESC
+        SubscribeCloseInput();
+    }
+
+    /// <summary>
+    /// Called when a structure UI is closed.
+    /// Re-enables player input and unsubscribes close triggers.
+    /// </summary>
+    private void OnStructureClosed()
+    {
+        if (_activeStructure != this) return;
+        _activeStructure = null;
+
+        UnsubscribeCloseInput();
+
+        // Re-enable all player input
+        if (InputManager.Instance != null)
+            InputManager.Instance.EnablePlayerActions();
+    }
+
+    /// <summary>
+    /// Public method for external systems (MenuController, etc.) to close the active structure UI.
+    /// </summary>
+    public static void CloseActiveStructure()
+    {
+        if (_activeStructure != null && _activeStructure.IsUIOpen())
+        {
+            _activeStructure.CloseUI();
+            _activeStructure.OnStructureClosed();
+        }
+    }
+
+    private void SubscribeCloseInput()
+    {
+        if (_closeInputSubscribed) return;
+
+        // ESC key
+        if (_escCloseAction == null)
+        {
+            _escCloseAction = new InputAction("StructureCloseESC", InputActionType.Button, "<Keyboard>/escape");
+            _escCloseAction.performed += OnCloseInputPressed;
+        }
+        _escCloseAction.Enable();
+
+        // OpenInventory action (re-enable just this one action so the callback fires)
+        if (InputManager.Instance != null)
+        {
+            InputManager.Instance.OpenInventory.Enable();
+            InputManager.Instance.OpenInventory.performed += OnCloseInputPressed;
+        }
+
+        _closeInputSubscribed = true;
+    }
+
+    private void UnsubscribeCloseInput()
+    {
+        if (!_closeInputSubscribed) return;
+
+        _escCloseAction?.Disable();
+
+        if (InputManager.Instance != null)
+            InputManager.Instance.OpenInventory.performed -= OnCloseInputPressed;
+
+        _closeInputSubscribed = false;
+    }
+
+    private void OnCloseInputPressed(InputAction.CallbackContext ctx)
+    {
+        if (!IsUIOpen()) return;
+        CloseUI();
+        OnStructureClosed();
     }
 
     public void SetBeingPooled()
