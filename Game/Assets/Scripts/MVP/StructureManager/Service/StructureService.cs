@@ -21,7 +21,7 @@ public class StructureService : IStructureService
     /// Static delegate for inventory operations.
     /// Wired by View layer (Composition Root) so Service never depends on View directly.
     /// </summary>
-    public static System.Func<string, int, Quality, bool> OnAddItemToInventory;
+    public static System.Func<string, int, bool> OnAddItemToInventory;
 
     public StructureService(ChunkDataSyncManager syncManager,
                             ChunkLoadingManager loadingManager,
@@ -319,7 +319,7 @@ public class StructureService : IStructureService
             return;
         }
 
-        bool added = OnAddItemToInventory.Invoke(structureId, 1, Quality.Normal);
+        bool added = OnAddItemToInventory.Invoke(structureId, 1);
         Debug.Log($"[StructureService] Added item {structureId} to inventory for last hitter {localPlayerId} - success={added}");
     }
 
@@ -356,7 +356,7 @@ public class StructureService : IStructureService
             var slot = slots[i];
             if (string.IsNullOrEmpty(slot.ItemId) || slot.Quantity <= 0) continue;
 
-            bool added = OnAddItemToInventory.Invoke(slot.ItemId, slot.Quantity, Quality.Normal);
+            bool added = OnAddItemToInventory.Invoke(slot.ItemId, slot.Quantity);
             Debug.Log($"  [{i}] {slot.ItemId} x{slot.Quantity} → inventory success={added}");
         }
     }
