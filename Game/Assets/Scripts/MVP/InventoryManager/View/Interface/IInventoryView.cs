@@ -18,6 +18,7 @@ public interface IInventoryView
     event Action<int> OnSlotHoverExit;
     event Action<int> OnItemDeleteRequested;
     event Action<int> OnSlotSplitRequested;
+    event Action<int> OnSlotShiftClickRequested;
 
     // Position check
     bool IsScreenPositionInsideInventory(Vector2 screenPosition);

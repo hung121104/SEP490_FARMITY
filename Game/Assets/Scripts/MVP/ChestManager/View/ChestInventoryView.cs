@@ -38,6 +38,7 @@ public class ChestInventoryView : MonoBehaviour, IChestView
     public event Action<int, Vector2> OnSlotHoverEnter;
     public event Action<int> OnSlotHoverExit;
     public event Action<int> OnSlotSplitRequested;
+    public event Action<int> OnSlotShiftClickRequested;
 
     #endregion
 
@@ -75,6 +76,7 @@ public class ChestInventoryView : MonoBehaviour, IChestView
             slotView.OnClickedRequested += (slot) => OnSlotClicked?.Invoke(slot);
             slotView.OnPointerDownRequested += (slot) => HandleSlotPointerDown(slot);
             slotView.OnRightClickRequested += (slot) => HandleSlotRightClick(slot);
+            slotView.OnShiftClickRequested += (slot) => OnSlotShiftClickRequested?.Invoke(slot);
             slotView.OnPointerEnterRequested += (slot, pos) =>
             {
                 hoveredSlotIndex = slot;

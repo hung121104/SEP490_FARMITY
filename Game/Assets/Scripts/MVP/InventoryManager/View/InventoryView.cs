@@ -65,6 +65,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
     public event Action<int> OnSlotHoverExit;
     public event Action<int> OnItemDeleteRequested;
     public event Action<int> OnSlotSplitRequested;
+    public event Action<int> OnSlotShiftClickRequested;
 
     #endregion
 
@@ -172,6 +173,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
             slotView.OnClickedRequested += (slot) => HandleSlotClicked(slot);
             slotView.OnPointerDownRequested += (slot) => HandleSlotPointerDown(slot);
             slotView.OnRightClickRequested += (slot) => HandleSlotRightClick(slot);
+            slotView.OnShiftClickRequested += (slot) => OnSlotShiftClickRequested?.Invoke(slot);
             slotView.OnPointerEnterRequested += (slot, pos) =>
             {
                 hoveredSlotIndex = slot;

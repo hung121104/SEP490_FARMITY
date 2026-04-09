@@ -166,6 +166,7 @@ public class ChestPresenter
         chestView.OnSlotHoverEnter += HandleChestSlotHoverEnter;
         chestView.OnSlotHoverExit += HandleChestSlotHoverExit;
         chestView.OnSlotSplitRequested += HandleChestSlotSplit;
+        chestView.OnSlotShiftClickRequested += HandleChestSlotShiftClick;
     }
 
     private void UnsubscribeChestViewEvents()
@@ -179,6 +180,7 @@ public class ChestPresenter
         chestView.OnSlotHoverEnter -= HandleChestSlotHoverEnter;
         chestView.OnSlotHoverExit -= HandleChestSlotHoverExit;
         chestView.OnSlotSplitRequested -= HandleChestSlotSplit;
+        chestView.OnSlotShiftClickRequested -= HandleChestSlotShiftClick;
     }
 
     private void HandleChestSlotClicked(int slot) { ResetActionTimer(); }
@@ -253,6 +255,36 @@ public class ChestPresenter
         chestView?.StartCarryFromSplit(slot, splitCarryItem);
     }
 
+    private void HandleChestSlotShiftClick(int slot)
+    {
+        ResetActionTimer();
+        if (InventoryCarryState.IsCarrying) return;
+
+        if (ChestSyncManager.Instance != null && ChestSyncManager.Instance.IsSlotLocked(chestData.ChestId, (byte)slot))
+            return;
+
+        var item = chestInventoryService.GetItemAtSlot(slot);
+        if (item == null) return;
+
+        // Check how much the player inventory can accept
+        int addable = playerInventoryService.GetAddableQuantity(item.ItemData, item.Quantity, item.Quality);
+        if (addable <= 0) return;
+
+        // Transfer: remove from chest, add to player
+        chestInventoryService.RemoveItemFromSlot(slot, addable);
+        playerInventoryService.AddItem(item.ItemId, addable, item.Quality);
+
+        RefreshChestSlot(slot);
+        RefreshPlayerView();
+        isApplyingLocalSync = true;
+        SyncChestSlot(slot);
+        chestInventoryService.NotifyInventoryChangedExternal();
+        playerInventoryService.NotifyInventoryChangedExternal();
+        isApplyingLocalSync = false;
+
+        HideCurrentItemDetail();
+    }
+
     #endregion
 
     #region Player View Events
@@ -267,6 +299,7 @@ public class ChestPresenter
         playerView.OnSlotHoverExit += HandlePlayerSlotHoverExit;
         playerView.OnItemDeleteRequested += HandleChestItemDelete;
         playerView.OnSlotSplitRequested += HandlePlayerSlotSplit;
+        playerView.OnSlotShiftClickRequested += HandlePlayerSlotShiftClick;
     }
 
     private void UnsubscribePlayerViewEvents()
@@ -280,6 +313,7 @@ public class ChestPresenter
         playerView.OnSlotHoverExit -= HandlePlayerSlotHoverExit;
         playerView.OnItemDeleteRequested -= HandleChestItemDelete;
         playerView.OnSlotSplitRequested -= HandlePlayerSlotSplit;
+        playerView.OnSlotShiftClickRequested -= HandlePlayerSlotShiftClick;
     }
 
     private void HandlePlayerSlotBeginDrag(int slot)
@@ -313,6 +347,35 @@ public class ChestPresenter
         dragFromChest = false;
 
         playerView?.StartCarryFromSplit(slot, splitCarryItem);
+    }
+
+    private void HandlePlayerSlotShiftClick(int slot)
+    {
+        ResetActionTimer();
+        if (InventoryCarryState.IsCarrying) return;
+
+        var item = playerInventoryService.GetItemAtSlot(slot);
+        if (item == null) return;
+
+        // Check how much the chest can accept
+        int addable = chestInventoryService.GetAddableQuantity(item.ItemData, item.Quantity, item.Quality);
+        if (addable <= 0) return;
+
+        // Transfer: remove from player, add to chest
+        playerInventoryService.RemoveItemFromSlot(slot, addable);
+        chestInventoryService.AddItem(item.ItemId, addable, item.Quality);
+
+        RefreshPlayerSlot(slot);
+        RefreshChestView();
+        isApplyingLocalSync = true;
+        // Sync all chest slots that may have changed
+        for (int i = 0; i < chestModel.maxSlots; i++)
+            SyncChestSlot(i);
+        chestInventoryService.NotifyInventoryChangedExternal();
+        playerInventoryService.NotifyInventoryChangedExternal();
+        isApplyingLocalSync = false;
+
+        HideCurrentItemDetail();
     }
 
     private void HandlePlayerSlotHoverEnter(int slot, Vector2 screenPosition)

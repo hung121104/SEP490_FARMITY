@@ -18,6 +18,7 @@ public interface IChestView
     event Action<int, Vector2> OnSlotHoverEnter;
     event Action<int> OnSlotHoverExit;
     event Action<int> OnSlotSplitRequested;
+    event Action<int> OnSlotShiftClickRequested;
 
     // Slot operations
     void InitializeSlots(int count);

@@ -27,6 +27,7 @@ public class InventorySlotView : MonoBehaviour,
     public event Action<int> OnClickedRequested;
     public event Action<int> OnPointerDownRequested;
     public event Action<int> OnRightClickRequested;
+    public event Action<int> OnShiftClickRequested;
     public event Action<int, Vector2> OnPointerEnterRequested;
     public event Action<int> OnPointerExitRequested;
 
@@ -149,7 +150,14 @@ public class InventorySlotView : MonoBehaviour,
         if (eventData.button == PointerEventData.InputButton.Left)
         {
             InventoryCarryState.SlotInteractedThisFrame = true;
-            OnPointerDownRequested?.Invoke(slotIndex);
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+            {
+                OnShiftClickRequested?.Invoke(slotIndex);
+            }
+            else
+            {
+                OnPointerDownRequested?.Invoke(slotIndex);
+            }
         }
         else if (eventData.button == PointerEventData.InputButton.Right)
         {
