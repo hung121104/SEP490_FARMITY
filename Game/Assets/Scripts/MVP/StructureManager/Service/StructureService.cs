@@ -256,26 +256,10 @@ public class StructureService : IStructureService
         WorldDataManager.Instance.RemoveStructureAtWorldPosition(pos);
     }
 
-    public bool DealDamage(Vector3Int pos, int damage, out bool isRemoved, out string structureId)
+    public bool DealDamage(Vector3Int pos, int damage)
     {
-        isRemoved = false;
-        structureId = string.Empty;
-
         string playerId = PhotonNetwork.LocalPlayer.ActorNumber.ToString();
-        bool success = RequestHit(pos, damage, playerId);
-
-        if (success && PhotonNetwork.IsMasterClient)
-        {
-            UnifiedChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(pos);
-            if (chunk != null && chunk.TryGetStructure(pos.x, pos.y, out var data))
-            {
-                structureId = data.StructureId;
-                int hp = chunk.GetStructureHp(pos.x, pos.y);
-                isRemoved = hp <= 0;
-            }
-        }
-
-        return success;
+        return RequestHit(pos, damage, playerId);
     }
 
     public void RegenerateHP(Vector3Int pos)
