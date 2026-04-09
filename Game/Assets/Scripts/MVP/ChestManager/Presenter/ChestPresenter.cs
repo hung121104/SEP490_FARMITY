@@ -29,6 +29,11 @@ public class ChestPresenter
     private int draggedSlot = -1;
     private bool dragFromChest = false;
 
+    // Split-carry state
+    private ItemModel splitCarryItem = null;
+    private int splitSourceSlot = -1;
+    private bool splitFromChest = false;
+
     // True while the presenter is writing its own slot changes to the module (master only).
     // Prevents the re-entrant OnChestChanged callback from overwriting the already-correct model.
     private bool isApplyingLocalSync = false;
@@ -160,6 +165,7 @@ public class ChestPresenter
         chestView.OnSlotDrop += HandleChestSlotDrop;
         chestView.OnSlotHoverEnter += HandleChestSlotHoverEnter;
         chestView.OnSlotHoverExit += HandleChestSlotHoverExit;
+        chestView.OnSlotSplitRequested += HandleChestSlotSplit;
     }
 
     private void UnsubscribeChestViewEvents()
@@ -172,6 +178,7 @@ public class ChestPresenter
         chestView.OnSlotDrop -= HandleChestSlotDrop;
         chestView.OnSlotHoverEnter -= HandleChestSlotHoverEnter;
         chestView.OnSlotHoverExit -= HandleChestSlotHoverExit;
+        chestView.OnSlotSplitRequested -= HandleChestSlotSplit;
     }
 
     private void HandleChestSlotClicked(int slot) { ResetActionTimer(); }
@@ -217,6 +224,35 @@ public class ChestPresenter
         chestView?.SetSlotLocked(slotIndex, isLocked);
     }
 
+    private void HandleChestSlotSplit(int slot)
+    {
+        ResetActionTimer();
+        HideCurrentItemDetail();
+
+        if (ChestSyncManager.Instance != null && ChestSyncManager.Instance.IsSlotLocked(chestData.ChestId, (byte)slot))
+            return;
+
+        var item = chestInventoryService.GetItemAtSlot(slot);
+        if (item == null || !item.IsStackable || item.Quantity <= 1) return;
+
+        int totalQty = item.Quantity;
+        int takeAmount = (totalQty + 1) / 2;
+
+        chestInventoryService.RemoveItemFromSlot(slot, takeAmount);
+        isApplyingLocalSync = true;
+        SyncChestSlot(slot);
+        isApplyingLocalSync = false;
+
+        splitCarryItem = new ItemModel(item.ItemData, item.Quality, takeAmount, -1);
+        splitSourceSlot = slot;
+        splitFromChest = true;
+        draggedSlot = slot;
+        dragFromChest = true;
+
+        ChestSyncManager.Instance?.NotifySlotDragStart(chestData.ChestId, (byte)slot);
+        chestView?.StartCarryFromSplit(slot, splitCarryItem);
+    }
+
     #endregion
 
     #region Player View Events
@@ -230,6 +266,7 @@ public class ChestPresenter
         playerView.OnSlotHoverEnter += HandlePlayerSlotHoverEnter;
         playerView.OnSlotHoverExit += HandlePlayerSlotHoverExit;
         playerView.OnItemDeleteRequested += HandleChestItemDelete;
+        playerView.OnSlotSplitRequested += HandlePlayerSlotSplit;
     }
 
     private void UnsubscribePlayerViewEvents()
@@ -242,6 +279,7 @@ public class ChestPresenter
         playerView.OnSlotHoverEnter -= HandlePlayerSlotHoverEnter;
         playerView.OnSlotHoverExit -= HandlePlayerSlotHoverExit;
         playerView.OnItemDeleteRequested -= HandleChestItemDelete;
+        playerView.OnSlotSplitRequested -= HandlePlayerSlotSplit;
     }
 
     private void HandlePlayerSlotBeginDrag(int slot)
@@ -253,6 +291,28 @@ public class ChestPresenter
 
         draggedSlot = slot;
         dragFromChest = false;
+    }
+
+    private void HandlePlayerSlotSplit(int slot)
+    {
+        ResetActionTimer();
+        HideCurrentItemDetail();
+
+        var item = playerInventoryService.GetItemAtSlot(slot);
+        if (item == null || !item.IsStackable || item.Quantity <= 1) return;
+
+        int totalQty = item.Quantity;
+        int takeAmount = (totalQty + 1) / 2;
+
+        playerInventoryService.RemoveItemFromSlot(slot, takeAmount);
+
+        splitCarryItem = new ItemModel(item.ItemData, item.Quality, takeAmount, -1);
+        splitSourceSlot = slot;
+        splitFromChest = false;
+        draggedSlot = slot;
+        dragFromChest = false;
+
+        playerView?.StartCarryFromSplit(slot, splitCarryItem);
     }
 
     private void HandlePlayerSlotHoverEnter(int slot, Vector2 screenPosition)
@@ -287,8 +347,24 @@ public class ChestPresenter
         int previousDragSlot = draggedSlot;
         bool wasDragFromChest = dragFromChest;
 
-        // Check if drag ended outside both panels → drop item to world
-        if (draggedSlot != -1
+        if (splitCarryItem != null)
+        {
+            // Cancel split: return items to source
+            if (splitFromChest)
+            {
+                chestInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+                isApplyingLocalSync = true;
+                SyncChestSlot(splitSourceSlot);
+                isApplyingLocalSync = false;
+            }
+            else
+            {
+                playerInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            }
+            splitCarryItem = null;
+            splitSourceSlot = -1;
+        }
+        else if (draggedSlot != -1
             && !IsScreenPositionInsideSafeZone(lastKnownCursorPosition)
             && (playerView == null || !playerView.IsScreenPositionInsideInventory(lastKnownCursorPosition)))
         {
@@ -296,7 +372,6 @@ public class ChestPresenter
             {
                 HandleDropChestItemToWorld(draggedSlot);
             }
-            // Player inventory drop-to-world is handled by InventoryPresenter
         }
 
         chestView?.HideDragPreview();
@@ -345,16 +420,23 @@ public class ChestPresenter
     private void HandleChestSlotDrop(int targetSlot)
     {
         ResetActionTimer();
-        if (draggedSlot == -1) return;
+        if (draggedSlot == -1 && splitCarryItem == null) return;
 
         var sync = ChestSyncManager.Instance;
 
-        // Block drop into a slot locked by another player (source or target)
+        // Block drop into a slot locked by another player
         if (sync != null && sync.IsSlotLocked(chestData.ChestId, (byte)targetSlot))
         {
             chestView?.HideDragPreview();
-            if (dragFromChest)
+            if (splitCarryItem != null)
+            {
+                // Return split items to source
+                ReturnSplitCarryToSource();
+            }
+            else if (dragFromChest)
+            {
                 sync.NotifySlotDragEnd(chestData.ChestId, (byte)draggedSlot);
+            }
             draggedSlot = -1;
             return;
         }
@@ -362,7 +444,26 @@ public class ChestPresenter
         int previousDragSlot = draggedSlot;
         bool wasDragFromChest = dragFromChest;
 
-        if (dragFromChest)
+        if (splitCarryItem != null)
+        {
+            // Place split item into chest slot
+            bool placed = chestInventoryService.PlaceItemAtSlot(targetSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            if (!placed)
+            {
+                ReturnSplitCarryToSource();
+            }
+            else
+            {
+                RefreshChestSlot(targetSlot);
+                isApplyingLocalSync = true;
+                SyncChestSlot(targetSlot);
+                chestInventoryService.NotifyInventoryChangedExternal();
+                isApplyingLocalSync = false;
+            }
+            splitCarryItem = null;
+            splitSourceSlot = -1;
+        }
+        else if (dragFromChest)
         {
             // Within chest: move/swap
             if (draggedSlot != targetSlot)
@@ -409,12 +510,23 @@ public class ChestPresenter
     private void HandlePlayerSlotDrop(int targetSlot)
     {
         ResetActionTimer();
-        if (draggedSlot == -1) return;
+        if (draggedSlot == -1 && splitCarryItem == null) return;
 
         int previousDragSlot = draggedSlot;
         bool wasDragFromChest = dragFromChest;
 
-        if (!dragFromChest)
+        if (splitCarryItem != null)
+        {
+            // Place split item into player slot
+            bool placed = playerInventoryService.PlaceItemAtSlot(targetSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            if (!placed)
+            {
+                ReturnSplitCarryToSource();
+            }
+            splitCarryItem = null;
+            splitSourceSlot = -1;
+        }
+        else if (!dragFromChest)
         {
             chestView?.HideDragPreview();
             draggedSlot = -1;
@@ -444,6 +556,22 @@ public class ChestPresenter
         ShowTooltipForSlot(targetSlot, lastKnownCursorPosition, isChestSlot: false);
     }
 
+    private void ReturnSplitCarryToSource()
+    {
+        if (splitCarryItem == null) return;
+        if (splitFromChest)
+        {
+            chestInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            isApplyingLocalSync = true;
+            SyncChestSlot(splitSourceSlot);
+            isApplyingLocalSync = false;
+        }
+        else
+        {
+            playerInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+        }
+    }
+
     #endregion
 
     #region Delete Handler
@@ -454,6 +582,19 @@ public class ChestPresenter
     /// </summary>
     private void HandleChestItemDelete(int slotIndex)
     {
+        // Handle split carry delete: discard the carried portion
+        if (splitCarryItem != null)
+        {
+            Debug.Log($"[ChestPresenter] Deleted split carry item: {splitCarryItem.ItemName} x{splitCarryItem.Quantity}");
+            if (splitFromChest)
+                ChestSyncManager.Instance?.NotifySlotDragEnd(chestData.ChestId, (byte)splitSourceSlot);
+            splitCarryItem = null;
+            splitSourceSlot = -1;
+            draggedSlot = -1;
+            chestView?.HideDragPreview();
+            return;
+        }
+
         // Only handle if drag came from chest
         if (!dragFromChest || draggedSlot == -1) return;
 

@@ -64,6 +64,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
     public event Action<int, Vector2> OnSlotHoverEnter;
     public event Action<int> OnSlotHoverExit;
     public event Action<int> OnItemDeleteRequested;
+    public event Action<int> OnSlotSplitRequested;
 
     #endregion
 
@@ -170,6 +171,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
             // Subscribe to slot events
             slotView.OnClickedRequested += (slot) => HandleSlotClicked(slot);
             slotView.OnPointerDownRequested += (slot) => HandleSlotPointerDown(slot);
+            slotView.OnRightClickRequested += (slot) => HandleSlotRightClick(slot);
             slotView.OnPointerEnterRequested += (slot, pos) =>
             {
                 hoveredSlotIndex = slot;
@@ -359,6 +361,28 @@ public class InventoryView : MonoBehaviour, IInventoryView
             dragPreviewObject.SetActive(false);
     }
 
+    public void StartCarryFromSplit(int slotIndex, ItemModel previewItem)
+    {
+        if (slotIndex < 0 || slotIndex >= slotViews.Count) return;
+
+        isCarryingFromHere = true;
+        ShowDragPreview(previewItem);
+
+        int sourceSlot = slotIndex;
+        InventoryCarryState.StartCarry(slotIndex, () =>
+        {
+            if (sourceSlot >= 0 && sourceSlot < slotViews.Count && slotViews[sourceSlot] != null)
+            {
+                var srcItem = slotViews[sourceSlot].GetCurrentItem();
+                if (srcItem != null)
+                    slotViews[sourceSlot].SetSlotVisuals(true);
+            }
+            HideDragPreview();
+            OnSlotEndDrag?.Invoke();
+            isCarryingFromHere = false;
+        });
+    }
+
     public void CancelAllActions()
     {
         // Reset Minecraft-style carry state if this view owns the carry
@@ -491,6 +515,24 @@ public class InventoryView : MonoBehaviour, IInventoryView
     }
 
     /// <summary>
+    /// Right-click handler: split a stack in half and start carrying the split portion.
+    /// If already carrying, behaves the same as left-click (place/swap).
+    /// </summary>
+    private void HandleSlotRightClick(int slotIndex)
+    {
+        if (InventoryCarryState.IsCarrying)
+        {
+            // Same as left-click place
+            OnSlotDrop?.Invoke(slotIndex);
+            InventoryCarryState.EndCarry();
+            return;
+        }
+
+        // Fire split event — presenter handles model mutation
+        OnSlotSplitRequested?.Invoke(slotIndex);
+    }
+
+    /// <summary>
     /// Minecraft-style click-to-pick / click-to-place handler.
     /// Called on mouse DOWN on any inventory slot.
     /// </summary>
@@ -547,12 +589,6 @@ public class InventoryView : MonoBehaviour, IInventoryView
         Vector2 mousePos = Input.mousePosition;
         OnSlotDrag?.Invoke(mousePos);
         UpdateDragPreview(mousePos);
-
-        // Right-click or Escape to cancel (put item back)
-        if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.Escape))
-        {
-            InventoryCarryState.EndCarry();
-        }
     }
 
     private void LateUpdate()
