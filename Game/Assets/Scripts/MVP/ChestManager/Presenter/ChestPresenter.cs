@@ -49,7 +49,6 @@ public class ChestPresenter
 
     // Events
     public event Action OnChestClosed;
-    public event Action<ItemModel> OnItemDropped;
 
     public ChestPresenter(ChestData chestData,
                           InventoryModel chestModel,
@@ -453,11 +452,9 @@ public class ChestPresenter
     private void HandleDropChestItemToWorld(int slotIndex)
     {
         var item = chestInventoryService.GetItemAtSlot(slotIndex);
-        // if (item != null && !item.IsQuestItem)
         if (item != null)
         {
-            OnItemDropped?.Invoke(item);
-            chestInventoryService.RemoveItemFromSlot(slotIndex, item.Quantity);
+            chestInventoryService.DropItemFromSlot(slotIndex);
             isApplyingLocalSync = true;
             SyncChestSlot(slotIndex);
             isApplyingLocalSync = false;

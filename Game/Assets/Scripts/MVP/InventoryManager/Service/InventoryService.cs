@@ -14,6 +14,7 @@ public class InventoryService : IInventoryService
     public event Action<int, int> OnItemsMoved;
     public event Action<int> OnSlotChanged;
     public event Action OnInventoryChanged;
+    public event Action<ItemModel> OnItemDroppedToWorld;
 
     /// <summary>When true, every successful local change is also sent through InventorySyncManager.</summary>
     public bool NetworkSyncEnabled { get; set; }
@@ -251,6 +252,17 @@ public class InventoryService : IInventoryService
         }
 
         SyncSlotToNetwork(slotIndex);
+        return true;
+    }
+
+    public bool DropItemFromSlot(int slotIndex)
+    {
+        var item = GetItemAtSlot(slotIndex);
+        if (item == null) return false;
+
+        var droppedItem = new ItemModel(item.ItemData, item.Quality, item.Quantity, -1);
+        RemoveItemFromSlot(slotIndex, item.Quantity);
+        OnItemDroppedToWorld?.Invoke(droppedItem);
         return true;
     }
 
