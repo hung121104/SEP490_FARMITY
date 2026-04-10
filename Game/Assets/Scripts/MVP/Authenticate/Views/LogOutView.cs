@@ -76,6 +76,9 @@ public class LogOutView : MonoBehaviourPunCallbacks
 
             if (isError)
             {
+                if (req.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Logout unauthorized (401)");
+
                 Debug.LogWarning($"[LogOutView] Server logout failed ({req.responseCode}): {req.downloadHandler?.text}");
             }
             else

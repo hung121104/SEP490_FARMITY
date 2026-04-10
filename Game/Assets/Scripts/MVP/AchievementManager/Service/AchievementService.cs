@@ -296,9 +296,8 @@ namespace AchievementManager.Service
             switch (statusCode)
             {
                 case 401:
-                    Debug.LogWarning("[AchievementService] Token expired - clearing session!");
-                    // ✅ Fix 2: ClearSession() not Logout()
-                    SessionManager.Instance?.ClearSession();
+                    Debug.LogWarning("[AchievementService] Token expired - redirecting to AuthScene.");
+                    SessionManager.Instance?.HandleJwtExpired("Achievement API unauthorized (401)");
                     onError?.Invoke("Session expired - please login again");
                     break;
 

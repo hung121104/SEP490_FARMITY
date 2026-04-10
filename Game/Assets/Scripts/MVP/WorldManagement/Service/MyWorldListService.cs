@@ -59,6 +59,9 @@ public class MyWorldListService : IMyWorldListService
             }
             else
             {
+                if (request.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Get worlds unauthorized (401)");
+
                 Debug.LogError($"Error retrieving worlds: {request.error}");
                 return null;
             }
@@ -102,6 +105,9 @@ public class MyWorldListService : IMyWorldListService
             }
             else
             {
+                if (request.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Create world unauthorized (401)");
+
                 string raw = request.downloadHandler != null ? request.downloadHandler.text : string.Empty;
                 string message = ExtractErrorMessage(raw, request.error);
                 Debug.LogError($"Error creating world: {request.error} (code: {request.responseCode}) - {raw}");
@@ -161,6 +167,9 @@ public class MyWorldListService : IMyWorldListService
             }
 
             string response = request.downloadHandler != null ? request.downloadHandler.text : string.Empty;
+            if (request.responseCode == 401)
+                SessionManager.Instance?.HandleJwtExpired("Delete world unauthorized (401)");
+
             string error = !string.IsNullOrEmpty(response) ? response : request.error;
             Debug.LogError($"Error deleting world: {request.error} (code: {request.responseCode}) - {response}");
             return (false, error);

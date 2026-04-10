@@ -60,6 +60,9 @@ public static class DroppedItemApi
 #endif
             if (isError)
             {
+                if (req.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Dropped item create unauthorized (401)");
+
                 Debug.LogError($"[DroppedItemApi] POST failed: {req.responseCode} {req.error}\n{req.downloadHandler.text}");
                 onComplete?.Invoke(false, req.downloadHandler.text);
             }
@@ -113,6 +116,9 @@ public static class DroppedItemApi
 #endif
             if (isError)
             {
+                if (req.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Dropped item delete unauthorized (401)");
+
                 Debug.LogError($"[DroppedItemApi] DELETE failed: {req.responseCode} {req.error}\n{req.downloadHandler?.text}");
                 onComplete?.Invoke(false, req.downloadHandler?.text);
             }
@@ -165,6 +171,9 @@ public static class DroppedItemApi
 #endif
             if (isError)
             {
+                if (req.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Dropped item list unauthorized (401)");
+
                 Debug.LogError($"[DroppedItemApi] GET failed: {req.responseCode} {req.error}\n{req.downloadHandler.text}");
                 onComplete?.Invoke(null);
             }
@@ -226,6 +235,9 @@ public static class DroppedItemApi
 #endif
             if (isError)
             {
+                if (req.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Dropped item chunk list unauthorized (401)");
+
                 Debug.LogError($"[DroppedItemApi] GET chunk failed: {req.responseCode} {req.error}");
                 onComplete?.Invoke(null);
             }
