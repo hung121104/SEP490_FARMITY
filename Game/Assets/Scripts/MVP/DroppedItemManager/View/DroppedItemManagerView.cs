@@ -239,6 +239,16 @@ public class DroppedItemManagerView : MonoBehaviour
         presenter.RequestDropItem(item, _localPlayerTransform.position, randomOffset);
     }
 
+    public void SubscribeDropEvents(IInventoryService service)
+    {
+        service.OnItemDroppedToWorld += RequestDropItem;
+    }
+
+    public void UnsubscribeDropEvents(IInventoryService service)
+    {
+        service.OnItemDroppedToWorld -= RequestDropItem;
+    }
+
     /// <summary>
     /// Called by DroppedItemView when the local player presses the pickup key.
     /// Delegates to Presenter which sends pickup request through Photon.

@@ -21,7 +21,7 @@ public class StructureService : IStructureService
     /// Static delegate for inventory operations.
     /// Wired by View layer (Composition Root) so Service never depends on View directly.
     /// </summary>
-    public static System.Func<string, int, Quality, bool> OnAddItemToInventory;
+    public static System.Func<string, int, bool> OnAddItemToInventory;
 
     public StructureService(ChunkDataSyncManager syncManager,
                             ChunkLoadingManager loadingManager,
@@ -149,11 +149,8 @@ public class StructureService : IStructureService
     /// </summary>
     public bool RequestHit(Vector3Int pos, int damage, string playerActorId)
     {
-        if (!WorldDataManager.Instance.HasStructureAtWorldPosition(pos))
-            return false;
-
         UnifiedChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(pos);
-        if (chunk == null || !chunk.TryGetStructure(pos.x, pos.y, out var structureData))
+        if (chunk == null || !chunk.HasStructure(pos.x, pos.y))
             return false;
 
         int currentHp = chunk.GetStructureHp(pos.x, pos.y);
@@ -256,26 +253,10 @@ public class StructureService : IStructureService
         WorldDataManager.Instance.RemoveStructureAtWorldPosition(pos);
     }
 
-    public bool DealDamage(Vector3Int pos, int damage, out bool isRemoved, out string structureId)
+    public bool DealDamage(Vector3Int pos, int damage)
     {
-        isRemoved = false;
-        structureId = string.Empty;
-
         string playerId = PhotonNetwork.LocalPlayer.ActorNumber.ToString();
-        bool success = RequestHit(pos, damage, playerId);
-
-        if (success && PhotonNetwork.IsMasterClient)
-        {
-            UnifiedChunkData chunk = WorldDataManager.Instance.GetChunkAtWorldPosition(pos);
-            if (chunk != null && chunk.TryGetStructure(pos.x, pos.y, out var data))
-            {
-                structureId = data.StructureId;
-                int hp = chunk.GetStructureHp(pos.x, pos.y);
-                isRemoved = hp <= 0;
-            }
-        }
-
-        return success;
+        return RequestHit(pos, damage, playerId);
     }
 
     public void RegenerateHP(Vector3Int pos)
@@ -338,7 +319,7 @@ public class StructureService : IStructureService
             return;
         }
 
-        bool added = OnAddItemToInventory.Invoke(structureId, 1, Quality.Normal);
+        bool added = OnAddItemToInventory.Invoke(structureId, 1);
         Debug.Log($"[StructureService] Added item {structureId} to inventory for last hitter {localPlayerId} - success={added}");
     }
 
@@ -375,7 +356,7 @@ public class StructureService : IStructureService
             var slot = slots[i];
             if (string.IsNullOrEmpty(slot.ItemId) || slot.Quantity <= 0) continue;
 
-            bool added = OnAddItemToInventory.Invoke(slot.ItemId, slot.Quantity, Quality.Normal);
+            bool added = OnAddItemToInventory.Invoke(slot.ItemId, slot.Quantity);
             Debug.Log($"  [{i}] {slot.ItemId} x{slot.Quantity} → inventory success={added}");
         }
     }
