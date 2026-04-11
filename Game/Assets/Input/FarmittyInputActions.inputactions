@@ -124,6 +124,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "ToggleCalendar",
+                    "type": "Button",
+                    "id": "cccc0001-cccc-cccc-cccc-cccc0001cccc",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "UseItem",
                     "type": "Button",
                     "id": "aaaa0001-0001-0001-0001-000000000001",
@@ -463,6 +472,17 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "OpenChat",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "eeee0001-eeee-eeee-eeee-eeee0001eeee",
+                    "path": "<Keyboard>/u",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "ToggleCalendar",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

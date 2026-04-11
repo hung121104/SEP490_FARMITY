@@ -34,7 +34,8 @@ public class ShopService : IShopService
         foreach (var itemData in validItems)
         {
             int finalPrice = itemData.buyPrice;
-            newShopItems.Add(new ShopItemModel(itemData.itemID, finalPrice));
+            var icon = ItemCatalogService.Instance.GetCachedSprite(itemData.itemID);
+            newShopItems.Add(new ShopItemModel(itemData.itemID, finalPrice, itemData.itemName, icon));
         }
 
         _model.SetDailyItems(newShopItems);

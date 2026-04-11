@@ -45,7 +45,7 @@ public class ShopPresenter
         var shopList = _shopService.GetShopModel().DailyItems;
         if (slotIndex < 0 || slotIndex >= shopList.Count) return;
 
-        bool isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        bool isShiftHeld = InputManager.Instance != null && InputManager.Instance.Sprint.IsPressed();
 
         if (_shopService.TryBuyItem(slotIndex, _playerInventory, isShiftHeld))
         {
@@ -64,8 +64,7 @@ public class ShopPresenter
 
     private void HandleInventorySlotClicked(int invSlotIndex)
     {
-       
-        bool isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        bool isShiftHeld = InputManager.Instance != null && InputManager.Instance.Sprint.IsPressed();
         MoveItemToCart(invSlotIndex, moveWholeStack: isShiftHeld);
     }
 
@@ -124,7 +123,7 @@ public class ShopPresenter
 
         if (itemData != null)
         {
-            bool isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            bool isShiftHeld = InputManager.Instance != null && InputManager.Instance.Sprint.IsPressed();
             int amountToReturn = isShiftHeld ? cartItem.Quantity : 1;
             _playerInventory.AddItem(itemData.itemID, amountToReturn);
 
