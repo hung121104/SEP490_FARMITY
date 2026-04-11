@@ -1,6 +1,6 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using TMPro;
-using UnityEngine.EventSystems;
 
 public class ChatView : MonoBehaviour
 {
@@ -11,6 +11,8 @@ public class ChatView : MonoBehaviour
 
     private ChatPresenter presenter;
     private bool isChatOpen = false;
+    private InputAction _chatEnterAction;
+    private InputAction _escCloseAction;
 
     public void Initialize(ChatPresenter presenter)
     {
@@ -18,35 +20,71 @@ public class ChatView : MonoBehaviour
         CloseChat();
     }
 
-    private void Update()
+    private void Awake()
     {
-        if (Input.GetKeyDown(KeyCode.Return))
-        {
-            if (!isChatOpen)
-            {
-                OpenChat();
-            }
-            else
-            {
-                SendMessage();
-            }
-        }
+        _chatEnterAction = new InputAction("ChatEnter", InputActionType.Button, "<Keyboard>/enter");
+        _chatEnterAction.performed += OnOpenOrSendChat;
 
-        if (isChatOpen && Input.GetKeyDown(KeyCode.Escape))
+        _escCloseAction = new InputAction("ChatCloseESC", InputActionType.Button, "<Keyboard>/escape");
+        _escCloseAction.performed += OnEscPressed;
+    }
+
+    private void OnEnable()
+    {
+        _chatEnterAction?.Enable();
+        _escCloseAction?.Enable();
+    }
+
+    private void OnDisable()
+    {
+        _chatEnterAction?.Disable();
+        _escCloseAction?.Disable();
+    }
+
+    private void OnDestroy()
+    {
+        if (_chatEnterAction != null)
         {
-            CloseChat();
+            _chatEnterAction.performed -= OnOpenOrSendChat;
+            _chatEnterAction.Dispose();
+            _chatEnterAction = null;
+        }
+        if (_escCloseAction != null)
+        {
+            _escCloseAction.performed -= OnEscPressed;
+            _escCloseAction.Dispose();
+            _escCloseAction = null;
         }
     }
 
+    private void OnOpenOrSendChat(InputAction.CallbackContext ctx)
+    {
+        if (!isChatOpen)
+        {
+            OpenChat();
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(inputField.text))
+                SendMessage();
+            else
+                CloseChat();
+        }
+    }
 
+    private void OnEscPressed(InputAction.CallbackContext ctx)
+    {
+        if (isChatOpen)
+            CloseChat();
+    }
 
     private void OpenChat()
     {
         isChatOpen = true;
         chatPanelUI.SetActive(true);
-
         inputField.ActivateInputField();
         inputField.Select();
+        InputManager.Instance?.DisablePlayerActions();
     }
 
     private void CloseChat()
@@ -54,8 +92,8 @@ public class ChatView : MonoBehaviour
         isChatOpen = false;
         chatPanelUI.SetActive(false);
         inputField.text = "";
+        InputManager.Instance?.EnablePlayerActions();
     }
-
 
     private void SendMessage()
     {
@@ -66,8 +104,6 @@ public class ChatView : MonoBehaviour
         inputField.text = "";
         inputField.ActivateInputField();
     }
-
-
 
     public void DisplayMessage(ChatMessageModel message)
     {
