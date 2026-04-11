@@ -785,7 +785,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
         if (stage == 0)
         {
             sr.sortingLayerName = "Ground";
-            sr.sortingOrder     = 5;
+            sr.sortingOrder     = 22;
         }
         else
         {

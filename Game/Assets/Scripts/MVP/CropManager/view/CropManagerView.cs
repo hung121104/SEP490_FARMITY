@@ -230,7 +230,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
             sr = go.AddComponent<SpriteRenderer>();
 
         sr.sortingLayerName = stage == 0 ? "Ground" : "WalkInfront";
-        sr.sortingOrder     = stage == 0 ? 5 : 0;
+        sr.sortingOrder     = stage == 0 ? 22 : 0;
         sr.sprite = PlantCatalogService.Instance?.GetStageSprite(plantId, stage);
 
         cropVisuals[key] = go;

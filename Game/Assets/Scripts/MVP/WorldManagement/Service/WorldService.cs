@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Threading.Tasks;
 
-public class WorldService : IMyWorldListService
+public class WorldService : IWorldService
 {
     private const string BASE_URL = AppConfig.ApiBaseUrl;
 

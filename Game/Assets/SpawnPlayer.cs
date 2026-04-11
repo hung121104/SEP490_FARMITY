@@ -100,22 +100,21 @@ public class SpawnPlayer : MonoBehaviour
             return;
         }
 
-        // For a brand-new world the player should spawn with no skin equipped so they
-        // can choose one through the Skin Picker.  Clear any appearance custom properties
-        // that may have persisted from a previous session before the prefab is instantiated
-        // (PlayerAppearanceSync.Start reads these properties, so clearing them here
-        // guarantees the player spawns with a blank paper-doll).
-        if (WorldSelectionManager.Instance != null && WorldSelectionManager.Instance.IsNewWorld)
+        // Always clear appearance custom properties before spawning.  Stale values
+        // from a previous world session may still be on the local player because Photon
+        // keeps them across room joins.  PlayerAppearanceSync.Start() reads these, so if
+        // they are not cleared the player would visually wear the old outfit.
+        // For existing worlds the master will send RPC_RestoreAppearance with the server-saved
+        // appearance shortly after spawn.  For new worlds the player starts with a blank
+        // paper-doll and picks a skin through the Skin Picker.
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
         {
-            PhotonNetwork.LocalPlayer.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
-            {
-                { "apHair",   string.Empty },
-                { "apOutfit", string.Empty },
-                { "apHat",    string.Empty },
-                { "apTool",   string.Empty },
-            });
-            Debug.Log("[SpawnPlayer] New world — cleared appearance custom properties so player spawns without a skin.");
-        }
+            { "apHair",   string.Empty },
+            { "apOutfit", string.Empty },
+            { "apHat",    string.Empty },
+            { "apTool",   string.Empty },
+        });
+        Debug.Log("[SpawnPlayer] Cleared appearance custom properties before spawn.");
 
         Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
         Quaternion spawnRot = Quaternion.Euler(0f, 0f, spawnPoint.rotation.eulerAngles.z);

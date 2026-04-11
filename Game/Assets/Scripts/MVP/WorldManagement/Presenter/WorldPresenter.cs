@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 /// </summary>
 public class WorldPresenter
 {
-    private readonly IMyWorldListService service;
+    private readonly IWorldService service;
     private MyWorldListView view;
     public string LastCreateWorldError { get; private set; }
 
-    public WorldPresenter(IMyWorldListService worldListService)
+    public WorldPresenter(IWorldService worldListService)
     {
         service = worldListService;
     }

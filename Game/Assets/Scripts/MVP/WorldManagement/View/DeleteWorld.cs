@@ -51,7 +51,7 @@ public class DeleteWorld : MonoBehaviour
             return;
         }
 
-        MyWorldListPresenter presenter = listView.GetPresenter();
+        WorldPresenter presenter = listView.GetPresenter();
         if (presenter == null)
         {
             listView.UpdateStatus("Delete failed: Presenter not initialized.");

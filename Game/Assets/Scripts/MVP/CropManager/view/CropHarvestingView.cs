@@ -36,6 +36,13 @@ public class CropHarvestingView : MonoBehaviourPun
     // ── Lifecycle ─────────────────────────────────────────────────────────
     void Awake()
     {
+        hotbarView = FindAnyObjectByType<HotbarView>();
+        if (hotbarView != null)
+            hotbarLeftClickField = typeof(HotbarView).GetField("enableLeftClick", BindingFlags.NonPublic | BindingFlags.Instance);
+    }
+
+    void Start()
+    {
         var cropManagerView  = FindAnyObjectByType<CropManagerView>();
         var inventoryView    = FindAnyObjectByType<InventoryGameView>();
         var syncManager      = FindAnyObjectByType<ChunkDataSyncManager>();
@@ -58,13 +65,6 @@ public class CropHarvestingView : MonoBehaviourPun
 
         presenter = new CropHarvestingPresenter(this, service);
 
-        hotbarView = FindAnyObjectByType<HotbarView>();
-        if (hotbarView != null)
-            hotbarLeftClickField = typeof(HotbarView).GetField("enableLeftClick", BindingFlags.NonPublic | BindingFlags.Instance);
-    }
-
-    void Start()
-    {
         FindLocalPlayer();
     }
 
@@ -84,7 +84,12 @@ public class CropHarvestingView : MonoBehaviourPun
 
     private void OnHarvestPerformed(InputAction.CallbackContext ctx)
     {
-        if (playerTransform == null) return;
+        if (playerTransform == null) 
+        {
+            Debug.LogWarning("[CropHarvestingView] OnHarvestPerformed: playerTransform is null");
+            return;
+        }
+        Debug.Log("[CropHarvestingView] OnHarvestPerformed: calling HandleHarvestInput");
         HandleHarvestInput();
         if (allowHoldToHarvest)
         {
@@ -103,6 +108,7 @@ public class CropHarvestingView : MonoBehaviourPun
     // ── Update ────────────────────────────────────────────────────────────
     void Update()
     {
+        if (presenter == null) return;
         if (playerTransform == null) FindLocalPlayer();
         if (playerTransform == null) return;
 
@@ -147,16 +153,31 @@ public class CropHarvestingView : MonoBehaviourPun
         // If the player has pollen selected, the left-click is for cross-breeding (via the
         // hotbar item-use pipeline), not for harvesting or collecting pollen. Skip entirely
         // to avoid accidentally collecting pollen from the intended breeding target.
-        if (hotbarView?.GetCurrentItem()?.ItemData is PollenData) return;
+        if (hotbarView?.GetCurrentItem()?.ItemData is PollenData) 
+        {
+            Debug.Log("[CropHarvestingView] HandleHarvestInput: pollen is selected, skipping");
+            return;
+        }
 
         Vector3 target = GetDirectionalTileForHarvesting();
-        if (target == Vector3.zero) return;
+        Debug.Log($"[CropHarvestingView] HandleHarvestInput: target = {target}");
+        if (target == Vector3.zero) 
+        {
+            Debug.LogWarning("[CropHarvestingView] HandleHarvestInput: no valid target tile found");
+            return;
+        }
 
         // Context-sensitive: prefer pollen collection when the crop is flowering.
         if (presenter.IsReadyToCollectPollen(target))
+        {
+            Debug.Log($"[CropHarvestingView] HandleHarvestInput: collecting pollen at {target}");
             presenter.HandleCollectPollenAction(target);
+        }
         else
+        {
+            Debug.Log($"[CropHarvestingView] HandleHarvestInput: harvesting at {target}");
             presenter.HandleHarvestAction(target);
+        }
     }
 
     private void ManageHotbarInterception()
