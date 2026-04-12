@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 using Photon.Pun;
@@ -11,19 +12,20 @@ public class ResourceHarvestingService : IResourceHarvestingService
 {
     private readonly WorldDataManager worldData;
     private readonly ChunkDataSyncManager syncManager;
-    private readonly IInventoryService inventoryService;
+    private readonly Func<IInventoryService> inventoryServiceProvider;
+    private IInventoryService cachedInventoryService;
     private readonly float interactionRange;
     private Transform localPlayerTransform;
 
     public ResourceHarvestingService(
         WorldDataManager worldData,
         ChunkDataSyncManager syncManager,
-        IInventoryService inventoryService,
+        Func<IInventoryService> inventoryServiceProvider,
         float interactionRange)
     {
         this.worldData = worldData;
         this.syncManager = syncManager;
-        this.inventoryService = inventoryService;
+        this.inventoryServiceProvider = inventoryServiceProvider;
         this.interactionRange = Mathf.Max(0.1f, interactionRange);
 
         // Bind to delayed impact events so gameplay timing matches chop animation timing.
@@ -146,18 +148,30 @@ public class ResourceHarvestingService : IResourceHarvestingService
         return false;
     }
 
+    private IInventoryService GetInventoryService()
+    {
+        if (cachedInventoryService != null) return cachedInventoryService;
+        cachedInventoryService = inventoryServiceProvider?.Invoke();
+        return cachedInventoryService;
+    }
+
     private void DistributeLoot(List<DropEntry> dropTable)
     {
-        if (inventoryService == null || dropTable == null || dropTable.Count == 0) return;
+        var inventoryService = GetInventoryService();
+        if (inventoryService == null || dropTable == null || dropTable.Count == 0)
+        {
+            Debug.LogWarning("[ResourceHarvestingService] InventoryService not available — drops skipped.");
+            return;
+        }
 
         foreach (DropEntry drop in dropTable)
         {
             if (string.IsNullOrEmpty(drop.itemId)) continue;
 
-            float chance = Random.Range(0f, 1f);
+            float chance = UnityEngine.Random.Range(0f, 1f);
             if (chance <= drop.dropChance)
             {
-                int amount = Random.Range(Mathf.Max(1, drop.minAmount), Mathf.Max(1, drop.maxAmount) + 1);
+                int amount = UnityEngine.Random.Range(Mathf.Max(1, drop.minAmount), Mathf.Max(1, drop.maxAmount) + 1);
 
                 bool added = inventoryService.AddItem(drop.itemId, amount);
                 if (!added)

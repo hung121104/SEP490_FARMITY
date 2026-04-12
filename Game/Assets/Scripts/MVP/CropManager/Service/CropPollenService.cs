@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Photon.Pun;
 
@@ -10,19 +11,27 @@ public class CropPollenService : ICropPollenService
 {
     private readonly WorldDataManager worldData;
     private readonly CropManagerView cropManagerView;
-    private readonly IInventoryService inventoryService;
+    private readonly Func<IInventoryService> inventoryServiceProvider;
+    private IInventoryService cachedInventoryService;
     private readonly ChunkDataSyncManager syncManager;
 
     public CropPollenService(
         WorldDataManager worldData,
         CropManagerView cropManagerView,
-        IInventoryService inventoryService,
+        Func<IInventoryService> inventoryServiceProvider,
         ChunkDataSyncManager syncManager = null)
     {
-        this.worldData        = worldData;
-        this.cropManagerView  = cropManagerView;
-        this.inventoryService = inventoryService;
-        this.syncManager      = syncManager;
+        this.worldData                = worldData;
+        this.cropManagerView          = cropManagerView;
+        this.inventoryServiceProvider = inventoryServiceProvider;
+        this.syncManager              = syncManager;
+    }
+
+    private IInventoryService GetInventoryService()
+    {
+        if (cachedInventoryService != null) return cachedInventoryService;
+        cachedInventoryService = inventoryServiceProvider?.Invoke();
+        return cachedInventoryService;
     }
 
     // ── ICropPollenService ────────────────────────────────────────────────
@@ -48,6 +57,7 @@ public class CropPollenService : ICropPollenService
             return null;
         }
 
+        var inventoryService = GetInventoryService();
         if (inventoryService == null)
         {
             Debug.LogWarning("[CropPollenService] IInventoryService not found — pollen not added.");
