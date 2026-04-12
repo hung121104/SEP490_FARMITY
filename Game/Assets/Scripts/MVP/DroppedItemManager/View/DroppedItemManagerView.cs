@@ -257,8 +257,7 @@ public class DroppedItemManagerView : MonoBehaviour
     public bool RequestPickupItem(string dropId)
     {
         if (presenter == null) return false;
-        presenter.RequestPickupItem(dropId);
-        return true;
+        return presenter.RequestPickupItem(dropId);
     }
 
     /// <summary>Check if a dropped item exists in the registry.</summary>

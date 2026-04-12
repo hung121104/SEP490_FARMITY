@@ -167,7 +167,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
         _chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
 
-        // Khởi tạo Service
+        // Initialize Service
         var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
         IInventoryService inventoryService = inventoryGameView != null ? inventoryGameView.GetInventoryService() : null;
 

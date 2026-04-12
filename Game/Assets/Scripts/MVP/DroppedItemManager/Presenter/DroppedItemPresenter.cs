@@ -146,32 +146,34 @@ public class DroppedItemPresenter
         syncManager.SendDropRequest(data);
     }
 
-    public void RequestPickupItem(string dropId)
+    public bool RequestPickupItem(string dropId)
     {
         if (string.IsNullOrEmpty(dropId))
         {
             Debug.LogWarning("[DroppedItemPresenter] Cannot pick up item with null/empty dropId.");
-            return;
+            return false;
         }
 
         DroppedItemData data = service.GetItem(dropId);
-        if (data == null) return;
+        if (data == null) return false;
 
         int addable = service.GetAddableQuantity(data.itemId, data.quantity);
         if (addable <= 0)
         {
             if (showDebugLogs) Debug.Log($"[DroppedItemPresenter] Inventory full! Cannot pick up {data.itemName}");
-            return;
+            return false;
         }
         else if (addable < data.quantity)
         {
             if (showDebugLogs) Debug.Log($"[DroppedItemPresenter] Partial pickup: can fit {addable} out of {data.quantity}");
             syncManager?.SendPartialPickupRequest(dropId, addable);
+            return true;
         }
         else
         {
             if (showDebugLogs) Debug.Log($"[DroppedItemPresenter] Requesting pickup for {dropId}");
             syncManager?.SendPickupRequest(dropId);
+            return true;
         }
     }
 
