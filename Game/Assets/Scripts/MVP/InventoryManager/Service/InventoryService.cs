@@ -485,7 +485,36 @@ public class InventoryService : IInventoryService
                 mainItems.Add(item);
         }
 
-        var sorted = mainItems
+        // Merge stacks of the same item+quality before sorting
+        var merged = new System.Collections.Generic.List<ItemModel>();
+        foreach (var item in mainItems)
+        {
+            if (!item.IsStackable)
+            {
+                merged.Add(item);
+                continue;
+            }
+            var existing = merged.Find(m => m.ItemId == item.ItemId && m.Quality == item.Quality && m.Quantity < m.MaxStack);
+            if (existing != null)
+            {
+                int space = existing.MaxStack - existing.Quantity;
+                if (item.Quantity <= space)
+                {
+                    existing.AddQuantity(item.Quantity);
+                }
+                else
+                {
+                    existing.AddQuantity(space);
+                    merged.Add(new ItemModel(item.ItemData, item.Quality, item.Quantity - space, -1));
+                }
+            }
+            else
+            {
+                merged.Add(item);
+            }
+        }
+
+        var sorted = merged
             .OrderBy(item => item.ItemType)
             .ThenBy(item => item.ItemCategory)
             .ThenBy(item => item.ItemName)
