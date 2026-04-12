@@ -11,19 +11,19 @@ public class ResourceHarvestingService : IResourceHarvestingService
 {
     private readonly WorldDataManager worldData;
     private readonly ChunkDataSyncManager syncManager;
-    private readonly InventoryGameView inventoryView;
+    private readonly IInventoryService inventoryService;
     private readonly float interactionRange;
     private Transform localPlayerTransform;
 
     public ResourceHarvestingService(
         WorldDataManager worldData,
         ChunkDataSyncManager syncManager,
-        InventoryGameView inventoryView,
+        IInventoryService inventoryService,
         float interactionRange)
     {
         this.worldData = worldData;
         this.syncManager = syncManager;
-        this.inventoryView = inventoryView;
+        this.inventoryService = inventoryService;
         this.interactionRange = Mathf.Max(0.1f, interactionRange);
 
         // Bind to delayed impact events so gameplay timing matches chop animation timing.
@@ -148,7 +148,7 @@ public class ResourceHarvestingService : IResourceHarvestingService
 
     private void DistributeLoot(List<DropEntry> dropTable)
     {
-        if (inventoryView == null || dropTable == null || dropTable.Count == 0) return;
+        if (inventoryService == null || dropTable == null || dropTable.Count == 0) return;
 
         foreach (DropEntry drop in dropTable)
         {
@@ -159,7 +159,7 @@ public class ResourceHarvestingService : IResourceHarvestingService
             {
                 int amount = Random.Range(Mathf.Max(1, drop.minAmount), Mathf.Max(1, drop.maxAmount) + 1);
 
-                bool added = inventoryView.AddItem(drop.itemId, amount);
+                bool added = inventoryService.AddItem(drop.itemId, amount);
                 if (!added)
                 {
                     Debug.LogWarning(

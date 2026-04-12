@@ -33,10 +33,13 @@ public class CropPollenHarvestingView : MonoBehaviourPun
     // ── Lifecycle ─────────────────────────────────────────────────────────
     void Awake()
     {
+        var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
+        IInventoryService inventoryService = inventoryGameView != null ? inventoryGameView.GetInventoryService() : null;
+
         var service = new CropPollenService(
             WorldDataManager.Instance,
             FindAnyObjectByType<CropManagerView>(),
-            FindAnyObjectByType<InventoryGameView>()
+            inventoryService
         );
         presenter = new CropPollenPresenter(this, service);
     }

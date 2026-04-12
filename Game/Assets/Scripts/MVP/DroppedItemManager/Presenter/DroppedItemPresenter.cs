@@ -29,14 +29,8 @@ public class DroppedItemPresenter
     /// <summary>Request the View to despawn the visual for this dropId.</summary>
     public event Action<string> OnDespawnVisualRequested;
 
-    /// <summary>Request the View to add a picked-up item to the local player's inventory.</summary>
-    public event Action<DroppedItemData> OnAddToInventoryRequested;
-
     /// <summary>Request the View to clear all active visuals (used during rebuild).</summary>
     public event Action OnClearAllVisualsRequested;
-
-    /// <summary>Request the View to add a PARTIAL amount of picked-up item to inventory.</summary>
-    public event Action<DroppedItemData, int> OnPartialPickupToInventoryRequested;
 
     /// <summary>Request the View to update visual for a partial pickup.</summary>
     public event Action<DroppedItemData> OnVisualQuantityUpdateRequested;
@@ -152,11 +146,6 @@ public class DroppedItemPresenter
         syncManager.SendDropRequest(data);
     }
 
-    /// <summary>
-    /// Handle a pickup request from DroppedItemView.
-    /// Sends pickup request through Photon sync for Master validation.
-    /// </summary>
-    /// <param name="dropId">The unique drop ID to pick up.</param>
     public void RequestPickupItem(string dropId)
     {
         if (string.IsNullOrEmpty(dropId))
@@ -165,10 +154,25 @@ public class DroppedItemPresenter
             return;
         }
 
-        if (showDebugLogs)
-            Debug.Log($"[DroppedItemPresenter] Requesting pickup: {dropId}");
+        DroppedItemData data = service.GetItem(dropId);
+        if (data == null) return;
 
-        syncManager?.SendPickupRequest(dropId);
+        int addable = service.GetAddableQuantity(data.itemId, data.quantity);
+        if (addable <= 0)
+        {
+            if (showDebugLogs) Debug.Log($"[DroppedItemPresenter] Inventory full! Cannot pick up {data.itemName}");
+            return;
+        }
+        else if (addable < data.quantity)
+        {
+            if (showDebugLogs) Debug.Log($"[DroppedItemPresenter] Partial pickup: can fit {addable} out of {data.quantity}");
+            syncManager?.SendPartialPickupRequest(dropId, addable);
+        }
+        else
+        {
+            if (showDebugLogs) Debug.Log($"[DroppedItemPresenter] Requesting pickup for {dropId}");
+            syncManager?.SendPickupRequest(dropId);
+        }
     }
 
     public void SendPartialPickupRequest(string dropId, int amount)
@@ -292,7 +296,7 @@ public class DroppedItemPresenter
         // If this local player picked it up, add to inventory
         if (pickedByActorNumber == PhotonNetwork.LocalPlayer.ActorNumber && data != null)
         {
-            OnAddToInventoryRequested?.Invoke(data);
+            service.AddDroppedItemToInventory(data.itemId, data.quantity);
         }
     }
 
@@ -318,7 +322,7 @@ public class DroppedItemPresenter
         // If local player picked it, add the amount to inventory
         if (pickedByActorNumber == PhotonNetwork.LocalPlayer.ActorNumber)
         {
-            OnPartialPickupToInventoryRequested?.Invoke(data, amountPicked);
+            service.AddDroppedItemToInventory(data.itemId, amountPicked);
         }
     }
 

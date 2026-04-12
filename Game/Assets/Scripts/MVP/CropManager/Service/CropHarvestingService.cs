@@ -13,7 +13,7 @@ public class CropHarvestingService : ICropHarvestingService
     private readonly CropManagerView cropManagerView;
     private readonly ChunkDataSyncManager syncManager;
     private readonly ChunkLoadingManager loadingManager;
-    private readonly InventoryGameView inventoryGameView;
+    private readonly IInventoryService inventoryService;
     private readonly ICropPollenService pollenService;
 
     public CropHarvestingService(
@@ -21,14 +21,14 @@ public class CropHarvestingService : ICropHarvestingService
         CropManagerView cropManagerView,
         ChunkDataSyncManager syncManager,
         ChunkLoadingManager loadingManager,
-        InventoryGameView inventoryGameView,
+        IInventoryService inventoryService,
         ICropPollenService pollenService)
     {
         this.worldData         = worldData;
         this.cropManagerView   = cropManagerView;
         this.syncManager       = syncManager;
         this.loadingManager    = loadingManager;
-        this.inventoryGameView = inventoryGameView;
+        this.inventoryService  = inventoryService;
         this.pollenService     = pollenService;
     }
 
@@ -102,9 +102,9 @@ public class CropHarvestingService : ICropHarvestingService
         // Add item to inventory
         if (harvestedItem != null)
         {
-            if (inventoryGameView != null)
+            if (inventoryService != null)
             {
-                bool added = inventoryGameView.AddItem(harvestedItem.itemID, 1);
+                bool added = inventoryService.AddItem(harvestedItem.itemID, 1);
                 if (!added)
                     Debug.LogWarning($"[CropHarvestingService] Inventory full — could not add '{harvestedItem.itemName}'.");
                 else

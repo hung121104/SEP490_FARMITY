@@ -271,7 +271,7 @@ public class ChestPresenter
 
         // Transfer: remove from chest, add to player
         chestInventoryService.RemoveItemFromSlot(slot, addable);
-        playerInventoryService.AddItem(item.ItemId, addable, item.Quality);
+        playerInventoryService.AddItem(item.ItemId, addable, item.Quality, null, false);
 
         RefreshChestSlot(slot);
         RefreshPlayerView();
@@ -362,7 +362,7 @@ public class ChestPresenter
 
         // Transfer: remove from player, add to chest
         playerInventoryService.RemoveItemFromSlot(slot, addable);
-        chestInventoryService.AddItem(item.ItemId, addable, item.Quality);
+        chestInventoryService.AddItem(item.ItemId, addable, item.Quality, null, false);
 
         RefreshPlayerSlot(slot);
         RefreshChestView();

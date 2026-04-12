@@ -46,11 +46,13 @@ public class CropHarvestingView : MonoBehaviourPun
         var cropManagerView  = FindAnyObjectByType<CropManagerView>();
         var inventoryView    = FindAnyObjectByType<InventoryGameView>();
         var syncManager      = FindAnyObjectByType<ChunkDataSyncManager>();
+        var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
+        IInventoryService inventoryService = inventoryGameView != null ? inventoryGameView.GetInventoryService() : null;
 
         var pollenService = new CropPollenService(
             WorldDataManager.Instance,
             cropManagerView,
-            inventoryView,
+            inventoryService,
             syncManager
         );
 
@@ -59,7 +61,7 @@ public class CropHarvestingView : MonoBehaviourPun
             cropManagerView,
             syncManager,
             FindAnyObjectByType<ChunkLoadingManager>(),
-            inventoryView,
+            inventoryService,
             pollenService
         );
 
