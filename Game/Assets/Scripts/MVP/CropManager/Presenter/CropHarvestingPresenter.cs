@@ -24,13 +24,17 @@ public class CropHarvestingPresenter
     /// </summary>
     public void HandleHarvestAction(Vector3 worldPos)
     {
+        Debug.Log($"[CropHarvestingPresenter] HandleHarvestAction at {worldPos}");
+        
         if (!service.IsReadyToHarvest(worldPos))
         {
+            Debug.LogWarning($"[CropHarvestingPresenter] Crop not ready to harvest at {worldPos}");
             view.OnHarvestFailed(worldPos);
             return;
         }
 
         bool success = service.TryHarvest(worldPos, out ItemData harvestedItem);
+        Debug.Log($"[CropHarvestingPresenter] TryHarvest result: success={success}, item={harvestedItem?.itemID}");
 
         if (success)
         {

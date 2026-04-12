@@ -36,12 +36,23 @@ public class CropHarvestingService : ICropHarvestingService
 
     public bool IsReadyToHarvest(Vector3 worldPos)
     {
-        if (worldData == null || cropManagerView == null) return false;
-        if (!worldData.HasCropAtWorldPosition(worldPos)) return false;
+        if (worldData == null || cropManagerView == null) 
+        {
+            Debug.LogWarning($"[CropHarvestingService] IsReadyToHarvest: worldData={worldData}, cropManagerView={cropManagerView}");
+            return false;
+        }
+        
+        if (!worldData.HasCropAtWorldPosition(worldPos)) 
+        {
+            Debug.LogWarning($"[CropHarvestingService] IsReadyToHarvest: No crop found at {worldPos}");
+            return false;
+        }
 
         int wx = Mathf.FloorToInt(worldPos.x);
         int wy = Mathf.FloorToInt(worldPos.y);
-        return cropManagerView.IsCropReadyToHarvest(wx, wy);
+        bool isReady = cropManagerView.IsCropReadyToHarvest(wx, wy);
+        Debug.Log($"[CropHarvestingService] IsReadyToHarvest at ({wx},{wy}): {isReady}");
+        return isReady;
     }
 
     public bool TryHarvest(Vector3 worldPos, out ItemData harvestedItem)

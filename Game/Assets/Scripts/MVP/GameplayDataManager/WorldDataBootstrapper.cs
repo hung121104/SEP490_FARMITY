@@ -105,6 +105,9 @@ public class WorldDataBootstrapper : MonoBehaviour
             if (req.isNetworkError || req.isHttpError)
 #endif
             {
+                if (req.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("World bootstrap unauthorized (401)");
+
                 Debug.LogError($"[WorldDataBootstrapper] Fetch failed: {req.responseCode} {req.error}");
                 yield break;
             }

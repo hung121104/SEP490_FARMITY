@@ -1,8 +1,11 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class SessionManager : MonoBehaviour
 {
     private static SessionManager _instance;
+    private const string DefaultAuthSceneName = "AuthScene";
+    private bool _authRedirectInProgress;
     
     public static SessionManager Instance
     {
@@ -53,6 +56,23 @@ public class SessionManager : MonoBehaviour
         userId = null;
         username = null;
         Debug.Log("Session cleared");
+    }
+
+    public void HandleJwtExpired(string reason = null)
+    {
+        if (_authRedirectInProgress)
+            return;
+
+        _authRedirectInProgress = true;
+        Debug.LogWarning($"[SessionManager] JWT expired. Redirecting to {DefaultAuthSceneName}. Reason: {reason ?? "unknown"}");
+
+        ClearSession();
+
+        Scene activeScene = SceneManager.GetActiveScene();
+        if (activeScene.name == DefaultAuthSceneName)
+            return;
+
+        SceneManager.LoadScene(DefaultAuthSceneName);
     }
 
     public bool IsAuthenticated()
