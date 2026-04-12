@@ -41,13 +41,8 @@ public class CraftingService : ICraftingService
                 return false;
         }
 
-        // Check if inventory has space for result (including stackable merging)
-        ItemData resultData = ItemCatalogService.Instance?.GetItemData(recipe.ResultItemId);
-        if (resultData == null)
-            return false;
-
         int resultAmount = recipe.ResultQuantity;
-        int addableQuantity = inventory.GetAddableQuantity(resultData, resultAmount);
+        int addableQuantity = inventory.GetAddableQuantity(recipe.ResultItemId, resultAmount);
         if (addableQuantity < resultAmount)
             return false;
 
@@ -84,14 +79,8 @@ public class CraftingService : ICraftingService
 
         // Check space (including stackable merging)
         int resultAmount = recipe.ResultQuantity * amount;
-        ItemData resultData = ItemCatalogService.Instance?.GetItemData(recipe.ResultItemId);
-        if (resultData == null)
-        {
-            OnCraftFailed?.Invoke("Result item not found in catalog");
-            return false;
-        }
 
-        int addableQuantity = inventory.GetAddableQuantity(resultData, resultAmount);
+        int addableQuantity = inventory.GetAddableQuantity(recipe.ResultItemId, resultAmount);
         if (addableQuantity < resultAmount)
         {
             OnCraftFailed?.Invoke("Inventory is full");
