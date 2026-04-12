@@ -561,11 +561,6 @@ public class InventoryPresenter
         return service.GetItemCount(itemId);
     }
 
-    public int GetAddableQuantity(ItemData itemData, int quantity)
-    {
-        return service.GetAddableQuantity(itemData, quantity);
-    }
-
     public void CancelAllActions()
     {
         // 1. Reset dragged slot state

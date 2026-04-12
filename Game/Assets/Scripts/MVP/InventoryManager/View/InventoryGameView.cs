@@ -292,11 +292,6 @@ public class InventoryGameView : MonoBehaviour
         return presenter.GetItemCount(itemId);
     }
 
-    public int GetAddableQuantity(ItemData itemData, int quantity)
-    {
-        return presenter.GetAddableQuantity(itemData, quantity);
-    }
-
     public IInventoryService GetInventoryService() => service;
     public InventoryModel GetInventoryModel() => model;
     public int GetInventorySlotCount() => model.maxSlots;

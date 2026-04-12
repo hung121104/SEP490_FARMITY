@@ -152,8 +152,7 @@ public class InventoryService : IInventoryService
         int actuallyAdded = quantity - remainingQuantity;
         if (actuallyAdded > 0 && notifyToast)
         {
-            // TODO(MVP-debt): Toast nên subscribe IInventoryService.OnItemAdded thay vì static call.
-            // Giữ tạm để gom mọi nguồn add item vào 1 điểm trigger duy nhất.
+            // TODO(MVP-debt): Toast nên subscribe IInventoryService.OnItemAdded
             if (ItemPickupToastView.Instance != null)
                 ItemPickupToastView.NotifyItemPickedUp(itemData.itemID, actuallyAdded);
         }
@@ -414,6 +413,13 @@ public class InventoryService : IInventoryService
                 count++;
         }
         return count;
+    }
+
+    public int GetAddableQuantity(string itemId, int quantity) 
+    { 
+        var data = ItemCatalogService.Instance?.GetItemData(itemId);
+        if (data == null) return 0;
+        return GetAddableQuantity(data, quantity);
     }
 
     public int GetAddableQuantity(ItemData itemData, int quantity, Quality quality = Quality.Normal)

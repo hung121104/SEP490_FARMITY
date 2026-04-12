@@ -177,21 +177,6 @@ public class DroppedItemPresenter
         }
     }
 
-    public void SendPartialPickupRequest(string dropId, int amount)
-    {
-        if (string.IsNullOrEmpty(dropId))
-        {
-            Debug.LogWarning("[DroppedItemPresenter] Cannot pick up item with null/empty dropId.");
-            return;
-        }
-
-        if (showDebugLogs)
-            Debug.Log($"[DroppedItemPresenter] Requesting pickup: {dropId}");
-
-        syncManager?.SendPartialPickupRequest( dropId, amount);
-    }
-
-
     /// <summary>Check if a dropped item exists in the registry.</summary>
     public bool HasDroppedItem(string dropId) => service.HasItem(dropId);
 
