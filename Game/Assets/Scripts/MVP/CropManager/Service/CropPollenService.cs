@@ -67,8 +67,7 @@ public class CropPollenService : ICropPollenService
         bool added = inventoryService.AddItem(pollen.itemID, 1);
         if (!added)
         {
-            Debug.LogWarning($"[CropPollenService] Inventory full — could not add '{pollen.itemName}'.");
-            return null;
+            Debug.LogWarning($"[CropPollenService] Inventory full — '{pollen.itemName}' dropped to world. Harvest still counts.");
         }
 
         worldData.IncrementPollenHarvestCount(worldPos);
