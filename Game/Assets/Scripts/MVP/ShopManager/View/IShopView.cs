@@ -18,4 +18,5 @@ public interface IShopView
     event Action OnCloseClicked;
     event Action<GameObject, int> OnItemDroppedToSell;
     event Action<int> OnSellSlotClicked;
+    event Action<int> OnSellSlotShiftClicked;
 }

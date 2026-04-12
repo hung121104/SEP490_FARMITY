@@ -42,6 +42,7 @@ public class ShopView : MonoBehaviour, IShopView, IDropHandler
     public event Action OnCloseClicked;
     public event Action<GameObject, int> OnItemDroppedToSell;
     public event Action<int> OnSellSlotClicked;
+    public event Action<int> OnSellSlotShiftClicked;
 
     private void Awake()
     {
@@ -111,6 +112,7 @@ public class ShopView : MonoBehaviour, IShopView, IDropHandler
 
             slot.OnItemDropped += (draggedObj, slotIndex) => OnItemDroppedToSell?.Invoke(draggedObj, slotIndex);
             slot.OnSlotClicked += (slotIndex) => OnSellSlotClicked?.Invoke(slotIndex);
+            slot.OnSlotShiftClicked += (slotIndex) => OnSellSlotShiftClicked?.Invoke(slotIndex);
 
             _spawnedSellSlots.Add(slot);
         }

@@ -12,6 +12,7 @@ public class SellSlotView : MonoBehaviour, IDropHandler, IPointerClickHandler
 
     public event Action<GameObject, int> OnItemDropped;
     public event Action<int> OnSlotClicked;
+    public event Action<int> OnSlotShiftClicked;
 
     public void Setup(int index)
     {
@@ -45,5 +46,14 @@ public class SellSlotView : MonoBehaviour, IDropHandler, IPointerClickHandler
     }
 
     public void OnDrop(PointerEventData eventData) { if (eventData.pointerDrag != null) OnItemDropped?.Invoke(eventData.pointerDrag, SlotIndex); }
-    public void OnPointerClick(PointerEventData eventData) { OnSlotClicked?.Invoke(SlotIndex); }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        // Same pattern as InventorySlotView: read the physical shift key directly
+        // so the modifier works even when the Player action map is disabled.
+        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+            OnSlotShiftClicked?.Invoke(SlotIndex);
+        else
+            OnSlotClicked?.Invoke(SlotIndex);
+    }
 }

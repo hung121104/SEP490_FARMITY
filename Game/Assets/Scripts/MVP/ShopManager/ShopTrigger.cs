@@ -33,6 +33,11 @@ public class ShopTrigger : MonoBehaviour
         OpenShop();
     }
 
+    private void OnEnable()
+    {
+        ShopSystemManager.OnShopClosed += HandleShopClosedExternal;
+    }
+
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (!other.CompareTag("PlayerEntity")) return;
@@ -52,6 +57,7 @@ public class ShopTrigger : MonoBehaviour
 
     private void OnDisable()
     {
+        ShopSystemManager.OnShopClosed -= HandleShopClosedExternal;
         CloseShop();
     }
 
@@ -74,14 +80,26 @@ public class ShopTrigger : MonoBehaviour
     private void CloseShop()
     {
         if (!_isShopOpenedByThis) return;
-        _isShopOpenedByThis = false;
 
+        // ShopSystemManager.CloseShopUI fires OnShopClosed, which routes back to
+        // HandleShopClosedExternal — that is the single place the lock is released.
         if (ShopSystemManager.Instance != null)
             ShopSystemManager.Instance.CloseShopUI();
+        else
+            HandleShopClosedExternal();
+    }
+
+    /// <summary>
+    /// Invoked via <see cref="ShopSystemManager.OnShopClosed"/> whenever the shop UI closes —
+    /// whether triggered by this component, the presenter, or the in-UI close button.
+    /// Ensures player input is always re-enabled and close-input subscriptions cleaned up.
+    /// </summary>
+    private void HandleShopClosedExternal()
+    {
+        if (!_isShopOpenedByThis) return;
+        _isShopOpenedByThis = false;
 
         UnsubscribeCloseInput();
-
-        // Re-enable player actions after shop closes.
         InputManager.Instance?.EnablePlayerActions();
     }
 
