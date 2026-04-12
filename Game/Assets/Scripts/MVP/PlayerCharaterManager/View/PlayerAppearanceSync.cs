@@ -48,10 +48,26 @@ public class PlayerAppearanceSync : MonoBehaviourPunCallbacks
 
     private void Start()
     {
-        // Apply whatever is already in the owner's custom properties.
-        // Covers: remote players that were already in the room when we joined,
-        // and our own re-join to an existing world.
-        if (photonView.Owner != null)
+        // For the LOCAL player: explicitly clear all equipment layers first.
+        // CustomProperties may still contain stale values from a previous world
+        // session (Photon keeps them on the local Player object across room joins).
+        // SpawnPlayer clears them, but SetCustomProperties is asynchronous — the
+        // local cache may not yet reflect the cleared values when Start() runs.
+        // By forcibly clearing the EquipmentManager here we guarantee the player
+        // spawns with a blank paper-doll.  The master will restore the correct
+        // server-saved appearance shortly after via RPC_RestoreAppearance.
+        if (photonView.IsMine && equipmentManager != null)
+        {
+            equipmentManager.EquipHair(string.Empty);
+            equipmentManager.EquipOutfit(string.Empty);
+            equipmentManager.EquipHat(string.Empty);
+            equipmentManager.EquipTool(string.Empty);
+        }
+
+        // For REMOTE players (and as a belt-and-suspenders for local):
+        // apply whatever is in the owner's custom properties so late-joiners
+        // see the correct appearance for players already in the room.
+        if (photonView.Owner != null && !photonView.IsMine)
             ApplyFromProperties(photonView.Owner.CustomProperties);
     }
 

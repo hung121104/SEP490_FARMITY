@@ -22,7 +22,7 @@ public class CreateWorld : MonoBehaviour
     [Tooltip("Scene to load after world creation (e.g., LoadWorldScene)")]
     private string sceneToLoad = "LoadGameScene";
 
-    private MyWorldListPresenter presenter;
+    private WorldPresenter presenter;
 
     private void Awake()
     {
@@ -36,8 +36,8 @@ public class CreateWorld : MonoBehaviour
         // If no presenter found, create a local one (keeps behavior consistent)
         if (presenter == null)
         {
-            IMyWorldListService service = new MyWorldListService();
-            presenter = new MyWorldListPresenter(service);
+            IWorldService service = new WorldService();
+            presenter = new WorldPresenter(service);
         }
     }
 

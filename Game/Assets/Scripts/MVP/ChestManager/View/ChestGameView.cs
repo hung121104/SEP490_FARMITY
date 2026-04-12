@@ -107,8 +107,9 @@ public class ChestGameView : MonoBehaviour
         if (chestSafeZone != null)
             presenter.SetSafeZone(chestSafeZone);
 
-        // Subscribe to chest item drop-to-world event
-        presenter.OnItemDropped += HandleChestItemDropped;
+        // Subscribe drop events: chest service fires directly to DroppedItemManagerView
+        if (DroppedItemManagerView.Instance != null)
+            DroppedItemManagerView.Instance.SubscribeDropEvents(chestService);
 
         // Load current state from ChestDataModule (Master's authoritative data)
         LoadChestStateFromModule();
@@ -147,10 +148,13 @@ public class ChestGameView : MonoBehaviour
         if (itemDetailView != null)
             itemDetailView.HideImmediate();
 
+        // Unsubscribe drop events from chest service
+        if (chestService != null && DroppedItemManagerView.Instance != null)
+            DroppedItemManagerView.Instance.UnsubscribeDropEvents(chestService);
+
         // Unsubscribe and cleanup presenter
         if (presenter != null)
         {
-            presenter.OnItemDropped -= HandleChestItemDropped;
             presenter.Cleanup();
         }
         presenter = null;
@@ -194,24 +198,6 @@ public class ChestGameView : MonoBehaviour
     private void TestCloseChestUI()
     {
         CloseChest();
-    }
-
-    #endregion
-
-    #region Drop To World
-
-    private void HandleChestItemDropped(ItemModel item)
-    {
-        Debug.Log($"[ChestGameView] Dropping chest item to world: {item.ItemName}");
-
-        if (DroppedItemManagerView.Instance != null)
-        {
-            DroppedItemManagerView.Instance.RequestDropItem(item);
-        }
-        else
-        {
-            Debug.LogError("[ChestGameView] DroppedItemManagerView.Instance is null — cannot drop item!");
-        }
     }
 
     #endregion

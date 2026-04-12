@@ -27,7 +27,6 @@ public class InventoryPresenter
 
     // Events for GameView or other systems
     public event Action<ItemModel> OnItemUsed;
-    public event Action<ItemModel> OnItemDropped;
 
     #region Initialization
 
@@ -236,6 +235,9 @@ public class InventoryPresenter
 
     private void HandleSlotSplit(int slotIndex)
     {
+        // When chest/structure UI is open, ChestPresenter handles the split instead
+        if (InteractableStructureBase.ActiveStructure != null) return;
+
         ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
         if (item == null || !item.IsStackable || item.Quantity <= 1) return;
@@ -333,14 +335,7 @@ public class InventoryPresenter
     private void HandleDropItem(int slotIndex)
     {
         ResetActionTimer();
-        var item = service.GetItemAtSlot(slotIndex);
-        // if (item != null && !item.IsQuestItem)
-        if (item != null)
-        {
-            OnItemDropped?.Invoke(item);
-            // Remove the entire stack from inventory (drop whole stack to world)
-            service.RemoveItemFromSlot(slotIndex, item.Quantity);
-        }
+        service.DropItemFromSlot(slotIndex);
     }
 
     private void HandleSort()

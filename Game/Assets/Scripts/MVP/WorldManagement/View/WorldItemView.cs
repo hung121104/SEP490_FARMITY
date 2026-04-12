@@ -77,6 +77,7 @@ public class WorldItemView : MonoBehaviour
             ? worldData.worldName 
             : "Unnamed World";
         manager.SetSelectedWorld(Id, displayName);
+        manager.SetNewWorld(false);
 
         if (string.IsNullOrEmpty(sceneName))
         {

@@ -165,8 +165,10 @@ public class StructureView : MonoBehaviourPunCallbacks
         var syncManager    = FindAnyObjectByType<ChunkDataSyncManager>();
         var loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
         var pool           = FindAnyObjectByType<StructurePool>();
+        var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
+        IInventoryService inventoryService = inventoryGameView != null ? inventoryGameView.GetInventoryService() : null;
 
-        IStructureService structureService = new StructureService(syncManager, loadingManager, pool, showDebugLogs);
+        IStructureService structureService = new StructureService(syncManager, loadingManager, pool, inventoryService, showDebugLogs);
         presenter = new StructurePresenter(structureService, showDebugLogs);
     }
 

@@ -11,14 +11,16 @@ public interface IInventoryService
     event Action<int, int>       OnItemsMoved;
     event Action<int>            OnSlotChanged;
     event Action                 OnInventoryChanged;
+    event Action<ItemModel>      OnItemDroppedToWorld;
 
     // Core Operations
-    bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null);
+    bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null, bool notifyToast = true);
     bool RemoveItem(string itemId, int quantity, Quality? quality = null);
     bool RemoveItemFromSlot(int slotIndex, int quantity);
     bool MoveItem(int fromSlot, int toSlot);
     bool SwapItems(int slotA, int slotB);
     bool PlaceItemAtSlot(int slotIndex, ItemData itemData, Quality quality, int quantity);
+    bool DropItemFromSlot(int slotIndex);
 
     // Query Operations
     ItemModel         GetItemAtSlot(int slotIndex);

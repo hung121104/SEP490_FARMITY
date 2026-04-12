@@ -92,7 +92,7 @@ public class PlayerHeartbeatManager : MonoBehaviour
 
             if (!success && statusCode == 401)
             {
-                SessionManager.Instance.ClearSession();
+                SessionManager.Instance.HandleJwtExpired("Heartbeat unauthorized (401)");
                 _trackedToken = null;
                 yield return new WaitForSecondsRealtime(IdlePollSeconds);
                 continue;

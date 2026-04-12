@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using TMPro;
 
 public class CalendarView : MonoBehaviour
@@ -24,9 +25,6 @@ public class CalendarView : MonoBehaviour
     [Header("Time")]
     [SerializeField] private TimeManagerView timeManager;
 
-    [Header("Input")]
-    [SerializeField] private KeyCode toggleKey = KeyCode.C;
-
     private const int DAYS_IN_MONTH = 28;
 
     private CalendarPresenter presenter;
@@ -47,6 +45,10 @@ public class CalendarView : MonoBehaviour
         // Calendar layer
         CalendarService calendarService = new CalendarService(timePresenter);
         presenter = new CalendarPresenter(calendarService);
+
+        // Subscribe input sau khi InputManager.Awake() đã chạy
+        if (InputManager.Instance != null)
+            InputManager.Instance.ToggleCalendar.performed += OnToggleCalendar;
     }
 
     void OnEnable()
@@ -65,14 +67,14 @@ public class CalendarView : MonoBehaviour
             timeManager.OnDayChanged -= OnTimeChanged;
             timeManager.OnMonthChanged -= OnTimeChanged;
         }
+
+        if (InputManager.Instance != null)
+            InputManager.Instance.ToggleCalendar.performed -= OnToggleCalendar;
     }
 
-    void Update()
+    private void OnToggleCalendar(InputAction.CallbackContext ctx)
     {
-        if (Input.GetKeyDown(toggleKey))
-        {
-            ToggleCalendar();
-        }
+        ToggleCalendar();
     }
 
     void ToggleCalendar()
