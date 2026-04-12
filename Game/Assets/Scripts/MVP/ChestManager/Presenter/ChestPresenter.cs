@@ -266,12 +266,12 @@ public class ChestPresenter
         if (item == null) return;
 
         // Check how much the player inventory can accept
-        int addable = playerInventoryService.GetAddableQuantity(item.ItemData, item.Quantity, item.Quality);
+        int addable = playerInventoryService.GetAddableQuantity(item.ItemId, item.Quantity);
         if (addable <= 0) return;
 
         // Transfer: remove from chest, add to player
         chestInventoryService.RemoveItemFromSlot(slot, addable);
-        playerInventoryService.AddItem(item.ItemId, addable, item.Quality);
+        playerInventoryService.AddItem(item.ItemId, addable, item.Quality, null, false);
 
         RefreshChestSlot(slot);
         RefreshPlayerView();
@@ -357,12 +357,12 @@ public class ChestPresenter
         if (item == null) return;
 
         // Check how much the chest can accept
-        int addable = chestInventoryService.GetAddableQuantity(item.ItemData, item.Quantity, item.Quality);
+        int addable = chestInventoryService.GetAddableQuantity(item.ItemId, item.Quantity);
         if (addable <= 0) return;
 
         // Transfer: remove from player, add to chest
         playerInventoryService.RemoveItemFromSlot(slot, addable);
-        chestInventoryService.AddItem(item.ItemId, addable, item.Quality);
+        chestInventoryService.AddItem(item.ItemId, addable, item.Quality, null, false);
 
         RefreshPlayerSlot(slot);
         RefreshChestView();

@@ -235,6 +235,9 @@ public class InventoryPresenter
 
     private void HandleSlotSplit(int slotIndex)
     {
+        // When chest/structure UI is open, ChestPresenter handles the split instead
+        if (InteractableStructureBase.ActiveStructure != null) return;
+
         ResetActionTimer();
         var item = service.GetItemAtSlot(slotIndex);
         if (item == null || !item.IsStackable || item.Quantity <= 1) return;
@@ -556,11 +559,6 @@ public class InventoryPresenter
     public int GetItemCount(string itemId)
     {
         return service.GetItemCount(itemId);
-    }
-
-    public int GetAddableQuantity(ItemData itemData, int quantity)
-    {
-        return service.GetAddableQuantity(itemData, quantity);
     }
 
     public void CancelAllActions()

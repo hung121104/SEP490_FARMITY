@@ -860,9 +860,15 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
     private System.Collections.IEnumerator WaitAndSendWorldData(int targetActorNumber)
     {
         float elapsed = 0f;
-        float timeout = 5f;
+        float timeout = 15f;
 
-        while (!WorldDataManager.Instance.IsInitialized && elapsed < timeout)
+        // Wait for WorldDataBootstrapper.IsReady, NOT WorldDataManager.IsInitialized.
+        // IsInitialized is set in Awake (before the DB fetch), so it is always true
+        // immediately and the loop would exit before PopulateChunks (and thus IsWatered
+        // restoration) has run.  IsReady is only set after FetchAndDistribute finishes.
+        while (WorldDataBootstrapper.Instance != null
+               && !WorldDataBootstrapper.Instance.IsReady
+               && elapsed < timeout)
         {
             elapsed += 0.25f;
             yield return new WaitForSeconds(0.25f);
@@ -1025,10 +1031,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                       (lastHitPlayerId != null ? $" by player {lastHitPlayerId}" : ""));
 
         // Drop chest contents to last hitter before unregistering chest
-        StructureService.ProcessChestContentsDrop(worldX, worldY, lastHitPlayerId);
+        StructureService.Instance?.ProcessChestContentsDrop(worldX, worldY, lastHitPlayerId);
 
         // Handle structure item drop for last hitter
-        StructureService.ProcessStructureItemDrop(worldX, worldY, structureId, lastHitPlayerId);
+        StructureService.Instance?.ProcessStructureItemDrop(worldX, worldY, structureId, lastHitPlayerId);
 
         // Refresh chunk visuals - this will properly release structures back to pool
         if (chunkLoadingManager != null)

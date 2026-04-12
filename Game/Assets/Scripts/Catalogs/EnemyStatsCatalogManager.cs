@@ -235,6 +235,9 @@ public class EnemyStatsCatalogManager : MonoBehaviour
 
         if (request.result != UnityWebRequest.Result.Success)
         {
+            if (request.responseCode == 401)
+                SessionManager.Instance?.HandleJwtExpired("Enemy stats register-missing unauthorized (401)");
+
             Debug.LogWarning($"[EnemyStatsCatalogManager] register-missing failed: {request.responseCode} {request.error}");
             yield break;
         }

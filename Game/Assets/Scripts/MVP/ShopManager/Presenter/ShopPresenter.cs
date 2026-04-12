@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -32,9 +32,14 @@ public class ShopPresenter
         _view.OnItemDroppedToSell += HandleItemDroppedToSell;
 
     
-        if (_inventoryUI != null) _inventoryUI.OnSlotClicked += HandleInventorySlotClicked;
+        if (_inventoryUI != null)
+        {
+            _inventoryUI.OnSlotClicked += HandleInventorySlotClicked;
+            _inventoryUI.OnSlotShiftClickRequested += HandleInventorySlotShiftClicked;
+        }
 
-        _view.OnSellSlotClicked += ReturnItemToInventory;
+        _view.OnSellSlotClicked += HandleSellSlotClicked;
+        _view.OnSellSlotShiftClicked += HandleSellSlotShiftClicked;
 
         _view.UpdateShopSlots(_shopService.GetShopModel().DailyItems);
         RefreshSellAreaUI();
@@ -64,8 +69,12 @@ public class ShopPresenter
 
     private void HandleInventorySlotClicked(int invSlotIndex)
     {
-        bool isShiftHeld = InputManager.Instance != null && InputManager.Instance.Sprint.IsPressed();
-        MoveItemToCart(invSlotIndex, moveWholeStack: isShiftHeld);
+        MoveItemToCart(invSlotIndex, moveWholeStack: false);
+    }
+
+    private void HandleInventorySlotShiftClicked(int invSlotIndex)
+    {
+        MoveItemToCart(invSlotIndex, moveWholeStack: true);
     }
 
 
@@ -114,7 +123,11 @@ public class ShopPresenter
         }
     }
 
-    private void ReturnItemToInventory(int sellSlotIndex)
+    private void HandleSellSlotClicked(int sellSlotIndex) => ReturnItemToInventory(sellSlotIndex, wholeStack: false);
+
+    private void HandleSellSlotShiftClicked(int sellSlotIndex) => ReturnItemToInventory(sellSlotIndex, wholeStack: true);
+
+    private void ReturnItemToInventory(int sellSlotIndex, bool wholeStack)
     {
         if (sellSlotIndex < 0 || sellSlotIndex >= _sellCart.Count) return;
 
@@ -123,9 +136,8 @@ public class ShopPresenter
 
         if (itemData != null)
         {
-            bool isShiftHeld = InputManager.Instance != null && InputManager.Instance.Sprint.IsPressed();
-            int amountToReturn = isShiftHeld ? cartItem.Quantity : 1;
-            _playerInventory.AddItem(itemData.itemID, amountToReturn);
+            int amountToReturn = wholeStack ? cartItem.Quantity : 1;
+            _playerInventory.AddItem(itemData.itemID, amountToReturn, cartItem.Quality, null, false);
 
             if (cartItem.Quantity > amountToReturn)
             {
@@ -173,7 +185,7 @@ public class ShopPresenter
             foreach (var item in _sellCart)
             {
                 var itemData = ItemCatalogService.Instance.GetItemData(item.ItemId);
-                if (itemData != null) _playerInventory.AddItem(itemData.itemID, item.Quantity);
+                if (itemData != null) _playerInventory.AddItem(itemData.itemID, item.Quantity, item.Quality, null, false);
             }
         }
 
@@ -184,8 +196,13 @@ public class ShopPresenter
         _view.OnConfirmSellClicked -= HandleConfirmSell;
         _view.OnCloseClicked -= HandleCloseShop;
         _view.OnItemDroppedToSell -= HandleItemDroppedToSell;
-        _view.OnSellSlotClicked -= ReturnItemToInventory;
-        if (_inventoryUI != null) _inventoryUI.OnSlotClicked -= HandleInventorySlotClicked;
+        _view.OnSellSlotClicked -= HandleSellSlotClicked;
+        _view.OnSellSlotShiftClicked -= HandleSellSlotShiftClicked;
+        if (_inventoryUI != null)
+        {
+            _inventoryUI.OnSlotClicked -= HandleInventorySlotClicked;
+            _inventoryUI.OnSlotShiftClickRequested -= HandleInventorySlotShiftClicked;
+        }
 
         Debug.Log("[ShopPresenter] Unsubscribed from all inventory events");
     }

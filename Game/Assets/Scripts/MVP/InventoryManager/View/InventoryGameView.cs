@@ -274,9 +274,7 @@ public class InventoryGameView : MonoBehaviour
 
     public bool AddItem(string itemId, int quantity = 1)
     {
-        bool added = presenter.TryAddItem(itemId, quantity);
-        if (added) ItemPickupToastView.NotifyItemPickedUp(itemId, quantity);
-        return added;
+        return presenter.TryAddItem(itemId, quantity);
     }
 
     public bool RemoveItem(string itemId, int quantity)
@@ -292,11 +290,6 @@ public class InventoryGameView : MonoBehaviour
     public int GetItemCount(string itemId)
     {
         return presenter.GetItemCount(itemId);
-    }
-
-    public int GetAddableQuantity(ItemData itemData, int quantity)
-    {
-        return presenter.GetAddableQuantity(itemData, quantity);
     }
 
     public IInventoryService GetInventoryService() => service;

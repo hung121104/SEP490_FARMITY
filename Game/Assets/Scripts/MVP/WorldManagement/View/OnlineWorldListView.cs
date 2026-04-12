@@ -392,6 +392,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
 
             WorldSelectionManager manager = WorldSelectionManager.EnsureExists();
             manager.SetSelectedWorld(worldId, displayName);
+            manager.SetNewWorld(false);
 
             HashSet<string> blacklist = await blacklistPresenter.GetBlacklistSet(worldId);
             if (blacklist == null)
@@ -514,6 +515,7 @@ public class OnlineWorldListView : MonoBehaviourPunCallbacks
 
         WorldSelectionManager manager = WorldSelectionManager.EnsureExists();
         manager.SetSelectedWorld(worldId, displayName);
+        manager.SetNewWorld(false);
     }
 
     private void ShowLoading(bool show)

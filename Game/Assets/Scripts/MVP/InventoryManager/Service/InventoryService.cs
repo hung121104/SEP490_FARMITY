@@ -83,7 +83,7 @@ public class InventoryService : IInventoryService
 
     #region Add Operations
 
-    public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
+    public bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null, bool notifyToast = true)
     {
         var data = ItemCatalogService.Instance?.GetItemData(itemId);
         if (data == null)
@@ -91,10 +91,10 @@ public class InventoryService : IInventoryService
             Debug.LogWarning($"[InventoryService] Item '{itemId}' not found in catalog.");
             return false;
         }
-        return AddItem(data, quantity, quality, dropOffset);
+        return AddItem(data, quantity, quality, dropOffset, notifyToast);
     }
 
-    private bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null)
+    private bool AddItem(ItemData itemData, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null, bool notifyToast = true)
     {
         if (itemData == null || quantity <= 0)
             return false;
@@ -120,7 +120,7 @@ public class InventoryService : IInventoryService
                     SyncSlotToNetwork(slotIndex);
 
                     if (remainingQuantity <= 0)
-                        return true;
+                        break;
                 }
             }
         }
@@ -133,7 +133,7 @@ public class InventoryService : IInventoryService
             {
                 // Not enough space: drop remaining into the world
                 HandleRemainingItemDrop(itemData, quality, remainingQuantity, dropOffset);
-                return false;
+                break;
             }
 
             int stackSize = itemData.isStackable
@@ -149,7 +149,15 @@ public class InventoryService : IInventoryService
             remainingQuantity -= stackSize;
         }
 
-        return true;
+        int actuallyAdded = quantity - remainingQuantity;
+        if (actuallyAdded > 0 && notifyToast)
+        {
+            // TODO(MVP-debt): Toast nên subscribe IInventoryService.OnItemAdded
+            if (ItemPickupToastView.Instance != null)
+                ItemPickupToastView.NotifyItemPickedUp(itemData.itemID, actuallyAdded);
+        }
+
+        return actuallyAdded > 0;
     }
 
     private void HandleRemainingItemDrop(ItemData itemData, Quality quality, int quantity, Vector2? dropOffset)
@@ -407,6 +415,13 @@ public class InventoryService : IInventoryService
         return count;
     }
 
+    public int GetAddableQuantity(string itemId, int quantity) 
+    { 
+        var data = ItemCatalogService.Instance?.GetItemData(itemId);
+        if (data == null) return 0;
+        return GetAddableQuantity(data, quantity);
+    }
+
     public int GetAddableQuantity(ItemData itemData, int quantity, Quality quality = Quality.Normal)
     {
         if (itemData == null || quantity <= 0) return 0;
@@ -485,7 +500,36 @@ public class InventoryService : IInventoryService
                 mainItems.Add(item);
         }
 
-        var sorted = mainItems
+        // Merge stacks of the same item+quality before sorting
+        var merged = new System.Collections.Generic.List<ItemModel>();
+        foreach (var item in mainItems)
+        {
+            if (!item.IsStackable)
+            {
+                merged.Add(item);
+                continue;
+            }
+            var existing = merged.Find(m => m.ItemId == item.ItemId && m.Quality == item.Quality && m.Quantity < m.MaxStack);
+            if (existing != null)
+            {
+                int space = existing.MaxStack - existing.Quantity;
+                if (item.Quantity <= space)
+                {
+                    existing.AddQuantity(item.Quantity);
+                }
+                else
+                {
+                    existing.AddQuantity(space);
+                    merged.Add(new ItemModel(item.ItemData, item.Quality, item.Quantity - space, -1));
+                }
+            }
+            else
+            {
+                merged.Add(item);
+            }
+        }
+
+        var sorted = merged
             .OrderBy(item => item.ItemType)
             .ThenBy(item => item.ItemCategory)
             .ThenBy(item => item.ItemName)

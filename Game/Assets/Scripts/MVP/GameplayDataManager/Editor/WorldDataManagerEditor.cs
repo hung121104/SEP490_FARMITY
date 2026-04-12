@@ -48,6 +48,18 @@ public class WorldDataManagerEditor : Editor
         EditorGUILayout.LabelField($"  Chunks with Crops: {stats.ChunksWithCrops}");
         EditorGUILayout.LabelField($"  Total Crops: {stats.TotalCrops}");
         EditorGUILayout.LabelField($"  Total Tilled Tiles: {stats.TotalTilledTiles}");
+        // Count watered tiles across all sections
+        int totalWateredDebug = 0;
+        foreach (var cfg in manager.sectionConfigs)
+        {
+            if (!cfg.IsActive) continue;
+            var sec = manager.GetSection(cfg.SectionId);
+            if (sec == null) continue;
+            foreach (var ch in sec.Values)
+                foreach (var s in ch.tiles.Values)
+                    if (s.IsTilled && s.Crop.IsWatered) totalWateredDebug++;
+        }
+        EditorGUILayout.LabelField($"  Total Watered Tiles: {totalWateredDebug}");
         
         EditorGUILayout.Space(3);
         EditorGUILayout.LabelField("Structures", EditorStyles.miniBoldLabel);
@@ -96,6 +108,7 @@ public class WorldDataManagerEditor : Editor
                 "🌱 Crop with Tilled Ground (most common)\n" +
                 "🌿 Crop without Tilled (unusual)\n" +
                 "🟫 Tilled Ground Only (no crop)\n" +
+                "💧 = Tile is watered (shown inline per tile)\n" +
                 "🪨 Resource (Tree/Rock/Ore)\n" +
                 "⬜ Empty Tile (should not occur)", 
                 MessageType.None);
@@ -151,6 +164,7 @@ public class WorldDataManagerEditor : Editor
                     int tilledOnly = 0;
                     int emptyTiles = 0;
                     int resourcesOnly = 0;
+                    int wateredTiles = 0;
                     
                     foreach (var slot in chunk.tiles.Values)
                     {
@@ -160,6 +174,7 @@ public class WorldDataManagerEditor : Editor
                         else if (slot.HasResource) resourcesOnly++;
                         else if (slot.IsTilled) tilledOnly++;
                         else emptyTiles++;
+                        if (slot.IsTilled && slot.Crop.IsWatered) wateredTiles++;
                     }
 
                     if (!showEmptyChunks && totalTiles == 0)
@@ -186,6 +201,12 @@ public class WorldDataManagerEditor : Editor
                         EditorGUILayout.LabelField($"🌿 {cropsOnly}", GUILayout.Width(60));
                     if (resourcesOnly > 0)
                         EditorGUILayout.LabelField($"🪨 {resourcesOnly}", GUILayout.Width(60));
+                    if (wateredTiles > 0)
+                    {
+                        GUI.color = new Color(0.4f, 0.8f, 1f);
+                        EditorGUILayout.LabelField($"💧 {wateredTiles}", GUILayout.Width(60));
+                        GUI.color = Color.white;
+                    }
                     EditorGUILayout.LabelField($"Dirty: {(chunk.IsDirty ? "✓" : "✗")}", GUILayout.Width(70));
                     EditorGUILayout.EndHorizontal();
 
@@ -265,6 +286,27 @@ public class WorldDataManagerEditor : Editor
                                 GUILayout.Space(70);
                             }
                             
+                            // Watered status badge
+                            if (tile.IsTilled)
+                            {
+                                if (tile.Crop.IsWatered)
+                                {
+                                    GUI.color = new Color(0.4f, 0.85f, 1f);
+                                    EditorGUILayout.LabelField("💧 W", GUILayout.Width(38));
+                                    GUI.color = Color.white;
+                                }
+                                else
+                                {
+                                    GUI.color = new Color(0.6f, 0.6f, 0.6f);
+                                    EditorGUILayout.LabelField("  dry", GUILayout.Width(38));
+                                    GUI.color = Color.white;
+                                }
+                            }
+                            else
+                            {
+                                GUILayout.Space(38);
+                            }
+                            
                             EditorGUILayout.LabelField($"Pos: ({tile.WorldX}, {tile.WorldY})", GUILayout.Width(130));
                             
                             // Button to highlight position in scene
@@ -272,7 +314,7 @@ public class WorldDataManagerEditor : Editor
                             {
                                 Vector3 worldPos = new Vector3(tile.WorldX, tile.WorldY, 0);
                                 SceneView.lastActiveSceneView.LookAt(worldPos);
-                                Debug.Log($"Tile at ({tile.WorldX}, {tile.WorldY}) - Tilled: {tile.IsTilled}, HasCrop: {tile.HasCrop}, HasStructure: {tile.HasStructure}" + 
+                                Debug.Log($"Tile at ({tile.WorldX}, {tile.WorldY}) - Tilled: {tile.IsTilled}, Watered: {tile.Crop.IsWatered}, HasCrop: {tile.HasCrop}, HasStructure: {tile.HasStructure}" + 
                                          (tile.HasCrop ? $", PlantId: {tile.Crop.PlantId}, Stage: {tile.Crop.CropStage}" : "") +
                                          (tile.HasStructure ? $", StructureId: {tile.Structure.StructureId}" : ""));
                             }

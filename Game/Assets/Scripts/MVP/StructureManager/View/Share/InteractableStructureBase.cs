@@ -38,6 +38,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private bool _isTargeted = false;
     private bool _inputSubscribed = false;
     private bool _isBeingPooled = false;
+    private bool _isPointerOverUI = false;
 
     // ── Structure UI active tracking ─────────────────────────────────────
     private static InteractableStructureBase _activeStructure;
@@ -134,6 +135,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     private void Update()
     {
+        _isPointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
         CheckPlayerInRange();
     }
 
@@ -263,8 +265,8 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         // Block opening another structure while one is already open
         if (_activeStructure != null) return;
 
-        // Block interaction when the pointer is over a UI element
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+        // Block interaction when the pointer is over a UI element (cached from Update to avoid InputSystem callback timing issue)
+        if (_isPointerOverUI)
             return;
 
         if (_isTargeted)
