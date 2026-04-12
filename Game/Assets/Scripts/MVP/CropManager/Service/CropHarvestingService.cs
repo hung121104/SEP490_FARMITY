@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Photon.Pun;
 
@@ -13,7 +14,8 @@ public class CropHarvestingService : ICropHarvestingService
     private readonly CropManagerView cropManagerView;
     private readonly ChunkDataSyncManager syncManager;
     private readonly ChunkLoadingManager loadingManager;
-    private readonly InventoryGameView inventoryGameView;
+    private readonly Func<IInventoryService> inventoryServiceProvider;
+    private IInventoryService cachedInventoryService;
     private readonly ICropPollenService pollenService;
 
     public CropHarvestingService(
@@ -21,15 +23,22 @@ public class CropHarvestingService : ICropHarvestingService
         CropManagerView cropManagerView,
         ChunkDataSyncManager syncManager,
         ChunkLoadingManager loadingManager,
-        InventoryGameView inventoryGameView,
+        Func<IInventoryService> inventoryServiceProvider,
         ICropPollenService pollenService)
     {
-        this.worldData         = worldData;
-        this.cropManagerView   = cropManagerView;
-        this.syncManager       = syncManager;
-        this.loadingManager    = loadingManager;
-        this.inventoryGameView = inventoryGameView;
-        this.pollenService     = pollenService;
+        this.worldData                = worldData;
+        this.cropManagerView          = cropManagerView;
+        this.syncManager              = syncManager;
+        this.loadingManager           = loadingManager;
+        this.inventoryServiceProvider = inventoryServiceProvider;
+        this.pollenService            = pollenService;
+    }
+
+    private IInventoryService GetInventoryService()
+    {
+        if (cachedInventoryService != null) return cachedInventoryService;
+        cachedInventoryService = inventoryServiceProvider?.Invoke();
+        return cachedInventoryService;
     }
 
     // ── ICropHarvestingService ────────────────────────────────────────────
@@ -102,13 +111,18 @@ public class CropHarvestingService : ICropHarvestingService
         // Add item to inventory
         if (harvestedItem != null)
         {
-            if (inventoryGameView != null)
+            var inventoryService = GetInventoryService();
+            if (inventoryService != null)
             {
-                bool added = inventoryGameView.AddItem(harvestedItem.itemID, 1);
+                bool added = inventoryService.AddItem(harvestedItem.itemID, 1);
                 if (!added)
                     Debug.LogWarning($"[CropHarvestingService] Inventory full — could not add '{harvestedItem.itemName}'.");
                 else
                     Debug.Log($"[CropHarvestingService] Added '{harvestedItem.itemName}' from ({worldX},{worldY}).");
+            }
+            else
+            {
+                Debug.LogWarning($"[CropHarvestingService] InventoryService not available — '{harvestedItem.itemName}' lost.");
             }
         }
         else

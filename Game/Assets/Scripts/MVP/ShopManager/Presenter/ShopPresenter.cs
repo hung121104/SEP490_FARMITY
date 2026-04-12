@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -125,7 +125,7 @@ public class ShopPresenter
         {
             bool isShiftHeld = InputManager.Instance != null && InputManager.Instance.Sprint.IsPressed();
             int amountToReturn = isShiftHeld ? cartItem.Quantity : 1;
-            _playerInventory.AddItem(itemData.itemID, amountToReturn);
+            _playerInventory.AddItem(itemData.itemID, amountToReturn, cartItem.Quality, null, false);
 
             if (cartItem.Quantity > amountToReturn)
             {
@@ -173,7 +173,7 @@ public class ShopPresenter
             foreach (var item in _sellCart)
             {
                 var itemData = ItemCatalogService.Instance.GetItemData(item.ItemId);
-                if (itemData != null) _playerInventory.AddItem(itemData.itemID, item.Quantity);
+                if (itemData != null) _playerInventory.AddItem(itemData.itemID, item.Quantity, item.Quality, null, false);
             }
         }
 

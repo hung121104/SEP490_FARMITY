@@ -14,7 +14,7 @@ public interface IInventoryService
     event Action<ItemModel>      OnItemDroppedToWorld;
 
     // Core Operations
-    bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null);
+    bool AddItem(string itemId, int quantity = 1, Quality quality = Quality.Normal, Vector2? dropOffset = null, bool notifyToast = true);
     bool RemoveItem(string itemId, int quantity, Quality? quality = null);
     bool RemoveItemFromSlot(int slotIndex, int quantity);
     bool MoveItem(int fromSlot, int toSlot);
