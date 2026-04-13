@@ -1,5 +1,5 @@
 [build]
-buildCommand = "npm install -g pnpm && pnpm install && cd microservices/player-data-service && npx nest build"
+buildCommand = "npm install -g pnpm && pnpm install && pnpm --filter player-data-service build"
 
 [deploy]
 startCommand = "node microservices/player-data-service/dist/main"
