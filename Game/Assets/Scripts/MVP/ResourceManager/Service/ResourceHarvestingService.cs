@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 using Photon.Pun;
-
+using System.Collections.Generic;
 /// <summary>
 /// Forwards resource hit requests to the host-authoritative RPC path via
 /// ResourceInteractionManager. All validation and state mutation happen on the
@@ -154,6 +154,5 @@ public class ResourceHarvestingService : IResourceHarvestingService
             }
         }
     }
-}
 }
 
