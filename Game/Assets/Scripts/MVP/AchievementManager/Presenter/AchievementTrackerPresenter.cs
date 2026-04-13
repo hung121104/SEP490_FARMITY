@@ -14,12 +14,19 @@ namespace AchievementManager.Presenter
 
         private AchievementModel model;
         private IAchievementService service;
-        private AchievementPresenter presenter;
+        private IAchievementPresenter presenter;
 
         public bool IsInitialized { get; private set; } = false;
 
         private Dictionary<string, UpdateProgressRequest> pendingUpdates
             = new Dictionary<string, UpdateProgressRequest>();
+
+        /// <summary>
+        /// Achievements unlocked locally (isAchieved set to true on client)
+        /// but not yet confirmed by the server. Prevents flush/prune from
+        /// skipping these entries before the server has received the progress.
+        /// </summary>
+        private HashSet<string> locallyUnlockedIds = new HashSet<string>();
 
         private Coroutine debounceCoroutine;
         private Coroutine autosaveCoroutine;
@@ -57,7 +64,7 @@ namespace AchievementManager.Presenter
         public void Initialize(
             AchievementModel model,
             IAchievementService service,
-            AchievementPresenter presenter)
+            IAchievementPresenter presenter)
         {
             if (IsInitialized)
             {
@@ -189,7 +196,7 @@ namespace AchievementManager.Presenter
                 retryCoroutine = null;
             }
 
-            presenter?.StartCoroutine(ForceFlushCoroutine());
+            StartCoroutine(ForceFlushCoroutine());
         }
 
         private IEnumerator ForceFlushCoroutine()
@@ -260,6 +267,7 @@ namespace AchievementManager.Presenter
             bool hasNewPending = false;
             bool hasUnlockCandidate = false;
             HashSet<string> locallyUpdated = new HashSet<string>();
+            HashSet<string> locallyUnlocked = new HashSet<string>();
 
             foreach (AchievementData achievement in model.GetAllAchievements())
             {
@@ -290,13 +298,32 @@ namespace AchievementManager.Presenter
                             hasUnlockCandidate = true;
                     }
                 }
+
+                // Check if ALL requirements are met locally for this achievement
+                if (!achievement.isAchieved && locallyUpdated.Contains(achievement.achievementId)
+                    && AreAllRequirementsMetLocally(achievement))
+                {
+                    achievement.isAchieved = true;
+                    locallyUnlocked.Add(achievement.achievementId);
+                    locallyUnlockedIds.Add(achievement.achievementId);
+                }
             }
 
+            // Notify unlocks first, then progress for the rest
             foreach (string achievementId in locallyUpdated)
             {
                 AchievementData localData = model.GetAchievement(achievementId);
-                if (localData != null)
+                if (localData == null) continue;
+
+                if (locallyUnlocked.Contains(achievementId))
+                {
+                    Debug.Log($"[AchievementTrackerPresenter] 🎉 Local unlock: {localData.name}");
+                    presenter?.OnAchievementUnlocked(localData);
+                }
+                else
+                {
                     presenter?.OnProgressUpdated(localData);
+                }
             }
 
             if (!hasNewPending && pendingUpdates.Count == 0) return;
@@ -310,6 +337,28 @@ namespace AchievementManager.Presenter
             {
                 RestartDebounce(debounceDelay);
             }
+        }
+
+        /// <summary>
+        /// Check if ALL requirements of an achievement are met using local RAM counters.
+        /// Used for instant client-side unlock popup.
+        /// </summary>
+        private bool AreAllRequirementsMetLocally(AchievementData achievement)
+        {
+            if (achievement.requirements == null || achievement.requirements.Count == 0)
+                return false;
+
+            for (int i = 0; i < achievement.requirements.Count; i++)
+            {
+                AchievementRequirement req = achievement.requirements[i];
+                if (req == null || req.target <= 0) continue;
+
+                int localProgress = GetLocalProgress(req);
+                if (localProgress < req.target)
+                    return false;
+            }
+
+            return true;
         }
 
         private bool UpsertPendingUpdate(string achievementId, int requirementIndex, int progress)
@@ -462,7 +511,9 @@ namespace AchievementManager.Presenter
             foreach (UpdateProgressRequest pending in pendingUpdates.Values)
             {
                 AchievementData achievement = model.GetAchievement(pending.achievementId);
-                if (achievement == null || achievement.isAchieved) continue;
+                if (achievement == null) continue;
+                // Skip server-confirmed achieved, but NOT locally-unlocked
+                if (achievement.isAchieved && !locallyUnlockedIds.Contains(pending.achievementId)) continue;
                 if (achievement.requirements == null || pending.requirementIndex < 0 || pending.requirementIndex >= achievement.requirements.Count)
                     continue;
 
@@ -470,11 +521,13 @@ namespace AchievementManager.Presenter
 
                 int localProgress = GetLocalProgress(req);
                 int targetProgress = Mathf.Max(localProgress, pending.progress);
-                int serverProgress = achievement.progress != null && pending.requirementIndex < achievement.progress.Count
-                    ? achievement.progress[pending.requirementIndex]
-                    : 0;
 
-                if (targetProgress <= serverProgress) continue;
+                // Don't filter against achievement.progress[i] here.
+                // MarkDirtyAchievements optimistically writes local values into
+                // achievement.progress[i] for instant UI display, so comparing
+                // against it would always match and skip the request.
+                // The server handles idempotency (returns noop if stale).
+                if (targetProgress <= 0) continue;
 
                 requests.Add(new UpdateProgressRequest(
                     pending.achievementId,
@@ -490,6 +543,17 @@ namespace AchievementManager.Presenter
             BatchUpdateProgressResponse response,
             List<UpdateProgressRequest> submittedRequests)
         {
+            // Build a map of what we actually submitted so we can compare
+            // against the current pending value. If the pending entry has
+            // been updated to a higher progress since we built the batch,
+            // we must keep it so the new value gets flushed next cycle.
+            Dictionary<string, int> submittedProgressMap = new Dictionary<string, int>();
+            foreach (UpdateProgressRequest request in submittedRequests)
+            {
+                string k = BuildPendingKey(request.achievementId, request.requirementIndex);
+                submittedProgressMap[k] = request.progress;
+            }
+
             HashSet<string> removableKeys = new HashSet<string>();
 
             if (response.results != null)
@@ -499,13 +563,19 @@ namespace AchievementManager.Presenter
                     if (result == null) continue;
                     if (result.status != "updated" && result.status != "noop") continue;
 
-                    removableKeys.Add(BuildPendingKey(result.achievementId, result.requirementIndex));
+                    string key = BuildPendingKey(result.achievementId, result.requirementIndex);
+                    if (ShouldRemovePending(key, submittedProgressMap))
+                        removableKeys.Add(key);
                 }
             }
             else if (response.summary != null && response.summary.failed == 0)
             {
                 foreach (UpdateProgressRequest request in submittedRequests)
-                    removableKeys.Add(BuildPendingKey(request.achievementId, request.requirementIndex));
+                {
+                    string key = BuildPendingKey(request.achievementId, request.requirementIndex);
+                    if (ShouldRemovePending(key, submittedProgressMap))
+                        removableKeys.Add(key);
+                }
             }
 
             foreach (string key in removableKeys)
@@ -513,6 +583,24 @@ namespace AchievementManager.Presenter
 
             if (removableKeys.Count > 0)
                 SavePendingCache();
+        }
+
+        /// <summary>
+        /// Only remove a pending entry if its current progress has NOT grown
+        /// beyond what was submitted in the batch. If the player kept playing
+        /// while the flush was in-flight, the pending value will be higher
+        /// and must survive for the next flush cycle.
+        /// </summary>
+        private bool ShouldRemovePending(string key, Dictionary<string, int> submittedProgressMap)
+        {
+            if (!pendingUpdates.TryGetValue(key, out UpdateProgressRequest current))
+                return false; // already gone
+
+            if (!submittedProgressMap.TryGetValue(key, out int submittedProgress))
+                return true; // not in our batch, safe to remove
+
+            // Keep the entry if progress has increased since we built the batch
+            return current.progress <= submittedProgress;
         }
 
         private void PruneStalePendingUpdates()
@@ -531,7 +619,13 @@ namespace AchievementManager.Presenter
                 }
 
                 AchievementData achievement = model.GetAchievement(pending.achievementId);
-                if (achievement == null || achievement.isAchieved || achievement.requirements == null)
+                if (achievement == null || achievement.requirements == null)
+                {
+                    removable.Add(pair.Key);
+                    continue;
+                }
+                // Only prune server-confirmed achieved, not locally-unlocked
+                if (achievement.isAchieved && !locallyUnlockedIds.Contains(pending.achievementId))
                 {
                     removable.Add(pair.Key);
                     continue;
@@ -543,14 +637,12 @@ namespace AchievementManager.Presenter
                     continue;
                 }
 
-                AchievementRequirement req = achievement.requirements[pending.requirementIndex];
-                int localProgress = GetLocalProgress(req);
-                int serverProgress = achievement.progress != null && pending.requirementIndex < achievement.progress.Count
-                    ? achievement.progress[pending.requirementIndex]
-                    : 0;
-
-                if (Mathf.Max(localProgress, pending.progress) <= serverProgress)
-                    removable.Add(pair.Key);
+                // Don't compare against achievement.progress[i] to decide
+                // whether to prune. That value may have been optimistically
+                // updated by MarkDirtyAchievements before the server confirmed.
+                // Pending entries are cleaned by RemoveSucceededPending after
+                // a successful server response — pruning here is only for
+                // structurally invalid entries (handled above).
             }
 
             if (removable.Count == 0) return;
@@ -623,6 +715,10 @@ namespace AchievementManager.Presenter
                 wasAchievedMap.TryGetValue(updated.achievementId, out bool value) && value;
 
             model.UpsertAchievement(updated);
+
+            // Server confirmed this achievement — no longer "locally unlocked only"
+            if (updated.isAchieved)
+                locallyUnlockedIds.Remove(updated.achievementId);
 
             if (notified.Contains(updated.achievementId)) return;
 

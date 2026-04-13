@@ -1,13 +1,13 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using AchievementManager.Model;
-using AchievementManager.Presenter;
 
 namespace AchievementManager.View
 {
-    public class AchievementPanelView : MonoBehaviour
+    public class AchievementPanelView : MonoBehaviour, IAchievementPanelView
     {
         #region Serialized Fields
 
@@ -21,6 +21,7 @@ namespace AchievementManager.View
         [SerializeField] private GameObject achievementItemPrefab;
 
         [Header("Buttons")]
+        [SerializeField] private Button openPanelButton;
         [SerializeField] private Button closeButton;
         [SerializeField] private Button refreshButton;
 
@@ -37,6 +38,14 @@ namespace AchievementManager.View
 
         #endregion
 
+        #region Events
+
+        public event Action OnOpenRequested;
+        public event Action OnCloseRequested;
+        public event Action OnRefreshRequested;
+
+        #endregion
+
         #region Unity Lifecycle
 
         private void Start()
@@ -48,7 +57,17 @@ namespace AchievementManager.View
         private void Update()
         {
             if (IsOpen && Input.GetKeyDown(KeyCode.Escape))
-                AchievementPresenter.Instance?.ClosePanel();
+                OnCloseRequested?.Invoke();
+        }
+
+        private void OnDestroy()
+        {
+            if (openPanelButton != null)
+                openPanelButton.onClick.RemoveListener(HandleOpenClicked);
+            if (closeButton != null)
+                closeButton.onClick.RemoveListener(HandleCloseClicked);
+            if (refreshButton != null)
+                refreshButton.onClick.RemoveListener(HandleRefreshClicked);
         }
 
         #endregion
@@ -57,22 +76,30 @@ namespace AchievementManager.View
 
         private void SetupButtons()
         {
+            if (openPanelButton != null)
+                openPanelButton.onClick.AddListener(HandleOpenClicked);
+
             if (closeButton != null)
-                closeButton.onClick.AddListener(OnCloseClicked);
+                closeButton.onClick.AddListener(HandleCloseClicked);
 
             if (refreshButton != null)
-                refreshButton.onClick.AddListener(OnRefreshClicked);
+                refreshButton.onClick.AddListener(HandleRefreshClicked);
         }
 
-        private void OnCloseClicked()
+        private void HandleOpenClicked()
         {
-            AchievementPresenter.Instance?.ClosePanel();
+            OnOpenRequested?.Invoke();
         }
 
-        private void OnRefreshClicked()
+        private void HandleCloseClicked()
+        {
+            OnCloseRequested?.Invoke();
+        }
+
+        private void HandleRefreshClicked()
         {
             ShowLoading(true);
-            AchievementPresenter.Instance?.OpenPanel();
+            OnRefreshRequested?.Invoke();
         }
 
         #endregion
@@ -143,7 +170,7 @@ namespace AchievementManager.View
             spawnedItems.Clear();
         }
 
-        private void ShowLoading(bool show)
+        public void ShowLoading(bool show)
         {
             if (loadingIndicator != null)
                 loadingIndicator.SetActive(show);

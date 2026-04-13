@@ -5,80 +5,74 @@ using AchievementManager.Model;
 using AchievementManager.Service;
 using AchievementManager.View;
 using System;
-using UnityEngine.UI;
 
 namespace AchievementManager.Presenter
 {
-    public class AchievementPresenter : MonoBehaviour
+    public class AchievementPresenter : IAchievementPresenter
     {
-        #region Singleton
+        public static IAchievementPresenter Instance { get; internal set; }
 
-        public static AchievementPresenter Instance { get; private set; }
+        #region Dependencies
 
-        private void Awake()
-        {
-            if (Instance != null && Instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-            InitializeComponents();
-        }
+        private readonly AchievementModel model;
+        private readonly IAchievementService service;
+        private readonly IAchievementPanelView panelView;
+        private readonly AchievementUnlockPopupView unlockPopupView;
+        private readonly MonoBehaviour coroutineHost;
+        private readonly float fetchDelay;
+        private readonly float catalogWaitTimeout;
 
-        #endregion
-
-        #region Serialized Fields
-
-        [Header("Views")]
-        [SerializeField] private AchievementPanelView panelView;
-        [SerializeField] private AchievementUnlockPopupView unlockPopupView;
-
-        [Header("Buttons")]
-        [SerializeField] private Button openPanelButton;
-
-        [Header("Settings")]
-        [SerializeField] private float fetchDelay = 1f;
-        [SerializeField] private float catalogWaitTimeout = 10f;
-
-        #endregion
-
-        #region Runtime Components
-
-        private AchievementModel model;
-        private IAchievementService service;
         private AchievementTrackerPresenter tracker;
 
         #endregion
 
-        #region Initialization
+        #region Construction
 
-        private void InitializeComponents()
+        public AchievementPresenter(
+            AchievementModel model,
+            IAchievementService service,
+            IAchievementPanelView panelView,
+            AchievementUnlockPopupView unlockPopupView,
+            MonoBehaviour coroutineHost,
+            float fetchDelay = 1f,
+            float catalogWaitTimeout = 10f)
         {
-            model   = new AchievementModel();
-            service = new AchievementService();
+            this.model = model;
+            this.service = service;
+            this.panelView = panelView;
+            this.unlockPopupView = unlockPopupView;
+            this.coroutineHost = coroutineHost;
+            this.fetchDelay = fetchDelay;
+            this.catalogWaitTimeout = catalogWaitTimeout;
 
-            tracker = GetComponent<AchievementTrackerPresenter>();
-            if (tracker == null)
-                tracker = gameObject.AddComponent<AchievementTrackerPresenter>();
-
-            // ✅ Fix: Initialize tracker immediately in Awake
-            // Don't wait for fetch - tracker needs to be ready ASAP
-            // model.isLoaded = false so tracker will guard itself
-            tracker.Initialize(model, service, this);
-
-            Debug.Log("[AchievementPresenter] Components initialized");
+            SubscribeToViewEvents();
+            Debug.Log("[AchievementPresenter] Initialized");
         }
 
-        private void Start()
+        public void SetTracker(AchievementTrackerPresenter tracker)
         {
-            WireOpenPanelButton(openPanelButton);
+            this.tracker = tracker;
         }
 
-        private void OnDestroy()
+        public void Dispose()
         {
-            UnwireOpenPanelButton(openPanelButton);
+            UnsubscribeFromViewEvents();
+        }
+
+        private void SubscribeToViewEvents()
+        {
+            if (panelView == null) return;
+            panelView.OnOpenRequested += OpenPanel;
+            panelView.OnCloseRequested += ClosePanel;
+            panelView.OnRefreshRequested += OpenPanel;
+        }
+
+        private void UnsubscribeFromViewEvents()
+        {
+            if (panelView == null) return;
+            panelView.OnOpenRequested -= OpenPanel;
+            panelView.OnCloseRequested -= ClosePanel;
+            panelView.OnRefreshRequested -= OpenPanel;
         }
 
         #endregion
@@ -88,7 +82,7 @@ namespace AchievementManager.Presenter
         public void OnLoginSuccess()
         {
             Debug.Log("[AchievementPresenter] Login detected → fetching achievements...");
-            StartCoroutine(FetchAfterDelay());
+            coroutineHost.StartCoroutine(FetchAfterDelay());
         }
 
         private IEnumerator FetchAfterDelay()
@@ -339,16 +333,6 @@ namespace AchievementManager.Presenter
 
         #region Panel Control
 
-        public void SetOpenPanelButton(Button button)
-        {
-            if (ReferenceEquals(openPanelButton, button))
-                return;
-
-            UnwireOpenPanelButton(openPanelButton);
-            openPanelButton = button;
-            WireOpenPanelButton(openPanelButton);
-        }
-
         public void OpenPanel()
         {
             panelView?.Show();
@@ -357,11 +341,11 @@ namespace AchievementManager.Presenter
             {
                 // RAM-first display for instant panel response.
                 panelView?.Populate(model.GetAllAchievements());
-                StartCoroutine(FetchAllAchievements());
+                coroutineHost.StartCoroutine(FetchAllAchievements());
                 return;
             }
 
-            StartCoroutine(RefreshAndPopulatePanel());
+            coroutineHost.StartCoroutine(RefreshAndPopulatePanel());
         }
 
         public void ClosePanel()
@@ -381,23 +365,6 @@ namespace AchievementManager.Presenter
         {
             yield return FetchAllAchievements();
             panelView?.Populate(model.GetAllAchievements());
-        }
-
-        private void WireOpenPanelButton(Button button)
-        {
-            if (button == null)
-                return;
-
-            button.onClick.RemoveListener(OpenPanel);
-            button.onClick.AddListener(OpenPanel);
-        }
-
-        private void UnwireOpenPanelButton(Button button)
-        {
-            if (button == null)
-                return;
-
-            button.onClick.RemoveListener(OpenPanel);
         }
 
         #endregion
