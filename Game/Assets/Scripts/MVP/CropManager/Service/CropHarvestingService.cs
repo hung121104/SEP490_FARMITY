@@ -44,7 +44,6 @@ public class CropHarvestingService : ICropHarvestingService
         
         if (!worldData.HasCropAtWorldPosition(worldPos)) 
         {
-            Debug.LogWarning($"[CropHarvestingService] IsReadyToHarvest: No crop found at {worldPos}");
             return false;
         }
 

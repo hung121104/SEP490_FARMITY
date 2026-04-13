@@ -77,6 +77,7 @@ public class LeaveRoomButton : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient && WorldSaveManager.Instance != null)
         {
             Debug.Log($"{TRACE} [LeaveRoomButton] Master leaving: ForceSave before LeaveRoom.");
+            WorldSaveManager.Instance.SetLeavingRoomMode();
             WorldSaveManager.Instance.ForceSave();
 
             // Wait until the save coroutine finishes (or 10 s timeout)

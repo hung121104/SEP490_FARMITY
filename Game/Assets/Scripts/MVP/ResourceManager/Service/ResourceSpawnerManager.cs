@@ -168,9 +168,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         _chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
 
         _resourceHarvestingService = new ResourceHarvestingService(
-            WorldDataManager.Instance,
-            FindAnyObjectByType<ChunkDataSyncManager>(),
-            FindAnyObjectByType<InventoryGameView>(),
+            FindAnyObjectByType<ResourceInteractionManager>(),
             interactionRange
         );
     }
