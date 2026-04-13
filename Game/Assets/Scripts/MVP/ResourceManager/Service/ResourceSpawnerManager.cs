@@ -173,6 +173,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
             WorldDataManager.Instance,
             FindAnyObjectByType<ChunkDataSyncManager>(),
             InventoryServiceLocator.Resolve,
+            FindAnyObjectByType<ResourceInteractionManager>(),
             interactionRange
         );
     }
