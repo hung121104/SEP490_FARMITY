@@ -9,10 +9,6 @@ using System.Collections;
 [RequireComponent(typeof(PhotonView))]
 public class ResourceInteractionManager : MonoBehaviourPun
 {
-    [Header("Loot")]
-    [Tooltip("Room-object prefab name under a Resources folder for PhotonNetwork.InstantiateRoomObject.")]
-    [SerializeField] private string lootPrefabName = "LootPrefabName";
-
     [Header("FX")]
     [SerializeField] private string hitAnimatorTrigger = "Hit";
     [SerializeField] private float shakeIntensity = 0.1f;
@@ -56,15 +52,10 @@ public class ResourceInteractionManager : MonoBehaviourPun
     }
 
     [PunRPC]
-    public void RPC_Host_ProcessHit(
-        int chunkX,
-        int chunkY,
-        int tileIndex,
-        int damage,
-        string toolId,
-        PhotonMessageInfo info)
+    private void RPC_Host_ProcessHit(int chunkX, int chunkY, int tileIndex, int damage, string toolId, PhotonMessageInfo info)
     {
         if (!PhotonNetwork.IsMasterClient) return;
+        Debug.Log($"[ResourceHit] Received hit. WorldData initialized: {WorldDataManager.Instance?.IsInitialized}, CatalogReady: {ResourceCatalogManager.Instance?.IsReady}");
         if (damage <= 0) return;
 
         if (!TryGetChunk(chunkX, chunkY, out UnifiedChunkData chunk, out int sectionId))
@@ -183,6 +174,13 @@ public class ResourceInteractionManager : MonoBehaviourPun
         if (config.dropTable == null || config.dropTable.Count == 0)
             return;
 
+        var syncManager = FindAnyObjectByType<DroppedItemSyncManager>();
+        if (syncManager == null)
+        {
+            Debug.LogError("[ResourceInteractionManager] DroppedItemSyncManager not found — loot will not spawn.");
+            return;
+        }
+
         foreach (DropEntry drop in config.dropTable)
         {
             if (drop == null || string.IsNullOrEmpty(drop.itemId))
@@ -191,22 +189,39 @@ public class ResourceInteractionManager : MonoBehaviourPun
             if (Random.value > drop.dropChance)
                 continue;
 
-            int minAmount = Mathf.Max(0, drop.minAmount);
-            int maxAmount = Mathf.Max(minAmount, drop.maxAmount);
-            int amount = Random.Range(minAmount, maxAmount + 1);
-
-            for (int i = 0; i < amount; i++)
+            ItemData itemData = ItemCatalogService.Instance?.GetItemData(drop.itemId);
+            if (itemData == null)
             {
-                Vector3 offset = new Vector3(
-                    Random.Range(-0.25f, 0.25f),
-                    Random.Range(-0.25f, 0.25f),
-                    0f);
-
-                PhotonNetwork.InstantiateRoomObject(
-                    lootPrefabName,
-                    worldPos + offset,
-                    Quaternion.identity);
+                Debug.LogWarning($"[ResourceInteractionManager] ItemData not found for drop '{drop.itemId}' — skipping.");
+                continue;
             }
+
+            int minAmt = Mathf.Max(0, drop.minAmount);
+            int maxAmt = Mathf.Max(minAmt, drop.maxAmount);
+            int totalAmount = Random.Range(minAmt, maxAmt + 1);
+            if (totalAmount <= 0) continue;
+
+            Vector3 offset = new Vector3(
+                Random.Range(-0.25f, 0.25f),
+                Random.Range(-0.25f, 0.25f),
+                0f);
+            Vector3 spawnPos = worldPos + offset;
+
+            var data = new DroppedItemData
+            {
+                itemId      = itemData.itemID,
+                itemName    = itemData.itemName,
+                itemType    = itemData.itemType,
+                itemCategory = itemData.itemCategory,
+                quality     = Quality.Normal,
+                quantity    = totalAmount,
+                iconUrl     = itemData.iconUrl,
+                isStackable = itemData.isStackable,
+                worldX      = spawnPos.x,
+                worldY      = spawnPos.y,
+            };
+
+            syncManager.MasterSpawnDroppedItem(data);
         }
     }
 

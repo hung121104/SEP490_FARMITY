@@ -166,8 +166,12 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
             item.chunkY = chunkPos.y;
         }
 
+        // Fire immediately on master (no relay round-trip)
+        OnItemSpawned?.Invoke(item);
+
+        // Broadcast to other clients only
         byte[] payload = SerializeSingleItem(item);
-        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.All };
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
         PhotonNetwork.RaiseEvent(ITEM_SPAWNED, payload, opts, SendOptions.SendReliable);
 
         if (showDebugLogs)
@@ -303,9 +307,12 @@ public class DroppedItemSyncManager : MonoBehaviourPunCallbacks
             item.chunkY = chunkPos.y;
         }
 
-        // Broadcast ITEM_SPAWNED to all clients (including self)
+        // Fire immediately on master (no relay round-trip)
+        OnItemSpawned?.Invoke(item);
+
+        // Broadcast ITEM_SPAWNED to other clients only
         byte[] payload = SerializeSingleItem(item);
-        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.All };
+        RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
         PhotonNetwork.RaiseEvent(ITEM_SPAWNED, payload, opts, SendOptions.SendReliable);
 
         if (showDebugLogs)

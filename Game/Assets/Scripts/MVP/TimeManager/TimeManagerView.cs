@@ -217,6 +217,17 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
     }
     
     /// <summary>
+    /// Immediately flushes the current in-memory time into WorldDataManager.
+    /// Call this before a forced save (e.g. leave-room) so BuildPayload() reads
+    /// the latest time rather than a value up to syncInterval seconds stale.
+    /// </summary>
+    public void FlushTimeToWorldData()
+    {
+        if (WorldDataManager.Instance != null)
+            WorldDataManager.Instance.SetTime(day, month, year, hour, (int)minute);
+    }
+
+    /// <summary>
     /// Load time from room custom properties (for clients joining).
     /// Fires change events after applying so subscribers (SeasonManagerView,
     /// WeatherView, etc.) that have already called OnEnable are notified
