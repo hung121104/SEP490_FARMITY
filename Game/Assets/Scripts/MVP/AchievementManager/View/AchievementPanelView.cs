@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 using AchievementManager.Model;
@@ -13,6 +15,7 @@ namespace AchievementManager.View
 
         [Header("Panel")]
         [SerializeField] private CanvasGroup panelCanvasGroup;
+        [SerializeField] private GameObject panelObject;
 
         [Header("Container")]
         [SerializeField] private Transform inProgressContainer;
@@ -35,6 +38,8 @@ namespace AchievementManager.View
 
         public bool IsOpen { get; private set; } = false;
         private List<GameObject> spawnedItems = new List<GameObject>();
+        private InputAction escapeCloseAction;
+        private Coroutine reenableToggleRoutine;
 
         #endregion
 
@@ -48,16 +53,32 @@ namespace AchievementManager.View
 
         #region Unity Lifecycle
 
+        private void Awake()
+        {
+            escapeCloseAction = new InputAction("CloseAchievementPanel", InputActionType.Button, "<Keyboard>/escape");
+            escapeCloseAction.performed += OnEscapeClosePanel;
+        }
+
         private void Start()
         {
             SetupButtons();
             Hide();
         }
 
-        private void Update()
+        private void OnEnable()
         {
-            if (IsOpen && Input.GetKeyDown(KeyCode.Escape))
-                OnCloseRequested?.Invoke();
+            escapeCloseAction?.Enable();
+        }
+
+        private void OnDisable()
+        {
+            escapeCloseAction?.Disable();
+
+            if (reenableToggleRoutine != null)
+            {
+                StopCoroutine(reenableToggleRoutine);
+                reenableToggleRoutine = null;
+            }
         }
 
         private void OnDestroy()
@@ -68,6 +89,13 @@ namespace AchievementManager.View
                 closeButton.onClick.RemoveListener(HandleCloseClicked);
             if (refreshButton != null)
                 refreshButton.onClick.RemoveListener(HandleRefreshClicked);
+
+            if (escapeCloseAction != null)
+            {
+                escapeCloseAction.performed -= OnEscapeClosePanel;
+                escapeCloseAction.Dispose();
+                escapeCloseAction = null;
+            }
         }
 
         #endregion
@@ -110,7 +138,12 @@ namespace AchievementManager.View
         {
             if (panelCanvasGroup != null)
                 panelCanvasGroup.Show();
+
+            if (panelObject != null)
+                panelObject.SetActive(true);
+
             IsOpen = true;
+            ToggleInGameSettingMenu.SetGlobalAllowToggleState(false);
             Debug.Log("[AchievementPanelView] Panel opened");
         }
 
@@ -118,7 +151,16 @@ namespace AchievementManager.View
         {
             if (panelCanvasGroup != null)
                 panelCanvasGroup.Hide();
+
+            if (panelCanvasGroup == null && panelObject != null)
+                panelObject.SetActive(false);
+
             IsOpen = false;
+
+            if (reenableToggleRoutine != null)
+                StopCoroutine(reenableToggleRoutine);
+            reenableToggleRoutine = StartCoroutine(ReenableToggleNextFrame());
+
             Debug.Log("[AchievementPanelView] Panel closed");
         }
 
@@ -162,6 +204,19 @@ namespace AchievementManager.View
         #endregion
 
         #region Helpers
+
+        private void OnEscapeClosePanel(InputAction.CallbackContext _)
+        {
+            if (!IsOpen) return;
+            OnCloseRequested?.Invoke();
+        }
+
+        private IEnumerator ReenableToggleNextFrame()
+        {
+            yield return null;
+            ToggleInGameSettingMenu.SetGlobalAllowToggleState(true);
+            reenableToggleRoutine = null;
+        }
 
         private void ClearItems()
         {
