@@ -51,7 +51,7 @@ namespace AchievementManager.Presenter
         [Header("Autosave Settings")]
         [SerializeField] private float autosaveInterval = 15f;
         [SerializeField] private bool flushImmediatelyOnUnlockCandidate = true;
-        [SerializeField] private bool persistPendingAcrossSessions = false;
+        [SerializeField] private bool persistPendingAcrossSessions = true;
 
         [Header("Retry Settings")]
         [SerializeField] private float retryBaseDelay = 2f;
@@ -81,6 +81,14 @@ namespace AchievementManager.Presenter
             StartAutosaveLoop();
             IsInitialized = true;
             Debug.Log("[AchievementTrackerPresenter] Initialized and listening!");
+
+            // If there are cached pending updates from a previous session
+            // (e.g. quit before flush completed), flush them immediately.
+            if (pendingUpdates.Count > 0)
+            {
+                Debug.Log($"[AchievementTrackerPresenter] Found {pendingUpdates.Count} cached pending updates → immediate flush");
+                RestartDebounce(0.1f);
+            }
         }
 
         #endregion
@@ -180,8 +188,13 @@ namespace AchievementManager.Presenter
         /// </summary>
         public void ForceFlush()
         {
-            if (pendingUpdates.Count == 0) return;
+            if (pendingUpdates.Count == 0)
+            {
+                Debug.Log("[AchievementTrackerPresenter] ForceFlush called but no pending updates.");
+                return;
+            }
 
+            Debug.Log($"[AchievementTrackerPresenter] ForceFlush: saving {pendingUpdates.Count} pending to cache...");
             SavePendingCache();
 
             if (debounceCoroutine != null)
@@ -196,6 +209,10 @@ namespace AchievementManager.Presenter
                 retryCoroutine = null;
             }
 
+            // NOTE: This coroutine is best-effort. If the MonoBehaviour is
+            // destroyed (quit/scene change) before the HTTP call finishes,
+            // the request will be dropped. The real safety net is the
+            // persistent pending cache loaded on next Initialize().
             StartCoroutine(ForceFlushCoroutine());
         }
 
@@ -722,15 +739,9 @@ namespace AchievementManager.Presenter
 
             if (notified.Contains(updated.achievementId)) return;
 
-            if (!wasAchievedBefore && updated.isAchieved)
-            {
-                Debug.Log($"[AchievementTrackerPresenter] 🎉 Unlocked: {updated.name}");
-                presenter?.OnAchievementUnlocked(updated);
-            }
-            else
-            {
-                presenter?.OnProgressUpdated(updated);
-            }
+            // Unlock popup is handled exclusively by the client-side path
+            // (MarkDirtyAchievements). Server response only refreshes the panel.
+            presenter?.OnProgressUpdated(updated);
 
             notified.Add(updated.achievementId);
         }
