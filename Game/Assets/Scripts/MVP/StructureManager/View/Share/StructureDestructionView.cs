@@ -32,16 +32,11 @@ public class StructureDestructionView : MonoBehaviour
         ChunkDataSyncManager syncManager = FindAnyObjectByType<ChunkDataSyncManager>();
         ChunkLoadingManager loadingManager = FindAnyObjectByType<ChunkLoadingManager>();
 
-        IStructureService structureService = new StructureService(syncManager, loadingManager, pool, showDebugLogs);
-        presenter = new StructurePresenter(structureService, this, showDebugLogs);
+        var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
+        IInventoryService inventoryService = inventoryGameView != null ? inventoryGameView.GetInventoryService() : null;
 
-        // Wire static delegate so Service can add items to inventory
-        // without depending on InventoryGameView (View class) directly
-        StructureService.OnAddItemToInventory = (id, qty) =>
-        {
-            var invView = FindAnyObjectByType<InventoryGameView>();
-            return invView != null && invView.AddItem(id, qty);
-        };
+        IStructureService structureService = new StructureService(syncManager, loadingManager, pool, inventoryService, showDebugLogs);
+        presenter = new StructurePresenter(structureService, this, showDebugLogs);
 
         // Subscribe to tool events
         UseToolService.OnAxeImpactRequested += HandleToolUse;
@@ -56,9 +51,6 @@ public class StructureDestructionView : MonoBehaviour
         // Stop all active regen coroutines to prevent MissingReferenceException
         StopAllCoroutines();
         activeRegenTimers.Clear();
-
-        // Unwire static delegate
-        StructureService.OnAddItemToInventory = null;
 
         UseToolService.OnAxeImpactRequested -= HandleToolUse;
         UseToolService.OnPickaxeImpactRequested -= HandleToolUse;

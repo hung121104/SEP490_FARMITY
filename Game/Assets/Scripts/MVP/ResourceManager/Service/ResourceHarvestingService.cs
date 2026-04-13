@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Photon.Pun;
 
@@ -10,13 +11,23 @@ using Photon.Pun;
 public class ResourceHarvestingService : IResourceHarvestingService
 {
     private readonly ResourceInteractionManager _interactionManager;
+    private readonly WorldDataManager worldData;
+    private readonly ChunkDataSyncManager syncManager;
+    private readonly Func<IInventoryService> inventoryServiceProvider;
+    private IInventoryService cachedInventoryService;
     private readonly float interactionRange;
     private Transform localPlayerTransform;
 
     public ResourceHarvestingService(
+        WorldDataManager worldData,
+        ChunkDataSyncManager syncManager,
+        Func<IInventoryService> inventoryServiceProvider,
         ResourceInteractionManager interactionManager,
         float interactionRange)
     {
+        this.worldData = worldData;
+        this.syncManager = syncManager;
+        this.inventoryServiceProvider = inventoryServiceProvider;
         _interactionManager = interactionManager;
         this.interactionRange = Mathf.Max(0.1f, interactionRange);
 
@@ -104,5 +115,45 @@ public class ResourceHarvestingService : IResourceHarvestingService
         return false;
     }
 
+    private IInventoryService GetInventoryService()
+    {
+        if (cachedInventoryService != null) return cachedInventoryService;
+        cachedInventoryService = inventoryServiceProvider?.Invoke();
+        return cachedInventoryService;
+    }
+
+    private void DistributeLoot(List<DropEntry> dropTable)
+    {
+        var inventoryService = GetInventoryService();
+        if (inventoryService == null || dropTable == null || dropTable.Count == 0)
+        {
+            Debug.LogWarning("[ResourceHarvestingService] InventoryService not available — drops skipped.");
+            return;
+        }
+
+        foreach (DropEntry drop in dropTable)
+        {
+            if (string.IsNullOrEmpty(drop.itemId)) continue;
+
+            float chance = UnityEngine.Random.Range(0f, 1f);
+            if (chance <= drop.dropChance)
+            {
+                int amount = UnityEngine.Random.Range(Mathf.Max(1, drop.minAmount), Mathf.Max(1, drop.maxAmount) + 1);
+
+                bool added = inventoryService.AddItem(drop.itemId, amount);
+                if (!added)
+                {
+                    Debug.LogWarning(
+                        $"[ResourceHarvestingService] Inventory reached capacity while adding {amount}x {drop.itemId}. " +
+                        "Overflow was handled automatically by dropping remaining items.");
+                }
+                else
+                {
+                    Debug.Log($"[ResourceHarvestingService] Looted {amount}x {drop.itemId} from resource.");
+                }
+            }
+        }
+    }
+}
 }
 

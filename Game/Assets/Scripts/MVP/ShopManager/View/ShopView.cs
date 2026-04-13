@@ -42,6 +42,7 @@ public class ShopView : MonoBehaviour, IShopView, IDropHandler
     public event Action OnCloseClicked;
     public event Action<GameObject, int> OnItemDroppedToSell;
     public event Action<int> OnSellSlotClicked;
+    public event Action<int> OnSellSlotShiftClicked;
 
     private void Awake()
     {
@@ -71,20 +72,15 @@ public class ShopView : MonoBehaviour, IShopView, IDropHandler
     {
         if (shopSlotPrefab == null || buyContentContainer == null) return;
 
-       
         foreach (var slot in _spawnedBuySlots) Destroy(slot.gameObject);
         _spawnedBuySlots.Clear();
 
-      
         for (int i = 0; i < items.Count; i++)
         {
             var itemModel = items[i];
-            var data = ItemCatalogService.Instance.GetItemData(itemModel.ItemId);
-            if (data == null) continue; // item removed from catalog mid-game
-            var icon = ItemCatalogService.Instance.GetCachedSprite(itemModel.ItemId);
 
             ShopSlotView newSlot = Instantiate(shopSlotPrefab, buyContentContainer);
-            newSlot.Setup(i, icon, data.itemName, itemModel.Price, itemModel.IsSoldOut);
+            newSlot.Setup(i, itemModel.Icon, itemModel.ItemName, itemModel.Price, itemModel.IsSoldOut);
 
             int slotIndex = i;
             newSlot.OnBuyClicked += (idx) => OnBuyClicked?.Invoke(idx);
@@ -116,6 +112,7 @@ public class ShopView : MonoBehaviour, IShopView, IDropHandler
 
             slot.OnItemDropped += (draggedObj, slotIndex) => OnItemDroppedToSell?.Invoke(draggedObj, slotIndex);
             slot.OnSlotClicked += (slotIndex) => OnSellSlotClicked?.Invoke(slotIndex);
+            slot.OnSlotShiftClicked += (slotIndex) => OnSellSlotShiftClicked?.Invoke(slotIndex);
 
             _spawnedSellSlots.Add(slot);
         }

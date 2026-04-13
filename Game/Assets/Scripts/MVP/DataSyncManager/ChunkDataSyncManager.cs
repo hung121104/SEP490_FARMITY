@@ -1031,10 +1031,10 @@ public class ChunkDataSyncManager : MonoBehaviourPunCallbacks
                       (lastHitPlayerId != null ? $" by player {lastHitPlayerId}" : ""));
 
         // Drop chest contents to last hitter before unregistering chest
-        StructureService.ProcessChestContentsDrop(worldX, worldY, lastHitPlayerId);
+        StructureService.Instance?.ProcessChestContentsDrop(worldX, worldY, lastHitPlayerId);
 
         // Handle structure item drop for last hitter
-        StructureService.ProcessStructureItemDrop(worldX, worldY, structureId, lastHitPlayerId);
+        StructureService.Instance?.ProcessStructureItemDrop(worldX, worldY, structureId, lastHitPlayerId);
 
         // Refresh chunk visuals - this will properly release structures back to pool
         if (chunkLoadingManager != null)

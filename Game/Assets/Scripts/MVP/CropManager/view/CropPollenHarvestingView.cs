@@ -33,10 +33,12 @@ public class CropPollenHarvestingView : MonoBehaviourPun
     // ── Lifecycle ─────────────────────────────────────────────────────────
     void Awake()
     {
+        // Lazy provider: avoids race when InventoryGameView is on an inactive UI panel
+        // or hasn't finished its own Awake by the time this service is constructed.
         var service = new CropPollenService(
             WorldDataManager.Instance,
             FindAnyObjectByType<CropManagerView>(),
-            FindAnyObjectByType<InventoryGameView>()
+            InventoryServiceLocator.Resolve
         );
         presenter = new CropPollenPresenter(this, service);
     }

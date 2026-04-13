@@ -12,26 +12,28 @@ public class StructureService : IStructureService
     private readonly ChunkDataSyncManager syncManager;
     private readonly ChunkLoadingManager  loadingManager;
     private readonly IStructureDataProvider structureDataProvider;
+    private readonly IInventoryService inventoryService;
     private readonly bool showDebugLogs;
+
+    // Singleton accessor for external static callers like ChunkDataSyncManager
+    public static StructureService Instance { get; private set; }
 
     // Track pending hit requests being processed (Master only)
     private readonly HashSet<Vector3Int> processingHits = new HashSet<Vector3Int>();
 
-    /// <summary>
-    /// Static delegate for inventory operations.
-    /// Wired by View layer (Composition Root) so Service never depends on View directly.
-    /// </summary>
-    public static System.Func<string, int, bool> OnAddItemToInventory;
-
     public StructureService(ChunkDataSyncManager syncManager,
                             ChunkLoadingManager loadingManager,
                             IStructureDataProvider structureDataProvider,
+                            IInventoryService inventoryService,
                             bool showDebugLogs = true)
     {
         this.syncManager            = syncManager;
         this.loadingManager         = loadingManager;
         this.structureDataProvider  = structureDataProvider;
+        this.inventoryService       = inventoryService;
         this.showDebugLogs          = showDebugLogs;
+
+        Instance = this;
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -304,7 +306,7 @@ public class StructureService : IStructureService
 
     // ── Item Drop Delegates ──────────────────────────────────────────────
 
-    public static void ProcessStructureItemDrop(int worldX, int worldY, string structureId, string lastHitPlayerId)
+    public void ProcessStructureItemDrop(int worldX, int worldY, string structureId, string lastHitPlayerId)
     {
         if (string.IsNullOrEmpty(lastHitPlayerId) || string.IsNullOrEmpty(structureId))
             return;
@@ -313,17 +315,17 @@ public class StructureService : IStructureService
         if (localPlayerId != lastHitPlayerId)
             return;
 
-        if (OnAddItemToInventory == null)
+        if (inventoryService == null)
         {
-            Debug.LogError($"[StructureService] OnAddItemToInventory not wired - cannot add item {structureId}");
+            Debug.LogError($"[StructureService] IInventoryService not injected - cannot add item {structureId}");
             return;
         }
 
-        bool added = OnAddItemToInventory.Invoke(structureId, 1);
+        bool added = inventoryService.AddItem(structureId, 1);
         Debug.Log($"[StructureService] Added item {structureId} to inventory for last hitter {localPlayerId} - success={added}");
     }
 
-    public static void ProcessChestContentsDrop(int worldX, int worldY, string lastHitPlayerId)
+    public void ProcessChestContentsDrop(int worldX, int worldY, string lastHitPlayerId)
     {
         if (string.IsNullOrEmpty(lastHitPlayerId)) return;
 
@@ -345,9 +347,9 @@ public class StructureService : IStructureService
 
         Debug.Log($"[StructureService] Chest at ({tx},{ty}) destroyed — adding {slots.Count} items to inventory");
 
-        if (OnAddItemToInventory == null)
+        if (inventoryService == null)
         {
-            Debug.LogError("[StructureService] OnAddItemToInventory not wired — chest items lost!");
+            Debug.LogError("[StructureService] IInventoryService not injected — chest items lost!");
             return;
         }
 
@@ -356,7 +358,7 @@ public class StructureService : IStructureService
             var slot = slots[i];
             if (string.IsNullOrEmpty(slot.ItemId) || slot.Quantity <= 0) continue;
 
-            bool added = OnAddItemToInventory.Invoke(slot.ItemId, slot.Quantity);
+            bool added = inventoryService.AddItem(slot.ItemId, slot.Quantity);
             Debug.Log($"  [{i}] {slot.ItemId} x{slot.Quantity} → inventory success={added}");
         }
     }

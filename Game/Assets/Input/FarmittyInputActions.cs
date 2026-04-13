@@ -42,6 +42,7 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
                         { ""name"": ""UseSkillSlot3"", ""type"": ""Button"", ""id"": ""70707070-7070-7070-7070-707070707070"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""UseSkillSlot4"", ""type"": ""Button"", ""id"": ""71717171-7171-7171-7171-717171717171"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""OpenChat"",      ""type"": ""Button"", ""id"": ""77777777-7777-7777-7777-777777777777"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
+                        { ""name"": ""ToggleCalendar"", ""type"": ""Button"", ""id"": ""cccc0001-cccc-cccc-cccc-cccc0001cccc"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""ToggleSettings"", ""type"": ""Button"", ""id"": ""88888888-8888-8888-8888-888888888888"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""Sprint"",        ""type"": ""Button"", ""id"": ""99999999-9999-9999-9999-999999999999"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
                         { ""name"": ""UseItem"",       ""type"": ""Button"", ""id"": ""aaaa0001-0001-0001-0001-000000000001"", ""expectedControlType"": ""Button"",  ""processors"": """", ""interactions"": """", ""initialStateCheck"": false },
@@ -78,7 +79,8 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
                         { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000007"", ""path"": ""<Keyboard>/x"",              ""action"": ""UseSkillSlot2"", ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000008"", ""path"": ""<Keyboard>/c"",              ""action"": ""UseSkillSlot3"", ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000007-0001-0001-0001-000000000009"", ""path"": ""<Keyboard>/v"",              ""action"": ""UseSkillSlot4"", ""isComposite"": false, ""isPartOfComposite"": false },
-                        { ""name"": """", ""id"": ""b0000008-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/enter"",          ""action"": ""OpenChat"",      ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""b0000008-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/enter"",          ""action"": ""OpenChat"",         ""isComposite"": false, ""isPartOfComposite"": false },
+                        { ""name"": """", ""id"": ""eeee0001-eeee-eeee-eeee-eeee0001eeee"", ""path"": ""<Keyboard>/u"",             ""action"": ""ToggleCalendar"",   ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000009-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/escape"",         ""action"": ""ToggleSettings"", ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""b0000010-0001-0001-0001-000000000001"", ""path"": ""<Keyboard>/leftShift"",      ""action"": ""Sprint"",        ""isComposite"": false, ""isPartOfComposite"": false },
                         { ""name"": """", ""id"": ""cc000001-0001-0001-0001-000000000001"", ""path"": ""<Mouse>/leftButton"",        ""action"": ""UseItem"",       ""isComposite"": false, ""isPartOfComposite"": false },
@@ -172,8 +174,9 @@ public partial class FarmittyInputActions : IInputActionCollection2, IDisposable
         public InputAction UseSkillSlot2    => _wrapper.asset.FindAction("Player/UseSkillSlot2", throwIfNotFound: true);
         public InputAction UseSkillSlot3    => _wrapper.asset.FindAction("Player/UseSkillSlot3", throwIfNotFound: true);
         public InputAction UseSkillSlot4    => _wrapper.asset.FindAction("Player/UseSkillSlot4", throwIfNotFound: true);
-        public InputAction OpenChat      => _wrapper.asset.FindAction("Player/OpenChat",      throwIfNotFound: true);
-        public InputAction ToggleSettings => _wrapper.asset.FindAction("Player/ToggleSettings", throwIfNotFound: true);
+        public InputAction OpenChat         => _wrapper.asset.FindAction("Player/OpenChat",         throwIfNotFound: true);
+        public InputAction ToggleCalendar    => _wrapper.asset.FindAction("Player/ToggleCalendar",    throwIfNotFound: true);
+        public InputAction ToggleSettings    => _wrapper.asset.FindAction("Player/ToggleSettings",    throwIfNotFound: true);
         public InputAction Sprint        => _wrapper.asset.FindAction("Player/Sprint",        throwIfNotFound: true);
 
         // ── Hotbar / Item actions ──

@@ -5,6 +5,13 @@ public class ShopSystemManager : MonoBehaviour
 {
     public static ShopSystemManager Instance { get; private set; }
 
+    /// <summary>
+    /// Fires after the shop UI has been closed — regardless of whether the close was
+    /// initiated by the close button, the presenter, or ShopTrigger. Used by ShopTrigger
+    /// to clean up its player-input lock when the UI is closed from outside.
+    /// </summary>
+    public static event System.Action OnShopClosed;
+
     [Header("Inventory References")]
     [SerializeField] private InventoryGameView inventoryGameView;
     [SerializeField] private InventoryDropZone inventoryDropZone;
@@ -102,6 +109,8 @@ public class ShopSystemManager : MonoBehaviour
 
         if (inventoryDropZone != null) inventoryDropZone.AllowDropOutside = true;
         shopMainView.ToggleHotbar(true);
+
+        OnShopClosed?.Invoke();
     }
 
     private void ResetAllShopsForNewDay()

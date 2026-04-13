@@ -106,9 +106,7 @@ public class DroppedItemManagerView : MonoBehaviour
         {
             presenter.OnSpawnVisualRequested -= HandleSpawnVisualRequested;
             presenter.OnDespawnVisualRequested -= HandleDespawnVisualRequested;
-            presenter.OnAddToInventoryRequested -= HandleAddToInventoryRequested;
             presenter.OnClearAllVisualsRequested -= HandleClearAllVisualsRequested;
-            presenter.OnPartialPickupToInventoryRequested -= HandlePartialPickupToInventoryRequested;
             presenter.OnVisualQuantityUpdateRequested -= HandleVisualQuantityUpdateRequested;
         }
 
@@ -176,8 +174,12 @@ public class DroppedItemManagerView : MonoBehaviour
     /// </summary>
     private void InitializeMVP()
     {
+        // Resolve InventoryService
+        var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
+        IInventoryService inventoryService = inventoryGameView != null ? inventoryGameView.GetInventoryService() : null;
+
         // Create Service (merged registry + business logic)
-        service = new DroppedItemService(showDebugLogs);
+        service = new DroppedItemService(inventoryService, showDebugLogs);
 
         // Create Presenter
         presenter = new DroppedItemPresenter(
@@ -190,9 +192,7 @@ public class DroppedItemManagerView : MonoBehaviour
         // Subscribe View to Presenter events
         presenter.OnSpawnVisualRequested += HandleSpawnVisualRequested;
         presenter.OnDespawnVisualRequested += HandleDespawnVisualRequested;
-        presenter.OnAddToInventoryRequested += HandleAddToInventoryRequested;
         presenter.OnClearAllVisualsRequested += HandleClearAllVisualsRequested;
-        presenter.OnPartialPickupToInventoryRequested += HandlePartialPickupToInventoryRequested;
         presenter.OnVisualQuantityUpdateRequested += HandleVisualQuantityUpdateRequested;
 
         // Initialize the object pool
@@ -257,38 +257,7 @@ public class DroppedItemManagerView : MonoBehaviour
     public bool RequestPickupItem(string dropId)
     {
         if (presenter == null) return false;
-        
-        DroppedItemData data = presenter.GetDroppedItem(dropId);
-        if (data == null) return false;
-        
-        var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
-        if (inventoryGameView != null)
-        {
-            var itemData = ItemCatalogService.Instance?.GetItemData(data.itemId);
-            if (itemData != null)
-            {
-                int addable = inventoryGameView.GetAddableQuantity(itemData, data.quantity);
-
-                if (addable <= 0)
-                {
-                    if (showDebugLogs) Debug.Log($"[DroppedItemManagerView] Inventory full! Cannot pick up {data.itemName}");
-                    return false; // inventory is fully packed, do not pickup at all
-                }
-                else if (addable < data.quantity)
-                {
-                    if (showDebugLogs) Debug.Log($"[DroppedItemManagerView] Partial pickup: can fit {addable} out of {data.quantity}");
-                    if (syncManager == null) return false;
-                    presenter.SendPartialPickupRequest(dropId, addable);
-                    return true;
-                }else{
-                    presenter.RequestPickupItem(dropId);
-                    return true;
-                }
-            }
-        }
-
-        presenter.RequestPickupItem(dropId);
-        return true;
+        return presenter.RequestPickupItem(dropId);
     }
 
     /// <summary>Check if a dropped item exists in the registry.</summary>
@@ -362,16 +331,6 @@ public class DroppedItemManagerView : MonoBehaviour
     private void HandleDespawnVisualRequested(string dropId)
     {
         DespawnItemVisual(dropId);
-    }
-
-    private void HandleAddToInventoryRequested(DroppedItemData data)
-    {
-        AddItemToInventory(data, data.quantity);
-    }
-
-    private void HandlePartialPickupToInventoryRequested(DroppedItemData data, int amount)
-    {
-        AddItemToInventory(data, amount);
     }
 
     private void HandleVisualQuantityUpdateRequested(DroppedItemData data)
@@ -490,32 +449,6 @@ public class DroppedItemManagerView : MonoBehaviour
                 _itemPool?.Release(kvp.Value);
         }
         _activeVisuals.Clear();
-    }
-
-    // ── Inventory Integration ─────────────────────────────────────────────────
-
-    /// <summary>
-    /// Add the picked-up item back into the local player's inventory.
-    /// Uses InventoryGameView.AddItem() which is the existing public API.
-    /// </summary>
-    private void AddItemToInventory(DroppedItemData data, int amount)
-    {
-        var inventoryGameView = FindAnyObjectByType<InventoryGameView>();
-        if (inventoryGameView == null)
-        {
-            Debug.LogError("[DroppedItemManagerView] InventoryGameView not found — cannot add picked-up item!");
-            return;
-        }
-
-        bool added = inventoryGameView.AddItem(data.itemId, amount);
-
-        if (showDebugLogs)
-            Debug.Log($"[DroppedItemManagerView] Added to inventory: {data.itemName} x{amount} (quality={data.quality}) — success={added}");
-
-        if (!added)
-        {
-            Debug.LogWarning($"[DroppedItemManagerView] Inventory full! Could not add {data.itemName} x{amount}.");
-        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

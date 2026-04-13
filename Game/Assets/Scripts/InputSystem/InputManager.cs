@@ -30,8 +30,9 @@ public class InputManager : MonoBehaviour
     public InputAction UseSkillSlot2 => _actions.Player.UseSkillSlot2;
     public InputAction UseSkillSlot3 => _actions.Player.UseSkillSlot3;
     public InputAction UseSkillSlot4 => _actions.Player.UseSkillSlot4;
-    public InputAction OpenChat      => _actions.Player.OpenChat;
-    public InputAction Sprint        => _actions.Player.Sprint;
+    public InputAction OpenChat        => _actions.Player.OpenChat;
+    public InputAction ToggleCalendar  => _actions.Player.ToggleCalendar;
+    public InputAction Sprint          => _actions.Player.Sprint;
 
     // ───── Hotbar / Item actions ─────
     public InputAction UseItem       => _actions.Player.UseItem;

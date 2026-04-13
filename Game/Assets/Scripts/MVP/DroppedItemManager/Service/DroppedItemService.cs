@@ -9,11 +9,27 @@ public class DroppedItemService : IDroppedItemService
 {
     // ── Storage ───────────────────────────────────────────────
     private readonly Dictionary<string, DroppedItemData> items = new Dictionary<string, DroppedItemData>();
+    private readonly IInventoryService inventoryService;
     private readonly bool showDebugLogs;
 
-    public DroppedItemService(bool showDebugLogs = true)
+    public DroppedItemService(IInventoryService inventoryService, bool showDebugLogs = true)
     {
+        this.inventoryService = inventoryService;
         this.showDebugLogs = showDebugLogs;
+    }
+
+    // ── Inventory Integration ─────────────────────────────────
+
+    public int GetAddableQuantity(string itemId, int quantity)
+    {
+        if (itemId == null || inventoryService == null) return quantity;
+        return inventoryService.GetAddableQuantity(itemId, quantity);
+    }
+
+    public bool AddDroppedItemToInventory(string itemId, int quantity)
+    {
+        if (inventoryService == null) return false;
+        return inventoryService.AddItem(itemId, quantity);
     }
 
     // ── Data Creation ─────────────────────────────────────────
