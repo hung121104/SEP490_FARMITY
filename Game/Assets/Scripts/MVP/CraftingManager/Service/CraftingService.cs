@@ -6,20 +6,22 @@ using UnityEngine;
 public class CraftingService : ICraftingService
 {
     private readonly CraftingModel model;
+    private readonly IInventoryService inventory;
 
     // Events
     public event Action<RecipeModel, int> OnItemCrafted;
     public event Action<string> OnCraftFailed;
     public event Action<string> OnRecipeUnlocked;
 
-    public CraftingService(CraftingModel craftingModel)
+    public CraftingService(CraftingModel craftingModel, IInventoryService inventoryService)
     {
         model = craftingModel;
+        inventory = inventoryService;
     }
 
     #region Crafting Operations
 
-    public bool CanCraftRecipe(string recipeID, IInventoryService inventory)
+    public bool CanCraftRecipe(string recipeID)
     {
         var recipe = model.GetRecipe(recipeID);
 
@@ -39,14 +41,15 @@ public class CraftingService : ICraftingService
                 return false;
         }
 
-        // Check if inventory has space for result
-        if (!inventory.HasSpace())
+        int resultAmount = recipe.ResultQuantity;
+        int addableQuantity = inventory.GetAddableQuantity(recipe.ResultItemId, resultAmount);
+        if (addableQuantity < resultAmount)
             return false;
 
         return true;
     }
 
-    public bool CraftRecipe(string recipeID, IInventoryService inventory, int amount = 1)
+    public bool CraftRecipe(string recipeID, int amount = 1)
     {
         var recipe = model.GetRecipe(recipeID);
 
@@ -74,8 +77,11 @@ public class CraftingService : ICraftingService
             }
         }
 
-        // Check space
-        if (!inventory.HasSpace())
+        // Check space (including stackable merging)
+        int resultAmount = recipe.ResultQuantity * amount;
+
+        int addableQuantity = inventory.GetAddableQuantity(recipe.ResultItemId, resultAmount);
+        if (addableQuantity < resultAmount)
         {
             OnCraftFailed?.Invoke("Inventory is full");
             return false;
@@ -96,8 +102,6 @@ public class CraftingService : ICraftingService
             }
         }
 
-        // Add result item
-        int resultAmount = recipe.ResultQuantity * amount;
         bool added = inventory.AddItem(recipe.ResultItemId, resultAmount);
 
         if (!added)
@@ -217,14 +221,14 @@ public class CraftingService : ICraftingService
         return model.GetCookingRecipesByLevel(stationLevel);
     }
 
-    public List<RecipeModel> GetCraftableRecipes(IInventoryService inventory)
+    public List<RecipeModel> GetCraftableRecipes()
     {
         return model.GetUnlockedRecipes()
-            .Where(recipe => CanCraftRecipe(recipe.RecipeID, inventory))
+            .Where(recipe => CanCraftRecipe(recipe.RecipeID))
             .ToList();
     }
 
-    public Dictionary<string, int> GetMissingIngredients(string recipeID, IInventoryService inventory)
+    public Dictionary<string, int> GetMissingIngredients(string recipeID)
     {
         var recipe = model.GetRecipe(recipeID);
         var missing = new Dictionary<string, int>();

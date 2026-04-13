@@ -24,6 +24,9 @@ public class BlacklistService : IBlacklistService
 
             if (request.result != UnityWebRequest.Result.Success)
             {
+                if (request.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Blacklist GET unauthorized (401)");
+
                 Debug.LogError($"[BlacklistService] GET failed ({request.responseCode}): {request.error} - {request.downloadHandler.text}");
                 return null;
             }
@@ -71,6 +74,9 @@ public class BlacklistService : IBlacklistService
 
             if (request.result != UnityWebRequest.Result.Success)
             {
+                if (request.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired($"Blacklist {method} unauthorized (401)");
+
                 Debug.LogError($"[BlacklistService] {method} failed ({request.responseCode}): {request.error} - {request.downloadHandler.text}");
                 return null;
             }

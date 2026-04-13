@@ -276,6 +276,9 @@ public static class WorldApi
 #endif
             if (isError)
             {
+                if (req.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("World update unauthorized (401)");
+
                 Debug.LogError($"[WorldApi] PUT failed: {req.responseCode} {req.error}\n{req.downloadHandler.text}");
                 onComplete?.Invoke(false, req.downloadHandler.text);
             }
@@ -340,6 +343,9 @@ public static class WorldApi
 
         if (isError)
         {
+            if (req.responseCode == 401)
+                SessionManager.Instance?.HandleJwtExpired("World update async unauthorized (401)");
+
             Debug.LogError($"[WorldApi] PUT (async) failed: {req.responseCode} {req.error}\n{body}");
             return (false, body);
         }

@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// Stateless service handling cross-inventory item transfers between chest and player.
-/// Supports swap when target slot already contains an item.
+/// Supports stack merging when same stackable item meets, swap otherwise.
 /// Uses InventoryModel internal operations directly for atomic cross-model moves.
 /// </summary>
 public class ChestService : IChestService
@@ -24,9 +24,24 @@ public class ChestService : IChestService
             chestModel.SetItemAtSlot(chestSlot, playerItem);
             playerModel.ClearSlot(playerSlot);
         }
+        else if (chestItem.ItemId == playerItem.ItemId &&
+                 chestItem.Quality == playerItem.Quality &&
+                 chestItem.IsStackable)
+        {
+            // Merge stacks
+            int space = chestItem.MaxStack - chestItem.Quantity;
+            int move  = Mathf.Min(space, playerItem.Quantity);
+            if (move <= 0) return false;
+
+            chestItem.AddQuantity(move);
+            playerItem.AddQuantity(-move);
+
+            if (playerItem.Quantity <= 0)
+                playerModel.ClearSlot(playerSlot);
+        }
         else
         {
-            // Swap: exchange items between player and chest
+            // Swap
             chestModel.SetItemAtSlot(chestSlot, playerItem);
             playerModel.SetItemAtSlot(playerSlot, chestItem);
         }
@@ -51,9 +66,24 @@ public class ChestService : IChestService
             playerModel.SetItemAtSlot(playerSlot, chestItem);
             chestModel.ClearSlot(chestSlot);
         }
+        else if (playerItem.ItemId == chestItem.ItemId &&
+                 playerItem.Quality == chestItem.Quality &&
+                 playerItem.IsStackable)
+        {
+            // Merge stacks
+            int space = playerItem.MaxStack - playerItem.Quantity;
+            int move  = Mathf.Min(space, chestItem.Quantity);
+            if (move <= 0) return false;
+
+            playerItem.AddQuantity(move);
+            chestItem.AddQuantity(-move);
+
+            if (chestItem.Quantity <= 0)
+                chestModel.ClearSlot(chestSlot);
+        }
         else
         {
-            // Swap: exchange items between chest and player
+            // Swap
             playerModel.SetItemAtSlot(playerSlot, chestItem);
             chestModel.SetItemAtSlot(chestSlot, playerItem);
         }
@@ -77,6 +107,21 @@ public class ChestService : IChestService
             chestModel.SetItemAtSlot(toSlot, fromItem);
             chestModel.ClearSlot(fromSlot);
         }
+        else if (toItem.ItemId == fromItem.ItemId &&
+                 toItem.Quality == fromItem.Quality &&
+                 toItem.IsStackable)
+        {
+            // Merge stacks
+            int space = toItem.MaxStack - toItem.Quantity;
+            int move  = Mathf.Min(space, fromItem.Quantity);
+            if (move <= 0) return false;
+
+            toItem.AddQuantity(move);
+            fromItem.AddQuantity(-move);
+
+            if (fromItem.Quantity <= 0)
+                chestModel.ClearSlot(fromSlot);
+        }
         else
         {
             // Swap
@@ -86,3 +131,4 @@ public class ChestService : IChestService
         return true;
     }
 }
+

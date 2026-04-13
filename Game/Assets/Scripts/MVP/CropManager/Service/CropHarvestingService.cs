@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Photon.Pun;
 
@@ -13,7 +14,8 @@ public class CropHarvestingService : ICropHarvestingService
     private readonly CropManagerView cropManagerView;
     private readonly ChunkDataSyncManager syncManager;
     private readonly ChunkLoadingManager loadingManager;
-    private readonly InventoryGameView inventoryGameView;
+    private readonly Func<IInventoryService> inventoryServiceProvider;
+    private IInventoryService cachedInventoryService;
     private readonly ICropPollenService pollenService;
 
     public CropHarvestingService(
@@ -21,27 +23,44 @@ public class CropHarvestingService : ICropHarvestingService
         CropManagerView cropManagerView,
         ChunkDataSyncManager syncManager,
         ChunkLoadingManager loadingManager,
-        InventoryGameView inventoryGameView,
+        Func<IInventoryService> inventoryServiceProvider,
         ICropPollenService pollenService)
     {
-        this.worldData         = worldData;
-        this.cropManagerView   = cropManagerView;
-        this.syncManager       = syncManager;
-        this.loadingManager    = loadingManager;
-        this.inventoryGameView = inventoryGameView;
-        this.pollenService     = pollenService;
+        this.worldData                = worldData;
+        this.cropManagerView          = cropManagerView;
+        this.syncManager              = syncManager;
+        this.loadingManager           = loadingManager;
+        this.inventoryServiceProvider = inventoryServiceProvider;
+        this.pollenService            = pollenService;
+    }
+
+    private IInventoryService GetInventoryService()
+    {
+        if (cachedInventoryService != null) return cachedInventoryService;
+        cachedInventoryService = inventoryServiceProvider?.Invoke();
+        return cachedInventoryService;
     }
 
     // ── ICropHarvestingService ────────────────────────────────────────────
 
     public bool IsReadyToHarvest(Vector3 worldPos)
     {
-        if (worldData == null || cropManagerView == null) return false;
-        if (!worldData.HasCropAtWorldPosition(worldPos)) return false;
+        if (worldData == null || cropManagerView == null) 
+        {
+            Debug.LogWarning($"[CropHarvestingService] IsReadyToHarvest: worldData={worldData}, cropManagerView={cropManagerView}");
+            return false;
+        }
+        
+        if (!worldData.HasCropAtWorldPosition(worldPos)) 
+        {
+            return false;
+        }
 
         int wx = Mathf.FloorToInt(worldPos.x);
         int wy = Mathf.FloorToInt(worldPos.y);
-        return cropManagerView.IsCropReadyToHarvest(wx, wy);
+        bool isReady = cropManagerView.IsCropReadyToHarvest(wx, wy);
+        Debug.Log($"[CropHarvestingService] IsReadyToHarvest at ({wx},{wy}): {isReady}");
+        return isReady;
     }
 
     public bool TryHarvest(Vector3 worldPos, out ItemData harvestedItem)
@@ -74,10 +93,9 @@ public class CropHarvestingService : ICropHarvestingService
             return false;
         }
 
-        cropManagerView?.UnregisterCrop(worldX, worldY);
-        syncManager?.BroadcastCropRemoved(worldX, worldY);
-
-        // If it's raining, re-water the remaining tilled tile
+        // Re-water in RAM BEFORE the visual refresh so the first (and only) chunk refresh
+        // already sees IsWatered = true. RemoveCrop resets slot.Crop to default which clears
+        // IsWatered; without this, UnregisterCrop's RefreshChunkVisuals renders a dry tile.
         if (WeatherView.IsRaining && worldData.IsTilledAtWorldPosition(snappedPos))
         {
             worldData.WaterTileAtWorldPosition(snappedPos);
@@ -86,22 +104,24 @@ public class CropHarvestingService : ICropHarvestingService
                 syncManager.BroadcastTileWatered(worldX, worldY);
         }
 
-        if (loadingManager != null)
-        {
-            Vector2Int chunkPos = WorldDataManager.Instance.WorldToChunkCoords(snappedPos);
-            loadingManager.RefreshChunkVisuals(chunkPos);
-        }
+        cropManagerView?.UnregisterCrop(worldX, worldY);
+        syncManager?.BroadcastCropRemoved(worldX, worldY);
 
         // Add item to inventory
         if (harvestedItem != null)
         {
-            if (inventoryGameView != null)
+            var inventoryService = GetInventoryService();
+            if (inventoryService != null)
             {
-                bool added = inventoryGameView.AddItem(harvestedItem.itemID, 1);
+                bool added = inventoryService.AddItem(harvestedItem.itemID, 1);
                 if (!added)
                     Debug.LogWarning($"[CropHarvestingService] Inventory full — could not add '{harvestedItem.itemName}'.");
                 else
                     Debug.Log($"[CropHarvestingService] Added '{harvestedItem.itemName}' from ({worldX},{worldY}).");
+            }
+            else
+            {
+                Debug.LogWarning($"[CropHarvestingService] InventoryService not available — '{harvestedItem.itemName}' lost.");
             }
         }
         else

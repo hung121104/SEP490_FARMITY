@@ -250,7 +250,6 @@ Set up **4 separate** `RebindUIController` rows:
 | `Harvest` | F | Button | Harvest crops |
 | `OpenInventory` | Tab | Button | Toggle inventory |
 | `Attack` | Mouse Left | Button | Attack/tool use |
-| `UseSkill` | Q | Button | Active skill |
 | `OpenChat` | Enter | Button | Chat window |
 | `UseItem` | Mouse Left | Button | Use held item |
 | `ScrollItem` | Scroll Wheel Y | Axis | Cycle hotbar |

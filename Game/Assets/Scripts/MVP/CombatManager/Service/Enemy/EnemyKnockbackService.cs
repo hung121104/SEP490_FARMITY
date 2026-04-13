@@ -43,6 +43,9 @@ namespace CombatManager.Service
             float targetSquash = model.originalScale.y - model.squashPixels;
 
             Transform transform = coroutineRunner.transform;
+            // Preserve current facing sign so knockback visual scaling does not flip sprite direction.
+            float currentX = transform.localScale.x;
+            float currentZ = transform.localScale.z;
 
             // Stretch Y
             while (elapsed < model.waveDuration / 2)
@@ -50,9 +53,9 @@ namespace CombatManager.Service
                 elapsed += Time.deltaTime;
                 float progress = elapsed / (model.waveDuration / 2);
                 transform.localScale = new Vector3(
-                    model.originalScale.x,
+                    currentX,
                     Mathf.Lerp(model.originalScale.y, targetStretch, progress),
-                    model.originalScale.z
+                    currentZ
                 );
                 yield return null;
             }
@@ -65,9 +68,9 @@ namespace CombatManager.Service
                 elapsed += Time.deltaTime;
                 float progress = elapsed / (model.waveDuration / 2);
                 transform.localScale = new Vector3(
-                    model.originalScale.x,
+                    currentX,
                     Mathf.Lerp(targetStretch, targetSquash, progress),
-                    model.originalScale.z
+                    currentZ
                 );
                 yield return null;
             }
@@ -80,14 +83,14 @@ namespace CombatManager.Service
                 elapsed += Time.deltaTime;
                 float progress = elapsed / (model.waveDuration / 4);
                 transform.localScale = new Vector3(
-                    model.originalScale.x,
+                    currentX,
                     Mathf.Lerp(targetSquash, model.originalScale.y, progress),
-                    model.originalScale.z
+                    currentZ
                 );
                 yield return null;
             }
 
-            transform.localScale = model.originalScale;
+            transform.localScale = new Vector3(currentX, model.originalScale.y, currentZ);
         }
 
         public IEnumerator PlayFlashEffect()

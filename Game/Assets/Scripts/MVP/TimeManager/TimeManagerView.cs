@@ -36,10 +36,20 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
     public int hour = 0; // 0-23
     public float minute = 0f; // 0-59.999...
 
-    // Time speed: how many game hours per real second
+    // Time speed: how many game minutes per real second
     public float timeSpeed = 1f;
     
     private float nextSyncTime;
+
+    // Sleep-through-the-night
+    [Header("Sleep Settings")]
+    [Tooltip("Speed multiplier applied while sleeping (e.g. 100 = 100x normal speed)")]
+    public float sleepSpeedMultiplier = 100f;
+    [Tooltip("Hour the player wakes up (0-23). 6 = 6 AM")]
+    public int wakeUpHour = 6;
+    private bool _isSleeping = false;
+    private float _normalTimeSpeed;
+    public bool IsSleeping => _isSleeping;
 
     // Events
     public delegate void TimeChangedHandler();
@@ -48,6 +58,8 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
     public event TimeChangedHandler OnMonthChanged;
     public event TimeChangedHandler OnSeasonChanged;
     public event TimeChangedHandler OnYearChanged;
+    public event System.Action OnSleepStarted;
+    public event System.Action OnSleepEnded;
 
     void Start()
     {
@@ -136,6 +148,12 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
                 AdvanceDay();
             }
         }
+
+        // Check if sleep should end
+        if (_isSleeping && hour >= wakeUpHour && hour < wakeUpHour + 12)
+        {
+            StopSleeping();
+        }
     }
 
     private void AdvanceDay()
@@ -199,7 +217,21 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
     }
     
     /// <summary>
-    /// Load time from room custom properties (for clients joining)
+    /// Immediately flushes the current in-memory time into WorldDataManager.
+    /// Call this before a forced save (e.g. leave-room) so BuildPayload() reads
+    /// the latest time rather than a value up to syncInterval seconds stale.
+    /// </summary>
+    public void FlushTimeToWorldData()
+    {
+        if (WorldDataManager.Instance != null)
+            WorldDataManager.Instance.SetTime(day, month, year, hour, (int)minute);
+    }
+
+    /// <summary>
+    /// Load time from room custom properties (for clients joining).
+    /// Fires change events after applying so subscribers (SeasonManagerView,
+    /// WeatherView, etc.) that have already called OnEnable are notified
+    /// of the correct initial state regardless of Start() execution order.
     /// </summary>
     private void LoadTimeFromRoomProperties()
     {
@@ -208,20 +240,32 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
         
         Hashtable props = PhotonNetwork.CurrentRoom.CustomProperties;
         
-        if (props.ContainsKey(PROP_YEAR))
+        if (!props.ContainsKey(PROP_YEAR))
+            return;
+
+        int prevMonth = month;
+        int prevDay   = day;
+
+        year   = (int)props[PROP_YEAR];
+        month  = (int)props[PROP_MONTH];
+        day    = (int)props[PROP_DAY];
+        hour   = (int)props[PROP_HOUR];
+        minute = props[PROP_MINUTE] is double d ? (float)d : (float)props[PROP_MINUTE];
+
+        // Recalculate derived values
+        season = (Season)(month - 1);
+        week   = ((day - 1) / DaysPerWeek) + 1;
+
+        if (showDebugLogs)
+            Debug.Log($"[TimeManager] Loaded time from room: {GetCurrentTimeString()}");
+
+        // Always fire events so downstream systems (SeasonManagerView, WeatherView, etc.)
+        // initialise to the correct state no matter which Start() ran first.
+        OnDayChanged?.Invoke();
+        if (month != prevMonth)
         {
-            year = (int)props[PROP_YEAR];
-            month = (int)props[PROP_MONTH];
-            day = (int)props[PROP_DAY];
-            hour = (int)props[PROP_HOUR];
-            minute = (float)props[PROP_MINUTE];
-            
-            // Recalculate derived values
-            season = (Season)(month - 1);
-            week = ((day - 1) / DaysPerWeek) + 1;
-            
-            if (showDebugLogs)
-                Debug.Log($"[TimeManager] Loaded time from room: {GetCurrentTimeString()}");
+            OnMonthChanged?.Invoke();
+            OnSeasonChanged?.Invoke();
         }
     }
     
@@ -271,13 +315,39 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
             }
             if (propertiesThatChanged.ContainsKey(PROP_MINUTE))
             {
-                minute = (float)propertiesThatChanged[PROP_MINUTE];
+                object rawMin = propertiesThatChanged[PROP_MINUTE];
+                minute = rawMin is double dm ? (float)dm : (float)rawMin;
                 timeUpdated = true;
             }
             
             if (timeUpdated && showDebugLogs)
             {
                 Debug.Log($"[TimeManager] Time updated from Master Client: {GetCurrentTimeString()}");
+            }
+        }
+
+        // Handle sleep state sync (non-master clients)
+        if (!PhotonNetwork.IsMasterClient && propertiesThatChanged.ContainsKey(PROP_SLEEPING))
+        {
+            bool sleeping = (bool)propertiesThatChanged[PROP_SLEEPING];
+            float speed = PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey(PROP_SLEEP_SPEED)
+                ? System.Convert.ToSingle(PhotonNetwork.CurrentRoom.CustomProperties[PROP_SLEEP_SPEED])
+                : timeSpeed;
+
+            if (sleeping && !_isSleeping)
+            {
+                _isSleeping = true;
+                _normalTimeSpeed = timeSpeed;
+                timeSpeed = speed;
+                OnSleepStarted?.Invoke();
+            }
+            else if (!sleeping && _isSleeping)
+            {
+                _isSleeping = false;
+                timeSpeed = speed;
+                hour = wakeUpHour;
+                minute = 0f;
+                OnSleepEnded?.Invoke();
             }
         }
     }
@@ -315,6 +385,74 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
         return $"Year {year}, {season}, Month {month}, Week {week}, Day {day}, Hour {hour}, Minute {minute:F0}";
     }
 
+    // Photon room property key for sleep state
+    private const string PROP_SLEEPING = "WorldSleeping";
+    private const string PROP_SLEEP_SPEED = "WorldSleepSpeed";
+
+    /// <summary>
+    /// Start sleeping: speeds up time by sleepSpeedMultiplier until wakeUpHour.
+    /// All game logic (crop growth, etc.) runs normally at the accelerated rate.
+    /// </summary>
+    public void StartSleeping()
+    {
+        if (_isSleeping) return;
+
+        // Only allow sleeping at night (after 6 PM or before wake-up hour)
+        if (hour >= wakeUpHour && hour < 18)
+        {
+            if (showDebugLogs)
+                Debug.Log("[TimeManager] Cannot sleep during daytime.");
+            return;
+        }
+
+        _isSleeping = true;
+        _normalTimeSpeed = timeSpeed;
+        timeSpeed = _normalTimeSpeed * sleepSpeedMultiplier;
+        OnSleepStarted?.Invoke();
+
+        if (showDebugLogs)
+            Debug.Log($"[TimeManager] Sleep started. Speed: {timeSpeed} (was {_normalTimeSpeed})");
+
+        // Sync sleep state to other clients via room properties
+        if (PhotonNetwork.IsConnected && PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
+        {
+            Hashtable props = new Hashtable
+            {
+                { PROP_SLEEPING, true },
+                { PROP_SLEEP_SPEED, timeSpeed }
+            };
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+        }
+    }
+
+    private void StopSleeping()
+    {
+        if (!_isSleeping) return;
+
+        _isSleeping = false;
+        timeSpeed = _normalTimeSpeed;
+
+        // Snap to exact wake-up time for consistency
+        hour = wakeUpHour;
+        minute = 0f;
+
+        OnSleepEnded?.Invoke();
+
+        if (showDebugLogs)
+            Debug.Log($"[TimeManager] Sleep ended. Speed restored to {timeSpeed}");
+
+        if (PhotonNetwork.IsConnected && PhotonNetwork.IsMasterClient && PhotonNetwork.InRoom)
+        {
+            Hashtable props = new Hashtable
+            {
+                { PROP_SLEEPING, false },
+                { PROP_SLEEP_SPEED, timeSpeed }
+            };
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+            SyncTimeToRoomProperties();
+        }
+    }
+
     // Method to set time speed (Master Client only)
     public void SetTimeSpeed(float speed)
     {
@@ -323,8 +461,17 @@ public class TimeManagerView : MonoBehaviourPunCallbacks
             Debug.LogWarning("[TimeManager] Only Master Client can change time speed");
             return;
         }
-        
-        timeSpeed = speed;
+
+        // If sleeping, update the stored normal speed instead
+        if (_isSleeping)
+        {
+            _normalTimeSpeed = speed;
+            timeSpeed = speed * sleepSpeedMultiplier;
+        }
+        else
+        {
+            timeSpeed = speed;
+        }
     }
 
     // Method to pause time (Master Client only)

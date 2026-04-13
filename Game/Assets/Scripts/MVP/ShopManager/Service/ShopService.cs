@@ -34,7 +34,8 @@ public class ShopService : IShopService
         foreach (var itemData in validItems)
         {
             int finalPrice = itemData.buyPrice;
-            newShopItems.Add(new ShopItemModel(itemData.itemID, finalPrice));
+            var icon = ItemCatalogService.Instance.GetCachedSprite(itemData.itemID);
+            newShopItems.Add(new ShopItemModel(itemData.itemID, finalPrice, itemData.itemName, icon));
         }
 
         _model.SetDailyItems(newShopItems);
@@ -60,7 +61,7 @@ public class ShopService : IShopService
             int affordableAmount = WorldDataManager.Instance.Gold / shopItem.Price;
 
             // 3. Tính khoảng trống thực tế trong túi đồ có thể chứa bao nhiêu item này
-            int spaceAvailable = playerInventory.GetAddableQuantity(itemData, maxStack);
+            int spaceAvailable = playerInventory.GetAddableQuantity(shopItem.ItemId, maxStack);
 
             // Chốt số lượng mua: Lấy con số NHỎ NHẤT trong 3 điều kiện trên
             amountToBuy = Mathf.Min(maxStack, affordableAmount);
@@ -69,7 +70,7 @@ public class ShopService : IShopService
         else
         {
             // Nếu mua lẻ (không đè Shift), kiểm tra xem túi có chứa nổi 1 cái không
-            if (playerInventory.GetAddableQuantity(itemData, 1) < 1)
+            if (playerInventory.GetAddableQuantity(shopItem.ItemId, 1) < 1)
             {
                 Debug.LogWarning("[ShopService] Túi đồ không còn chỗ trống cho item này!");
                 return false;

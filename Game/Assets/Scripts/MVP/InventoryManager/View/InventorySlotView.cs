@@ -6,10 +6,7 @@ using UnityEngine.UI;
 
 public class InventorySlotView : MonoBehaviour, 
     IPointerClickHandler, 
-    IBeginDragHandler, 
-    IDragHandler, 
-    IEndDragHandler, 
-    IDropHandler,
+    IPointerDownHandler,
     IPointerEnterHandler,
     IPointerExitHandler
 {
@@ -28,10 +25,9 @@ public class InventorySlotView : MonoBehaviour,
 
     // Events
     public event Action<int> OnClickedRequested;
-    public event Action<int> OnBeginDragRequested;
-    public event Action<Vector2> OnDragRequested;
-    public event Action OnEndDragRequested;
-    public event Action<int> OnDropRequested;
+    public event Action<int> OnPointerDownRequested;
+    public event Action<int> OnRightClickRequested;
+    public event Action<int> OnShiftClickRequested;
     public event Action<int, Vector2> OnPointerEnterRequested;
     public event Action<int> OnPointerExitRequested;
 
@@ -107,7 +103,7 @@ public class InventorySlotView : MonoBehaviour,
     /// <summary>
     /// Show or hide the icon and quantity text in this slot.
     /// </summary>
-    private void SetSlotVisuals(bool visible)
+    public void SetSlotVisuals(bool visible)
     {
         if (iconImage != null)
             iconImage.enabled = visible && currentItem != null;
@@ -149,49 +145,25 @@ public class InventorySlotView : MonoBehaviour,
         OnClickedRequested?.Invoke(slotIndex);
     }
 
-    public void OnBeginDrag(PointerEventData eventData)
+    public void OnPointerDown(PointerEventData eventData)
     {
-        if (currentItem != null && !isLocked)
+        if (eventData.button == PointerEventData.InputButton.Left)
         {
-            isDragging = true;
-            // Hide highlight during drag
-            isHovering = false;
-            UpdateHighlight();
-
-            // Hide icon and quantity in slot while dragging
-            SetSlotVisuals(false);
-
-            OnBeginDragRequested?.Invoke(slotIndex);
-        }
-    }
-
-    public void OnDrag(PointerEventData eventData)
-    {
-        if (isDragging)
-        {
-            OnDragRequested?.Invoke(eventData.position);
-        }
-    }
-
-    public void OnEndDrag(PointerEventData eventData)
-    {
-        if (isDragging)
-        {
-            isDragging = false;
-
-            // Restore icon and quantity after drag ends
-            if (currentItem != null)
+            InventoryCarryState.SlotInteractedThisFrame = true;
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
             {
-                SetSlotVisuals(true);
+                OnShiftClickRequested?.Invoke(slotIndex);
             }
-
-            OnEndDragRequested?.Invoke();
+            else
+            {
+                OnPointerDownRequested?.Invoke(slotIndex);
+            }
         }
-    }
-
-    public void OnDrop(PointerEventData eventData)
-    {
-        OnDropRequested?.Invoke(slotIndex);
+        else if (eventData.button == PointerEventData.InputButton.Right)
+        {
+            InventoryCarryState.SlotInteractedThisFrame = true;
+            OnRightClickRequested?.Invoke(slotIndex);
+        }
     }
 
     public void OnPointerEnter(PointerEventData eventData)

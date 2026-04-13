@@ -22,17 +22,17 @@ public class InputManager : MonoBehaviour
     public InputAction Interact      => _actions.Player.Interact;
     public InputAction OpenInventory => _actions.Player.OpenInventory;
     public InputAction Attack        => _actions.Player.Attack;
-    public InputAction UseSkill      => _actions.Player.UseSkill;
     public InputAction SkillConfirm  => _actions.Player.SkillConfirm;
     public InputAction SkillCancel   => _actions.Player.SkillCancel;
-    public InputAction WeaponSkillTrigger => _actions.Player.WeaponSkillTrigger;
-    public InputAction SkillManagementToggle => _actions.Player.SkillManagementToggle;
-    public InputAction SkillSlot1    => _actions.Player.SkillSlot1;
-    public InputAction SkillSlot2    => _actions.Player.SkillSlot2;
-    public InputAction SkillSlot3    => _actions.Player.SkillSlot3;
-    public InputAction SkillSlot4    => _actions.Player.SkillSlot4;
-    public InputAction OpenChat      => _actions.Player.OpenChat;
-    public InputAction Sprint        => _actions.Player.Sprint;
+    public InputAction UseWeaponSkill => _actions.Player.UseWeaponSkill;
+    public InputAction OpenCharacterProgression => _actions.Player.OpenCharacterProgression;
+    public InputAction UseSkillSlot1 => _actions.Player.UseSkillSlot1;
+    public InputAction UseSkillSlot2 => _actions.Player.UseSkillSlot2;
+    public InputAction UseSkillSlot3 => _actions.Player.UseSkillSlot3;
+    public InputAction UseSkillSlot4 => _actions.Player.UseSkillSlot4;
+    public InputAction OpenChat        => _actions.Player.OpenChat;
+    public InputAction ToggleCalendar  => _actions.Player.ToggleCalendar;
+    public InputAction Sprint          => _actions.Player.Sprint;
 
     // ───── Hotbar / Item actions ─────
     public InputAction UseItem       => _actions.Player.UseItem;
@@ -69,17 +69,17 @@ public class InputManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns the SkillSlotN action for a 0-based index (0 -> SkillSlot1, etc.).
+    /// Returns the UseSkillSlotN action for a 0-based index (0 -> UseSkillSlot1, etc.).
     /// Returns null if index is out of range.
     /// </summary>
     public InputAction GetSkillSlotAction(int index)
     {
         return index switch
         {
-            0 => SkillSlot1,
-            1 => SkillSlot2,
-            2 => SkillSlot3,
-            3 => SkillSlot4,
+            0 => UseSkillSlot1,
+            1 => UseSkillSlot2,
+            2 => UseSkillSlot3,
+            3 => UseSkillSlot4,
             _ => null
         };
     }
@@ -173,6 +173,42 @@ public class InputManager : MonoBehaviour
                 {
                     action.ApplyBindingOverride(i, PlayerPrefs.GetString(key));
                     loaded++;
+                    continue;
+                }
+
+                // Backward compatibility for renamed action: SkillManagementToggle -> OpenCharacterProgression
+                if (action.name == "OpenCharacterProgression")
+                {
+                    string legacyKey = BINDINGS_KEY + "_SkillManagementToggle_" + i;
+                    if (PlayerPrefs.HasKey(legacyKey))
+                    {
+                        action.ApplyBindingOverride(i, PlayerPrefs.GetString(legacyKey));
+                        loaded++;
+                    }
+                }
+
+                // Backward compatibility for renamed action: WeaponSkillTrigger -> UseWeaponSkill
+                if (action.name == "UseWeaponSkill")
+                {
+                    string legacyKey = BINDINGS_KEY + "_WeaponSkillTrigger_" + i;
+                    if (PlayerPrefs.HasKey(legacyKey))
+                    {
+                        action.ApplyBindingOverride(i, PlayerPrefs.GetString(legacyKey));
+                        loaded++;
+                    }
+                }
+
+                // Backward compatibility for renamed actions: SkillSlotN -> UseSkillSlotN
+                if (action.name == "UseSkillSlot1" || action.name == "UseSkillSlot2" ||
+                    action.name == "UseSkillSlot3" || action.name == "UseSkillSlot4")
+                {
+                    string legacyActionName = action.name.Replace("UseSkillSlot", "SkillSlot");
+                    string legacyKey = BINDINGS_KEY + "_" + legacyActionName + "_" + i;
+                    if (PlayerPrefs.HasKey(legacyKey))
+                    {
+                        action.ApplyBindingOverride(i, PlayerPrefs.GetString(legacyKey));
+                        loaded++;
+                    }
                 }
             }
         }

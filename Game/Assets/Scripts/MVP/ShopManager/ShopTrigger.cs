@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+using UnityEngine;
+using UnityEngine.InputSystem;
 using System.Collections.Generic;
 using Photon.Pun;
 
@@ -9,16 +10,32 @@ public class ShopTrigger : MonoBehaviour
     public List<ItemType> npcShopTypes = new List<ItemType>();
 
     private bool _isLocalPlayerInRange = false;
+    private bool _isShopOpenedByThis = false;
+    private bool _closeInputSubscribed = false;
+
+    // ── Unity Lifecycle ──────────────────────────────────────────────────
 
     private void Update()
     {
-        if (_isLocalPlayerInRange && InputManager.Instance.Interact.WasPressedThisFrame())
-        {
-            if (ShopView.Instance != null && ShopView.Instance.IsVisible)
-                ShopSystemManager.Instance.CloseShopUI();
-            else
-                ShopSystemManager.Instance.OpenShopUI(npcShopTypes);
-        }
+        if (!_isLocalPlayerInRange) return;
+        if (InputManager.Instance == null) return;
+        if (!InputManager.Instance.Interact.WasPressedThisFrame()) return;
+
+        // Block opening while any structure UI is already active.
+        if (InteractableStructureBase.ActiveStructure != null) return;
+
+        // Block opening while the full inventory/menu canvas is open.
+        if (MenuController.Instance != null && MenuController.Instance.IsMenuOpen) return;
+
+        // Shop already open from this trigger — ignore (close only via Inventory key).
+        if (_isShopOpenedByThis) return;
+
+        OpenShop();
+    }
+
+    private void OnEnable()
+    {
+        ShopSystemManager.OnShopClosed += HandleShopClosedExternal;
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -35,6 +52,85 @@ public class ShopTrigger : MonoBehaviour
         var pv = other.GetComponent<PhotonView>();
         if (pv != null && !pv.IsMine) return; // Bỏ qua remote player
         _isLocalPlayerInRange = false;
-        ShopSystemManager.Instance.CloseShopUI();
+        CloseShop();
+    }
+
+    private void OnDisable()
+    {
+        ShopSystemManager.OnShopClosed -= HandleShopClosedExternal;
+        CloseShop();
+    }
+
+    // ── Open / Close with player-movement lock ──────────────────────────
+
+    private void OpenShop()
+    {
+        if (ShopSystemManager.Instance == null) return;
+
+        ShopSystemManager.Instance.OpenShopUI(npcShopTypes);
+        _isShopOpenedByThis = true;
+
+        // Block all player actions (movement, attack, interact, …) while shop is open.
+        InputManager.Instance?.DisablePlayerActions();
+
+        // Only OpenInventory key can close the shop.
+        SubscribeCloseInput();
+    }
+
+    private void CloseShop()
+    {
+        if (!_isShopOpenedByThis) return;
+
+        // ShopSystemManager.CloseShopUI fires OnShopClosed, which routes back to
+        // HandleShopClosedExternal — that is the single place the lock is released.
+        if (ShopSystemManager.Instance != null)
+            ShopSystemManager.Instance.CloseShopUI();
+        else
+            HandleShopClosedExternal();
+    }
+
+    /// <summary>
+    /// Invoked via <see cref="ShopSystemManager.OnShopClosed"/> whenever the shop UI closes —
+    /// whether triggered by this component, the presenter, or the in-UI close button.
+    /// Ensures player input is always re-enabled and close-input subscriptions cleaned up.
+    /// </summary>
+    private void HandleShopClosedExternal()
+    {
+        if (!_isShopOpenedByThis) return;
+        _isShopOpenedByThis = false;
+
+        UnsubscribeCloseInput();
+        InputManager.Instance?.EnablePlayerActions();
+    }
+
+    // ── Close-input subscription (OpenInventory only) ───────────────────
+
+    private void SubscribeCloseInput()
+    {
+        if (_closeInputSubscribed) return;
+        if (InputManager.Instance == null) return;
+
+        // Re-enable just this single action so its callback still fires
+        // even though the rest of the Player map is disabled.
+        InputManager.Instance.OpenInventory.Enable();
+        InputManager.Instance.OpenInventory.performed += OnCloseInputPressed;
+
+        _closeInputSubscribed = true;
+    }
+
+    private void UnsubscribeCloseInput()
+    {
+        if (!_closeInputSubscribed) return;
+
+        if (InputManager.Instance != null)
+            InputManager.Instance.OpenInventory.performed -= OnCloseInputPressed;
+
+        _closeInputSubscribed = false;
+    }
+
+    private void OnCloseInputPressed(InputAction.CallbackContext ctx)
+    {
+        if (ShopView.Instance == null || !ShopView.Instance.IsVisible) return;
+        CloseShop();
     }
 }

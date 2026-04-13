@@ -229,6 +229,9 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
 
             if (req.result != UnityWebRequest.Result.Success)
             {
+                if (req.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Load player data unauthorized (401)");
+
                 Debug.LogWarning($"[LoadPlayerData] Position fetch failed: {req.responseCode} {req.error}");
                 yield break;
             }

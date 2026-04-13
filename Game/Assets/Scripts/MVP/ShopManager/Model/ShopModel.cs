@@ -5,14 +5,18 @@ using UnityEngine;
 public class ShopItemModel
 {
     public string ItemId;
-    public int Price; 
-    public bool IsSoldOut; 
+    public int Price;
+    public bool IsSoldOut;
+    public string ItemName;
+    public Sprite Icon;
 
-    public ShopItemModel(string id, int price)
+    public ShopItemModel(string id, int price, string itemName, Sprite icon)
     {
-        ItemId = id;
-        Price = price;
+        ItemId   = id;
+        Price    = price;
         IsSoldOut = false;
+        ItemName = itemName;
+        Icon     = icon;
     }
 }
 

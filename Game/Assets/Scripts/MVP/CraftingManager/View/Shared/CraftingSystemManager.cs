@@ -64,7 +64,7 @@ public class CraftingSystemManager : MonoBehaviour
         InitializeInventoryReferences();
 
         // 3. Initialize Crafting Service
-        craftingService = new CraftingService(craftingModel);
+        craftingService = new CraftingService(craftingModel, inventoryService);
 
         // 4. Load recipes from the catalog service (JSON)
         var catalogService = RecipeCatalogService.Instance;

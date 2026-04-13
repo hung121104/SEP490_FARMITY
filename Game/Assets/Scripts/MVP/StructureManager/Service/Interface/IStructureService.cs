@@ -14,7 +14,7 @@ public interface IStructureService
 
     // ── Destruction ───────────────────────────────────────────────────────
 
-    bool DealDamage(Vector3Int pos, int damage, out bool isRemoved, out string structureId);
+    bool DealDamage(Vector3Int pos, int damage);
     void RegenerateHP(Vector3Int pos);
     bool ProcessHitRequest(Vector3Int pos, int damage, string playerActorId);
     bool IsStructureAlreadyDestroyed(Vector3Int pos);

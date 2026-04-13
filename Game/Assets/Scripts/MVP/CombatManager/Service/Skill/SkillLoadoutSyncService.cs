@@ -66,6 +66,9 @@ namespace CombatManager.Service
 
             if (request.result != UnityWebRequest.Result.Success)
             {
+                if (request.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Skill loadout fetch unauthorized (401)");
+
                 onError?.Invoke($"GET failed [{request.responseCode}]: {request.error}");
                 onLoaded?.Invoke(CreateEmptySlotArray(slotCount));
                 yield break;
@@ -256,6 +259,9 @@ namespace CombatManager.Service
             }
             else
             {
+                if (request.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("Skill loadout save unauthorized (401)");
+
                 Debug.LogWarning($"[SkillLoadoutSyncService] PUT failed [{request.responseCode}]: {request.error}");
             }
 

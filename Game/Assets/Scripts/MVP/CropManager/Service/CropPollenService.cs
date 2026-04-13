@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Photon.Pun;
 
@@ -10,19 +11,27 @@ public class CropPollenService : ICropPollenService
 {
     private readonly WorldDataManager worldData;
     private readonly CropManagerView cropManagerView;
-    private readonly InventoryGameView inventoryGameView;
+    private readonly Func<IInventoryService> inventoryServiceProvider;
+    private IInventoryService cachedInventoryService;
     private readonly ChunkDataSyncManager syncManager;
 
     public CropPollenService(
         WorldDataManager worldData,
         CropManagerView cropManagerView,
-        InventoryGameView inventoryGameView,
+        Func<IInventoryService> inventoryServiceProvider,
         ChunkDataSyncManager syncManager = null)
     {
-        this.worldData        = worldData;
-        this.cropManagerView  = cropManagerView;
-        this.inventoryGameView = inventoryGameView;
-        this.syncManager      = syncManager;
+        this.worldData                = worldData;
+        this.cropManagerView          = cropManagerView;
+        this.inventoryServiceProvider = inventoryServiceProvider;
+        this.syncManager              = syncManager;
+    }
+
+    private IInventoryService GetInventoryService()
+    {
+        if (cachedInventoryService != null) return cachedInventoryService;
+        cachedInventoryService = inventoryServiceProvider?.Invoke();
+        return cachedInventoryService;
     }
 
     // ── ICropPollenService ────────────────────────────────────────────────
@@ -48,17 +57,17 @@ public class CropPollenService : ICropPollenService
             return null;
         }
 
-        if (inventoryGameView == null)
+        var inventoryService = GetInventoryService();
+        if (inventoryService == null)
         {
-            Debug.LogWarning("[CropPollenService] InventoryGameView not found — pollen not added.");
+            Debug.LogWarning("[CropPollenService] IInventoryService not found — pollen not added.");
             return null;
         }
 
-        bool added = inventoryGameView.AddItem(pollen.itemID, 1);
+        bool added = inventoryService.AddItem(pollen.itemID, 1);
         if (!added)
         {
-            Debug.LogWarning($"[CropPollenService] Inventory full — could not add '{pollen.itemName}'.");
-            return null;
+            Debug.LogWarning($"[CropPollenService] Inventory full — '{pollen.itemName}' dropped to world. Harvest still counts.");
         }
 
         worldData.IncrementPollenHarvestCount(worldPos);
