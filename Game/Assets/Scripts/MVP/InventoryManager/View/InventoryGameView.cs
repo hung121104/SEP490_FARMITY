@@ -80,7 +80,10 @@ public class InventoryGameView : MonoBehaviour
 
         // Subscribe to presenter events
         presenter.OnItemUsed += HandleItemUsed;
-        presenter.OnItemDropped += HandleItemDropped;
+
+        // Subscribe drop events: service fires directly to DroppedItemManagerView
+        if (DroppedItemManagerView.Instance != null)
+            DroppedItemManagerView.Instance.SubscribeDropEvents(service);
     }
 
     /// <summary>
@@ -271,9 +274,7 @@ public class InventoryGameView : MonoBehaviour
 
     public bool AddItem(string itemId, int quantity = 1)
     {
-        bool added = presenter.TryAddItem(itemId, quantity);
-        if (added) ItemPickupToastView.NotifyItemPickedUp(itemId, quantity);
-        return added;
+        return presenter.TryAddItem(itemId, quantity);
     }
 
     public bool RemoveItem(string itemId, int quantity)
@@ -289,11 +290,6 @@ public class InventoryGameView : MonoBehaviour
     public int GetItemCount(string itemId)
     {
         return presenter.GetItemCount(itemId);
-    }
-
-    public int GetAddableQuantity(ItemData itemData, int quantity)
-    {
-        return presenter.GetAddableQuantity(itemData, quantity);
     }
 
     public IInventoryService GetInventoryService() => service;
@@ -330,21 +326,6 @@ public class InventoryGameView : MonoBehaviour
         // Example: Apply consumable effects, equip tool, etc.
     }
 
-    private void HandleItemDropped(ItemModel item)
-    {
-        if (showDebugLogs) Debug.Log($"[InventoryGameView] Dropping item: {item.ItemName}");
-
-        // Delegate to DroppedItemManagerView which handles Photon sync + DB persistence
-        if (DroppedItemManagerView.Instance != null)
-        {
-            DroppedItemManagerView.Instance.RequestDropItem(item);
-        }
-        else
-        {
-            Debug.LogError("[InventoryGameView] DroppedItemManagerView.Instance is null — cannot drop item!");
-        }
-    }
-
     #endregion
 
     #region Item Usage Implementations
@@ -361,10 +342,12 @@ public class InventoryGameView : MonoBehaviour
 
     private void Cleanup()
     {
+        if (service != null && DroppedItemManagerView.Instance != null)
+            DroppedItemManagerView.Instance.UnsubscribeDropEvents(service);
+
         if (presenter != null)
         {
             presenter.OnItemUsed -= HandleItemUsed;
-            presenter.OnItemDropped -= HandleItemDropped;
             presenter.Cleanup();
         }
     }

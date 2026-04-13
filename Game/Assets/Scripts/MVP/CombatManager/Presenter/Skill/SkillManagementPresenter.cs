@@ -34,6 +34,8 @@ namespace CombatManager.Presenter
 
         [Header("Buttons")]
         [SerializeField] private Button closeButton;
+        [Header("Detail Tooltip")]
+        [SerializeField] private ItemDetailView skillDetailView;
 
         #endregion
 
@@ -42,6 +44,12 @@ namespace CombatManager.Presenter
         private ISkillManagementService service;
         private List<SkillDisplayItemView> displayItems = new List<SkillDisplayItemView>();
         private InputAction escapeCloseAction;
+        private StatsPresenter cachedStatsPresenter;
+        private SkillDisplayItemView currentHoverItem;
+        private bool hasLoggedMissingDetailView;
+        private Coroutine pendingHoverExitCoroutine;
+        private const float HoverExitGraceSeconds = 0.06f;
+        private Canvas skillTooltipCanvas;
 
         #endregion
 
@@ -67,6 +75,8 @@ namespace CombatManager.Presenter
 
             if (skillManagementCanvasGroup == null && skillManagementCanvas != null)
                 skillManagementCanvasGroup = skillManagementCanvas.GetComponent<CanvasGroup>();
+
+            TryResolveSkillDetailView();
         }
 
         private void OnEnable()
@@ -81,6 +91,7 @@ namespace CombatManager.Presenter
             StartCoroutine(LoadCatalogSkills());
 
             CombatModePresenter.OnCombatModeChanged += OnCombatModeChanged;
+            GameEventBus.OnLevelReached += OnLevelReached;
             SetPanelVisible(false);
 
             Debug.Log("[SkillManagementPresenter] Initialized!");
@@ -99,7 +110,7 @@ namespace CombatManager.Presenter
             if (CombatSkillCatalogService.Instance == null || !CombatSkillCatalogService.Instance.IsReady)
             {
                 Debug.LogWarning("[SkillManagementPresenter] CombatSkillCatalogService unavailable. Panel will be empty.");
-                service.Initialize(new List<SkillData>());
+                service.Initialize(new List<SkillData>(), GetCurrentPlayerLevel());
                 PopulateGrid();
                 yield break;
             }
@@ -107,7 +118,7 @@ namespace CombatManager.Presenter
             List<SkillData> allSkills = CombatSkillCatalogService.Instance.GetAllSkills();
             Debug.Log($"[SkillManagementPresenter] Catalog skills loaded: {allSkills.Count}");
 
-            service.Initialize(allSkills);
+            service.Initialize(allSkills, GetCurrentPlayerLevel());
             Debug.Log($"[SkillManagementPresenter] Player skills after filter: {service.GetAllSkills().Count}");
 
             PopulateGrid();
@@ -121,6 +132,7 @@ namespace CombatManager.Presenter
         private void OnDestroy()
         {
             CombatModePresenter.OnCombatModeChanged -= OnCombatModeChanged;
+            GameEventBus.OnLevelReached -= OnLevelReached;
 
             if (escapeCloseAction != null)
             {
@@ -192,6 +204,10 @@ namespace CombatManager.Presenter
             view.OnDragEvent      += OnSkillDrag;
             view.OnEndDragEvent   += OnSkillEndDrag;
             view.OnSelectEvent    += OnSkillSelected;
+            view.OnHoverEnterEvent += OnSkillHoverEnter;
+            view.OnHoverExitEvent += OnSkillHoverExit;
+
+            Debug.Log($"[SkillManagementPresenter] Hover handlers bound for: {skillData.skillName}");
 
             displayItems.Add(view);
         }
@@ -202,6 +218,7 @@ namespace CombatManager.Presenter
 
         private void OnSkillBeginDrag(SkillDisplayItemView item)
         {
+            HideSkillDetail();
             service.SetDraggingSkill(item.GetSkillData());
             Debug.Log($"[SkillManagementPresenter] Begin drag: {item.GetSkillData().skillName}");
         }
@@ -242,6 +259,7 @@ namespace CombatManager.Presenter
 
         private void OnSkillSelected(SkillDisplayItemView item)
         {
+            HideSkillDetail();
             if (SkillHotbarPresenter.Instance == null) return;
 
             int slotCount = SkillHotbarPresenter.Instance.GetSlotCount();
@@ -266,6 +284,9 @@ namespace CombatManager.Presenter
 
         public void ShowPanel()
         {
+            TryResolveSkillDetailView();
+            RefreshUnlockedSkills();
+            PopulateGrid();
             service.OpenPanel();
             SetPanelVisible(true);
         }
@@ -273,12 +294,14 @@ namespace CombatManager.Presenter
         public void HidePanel()
         {
             CancelAllDrags();
+            HideSkillDetail();
             service.ClosePanel();
             SetPanelVisible(false);
         }
 
         public void TogglePanel()
         {
+            HideSkillDetailImmediate();
             if (service.IsPanelOpen()) HidePanel();
             else ShowPanel();
         }
@@ -320,7 +343,7 @@ namespace CombatManager.Presenter
             if (inputManager == null)
                 return;
 
-            if (inputManager.SkillManagementToggle.WasPressedThisFrame())
+            if (inputManager.OpenCharacterProgression.WasPressedThisFrame())
                 TogglePanel();
 
             if (inputManager.SkillCancel.WasPressedThisFrame() && service.IsAnySkillDragging())
@@ -344,6 +367,31 @@ namespace CombatManager.Presenter
             if (service.IsPanelOpen()) HidePanel();
         }
 
+        private void OnLevelReached(int level, int count)
+        {
+            RefreshUnlockedSkills(level);
+
+            if (service.IsPanelOpen())
+                PopulateGrid();
+        }
+
+        private int GetCurrentPlayerLevel()
+        {
+            if (cachedStatsPresenter == null)
+                cachedStatsPresenter = FindObjectOfType<StatsPresenter>();
+
+            return cachedStatsPresenter != null ? Mathf.Max(1, cachedStatsPresenter.GetLevel()) : 1;
+        }
+
+        private void RefreshUnlockedSkills(int? explicitLevel = null)
+        {
+            if (service == null || !service.IsInitialized())
+                return;
+
+            int level = explicitLevel.HasValue ? Mathf.Max(1, explicitLevel.Value) : GetCurrentPlayerLevel();
+            service.RefreshForLevel(level);
+        }
+
         #endregion
 
         #region Public API
@@ -351,6 +399,299 @@ namespace CombatManager.Presenter
         public bool IsPanelOpen()           => service.IsPanelOpen();
         public bool IsAnySkillDragging()    => service.IsAnySkillDragging();
         public SkillData GetDraggingSkill() => service.GetDraggingSkill();
+
+        #endregion
+
+        #region Hover Tooltip
+
+        private void OnSkillHoverEnter(SkillDisplayItemView item, Vector2 screenPosition)
+        {
+            Debug.Log($"[SkillManagementPresenter] OnSkillHoverEnter received. item={(item != null ? item.name : "null")}, detailView={(skillDetailView != null ? skillDetailView.name : "null")}");
+
+            if (item == null)
+                return;
+
+            if (skillDetailView == null)
+            {
+                TryResolveSkillDetailView();
+                if (skillDetailView == null)
+                {
+                    if (!hasLoggedMissingDetailView)
+                    {
+                        Debug.LogWarning("[SkillManagementPresenter] skillDetailView is not assigned/found. Assign ItemDetailView in inspector.");
+                        hasLoggedMissingDetailView = true;
+                    }
+                    Debug.LogWarning("[SkillManagementPresenter] Hover enter aborted: no ItemDetailView available.");
+                    return;
+                }
+            }
+
+            SkillData skill = item.GetSkillData();
+            if (skill == null)
+                return;
+
+            currentHoverItem = item;
+
+            EnsureSkillTooltipRenderOrder();
+
+            if (pendingHoverExitCoroutine != null)
+            {
+                StopCoroutine(pendingHoverExitCoroutine);
+                pendingHoverExitCoroutine = null;
+            }
+
+            if (skillDetailView != null)
+                skillDetailView.transform.SetAsLastSibling();
+
+            skillDetailView.SetItemDetail(new ItemDetailData
+            {
+                Icon = skill.skillIcon,
+                Name = string.IsNullOrWhiteSpace(skill.skillName) ? "Skill" : skill.skillName,
+                NameColor = skill.skillColor,
+                Description = string.IsNullOrWhiteSpace(skill.skillDescription) ? "No description." : skill.skillDescription,
+                Stats = BuildSkillStatsText(skill),
+            });
+            skillDetailView.Show();
+            skillDetailView.SetPosition(screenPosition);
+            Debug.Log($"[SkillManagementPresenter] Tooltip shown for skill: {skill.skillName}");
+        }
+
+        private void EnsureSkillTooltipRenderOrder()
+        {
+            if (skillDetailView == null)
+                return;
+
+            Canvas hostCanvas = null;
+            if (skillManagementCanvas != null)
+                hostCanvas = skillManagementCanvas.GetComponentInParent<Canvas>();
+
+            if (hostCanvas != null && !skillDetailView.transform.IsChildOf(hostCanvas.transform))
+            {
+                skillDetailView.transform.SetParent(hostCanvas.transform, true);
+                Debug.Log($"[SkillManagementPresenter] Reparented tooltip under host canvas: {hostCanvas.name}");
+            }
+
+            if (hostCanvas != null)
+            {
+                if (skillTooltipCanvas == null)
+                    skillTooltipCanvas = skillDetailView.GetComponent<Canvas>();
+                if (skillTooltipCanvas == null)
+                    skillTooltipCanvas = skillDetailView.gameObject.AddComponent<Canvas>();
+
+                skillTooltipCanvas.overrideSorting = true;
+                skillTooltipCanvas.sortingLayerID = hostCanvas.sortingLayerID;
+                skillTooltipCanvas.sortingOrder = hostCanvas.sortingOrder + 200;
+
+                GraphicRaycaster tooltipRaycaster = skillDetailView.GetComponent<GraphicRaycaster>();
+                if (tooltipRaycaster == null)
+                    tooltipRaycaster = skillDetailView.gameObject.AddComponent<GraphicRaycaster>();
+                tooltipRaycaster.enabled = false;
+            }
+
+            skillDetailView.transform.SetAsLastSibling();
+        }
+
+        private void TryResolveSkillDetailView()
+        {
+            if (skillDetailView != null)
+                return;
+
+            if (skillManagementCanvas != null)
+                skillDetailView = skillManagementCanvas.GetComponentInChildren<ItemDetailView>(true);
+
+            if (skillDetailView != null)
+            {
+                Debug.Log($"[SkillManagementPresenter] Resolved ItemDetailView from skillManagementCanvas: {skillDetailView.name}");
+                return;
+            }
+
+            if (skillDetailView == null)
+                skillDetailView = GetComponentInChildren<ItemDetailView>(true);
+
+            if (skillDetailView != null)
+            {
+                Debug.Log($"[SkillManagementPresenter] Resolved ItemDetailView from presenter children: {skillDetailView.name}");
+                return;
+            }
+
+            skillDetailView = ResolveBestDetailViewFromScene();
+            if (skillDetailView != null)
+            {
+                Debug.Log($"[SkillManagementPresenter] Resolved ItemDetailView via ranked scene search: {GetTransformPath(skillDetailView.transform)}");
+                return;
+            }
+
+            Debug.LogWarning("[SkillManagementPresenter] Could not resolve ItemDetailView in scene.");
+        }
+
+        private ItemDetailView ResolveBestDetailViewFromScene()
+        {
+            ItemDetailView[] candidates = FindObjectsOfType<ItemDetailView>(true);
+            if (candidates == null || candidates.Length == 0)
+                return null;
+
+            Transform skillRoot = skillManagementCanvas != null ? skillManagementCanvas.transform : null;
+            Canvas skillCanvas = skillManagementCanvas != null ? skillManagementCanvas.GetComponentInParent<Canvas>() : null;
+
+            ItemDetailView best = null;
+            int bestScore = int.MinValue;
+
+            foreach (ItemDetailView candidate in candidates)
+            {
+                if (candidate == null)
+                    continue;
+
+                int score = 0;
+
+                if (skillRoot != null && candidate.transform.IsChildOf(skillRoot))
+                    score += 100;
+
+                Canvas candidateCanvas = candidate.GetComponentInParent<Canvas>();
+                if (skillCanvas != null && candidateCanvas == skillCanvas)
+                    score += 50;
+
+                if (candidate.gameObject.activeInHierarchy)
+                    score += 20;
+
+                string name = candidate.name;
+                if (!string.IsNullOrEmpty(name))
+                {
+                    if (name.IndexOf("skill", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                        score += 15;
+                    if (name.IndexOf("inventory", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                        score -= 15;
+                }
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = candidate;
+                }
+            }
+
+            return best;
+        }
+
+        private static string GetTransformPath(Transform t)
+        {
+            if (t == null)
+                return "<null>";
+
+            System.Text.StringBuilder sb = new System.Text.StringBuilder(t.name);
+            Transform current = t.parent;
+            while (current != null)
+            {
+                sb.Insert(0, current.name + "/");
+                current = current.parent;
+            }
+            return sb.ToString();
+        }
+
+        private void OnSkillHoverExit(SkillDisplayItemView item)
+        {
+            Debug.Log($"[SkillManagementPresenter] OnSkillHoverExit received. item={(item != null ? item.name : "null")}, current={(currentHoverItem != null ? currentHoverItem.name : "null")}");
+            if (currentHoverItem != null && item != currentHoverItem)
+                return;
+
+            if (pendingHoverExitCoroutine != null)
+                StopCoroutine(pendingHoverExitCoroutine);
+
+            pendingHoverExitCoroutine = StartCoroutine(DeferredHoverExit(item));
+        }
+
+        private IEnumerator DeferredHoverExit(SkillDisplayItemView item)
+        {
+            yield return new WaitForSecondsRealtime(HoverExitGraceSeconds);
+            pendingHoverExitCoroutine = null;
+
+            if (item == null)
+            {
+                HideSkillDetail();
+                yield break;
+            }
+
+            // Ignore false exit events caused by transient UI overlap around the cursor.
+            if (IsPointerInsideItem(item))
+                yield break;
+
+            HideSkillDetail();
+        }
+
+        private bool IsPointerInsideItem(SkillDisplayItemView item)
+        {
+            RectTransform rt = item != null ? item.GetComponent<RectTransform>() : null;
+            if (rt == null)
+                return false;
+
+            Canvas canvas = item.GetComponentInParent<Canvas>();
+            Camera cam = null;
+            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                cam = canvas.worldCamera;
+
+            return RectTransformUtility.RectangleContainsScreenPoint(rt, Input.mousePosition, cam);
+        }
+
+        private void HideSkillDetail()
+        {
+            if (pendingHoverExitCoroutine != null)
+            {
+                StopCoroutine(pendingHoverExitCoroutine);
+                pendingHoverExitCoroutine = null;
+            }
+
+            currentHoverItem = null;
+            if (skillDetailView != null)
+            {
+                skillDetailView.Hide();
+                Debug.Log("[SkillManagementPresenter] Tooltip hide requested.");
+            }
+        }
+
+        private void HideSkillDetailImmediate()
+        {
+            currentHoverItem = null;
+            if (skillDetailView != null)
+            {
+                skillDetailView.HideImmediate();
+                Debug.Log("[SkillManagementPresenter] Tooltip hide immediate requested.");
+            }
+        }
+
+        private static string BuildSkillStatsText(SkillData skill)
+        {
+            if (skill == null)
+                return string.Empty;
+
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            sb.AppendLine($"Category: {skill.skillCategory}");
+            sb.AppendLine($"Cooldown: {skill.cooldown:0.##}s");
+            sb.AppendLine($"Dice: {skill.diceTier}");
+            sb.AppendLine($"Multiplier: {skill.skillMultiplier:0.##}x");
+
+            if (skill.IsProjectile)
+            {
+                sb.AppendLine($"Projectile Speed: {skill.projectileSpeed:0.##}");
+                sb.AppendLine($"Projectile Range: {skill.projectileRange:0.##}");
+                sb.AppendLine($"Projectile Knockback: {skill.projectileKnockback:0.##}");
+            }
+            else if (skill.IsSlash)
+            {
+                sb.AppendLine($"Slash Knockback: {skill.slashKnockbackForce:0.##}");
+            }
+            else if (skill.IsAoE)
+            {
+                sb.AppendLine($"Cast Range: {skill.aoeCastRange:0.##}");
+                sb.AppendLine($"Radius: {skill.aoeRadius:0.##}");
+            }
+            else if (skill.IsBuff)
+            {
+                sb.AppendLine($"Buff Type: {skill.buffSubCategory}");
+                sb.AppendLine($"Buff Value: {skill.buffValue:0.##}");
+                sb.AppendLine($"Buff Duration: {skill.buffDuration:0.##}s");
+            }
+
+            return sb.ToString().TrimEnd();
+        }
 
         #endregion
     }

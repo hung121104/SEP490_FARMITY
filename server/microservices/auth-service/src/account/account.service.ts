@@ -11,7 +11,7 @@ import { LoginDto } from './dto/login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { SessionService } from './session.service';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import * as crypto from 'crypto';
 import { firstValueFrom } from 'rxjs';
 import { ResetOtpTemplate } from './templates/reset-otp.template';
@@ -913,28 +913,22 @@ export class AccountService implements OnModuleInit {
     otp: string,
     template: typeof ResetOtpTemplate | typeof RegisterOtpTemplate = ResetOtpTemplate,
   ) {
-    const host = this.configService.get<string>('MAIL_HOST');
-    const port = Number(this.configService.get<string>('MAIL_PORT') || 587);
-    const user = this.configService.get<string>('MAIL_USER');
-    const pass = this.configService.get<string>('MAIL_PASS');
-    const from = this.configService.get<string>('MAIL_FROM') || user;
-    const secure = this.configService.get<string>('MAIL_SECURE') === 'true';
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    const from = this.configService.get<string>('MAIL_FROM');
 
-    if (!host || !user || !pass || !from) {
+    if (!apiKey || !from) {
       throw new RpcException({ status: 500, message: 'Email configuration is missing' });
     }
 
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: { user, pass },
-    });
+    const resend = new Resend(apiKey);
 
     const subject = template.getSubject();
     const text = template.getText(username, otp);
     const html = template.getHtml(username, otp);
 
-    await transporter.sendMail({ from, to: email, subject, text, html });
+    const { error } = await resend.emails.send({ from, to: [email], subject, text, html });
+    if (error) {
+      throw new RpcException({ status: 500, message: `Failed to send email: ${error.message}` });
+    }
   }
 }

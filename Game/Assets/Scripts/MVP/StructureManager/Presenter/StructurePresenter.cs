@@ -129,7 +129,7 @@ public class StructurePresenter
             return;
         }
 
-        structureService.DealDamage(tilePos, tool.toolPower, out bool isRemoved, out string structureId);
+        structureService.DealDamage(tilePos, tool.toolPower);
     }
 
     public void HandleRegenTimerComplete(Vector3Int tilePos)

@@ -249,19 +249,27 @@ namespace CombatManager.Presenter
 
             yield return new WaitForSeconds(model.chargeDuration);
 
-            model.currentDiceRoll = diceRollerService.Roll(model.skillTier);
+            if (ShouldUseDiceRollFlow())
+            {
+                model.currentDiceRoll = diceRollerService.Roll(model.skillTier);
 
-            CombatManager.Presenter.DiceDisplayPresenter.Show(
-                model.currentDiceRoll,
-                (CombatManager.Model.DiceTier)model.skillTier
-            );
-            EnablePlayerSystems();
+                CombatManager.Presenter.DiceDisplayPresenter.Show(
+                    model.currentDiceRoll,
+                    (CombatManager.Model.DiceTier)model.skillTier
+                );
+                EnablePlayerSystems();
 
-            yield return new WaitForSeconds(model.rollDisplayDuration);
+                yield return new WaitForSeconds(model.rollDisplayDuration);
 
-            yield return StartCoroutine(WaitForConfirmationRoutine());
+                yield return StartCoroutine(WaitForConfirmationRoutine());
 
-            if (!model.isExecuting) yield break;
+                if (!model.isExecuting) yield break;
+            }
+            else
+            {
+                // Immediate cast path: execute directly after charge without dice/confirm stage.
+                model.currentDiceRoll = 0;
+            }
 
             skillService.SetState(SkillPatternState.Executing);
             DisablePlayerSystems();
@@ -394,6 +402,7 @@ namespace CombatManager.Presenter
 
         protected abstract CombatManager.Model.SkillIndicatorData GetIndicatorData();
         protected abstract IEnumerator OnExecute(int finalDamage, Vector3 direction);
+        protected virtual bool ShouldUseDiceRollFlow() => true;
 
         #endregion
 

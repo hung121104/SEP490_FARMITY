@@ -56,13 +56,25 @@ public class CropGrowthService : ICropGrowthService
 
     public bool IsCropReadyToHarvest(int worldX, int worldY)
     {
-        if (worldData == null) return false;
+        if (worldData == null) 
+        {
+            Debug.LogWarning($"[CropGrowthService] IsCropReadyToHarvest: worldData is null");
+            return false;
+        }
+
         Vector3 worldPos = new Vector3(worldX, worldY, 0);
         if (!worldData.TryGetCropAtWorldPosition(worldPos, out UnifiedChunkData.CropTileData tileData))
+        {
+            Debug.LogWarning($"[CropGrowthService] IsCropReadyToHarvest: No crop data at ({worldX},{worldY})");
             return false;
+        }
 
         PlantData plant = GetPlantData(tileData.PlantId);
-        if (plant == null) return false;
+        if (plant == null) 
+        {
+            Debug.LogWarning($"[CropGrowthService] IsCropReadyToHarvest: Plant not found for plantId '{tileData.PlantId}'");
+            return false;
+        }
 
         // Hybrid plants: harvestable stage is pollenStage+1 (mature).
         // Normal plants: harvestable stage is the last entry in growthStages.
@@ -70,7 +82,15 @@ public class CropGrowthService : ICropGrowthService
             ? plant.pollenStage + 1
             : plant.growthStages.Count - 1;
 
-        return tileData.CropStage >= harvestStage;
+        bool isReady = tileData.CropStage >= harvestStage;
+        Debug.Log($"[CropGrowthService] IsCropReadyToHarvest at ({worldX},{worldY}): " +
+                  $"plantId='{tileData.PlantId}', " +
+                  $"currentStage={tileData.CropStage}, " +
+                  $"harvestStage={harvestStage}, " +
+                  $"isHybrid={plant.isHybrid}, " +
+                  $"result={isReady}");
+
+        return isReady;
     }
 
     public bool IsCropAtPollenStage(int worldX, int worldY)
@@ -293,14 +313,20 @@ public class CropGrowthService : ICropGrowthService
             foreach (var chunkPair in section)
             {
                 UnifiedChunkData chunk = chunkPair.Value;
+                bool chunkModified = false;
 
                 foreach (var tile in chunk.GetAllTiles())
                 {
                     if (!tile.IsTilled || tile.Crop.IsWatered) continue;
 
                     chunk.WaterTile(tile.WorldX, tile.WorldY);
+                    chunkModified = true;
                     count++;
                 }
+
+                // Persist rain-watered state so auto-save / quit-flush includes it.
+                if (chunkModified)
+                    WorldSaveManager.TryMarkChunkDirty(chunk.ChunkX, chunk.ChunkY, sectionConfig.SectionId);
             }
         }
 

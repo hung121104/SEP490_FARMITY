@@ -537,6 +537,15 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
     {
         if (!_presenter.IsChunkLoaded(chunkPos)) return;
 
+        // Cancel any in-progress async spawn so a stale coroutine (which captured
+        // a tile snapshot before the world-sync watered the tiles) cannot overwrite
+        // the WateredCells model after this sync-drain finishes.
+        if (_spawnCoroutines.TryGetValue(chunkPos, out var pendingCo))
+        {
+            if (pendingCo != null) StopCoroutine(pendingCo);
+            _spawnCoroutines.Remove(chunkPos);
+        }
+
         if (_model.CropVisuals.TryGetValue(chunkPos, out var crops))
         {
             if (_cachedCropPool == null)
@@ -776,7 +785,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
         if (stage == 0)
         {
             sr.sortingLayerName = "Ground";
-            sr.sortingOrder     = 5;
+            sr.sortingOrder     = 22;
         }
         else
         {

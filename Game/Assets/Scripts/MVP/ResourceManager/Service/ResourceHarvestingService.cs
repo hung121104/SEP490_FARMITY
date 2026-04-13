@@ -1,29 +1,34 @@
+using System;
 using UnityEngine;
-using System.Collections.Generic;
 using Photon.Pun;
-
+using System.Collections.Generic;
 /// <summary>
-/// Service handling interaction with resources (trees, rocks, ore).
-/// Reduces HP via delayed tool impact events (Axe, Pickaxe). Upon destruction,
-/// distributes loot directly to the local player who landed the final hit.
+/// Forwards resource hit requests to the host-authoritative RPC path via
+/// ResourceInteractionManager. All validation and state mutation happen on the
+/// MasterClient inside RPC_Host_ProcessHit — this service only resolves the
+/// target tile and dispatches the request.
 /// </summary>
 public class ResourceHarvestingService : IResourceHarvestingService
 {
+    private readonly ResourceInteractionManager _interactionManager;
     private readonly WorldDataManager worldData;
     private readonly ChunkDataSyncManager syncManager;
-    private readonly InventoryGameView inventoryView;
+    private readonly Func<IInventoryService> inventoryServiceProvider;
+    private IInventoryService cachedInventoryService;
     private readonly float interactionRange;
     private Transform localPlayerTransform;
 
     public ResourceHarvestingService(
         WorldDataManager worldData,
         ChunkDataSyncManager syncManager,
-        InventoryGameView inventoryView,
+        Func<IInventoryService> inventoryServiceProvider,
+        ResourceInteractionManager interactionManager,
         float interactionRange)
     {
         this.worldData = worldData;
         this.syncManager = syncManager;
-        this.inventoryView = inventoryView;
+        this.inventoryServiceProvider = inventoryServiceProvider;
+        _interactionManager = interactionManager;
         this.interactionRange = Mathf.Max(0.1f, interactionRange);
 
         // Bind to delayed impact events so gameplay timing matches chop animation timing.
@@ -49,58 +54,22 @@ public class ResourceHarvestingService : IResourceHarvestingService
 
     private bool TryHitResource(ToolData tool, Vector3 worldPos)
     {
-        if (worldData == null) return false;
+        if (_interactionManager == null) return false;
 
         if (!TryGetSnappedTargetTile(worldPos, out Vector3 snappedPos))
             return false;
 
+        int chunkSize = WorldDataManager.Instance != null ? WorldDataManager.Instance.chunkSizeTiles : 30;
         int wx = Mathf.FloorToInt(snappedPos.x);
         int wy = Mathf.FloorToInt(snappedPos.y);
+        int chunkX = Mathf.FloorToInt(wx / (float)chunkSize);
+        int chunkY = Mathf.FloorToInt(wy / (float)chunkSize);
+        int localX = wx - chunkX * chunkSize;
+        int localY = wy - chunkY * chunkSize;
+        int tileIndex = localY * chunkSize + localX;
 
-        if (!worldData.TryGetResourceAtWorldPosition(snappedPos, out UnifiedChunkData.ResourceTileData tileData))
-        {
-            return false;
-        }
-
-        if (string.IsNullOrEmpty(tileData.ResourceId)) return false;
-
-        ResourceConfigData configData = ResourceCatalogManager.Instance?.GetResourceConfig(tileData.ResourceId);
-        if (configData == null) return false;
-
-        // Ensure tool matches the required tool type and has sufficient power.
-        if (tool.toolType != configData.requiredToolType || tool.toolPower < configData.minToolPower)
-        {
-            return false;
-        }
-
-        // Damage formula: tool power + (tool power - minimum tool power).
-        int calculatedDamage = tool.toolPower + (tool.toolPower - configData.minToolPower);
-        if (calculatedDamage <= 0) calculatedDamage = 1;
-
-        int newHp = tileData.CurrentHp - calculatedDamage;
-
-        if (newHp > 0)
-        {
-            worldData.UpdateResourceHpAtWorldPosition(snappedPos, newHp);
-            if (syncManager != null)
-            {
-                syncManager.BroadcastResourceHpUpdated(wx, wy, newHp);
-            }
-            Debug.Log($"[ResourceHarvestingService] Hit {tileData.ResourceId} at ({wx},{wy}). HP: {tileData.CurrentHp} -> {newHp}");
-        }
-        else
-        {
-            worldData.RemoveResourceAtWorldPosition(snappedPos);
-
-            if (syncManager != null)
-            {
-                syncManager.BroadcastResourceRemoved(wx, wy);
-            }
-
-            Debug.Log($"[ResourceHarvestingService] Destroyed {tileData.ResourceId} at ({wx},{wy}).");
-            DistributeLoot(configData.dropTable);
-        }
-
+        // Delegate all validation and state mutation to the host via RPC.
+        _interactionManager.RequestHitResource(chunkX, chunkY, tileIndex, 1, tool.itemID);
         return true;
     }
 
@@ -146,20 +115,32 @@ public class ResourceHarvestingService : IResourceHarvestingService
         return false;
     }
 
+    private IInventoryService GetInventoryService()
+    {
+        if (cachedInventoryService != null) return cachedInventoryService;
+        cachedInventoryService = inventoryServiceProvider?.Invoke();
+        return cachedInventoryService;
+    }
+
     private void DistributeLoot(List<DropEntry> dropTable)
     {
-        if (inventoryView == null || dropTable == null || dropTable.Count == 0) return;
+        var inventoryService = GetInventoryService();
+        if (inventoryService == null || dropTable == null || dropTable.Count == 0)
+        {
+            Debug.LogWarning("[ResourceHarvestingService] InventoryService not available — drops skipped.");
+            return;
+        }
 
         foreach (DropEntry drop in dropTable)
         {
             if (string.IsNullOrEmpty(drop.itemId)) continue;
 
-            float chance = Random.Range(0f, 1f);
+            float chance = UnityEngine.Random.Range(0f, 1f);
             if (chance <= drop.dropChance)
             {
-                int amount = Random.Range(Mathf.Max(1, drop.minAmount), Mathf.Max(1, drop.maxAmount) + 1);
+                int amount = UnityEngine.Random.Range(Mathf.Max(1, drop.minAmount), Mathf.Max(1, drop.maxAmount) + 1);
 
-                bool added = inventoryView.AddItem(drop.itemId, amount);
+                bool added = inventoryService.AddItem(drop.itemId, amount);
                 if (!added)
                 {
                     Debug.LogWarning(
@@ -174,3 +155,4 @@ public class ResourceHarvestingService : IResourceHarvestingService
         }
     }
 }
+

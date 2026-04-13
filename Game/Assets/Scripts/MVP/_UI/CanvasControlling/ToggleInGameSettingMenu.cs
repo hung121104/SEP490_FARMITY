@@ -90,13 +90,21 @@ public class ToggleInGameSettingMenu : MonoBehaviour
         if (!allowToggle)
             return;
 
+        // If a structure UI is open, let the structure handle ESC — don't open settings
+        if (InteractableStructureBase.ActiveStructure != null)
+            return;
+
+        // If inventory menu is open, let MenuController handle ESC — don't open settings
+        if (MenuController.Instance != null && (MenuController.Instance.IsMenuOpen || MenuController.Instance.LastEscCloseFrame == Time.frameCount))
+            return;
+
         if (inGameSettingMenuCanvasGroup.alpha > 0f)
             HideInGameSettingMenu();
         else
             ShowInGameSettingMenu();
     }
 
-    private void ShowInGameSettingMenu()
+    public void ShowInGameSettingMenu()
     {
         inGameSettingMenuCanvasGroup.Show();
         _UICanvasGroup.Hide();
@@ -104,7 +112,7 @@ public class ToggleInGameSettingMenu : MonoBehaviour
         BlockPlayerInput();
     }
 
-    private void HideInGameSettingMenu()
+    public void HideInGameSettingMenu()
     {
         inGameSettingMenuCanvasGroup.Hide();
         _UICanvasGroup.Show();

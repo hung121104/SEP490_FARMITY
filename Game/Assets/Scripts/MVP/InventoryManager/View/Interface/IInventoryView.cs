@@ -17,6 +17,8 @@ public interface IInventoryView
     event Action<int, Vector2> OnSlotHoverEnter;
     event Action<int> OnSlotHoverExit;
     event Action<int> OnItemDeleteRequested;
+    event Action<int> OnSlotSplitRequested;
+    event Action<int> OnSlotShiftClickRequested;
 
     // Position check
     bool IsScreenPositionInsideInventory(Vector2 screenPosition);
@@ -29,6 +31,7 @@ public interface IInventoryView
     void ShowDragPreview(ItemModel item);
     void UpdateDragPreview(Vector2 position);
     void HideDragPreview();
+    void StartCarryFromSplit(int slotIndex, ItemModel previewItem);
 
     //Close operations
     void CancelAllActions();

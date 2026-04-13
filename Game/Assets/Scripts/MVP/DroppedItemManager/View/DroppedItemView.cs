@@ -131,6 +131,10 @@ public class DroppedItemView : MonoBehaviour, IDroppedItemView
         transform.position = new Vector3(data.worldX, data.worldY, 0f);
 
         gameObject.SetActive(true);
+
+        // Reset pickup state here.
+        _pickupRequested = false;
+        _spawnTime = Time.time;
     }
 
     /// <summary>Hide the visual and clean up blink state.</summary>

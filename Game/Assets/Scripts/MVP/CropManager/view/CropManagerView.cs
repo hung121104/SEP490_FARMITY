@@ -99,6 +99,19 @@ public class CropManagerView : MonoBehaviourPunCallbacks
     }
 
     // ── Rain event handlers ──────────────────────────────────────────────
+    /// <summary>
+    /// Called after world-sync completes on joined clients to re-apply rain
+    /// watering that may have fired before chunk data was available.
+    /// Only updates RAM; visual refresh is handled by RebuildVisualsAfterSync.
+    /// </summary>
+    public void ReapplyRainWatering()
+    {
+        if (!WeatherView.IsRaining || growthService == null) return;
+        growthService.IsRaining = true;
+        growthService.WaterAllTilledTiles();
+        Debug.Log("[CropManagerView] ReapplyRainWatering — re-watered all tilled tiles after world sync.");
+    }
+
     private void OnRainStarted()
     {
         if (growthService == null) return;
@@ -217,7 +230,7 @@ public class CropManagerView : MonoBehaviourPunCallbacks
             sr = go.AddComponent<SpriteRenderer>();
 
         sr.sortingLayerName = stage == 0 ? "Ground" : "WalkInfront";
-        sr.sortingOrder     = stage == 0 ? 5 : 0;
+        sr.sortingOrder     = stage == 0 ? 22 : 0;
         sr.sprite = PlantCatalogService.Instance?.GetStageSprite(plantId, stage);
 
         cropVisuals[key] = go;

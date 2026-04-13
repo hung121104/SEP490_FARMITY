@@ -43,4 +43,8 @@ public interface IDroppedItemService
 
     /// <summary>Total number of items in the registry.</summary>
     int Count { get; }
+
+    // ── Inventory Integration ─────────────────────────────────
+    int GetAddableQuantity(string itemId, int quantity);
+    bool AddDroppedItemToInventory(string itemId, int quantity);
 }

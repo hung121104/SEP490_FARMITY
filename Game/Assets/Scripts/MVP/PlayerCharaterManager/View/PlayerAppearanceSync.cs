@@ -5,31 +5,33 @@ using UnityEngine;
 
 /// <summary>
 /// Syncs paper-doll appearance (hair, outfit, hat, tool configIds) across the
-/// Photon network using Player Custom Properties.
+/// Photon network.
 ///
-/// Attach to the Player prefab alongside EquipmentManager.
+/// Live changes use per-object RPCs (targeted at this PhotonView's RpcTarget.All)
+/// so the update is applied to the correct entity on every client with no
+/// actor-number confusion.
+///
+/// Player Custom Properties are written alongside every change so late-joining
+/// clients can restore the current appearance in Start().
 ///
 /// How it works
 /// ------------
 ///   LOCAL player  → call SetHair/SetOutfit/SetHat/SetTool
-///                 → writes Custom Properties on PhotonNetwork.LocalPlayer
-///                 → Photon broadcasts to everyone automatically
+///                 → fires RPC_SyncAppearanceSlot on all clients (live visual)
+///                 → also writes Custom Property for late-joiner persistence
 ///
-///   REMOTE player → OnPlayerPropertiesUpdate fires
-///                 → reads the 4 configId keys → applies via EquipmentManager
+///   REMOTE player → RPC arrives on this entity's PhotonView → applied locally
 ///
-///   ON JOIN       → Custom Properties are delivered automatically to late joiners
-///                 → Start() applies whatever is already in Owner.CustomProperties
+///   ON JOIN       → Start() reads owner's Custom Properties and applies them
 ///
 /// Inspector
 /// ---------
-///   equipmentManager — drag the EquipmentManager from this same GameObject.
-///                      Auto-found in Awake if left empty.
+///   equipmentManager — drag the EquipmentManager into this field.
 /// </summary>
 [RequireComponent(typeof(PhotonView))]
 public class PlayerAppearanceSync : MonoBehaviourPunCallbacks
 {
-    // Custom Property keys (short to save bandwidth)
+    // Custom Property keys (short to save bandwidth; used only for persistence)
     private const string KEY_HAIR   = "apHair";
     private const string KEY_OUTFIT = "apOutfit";
     private const string KEY_HAT    = "apHat";
@@ -46,39 +48,60 @@ public class PlayerAppearanceSync : MonoBehaviourPunCallbacks
 
     private void Start()
     {
-        // Apply whatever is already in the owner's custom properties.
-        // Covers: remote players that spawned before us, and our own re-join.
-        if (photonView.Owner != null)
+        // For the LOCAL player: explicitly clear all equipment layers first.
+        // CustomProperties may still contain stale values from a previous world
+        // session (Photon keeps them on the local Player object across room joins).
+        // SpawnPlayer clears them, but SetCustomProperties is asynchronous — the
+        // local cache may not yet reflect the cleared values when Start() runs.
+        // By forcibly clearing the EquipmentManager here we guarantee the player
+        // spawns with a blank paper-doll.  The master will restore the correct
+        // server-saved appearance shortly after via RPC_RestoreAppearance.
+        if (photonView.IsMine && equipmentManager != null)
+        {
+            equipmentManager.EquipHair(string.Empty);
+            equipmentManager.EquipOutfit(string.Empty);
+            equipmentManager.EquipHat(string.Empty);
+            equipmentManager.EquipTool(string.Empty);
+        }
+
+        // For REMOTE players (and as a belt-and-suspenders for local):
+        // apply whatever is in the owner's custom properties so late-joiners
+        // see the correct appearance for players already in the room.
+        if (photonView.Owner != null && !photonView.IsMine)
             ApplyFromProperties(photonView.Owner.CustomProperties);
     }
 
-    // ── Public API (call these on the LOCAL player) ──────────────────────────
+    // ── Public API (call these on the LOCAL player only) ─────────────────────
 
-    public void SetHair(string configId)   => SetProperty(KEY_HAIR, configId);
-    public void SetOutfit(string configId) => SetProperty(KEY_OUTFIT, configId);
-    public void SetHat(string configId)    => SetProperty(KEY_HAT, configId);
-    public void SetTool(string configId)   => SetProperty(KEY_TOOL, configId);
-    public void SetWeapon(string itemId)   => SetProperty(KEY_WEAPON, itemId);
+    public void SetHair(string configId)   => BroadcastSlot(KEY_HAIR,   configId);
+    public void SetOutfit(string configId) => BroadcastSlot(KEY_OUTFIT, configId);
+    public void SetHat(string configId)    => BroadcastSlot(KEY_HAT,    configId);
+    public void SetTool(string configId)   => BroadcastSlot(KEY_TOOL,   configId);
+    public void SetWeapon(string itemId)   => BroadcastSlot(KEY_WEAPON, itemId);
 
     /// <summary>
-    /// Bulk-set all 4 appearance slots at once. Sends a single Custom Properties
-    /// update (1 network message) instead of 4 separate ones.
+    /// Bulk-set all 4 appearance slots at once (1 Custom Property message +
+    /// 1 RPC instead of 4 separate ones).
     /// </summary>
     public void SetAll(string hair, string outfit, string hat, string tool)
     {
         if (!photonView.IsMine) return;
 
-        var props = new Hashtable
+        // Persist full state in Custom Properties for late joiners
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable
         {
             { KEY_HAIR,   hair   ?? string.Empty },
             { KEY_OUTFIT, outfit ?? string.Empty },
             { KEY_HAT,    hat    ?? string.Empty },
             { KEY_TOOL,   tool   ?? string.Empty },
-        };
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        });
 
-        // Apply locally immediately (no round-trip lag for own player)
-        ApplyFromProperties(props);
+        // Live sync via RPC — applies to THIS object on every client
+        photonView.RPC(nameof(RPC_SyncAllAppearance), RpcTarget.AllBuffered,
+            hair   ?? string.Empty,
+            outfit ?? string.Empty,
+            hat    ?? string.Empty,
+            tool   ?? string.Empty);
     }
 
     /// <summary>
@@ -110,19 +133,32 @@ public class PlayerAppearanceSync : MonoBehaviourPunCallbacks
             : string.Empty;
     }
 
-    // ── Photon Callback ─────────────────────────────────────────────────────
+    // ── RPCs ─────────────────────────────────────────────────────────────────
 
-    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
+    /// <summary>
+    /// Called via RPC on every client to apply a single appearance slot.
+    /// Because this RPC is sent on THIS entity's PhotonView, it is guaranteed
+    /// to reach the correct player entity with no actor-number ambiguity.
+    /// </summary>
+    [PunRPC]
+    private void RPC_SyncAppearanceSlot(string key, string configId)
     {
-        // Only react if the update is for THIS player entity's owner
-        if (photonView.Owner == null || targetPlayer.ActorNumber != photonView.Owner.ActorNumber)
-            return;
-
-        ApplyFromProperties(changedProps);
+        ApplySingleSlot(key, configId ?? string.Empty);
     }
 
-    // ── RPC (called by master to tell the owning client to restore saved appearance) ──
+    /// <summary>Bulk RPC — restores all 4 slots at once (used by SetAll and master restore).</summary>
+    [PunRPC]
+    private void RPC_SyncAllAppearance(string hair, string outfit, string hat, string tool)
+    {
+        if (equipmentManager == null) return;
+        equipmentManager.EquipHair(hair     ?? string.Empty);
+        equipmentManager.EquipOutfit(outfit ?? string.Empty);
+        equipmentManager.EquipHat(hat       ?? string.Empty);
+        equipmentManager.EquipTool(tool     ?? string.Empty);
+    }
 
+    /// <summary>Called by master to restore saved appearance on the owning client.
+    /// Also broadcasts to all so every client sees the correct visual.</summary>
     [PunRPC]
     private void RPC_RestoreAppearance(string hair, string outfit, string hat, string tool)
     {
@@ -132,20 +168,44 @@ public class PlayerAppearanceSync : MonoBehaviourPunCallbacks
 
     // ── Internal ─────────────────────────────────────────────────────────────
 
-    private void SetProperty(string key, string configId)
+    /// <summary>
+    /// Sends a single-slot appearance change to all clients via RPC and
+    /// persists the new value in the local player's Custom Properties.
+    /// Only runs on the owning (local) client.
+    /// </summary>
+    private void BroadcastSlot(string key, string configId)
     {
         if (!photonView.IsMine) return;
 
-        var props = new Hashtable { { key, configId ?? string.Empty } };
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        string value = configId ?? string.Empty;
 
-        // Apply locally immediately
-        ApplyFromProperties(props);
+        // Persist for late joiners
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable { { key, value } });
+
+        // Live sync: targeted at this specific PhotonView so only this entity's
+        // EquipmentManager is updated on every client
+        photonView.RPC(nameof(RPC_SyncAppearanceSlot), RpcTarget.AllBuffered, key, value);
+    }
+
+    private void ApplySingleSlot(string key, string configId)
+    {
+        if (equipmentManager == null) return;
+
+        switch (key)
+        {
+            case KEY_HAIR:   equipmentManager.EquipHair(configId);   break;
+            case KEY_OUTFIT: equipmentManager.EquipOutfit(configId); break;
+            case KEY_HAT:    equipmentManager.EquipHat(configId);    break;
+            case KEY_TOOL:   equipmentManager.EquipTool(configId);   break;
+            case KEY_WEAPON:
+                // weapon is handled by WeaponEquipPresenter; no EquipmentManager slot
+                break;
+        }
     }
 
     private void ApplyFromProperties(Hashtable props)
     {
-        if (equipmentManager == null) return;
+        if (equipmentManager == null || props == null) return;
 
         if (props.TryGetValue(KEY_HAIR,   out object hair))
             equipmentManager.EquipHair(hair as string ?? string.Empty);

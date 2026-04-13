@@ -54,14 +54,17 @@ public class WorldDataBootstrapper : MonoBehaviour
 
     private void Start()
     {
+        EnemyStatsCatalogManager.EnsureInstance();
+
+        _worldId = WorldSelectionManager.Instance != null ? WorldSelectionManager.Instance.SelectedWorldId : null;
+        _authToken = SessionManager.Instance != null ? SessionManager.Instance.JwtToken : null;
+
         if (!Photon.Pun.PhotonNetwork.IsMasterClient)
         {
             Debug.Log("[WorldDataBootstrapper] Not master client — skipping world data fetch.");
+            StartCoroutine(BootstrapEnemyStatsCatalogOnly());
             return;
         }
-
-        _worldId   = WorldSelectionManager.Instance != null ? WorldSelectionManager.Instance.SelectedWorldId : null;
-        _authToken = SessionManager.Instance != null ? SessionManager.Instance.JwtToken : null;
 
         if (string.IsNullOrEmpty(_worldId))
         {
@@ -70,6 +73,15 @@ public class WorldDataBootstrapper : MonoBehaviour
         }
 
         StartCoroutine(FetchAndDistribute());
+    }
+
+    private IEnumerator BootstrapEnemyStatsCatalogOnly()
+    {
+        EnemyStatsCatalogManager manager = EnemyStatsCatalogManager.EnsureInstance();
+        if (manager == null)
+            yield break;
+
+        yield return manager.BootstrapAndRegisterIfHost(_worldId, _authToken);
     }
 
     private IEnumerator FetchAndDistribute()
@@ -93,6 +105,9 @@ public class WorldDataBootstrapper : MonoBehaviour
             if (req.isNetworkError || req.isHttpError)
 #endif
             {
+                if (req.responseCode == 401)
+                    SessionManager.Instance?.HandleJwtExpired("World bootstrap unauthorized (401)");
+
                 Debug.LogError($"[WorldDataBootstrapper] Fetch failed: {req.responseCode} {req.error}");
                 yield break;
             }
@@ -199,6 +214,10 @@ public class WorldDataBootstrapper : MonoBehaviour
                 chestModule.ClearAllDirtyFlags();
                 Debug.Log($"[WorldDataBootstrapper] Loaded {data.chests.Count} chest(s) from save.");
             }
+
+            EnemyStatsCatalogManager enemyStatsCatalogManager = EnemyStatsCatalogManager.EnsureInstance();
+            if (enemyStatsCatalogManager != null)
+                yield return enemyStatsCatalogManager.BootstrapAndRegisterIfHost(_worldId, _authToken);
 
             IsReady = true;
             OnWorldDataReady?.Invoke();

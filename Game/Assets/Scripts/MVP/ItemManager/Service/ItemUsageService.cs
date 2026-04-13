@@ -26,7 +26,8 @@ public class ItemUsageService : IItemUsageService
         }
 
         var stamina = StaminaView.FindLocal();
-        if (stamina != null && !stamina.TryConsumeToolStamina(toolData.staminaCost))
+        float effectiveCost = Mathf.Max(0f, toolData.staminaCost - toolData.toolPower);
+        if (stamina != null && !stamina.TryConsumeToolStamina(effectiveCost))
         {
             Debug.Log("[ItemUsageService] Blocked tool use due to low stamina.");
             return false;

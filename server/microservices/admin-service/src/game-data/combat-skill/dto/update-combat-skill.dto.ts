@@ -6,6 +6,7 @@ import {
 } from 'class-validator';
 import {
 	CombatDiceTier,
+	CombatBuffSubCategory,
 	CombatSkillCategory,
 	CombatSkillOwnership,
 } from '../combat-skill.enums';
@@ -30,6 +31,10 @@ export class UpdateCombatSkillDto {
 	@IsOptional()
 	@IsEnum(CombatSkillCategory)
 	category?: CombatSkillCategory;
+
+	@IsOptional()
+	@IsNumber()
+	unlockLevel?: number;
 
 	@IsOptional()
 	@IsNumber()
@@ -82,4 +87,32 @@ export class UpdateCombatSkillDto {
 	@IsOptional()
 	@IsNumber()
 	slashKnockbackForce?: number;
+
+	@IsOptional()
+	@IsNumber()
+	aoeCastRange?: number;
+
+	@IsOptional()
+	@IsNumber()
+	aoeRadius?: number;
+
+	@IsOptional()
+	@IsNumber()
+	aoeVfxDuration?: number;
+
+	@IsOptional()
+	@IsEnum(CombatBuffSubCategory)
+	buffSubCategory?: CombatBuffSubCategory;
+
+	@IsOptional()
+	@IsNumber()
+	buffValue?: number;
+
+	@IsOptional()
+	@IsNumber()
+	buffDuration?: number;
+
+	@IsOptional()
+	@IsNumber()
+	buffTickInterval?: number;
 }

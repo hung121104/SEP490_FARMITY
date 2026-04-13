@@ -52,7 +52,7 @@ public class WeatherPresenter
     public void CompleteInitialization()
     {
         var wdm = WorldDataManager.Instance;
-        if (wdm != null && wdm.Day > 0)
+        if (wdm != null)
         {
             service.SetRainChance(currentRainChance);
             service.RestoreFromSave(wdm.WeatherToday, wdm.WeatherTomorrow);

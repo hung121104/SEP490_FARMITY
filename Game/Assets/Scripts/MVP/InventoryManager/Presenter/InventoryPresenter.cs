@@ -27,7 +27,6 @@ public class InventoryPresenter
 
     // Events for GameView or other systems
     public event Action<ItemModel> OnItemUsed;
-    public event Action<ItemModel> OnItemDropped;
 
     #region Initialization
 
@@ -110,6 +109,7 @@ public class InventoryPresenter
         view.OnSlotHoverEnter += HandleSlotHoverEnter;
         view.OnSlotHoverExit += HandleSlotHoverExit;
         view.OnItemDeleteRequested += HandleItemDelete;
+        view.OnSlotSplitRequested += HandleSlotSplit;
     }
 
     private void UnsubscribeFromViewEvents()
@@ -124,6 +124,7 @@ public class InventoryPresenter
         view.OnSlotHoverEnter -= HandleSlotHoverEnter;
         view.OnSlotHoverExit -= HandleSlotHoverExit;
         view.OnItemDeleteRequested -= HandleItemDelete;
+        view.OnSlotSplitRequested -= HandleSlotSplit;
     }
 
     #endregion
@@ -197,6 +198,10 @@ public class InventoryPresenter
     private int selectedSlot = -1;
     private int draggedSlot = -1;
 
+    // Split-carry state
+    private ItemModel splitCarryItem = null;
+    private int splitSourceSlot = -1;
+
     //Need for checking
     private void HandleSlotClicked(int slotIndex)
     {
@@ -228,6 +233,31 @@ public class InventoryPresenter
         }
     }
 
+    private void HandleSlotSplit(int slotIndex)
+    {
+        // When chest/structure UI is open, ChestPresenter handles the split instead
+        if (InteractableStructureBase.ActiveStructure != null) return;
+
+        ResetActionTimer();
+        var item = service.GetItemAtSlot(slotIndex);
+        if (item == null || !item.IsStackable || item.Quantity <= 1) return;
+
+        int totalQty = item.Quantity;
+        int takeAmount = (totalQty + 1) / 2; // ceil
+
+        // Remove the taken portion from the source slot
+        service.RemoveItemFromSlot(slotIndex, takeAmount);
+
+        // Track split carry state
+        splitCarryItem = new ItemModel(item.ItemData, item.Quality, takeAmount, -1);
+        splitSourceSlot = slotIndex;
+        draggedSlot = slotIndex;
+
+        // Tell view to start carrying with the split preview
+        view?.StartCarryFromSplit(slotIndex, splitCarryItem);
+        HideCurrentItemDetail();
+    }
+
     private void HandleSlotDrag(Vector2 position)
     {
         ResetActionTimer();
@@ -238,9 +268,15 @@ public class InventoryPresenter
     private void HandleSlotEndDrag()
     {
         ResetActionTimer();
-        // If drag wasn't consumed by a slot drop or delete zone,
-        // check if it ended outside the inventory panel → drop item to world
-        if (draggedSlot != -1)
+
+        if (splitCarryItem != null)
+        {
+            // Cancel split: return items to source
+            service.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            splitCarryItem = null;
+            splitSourceSlot = -1;
+        }
+        else if (draggedSlot != -1)
         {
             if (view != null && !view.IsScreenPositionInsideInventory(lastKnownCursorPosition))
             {
@@ -256,7 +292,20 @@ public class InventoryPresenter
     private void HandleSlotDrop(int targetSlotIndex)
     {
         ResetActionTimer();
-        if (draggedSlot != -1 && draggedSlot != targetSlotIndex)
+
+        if (splitCarryItem != null)
+        {
+            // Place split item at target slot
+            bool placed = service.PlaceItemAtSlot(targetSlotIndex, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            if (!placed)
+            {
+                // Can't place — return to source
+                service.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            }
+            splitCarryItem = null;
+            splitSourceSlot = -1;
+        }
+        else if (draggedSlot != -1 && draggedSlot != targetSlotIndex)
         {
             service.MoveItem(draggedSlot, targetSlotIndex);
         }
@@ -286,14 +335,7 @@ public class InventoryPresenter
     private void HandleDropItem(int slotIndex)
     {
         ResetActionTimer();
-        var item = service.GetItemAtSlot(slotIndex);
-        // if (item != null && !item.IsQuestItem)
-        if (item != null)
-        {
-            OnItemDropped?.Invoke(item);
-            // Remove the entire stack from inventory (drop whole stack to world)
-            service.RemoveItemFromSlot(slotIndex, item.Quantity);
-        }
+        service.DropItemFromSlot(slotIndex);
     }
 
     private void HandleSort()
@@ -310,6 +352,17 @@ public class InventoryPresenter
     private void HandleItemDelete(int slotIndex)
     {
         ResetActionTimer();
+
+        // Handle split carry delete: discard the carried portion
+        if (splitCarryItem != null)
+        {
+            Debug.Log($"[InventoryPresenter] Deleted split carry item: {splitCarryItem.ItemName} x{splitCarryItem.Quantity}");
+            splitCarryItem = null;
+            splitSourceSlot = -1;
+            draggedSlot = -1;
+            view?.HideDragPreview();
+            return;
+        }
 
         // Only handle delete if this presenter initiated the drag.
         // If draggedSlot is -1, the drag came from another panel (e.g. chest).
@@ -506,11 +559,6 @@ public class InventoryPresenter
     public int GetItemCount(string itemId)
     {
         return service.GetItemCount(itemId);
-    }
-
-    public int GetAddableQuantity(ItemData itemData, int quantity)
-    {
-        return service.GetAddableQuantity(itemData, quantity);
     }
 
     public void CancelAllActions()

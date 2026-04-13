@@ -16,7 +16,7 @@ public class MyWorldListView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI statusText;
     [SerializeField] private GameObject loadingPanel;
 
-    private MyWorldListPresenter presenter;
+    private WorldPresenter presenter;
     private List<WorldItemView> worldItemInstances = new List<WorldItemView>();
 
     private void Awake()
@@ -28,8 +28,8 @@ public class MyWorldListView : MonoBehaviour
         }
 
         // Initialize presenter with service
-        IMyWorldListService service = new MyWorldListService();
-        presenter = new MyWorldListPresenter(service);
+        IWorldService service = new WorldService();
+        presenter = new WorldPresenter(service);
         presenter.SetView(this);
     }
 
@@ -140,7 +140,7 @@ public class MyWorldListView : MonoBehaviour
     }
 
     // Expose presenter for other views (e.g., CreateWorld) to call presenter actions
-    public MyWorldListPresenter GetPresenter() => presenter;
+    public WorldPresenter GetPresenter() => presenter;
 
     /// <summary>
     /// Add a single world to the displayed list (called by presenter)

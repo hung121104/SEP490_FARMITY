@@ -66,6 +66,30 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
     public bool IsSaving => _isSaving;
     private bool  _quitSent  = false;
 
+    /// <summary>
+    /// Fired on the host whenever an auto-save HTTP request fails (not leave-room saves).
+    /// Subscribe in SaveFailWarningView to show the in-game warning popup.
+    /// </summary>
+    public static event System.Action OnSaveFailed;
+
+    /// <summary>
+    /// Set to true when a leave-room forced save fails.
+    /// Persists across scene loads (static). Consumed and cleared by
+    /// MainMenuSaveFailWarningView on Start().
+    /// </summary>
+    public static bool PendingLeaveRoomSaveFailWarning { get; set; }
+
+    /// <summary>Whether the most recent save attempt failed.</summary>
+    public bool LastSaveFailed { get; private set; }
+
+    /// <summary>
+    /// Call before ForceSave() when leaving the room so the failure path
+    /// routes to the main-menu popup instead of the in-game popup.
+    /// </summary>
+    internal void SetLeavingRoomMode() => _isLeavingRoom = true;
+
+    private bool _isLeavingRoom;
+
     // ──────────────────────────────────────────────────── Unity lifecycle
 
     private void Awake()
@@ -197,6 +221,7 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
 
         if (saved)
         {
+            LastSaveFailed = false;
             // Sync saved stamina values back into PlayerDataManager so that if a joined
             // client re-enters mid-session, TryRestoreFromSavedCharacterData() reads the
             // current in-session values instead of the stale initial API-load values.
@@ -246,9 +271,17 @@ public class WorldSaveManager : MonoBehaviourPunCallbacks
         }
         else
         {
+            LastSaveFailed = true;
             if (ShowDebugLogs)
                 Debug.LogWarning("[WorldSave] Auto-save failed — dirty chunks retained for next attempt.");
+
+            if (_isLeavingRoom)
+                PendingLeaveRoomSaveFailWarning = true;
+            else
+                OnSaveFailed?.Invoke();
         }
+
+        _isLeavingRoom = false;
 
         _isSaving = false;
 
