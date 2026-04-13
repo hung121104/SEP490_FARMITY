@@ -9,7 +9,7 @@
   "scripts": {
     "install:all": "pnpm install",
     "build:all": "pnpm -r build",
-    "start:all": "concurrently \"pnpm --filter account-service start\" \"pnpm --filter character-service start\" \"pnpm --filter gateway-service start\" \"pnpm --filter admin-service start\"",
+    "start:all": "concurrently \"pnpm --filter account-service start\" \"pnpm --filter player-data-service start\" \"pnpm --filter gateway-service start\" \"pnpm --filter admin-service start\"",
     "seed": "ts-node seeding.ts",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test"
