@@ -8,63 +8,71 @@ using System;
 
 namespace AchievementManager.Presenter
 {
-    public class AchievementPresenter : MonoBehaviour
+    public class AchievementPresenter : IAchievementPresenter
     {
-        #region Singleton
+        public static IAchievementPresenter Instance { get; internal set; }
 
-        public static AchievementPresenter Instance { get; private set; }
+        #region Dependencies
 
-        private void Awake()
-        {
-            if (Instance != null && Instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-            InitializeComponents();
-        }
+        private readonly AchievementModel model;
+        private readonly IAchievementService service;
+        private readonly IAchievementPanelView panelView;
+        private readonly AchievementUnlockPopupView unlockPopupView;
+        private readonly MonoBehaviour coroutineHost;
+        private readonly float fetchDelay;
+        private readonly float catalogWaitTimeout;
 
-        #endregion
-
-        #region Serialized Fields
-
-        [Header("Views")]
-        [SerializeField] private AchievementPanelView panelView;
-        [SerializeField] private AchievementUnlockPopupView unlockPopupView;
-
-        [Header("Settings")]
-        [SerializeField] private float fetchDelay = 1f;
-        [SerializeField] private float catalogWaitTimeout = 10f;
-
-        #endregion
-
-        #region Runtime Components
-
-        private AchievementModel model;
-        private IAchievementService service;
         private AchievementTrackerPresenter tracker;
 
         #endregion
 
-        #region Initialization
+        #region Construction
 
-        private void InitializeComponents()
+        public AchievementPresenter(
+            AchievementModel model,
+            IAchievementService service,
+            IAchievementPanelView panelView,
+            AchievementUnlockPopupView unlockPopupView,
+            MonoBehaviour coroutineHost,
+            float fetchDelay = 1f,
+            float catalogWaitTimeout = 10f)
         {
-            model   = new AchievementModel();
-            service = new AchievementService();
+            this.model = model;
+            this.service = service;
+            this.panelView = panelView;
+            this.unlockPopupView = unlockPopupView;
+            this.coroutineHost = coroutineHost;
+            this.fetchDelay = fetchDelay;
+            this.catalogWaitTimeout = catalogWaitTimeout;
 
-            tracker = GetComponent<AchievementTrackerPresenter>();
-            if (tracker == null)
-                tracker = gameObject.AddComponent<AchievementTrackerPresenter>();
+            SubscribeToViewEvents();
+            Debug.Log("[AchievementPresenter] Initialized");
+        }
 
-            // ✅ Fix: Initialize tracker immediately in Awake
-            // Don't wait for fetch - tracker needs to be ready ASAP
-            // model.isLoaded = false so tracker will guard itself
-            tracker.Initialize(model, service, this);
+        public void SetTracker(AchievementTrackerPresenter tracker)
+        {
+            this.tracker = tracker;
+        }
 
-            Debug.Log("[AchievementPresenter] Components initialized");
+        public void Dispose()
+        {
+            UnsubscribeFromViewEvents();
+        }
+
+        private void SubscribeToViewEvents()
+        {
+            if (panelView == null) return;
+            panelView.OnOpenRequested += OpenPanel;
+            panelView.OnCloseRequested += ClosePanel;
+            panelView.OnRefreshRequested += OpenPanel;
+        }
+
+        private void UnsubscribeFromViewEvents()
+        {
+            if (panelView == null) return;
+            panelView.OnOpenRequested -= OpenPanel;
+            panelView.OnCloseRequested -= ClosePanel;
+            panelView.OnRefreshRequested -= OpenPanel;
         }
 
         #endregion
@@ -74,7 +82,7 @@ namespace AchievementManager.Presenter
         public void OnLoginSuccess()
         {
             Debug.Log("[AchievementPresenter] Login detected → fetching achievements...");
-            StartCoroutine(FetchAfterDelay());
+            coroutineHost.StartCoroutine(FetchAfterDelay());
         }
 
         private IEnumerator FetchAfterDelay()
@@ -115,6 +123,7 @@ namespace AchievementManager.Presenter
         private void OnFetchSuccess(List<AchievementData> playerAchievements)
         {
             List<AchievementData> mergedAchievements = MergeCatalogWithPlayerAchievements(playerAchievements);
+            ReconcileMergedProgressWithLocalCounters(mergedAchievements);
 
             foreach (AchievementData data in mergedAchievements)
                 model.UpsertAchievement(data);
@@ -134,6 +143,34 @@ namespace AchievementManager.Presenter
 
             Debug.Log($"[AchievementPresenter] Loaded {mergedAchievements.Count} merged achievements ✅");
             Debug.Log($"[AchievementPresenter] Tracker ready: {tracker.IsInitialized} | Model loaded: {model.isLoaded}");
+        }
+
+        private void ReconcileMergedProgressWithLocalCounters(List<AchievementData> achievements)
+        {
+            if (achievements == null || model == null)
+                return;
+
+            foreach (AchievementData achievement in achievements)
+            {
+                if (achievement == null || achievement.requirements == null || achievement.progress == null)
+                    continue;
+
+                int count = Mathf.Min(achievement.requirements.Count, achievement.progress.Count);
+                for (int i = 0; i < count; i++)
+                {
+                    AchievementRequirement req = achievement.requirements[i];
+                    if (req == null || string.IsNullOrEmpty(req.type))
+                        continue;
+
+                    string key = string.IsNullOrEmpty(req.entityId)
+                        ? req.type
+                        : $"{req.type}_{req.entityId}";
+
+                    int localCounter = model.GetCounter(key);
+                    if (localCounter > achievement.progress[i])
+                        achievement.progress[i] = localCounter;
+                }
+            }
         }
 
         private void OnFetchError(string error)
@@ -304,11 +341,11 @@ namespace AchievementManager.Presenter
             {
                 // RAM-first display for instant panel response.
                 panelView?.Populate(model.GetAllAchievements());
-                StartCoroutine(FetchAllAchievements());
+                coroutineHost.StartCoroutine(FetchAllAchievements());
                 return;
             }
 
-            StartCoroutine(RefreshAndPopulatePanel());
+            coroutineHost.StartCoroutine(RefreshAndPopulatePanel());
         }
 
         public void ClosePanel()
