@@ -22,9 +22,8 @@ public class DroppedItemService : IDroppedItemService
 
     public int GetAddableQuantity(string itemId, int quantity)
     {
-        var itemData = ItemCatalogService.Instance?.GetItemData(itemId);
-        if (itemData == null || inventoryService == null) return quantity;
-        return inventoryService.GetAddableQuantity(itemData, quantity);
+        if (itemId == null || inventoryService == null) return quantity;
+        return inventoryService.GetAddableQuantity(itemId, quantity);
     }
 
     public bool AddDroppedItemToInventory(string itemId, int quantity)
