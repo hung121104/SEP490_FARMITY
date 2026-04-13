@@ -1,18 +1,21 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 using AchievementManager.Model;
-using AchievementManager.Presenter;
 
 namespace AchievementManager.View
 {
-    public class AchievementPanelView : MonoBehaviour
+    public class AchievementPanelView : MonoBehaviour, IAchievementPanelView
     {
         #region Serialized Fields
 
         [Header("Panel")]
         [SerializeField] private CanvasGroup panelCanvasGroup;
+        [SerializeField] private GameObject panelObject;
 
         [Header("Container")]
         [SerializeField] private Transform inProgressContainer;
@@ -21,6 +24,7 @@ namespace AchievementManager.View
         [SerializeField] private GameObject achievementItemPrefab;
 
         [Header("Buttons")]
+        [SerializeField] private Button openPanelButton;
         [SerializeField] private Button closeButton;
         [SerializeField] private Button refreshButton;
 
@@ -34,10 +38,26 @@ namespace AchievementManager.View
 
         public bool IsOpen { get; private set; } = false;
         private List<GameObject> spawnedItems = new List<GameObject>();
+        private InputAction escapeCloseAction;
+        private Coroutine reenableToggleRoutine;
+
+        #endregion
+
+        #region Events
+
+        public event Action OnOpenRequested;
+        public event Action OnCloseRequested;
+        public event Action OnRefreshRequested;
 
         #endregion
 
         #region Unity Lifecycle
+
+        private void Awake()
+        {
+            escapeCloseAction = new InputAction("CloseAchievementPanel", InputActionType.Button, "<Keyboard>/escape");
+            escapeCloseAction.performed += OnEscapeClosePanel;
+        }
 
         private void Start()
         {
@@ -45,10 +65,37 @@ namespace AchievementManager.View
             Hide();
         }
 
-        private void Update()
+        private void OnEnable()
         {
-            if (IsOpen && Input.GetKeyDown(KeyCode.Escape))
-                AchievementPresenter.Instance?.ClosePanel();
+            escapeCloseAction?.Enable();
+        }
+
+        private void OnDisable()
+        {
+            escapeCloseAction?.Disable();
+
+            if (reenableToggleRoutine != null)
+            {
+                StopCoroutine(reenableToggleRoutine);
+                reenableToggleRoutine = null;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (openPanelButton != null)
+                openPanelButton.onClick.RemoveListener(HandleOpenClicked);
+            if (closeButton != null)
+                closeButton.onClick.RemoveListener(HandleCloseClicked);
+            if (refreshButton != null)
+                refreshButton.onClick.RemoveListener(HandleRefreshClicked);
+
+            if (escapeCloseAction != null)
+            {
+                escapeCloseAction.performed -= OnEscapeClosePanel;
+                escapeCloseAction.Dispose();
+                escapeCloseAction = null;
+            }
         }
 
         #endregion
@@ -57,22 +104,30 @@ namespace AchievementManager.View
 
         private void SetupButtons()
         {
+            if (openPanelButton != null)
+                openPanelButton.onClick.AddListener(HandleOpenClicked);
+
             if (closeButton != null)
-                closeButton.onClick.AddListener(OnCloseClicked);
+                closeButton.onClick.AddListener(HandleCloseClicked);
 
             if (refreshButton != null)
-                refreshButton.onClick.AddListener(OnRefreshClicked);
+                refreshButton.onClick.AddListener(HandleRefreshClicked);
         }
 
-        private void OnCloseClicked()
+        private void HandleOpenClicked()
         {
-            AchievementPresenter.Instance?.ClosePanel();
+            OnOpenRequested?.Invoke();
         }
 
-        private void OnRefreshClicked()
+        private void HandleCloseClicked()
+        {
+            OnCloseRequested?.Invoke();
+        }
+
+        private void HandleRefreshClicked()
         {
             ShowLoading(true);
-            AchievementPresenter.Instance?.OpenPanel();
+            OnRefreshRequested?.Invoke();
         }
 
         #endregion
@@ -83,7 +138,12 @@ namespace AchievementManager.View
         {
             if (panelCanvasGroup != null)
                 panelCanvasGroup.Show();
+
+            if (panelObject != null)
+                panelObject.SetActive(true);
+
             IsOpen = true;
+            ToggleInGameSettingMenu.SetGlobalAllowToggleState(false);
             Debug.Log("[AchievementPanelView] Panel opened");
         }
 
@@ -91,7 +151,16 @@ namespace AchievementManager.View
         {
             if (panelCanvasGroup != null)
                 panelCanvasGroup.Hide();
+
+            if (panelCanvasGroup == null && panelObject != null)
+                panelObject.SetActive(false);
+
             IsOpen = false;
+
+            if (reenableToggleRoutine != null)
+                StopCoroutine(reenableToggleRoutine);
+            reenableToggleRoutine = StartCoroutine(ReenableToggleNextFrame());
+
             Debug.Log("[AchievementPanelView] Panel closed");
         }
 
@@ -136,6 +205,19 @@ namespace AchievementManager.View
 
         #region Helpers
 
+        private void OnEscapeClosePanel(InputAction.CallbackContext _)
+        {
+            if (!IsOpen) return;
+            OnCloseRequested?.Invoke();
+        }
+
+        private IEnumerator ReenableToggleNextFrame()
+        {
+            yield return null;
+            ToggleInGameSettingMenu.SetGlobalAllowToggleState(true);
+            reenableToggleRoutine = null;
+        }
+
         private void ClearItems()
         {
             foreach (GameObject item in spawnedItems)
@@ -143,7 +225,7 @@ namespace AchievementManager.View
             spawnedItems.Clear();
         }
 
-        private void ShowLoading(bool show)
+        public void ShowLoading(bool show)
         {
             if (loadingIndicator != null)
                 loadingIndicator.SetActive(show);
