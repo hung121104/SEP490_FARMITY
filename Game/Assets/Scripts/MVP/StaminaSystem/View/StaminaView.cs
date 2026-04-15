@@ -102,10 +102,27 @@ public class StaminaView : MonoBehaviourPun
                   $"current={model.currentStamina:F1}, viable={model.viableStamina:F1}");
     }
 
+    private void OnEnable()
+    {
+        if (timeManager != null)
+            timeManager.OnSleepEnded += HandleSleepEnded;
+    }
+
     private void OnDisable()
     {
+        if (timeManager != null)
+            timeManager.OnSleepEnded -= HandleSleepEnded;
+
         if (photonView != null && photonView.IsMine)
             SetLocalSprintIntent(false);
+    }
+
+    private void HandleSleepEnded()
+    {
+        if (!PhotonNetwork.IsMasterClient || presenter == null) return;
+
+        presenter.RestoreBySleep();
+        BroadcastState();
     }
 
     private void Update()

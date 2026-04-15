@@ -69,6 +69,8 @@ public class NPCInteractionPresenter
         this.giftDatabase = giftDatabase;
         this.inventoryGameView = inventoryGameView;
         this.hotbarScript = hotbarScript;
+
+        CreateInteractionNode();
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -93,6 +95,12 @@ public class NPCInteractionPresenter
         }
         else
             Debug.LogError($"[NPCInteractionPresenter] InventoryService on {dialogueModel.npcName} is null!");
+
+        if (QuestManager.Instance == null)
+        {
+            Debug.LogError("[NPCInteractionPresenter] QuestManager.Instance is null — quest features disabled.");
+            return;
+        }
 
         questService = QuestManager.Instance.QuestService;
 
@@ -122,8 +130,6 @@ public class NPCInteractionPresenter
 
         INPCDialogueService dialogueService = new NPCDialogueService(dialogueModel);
         dialoguePresenter = new NPCDialoguePresenter(dialogueService, dialogueView, questView);
-
-        CreateInteractionNode();
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -262,6 +268,8 @@ public class NPCInteractionPresenter
 
     private void HandleInteractionMenuInput()
     {
+        if (interactionNode == null) return;
+
         for (int i = 0; i < interactionNode.options.Count; i++)
         {
             var slotAction = InputManager.Instance.GetHotbarSlotAction(i);

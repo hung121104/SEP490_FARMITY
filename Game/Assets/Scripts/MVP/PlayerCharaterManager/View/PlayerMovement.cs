@@ -19,6 +19,10 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
     private PlayerCombatRestoreBridgeView combatRestoreBridge;
     private bool sprintIntent;
 
+    private TimeManagerView _timeManager;
+    private SpriteRenderer[] _allRenderers;
+    private bool _isSleeping;
+
     [SerializeField] private Camera playerCa;
     [SerializeField] private CinemachineCamera cinemachineCamera;
     [SerializeField] private float moveSpeed = 5f;
@@ -42,6 +46,51 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
         playerCollider = GetComponent<CapsuleCollider2D>();
         staminaView    = GetComponent<StaminaView>() ?? gameObject.AddComponent<StaminaView>();
         combatRestoreBridge = GetComponent<PlayerCombatRestoreBridgeView>() ?? gameObject.AddComponent<PlayerCombatRestoreBridgeView>();
+        _timeManager   = FindFirstObjectByType<TimeManagerView>();
+        _allRenderers  = GetComponentsInChildren<SpriteRenderer>(true);
+    }
+
+    private void OnEnable()
+    {
+        if (_timeManager != null)
+        {
+            _timeManager.OnSleepStarted += HandleSleepStarted;
+            _timeManager.OnSleepEnded   += HandleSleepEndedMovement;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (_timeManager != null)
+        {
+            _timeManager.OnSleepStarted -= HandleSleepStarted;
+            _timeManager.OnSleepEnded   -= HandleSleepEndedMovement;
+        }
+    }
+
+    private void HandleSleepStarted()
+    {
+        _isSleeping = true;
+        SetRenderersEnabled(false);
+
+        if (photonView.IsMine && rb != null)
+            rb.linearVelocity = Vector2.zero;
+    }
+
+    private void HandleSleepEndedMovement()
+    {
+        _isSleeping = false;
+        SetRenderersEnabled(true);
+    }
+
+    private void SetRenderersEnabled(bool enabled)
+    {
+        if (_allRenderers == null) return;
+        for (int i = 0; i < _allRenderers.Length; i++)
+        {
+            if (_allRenderers[i] != null)
+                _allRenderers[i].enabled = enabled;
+        }
     }
 
     void Start()
@@ -73,8 +122,8 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
         {
             UpdateExternalSpeedBuffTimer();
 
-            // Block input while an action (plow, water, attack) is running
-            if (animationView?.IsMovementLocked == true)
+            // Block input while sleeping or an action (plow, water, attack) is running
+            if (_isSleeping || animationView?.IsMovementLocked == true)
             {
                 moveInput = Vector2.zero;
                 animationView?.UpdateLocomotion(Vector2.zero, lastInput);
@@ -108,8 +157,7 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
         if (!photonView.IsMine || rb == null || presenter == null)
             return;
 
-        if (animationView?.IsMovementLocked == true)
-
+        if (_isSleeping || animationView?.IsMovementLocked == true)
         {
             rb.linearVelocity = Vector2.zero;
             return;
