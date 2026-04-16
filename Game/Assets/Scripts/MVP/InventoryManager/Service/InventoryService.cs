@@ -8,6 +8,9 @@ public class InventoryService : IInventoryService
 {
     private readonly InventoryModel model;
 
+    // Properties
+    public int MaxSlots => model.maxSlots;
+
     // Events
     public event Action<ItemModel, int> OnItemAdded;
     public event Action<ItemModel, int> OnItemRemoved;

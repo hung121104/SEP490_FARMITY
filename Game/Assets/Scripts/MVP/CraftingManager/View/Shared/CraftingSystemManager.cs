@@ -150,7 +150,7 @@ public class CraftingSystemManager : MonoBehaviour
         if (existingInventory != null)
         {
             inventoryService = existingInventory.GetInventoryService();
-            inventorySlotCount = existingInventory.GetInventorySlotCount();
+            inventorySlotCount = inventoryService.MaxSlots;
 
             // Cache the InventoryGameView reference if not assigned in Inspector
             if (inventoryGameView == null)

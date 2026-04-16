@@ -63,7 +63,7 @@ public class InventoryGameView : MonoBehaviour
         service = inventoryService;
 
         // Create Presenter
-        presenter = new InventoryPresenter(model, service);
+        presenter = new InventoryPresenter(service);
 
         // Initialize View
         if (inventoryView != null)
@@ -294,7 +294,6 @@ public class InventoryGameView : MonoBehaviour
 
     public IInventoryService GetInventoryService() => service;
     public InventoryModel GetInventoryModel() => model;
-    public int GetInventorySlotCount() => model.maxSlots;
     public IInventoryView GetInventoryView() => inventoryView;
 
     /// <summary>

@@ -70,16 +70,15 @@ public class HotbarView : MonoBehaviour
         }
 
         var inventoryService = inventoryGameView.GetInventoryService();
-        var inventoryModel = inventoryGameView.GetInventoryModel();
 
-        if (inventoryService == null || inventoryModel == null)
+        if (inventoryService == null)
         {
             Debug.LogWarning("HotbarView: Inventory not ready, retrying...");
             Invoke(nameof(InitializeHotbarSystem), 0.1f);
             return;
         }
 
-        model = new HotbarModel(inventoryModel, inventoryHotbarStartIndex, hotbarSize);
+        model = new HotbarModel(inventoryService, inventoryHotbarStartIndex, hotbarSize);
         presenter = new HotbarPresenter(model, this, inventoryService);
         presenter.Initialize();
 
