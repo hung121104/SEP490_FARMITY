@@ -3,26 +3,23 @@ using UnityEngine;
 /// <summary>
 /// Stateless service handling cross-inventory item transfers between chest and player.
 /// Supports stack merging when same stackable item meets, swap otherwise.
-/// Uses InventoryModel internal operations directly for atomic cross-model moves.
+/// Uses IInventoryService for all operations — no direct Model access.
 /// </summary>
 public class ChestService : IChestService
 {
-    public bool TransferToChest(InventoryModel playerModel, int playerSlot,
-                                InventoryModel chestModel, int chestSlot)
+    public bool TransferToChest(IInventoryService playerService, int playerSlot,
+                                IInventoryService chestService, int chestSlot)
     {
-        if (!playerModel.IsSlotValid(playerSlot) || !chestModel.IsSlotValid(chestSlot))
-            return false;
-
-        var playerItem = playerModel.GetItemAtSlot(playerSlot);
+        var playerItem = playerService.GetItemAtSlot(playerSlot);
         if (playerItem == null) return false;
 
-        var chestItem = chestModel.GetItemAtSlot(chestSlot);
+        var chestItem = chestService.GetItemAtSlot(chestSlot);
 
         if (chestItem == null)
         {
-            // Simple move: player → chest
-            chestModel.SetItemAtSlot(chestSlot, playerItem);
-            playerModel.ClearSlot(playerSlot);
+            // Simple move: player → empty chest slot
+            chestService.PlaceItemAtSlot(chestSlot, playerItem.ItemData, playerItem.Quality, playerItem.Quantity);
+            playerService.RemoveItemFromSlot(playerSlot, playerItem.Quantity);
         }
         else if (chestItem.ItemId == playerItem.ItemId &&
                  chestItem.Quality == playerItem.Quality &&
@@ -33,38 +30,42 @@ public class ChestService : IChestService
             int move  = Mathf.Min(space, playerItem.Quantity);
             if (move <= 0) return false;
 
-            chestItem.AddQuantity(move);
-            playerItem.AddQuantity(-move);
-
-            if (playerItem.Quantity <= 0)
-                playerModel.ClearSlot(playerSlot);
+            // PlaceItemAtSlot handles merge for same item
+            chestService.PlaceItemAtSlot(chestSlot, playerItem.ItemData, playerItem.Quality, move);
+            playerService.RemoveItemFromSlot(playerSlot, move);
         }
         else
         {
-            // Swap
-            chestModel.SetItemAtSlot(chestSlot, playerItem);
-            playerModel.SetItemAtSlot(playerSlot, chestItem);
+            // Swap: save data, clear both, place swapped
+            var pData = playerItem.ItemData;
+            var pQty  = playerItem.Quantity;
+            var pQual = playerItem.Quality;
+            var cData = chestItem.ItemData;
+            var cQty  = chestItem.Quantity;
+            var cQual = chestItem.Quality;
+
+            playerService.RemoveItemFromSlot(playerSlot, pQty);
+            chestService.RemoveItemFromSlot(chestSlot, cQty);
+            chestService.PlaceItemAtSlot(chestSlot, pData, pQual, pQty);
+            playerService.PlaceItemAtSlot(playerSlot, cData, cQual, cQty);
         }
 
         return true;
     }
 
-    public bool TransferToPlayer(InventoryModel chestModel, int chestSlot,
-                                 InventoryModel playerModel, int playerSlot)
+    public bool TransferToPlayer(IInventoryService chestService, int chestSlot,
+                                 IInventoryService playerService, int playerSlot)
     {
-        if (!chestModel.IsSlotValid(chestSlot) || !playerModel.IsSlotValid(playerSlot))
-            return false;
-
-        var chestItem = chestModel.GetItemAtSlot(chestSlot);
+        var chestItem = chestService.GetItemAtSlot(chestSlot);
         if (chestItem == null) return false;
 
-        var playerItem = playerModel.GetItemAtSlot(playerSlot);
+        var playerItem = playerService.GetItemAtSlot(playerSlot);
 
         if (playerItem == null)
         {
-            // Simple move: chest → player
-            playerModel.SetItemAtSlot(playerSlot, chestItem);
-            chestModel.ClearSlot(chestSlot);
+            // Simple move: chest → empty player slot
+            playerService.PlaceItemAtSlot(playerSlot, chestItem.ItemData, chestItem.Quality, chestItem.Quantity);
+            chestService.RemoveItemFromSlot(chestSlot, chestItem.Quantity);
         }
         else if (playerItem.ItemId == chestItem.ItemId &&
                  playerItem.Quality == chestItem.Quality &&
@@ -75,60 +76,31 @@ public class ChestService : IChestService
             int move  = Mathf.Min(space, chestItem.Quantity);
             if (move <= 0) return false;
 
-            playerItem.AddQuantity(move);
-            chestItem.AddQuantity(-move);
-
-            if (chestItem.Quantity <= 0)
-                chestModel.ClearSlot(chestSlot);
+            playerService.PlaceItemAtSlot(playerSlot, chestItem.ItemData, chestItem.Quality, move);
+            chestService.RemoveItemFromSlot(chestSlot, move);
         }
         else
         {
-            // Swap
-            playerModel.SetItemAtSlot(playerSlot, chestItem);
-            chestModel.SetItemAtSlot(chestSlot, playerItem);
+            // Swap: save data, clear both, place swapped
+            var pData = playerItem.ItemData;
+            var pQty  = playerItem.Quantity;
+            var pQual = playerItem.Quality;
+            var cData = chestItem.ItemData;
+            var cQty  = chestItem.Quantity;
+            var cQual = chestItem.Quality;
+
+            chestService.RemoveItemFromSlot(chestSlot, cQty);
+            playerService.RemoveItemFromSlot(playerSlot, pQty);
+            playerService.PlaceItemAtSlot(playerSlot, cData, cQual, cQty);
+            chestService.PlaceItemAtSlot(chestSlot, pData, pQual, pQty);
         }
 
         return true;
     }
 
-    public bool MoveWithinChest(InventoryModel chestModel, int fromSlot, int toSlot)
+    public bool MoveWithinChest(IInventoryService chestService, int fromSlot, int toSlot)
     {
-        if (!chestModel.IsSlotValid(fromSlot) || !chestModel.IsSlotValid(toSlot))
-            return false;
-
-        var fromItem = chestModel.GetItemAtSlot(fromSlot);
-        if (fromItem == null) return false;
-
-        var toItem = chestModel.GetItemAtSlot(toSlot);
-
-        if (toItem == null)
-        {
-            // Simple move
-            chestModel.SetItemAtSlot(toSlot, fromItem);
-            chestModel.ClearSlot(fromSlot);
-        }
-        else if (toItem.ItemId == fromItem.ItemId &&
-                 toItem.Quality == fromItem.Quality &&
-                 toItem.IsStackable)
-        {
-            // Merge stacks
-            int space = toItem.MaxStack - toItem.Quantity;
-            int move  = Mathf.Min(space, fromItem.Quantity);
-            if (move <= 0) return false;
-
-            toItem.AddQuantity(move);
-            fromItem.AddQuantity(-move);
-
-            if (fromItem.Quantity <= 0)
-                chestModel.ClearSlot(fromSlot);
-        }
-        else
-        {
-            // Swap
-            chestModel.SwapSlots(fromSlot, toSlot);
-        }
-
-        return true;
+        // IInventoryService.MoveItem already handles move, merge, and swap
+        return chestService.MoveItem(fromSlot, toSlot);
     }
 }
-

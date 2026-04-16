@@ -84,9 +84,7 @@ public class ChestGameView : MonoBehaviour
 
         presenter = new ChestPresenter(
             chestData,
-            chestModel,
             chestService,
-            playerInventoryGameView.GetInventoryModel(),
             playerInventoryGameView.GetInventoryService(),
             transferService);
 

@@ -293,7 +293,6 @@ public class InventoryGameView : MonoBehaviour
     }
 
     public IInventoryService GetInventoryService() => service;
-    public InventoryModel GetInventoryModel() => model;
     public IInventoryView GetInventoryView() => inventoryView;
 
     /// <summary>
