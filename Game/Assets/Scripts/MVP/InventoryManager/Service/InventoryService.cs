@@ -358,7 +358,7 @@ public class InventoryService : IInventoryService
         return true;
     }
 
-    public bool PlaceItemAtSlot(int slotIndex, ItemData itemData, Quality quality, int quantity)
+    public bool PlaceItemAtSlot(int slotIndex, ItemData itemData, int quantity, Quality quality = Quality.Normal)
     {
         if (!model.IsSlotValid(slotIndex) || itemData == null || quantity <= 0)
             return false;
@@ -367,7 +367,7 @@ public class InventoryService : IInventoryService
         if (existing != null)
         {
             // Merge into existing stack if same item and stackable
-            if (existing.ItemId == itemData.itemID && existing.Quality == quality && existing.IsStackable)
+            if (existing.ItemId == itemData.itemID && existing.IsStackable)
             {
                 int canAdd = Mathf.Min(quantity, existing.MaxStack - existing.Quantity);
                 if (canAdd <= 0) return false;

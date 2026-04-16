@@ -24,7 +24,6 @@ public class HotbarView : MonoBehaviour
     [SerializeField] private InventoryGameView inventoryGameView;
 
     private HotbarSlotUI[] slotUIs;
-    private HotbarModel model;
     private HotbarPresenter presenter;
     private bool isInitialized = false;
 
@@ -78,8 +77,7 @@ public class HotbarView : MonoBehaviour
             return;
         }
 
-        model = new HotbarModel(inventoryService, inventoryHotbarStartIndex, hotbarSize);
-        presenter = new HotbarPresenter(model, this, inventoryService);
+        presenter = new HotbarPresenter(this, inventoryService, inventoryHotbarStartIndex, hotbarSize);
         presenter.Initialize();
 
         isInitialized = true;

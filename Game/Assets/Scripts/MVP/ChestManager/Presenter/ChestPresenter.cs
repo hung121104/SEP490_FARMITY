@@ -408,14 +408,14 @@ public class ChestPresenter
             // Cancel split: return items to source
             if (splitFromChest)
             {
-                chestInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+                chestInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
                 isApplyingLocalSync = true;
                 SyncChestSlot(splitSourceSlot);
                 isApplyingLocalSync = false;
             }
             else
             {
-                playerInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+                playerInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             }
             splitCarryItem = null;
             splitSourceSlot = -1;
@@ -501,7 +501,7 @@ public class ChestPresenter
         if (splitCarryItem != null)
         {
             // Place split item into chest slot
-            bool placed = chestInventoryService.PlaceItemAtSlot(targetSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            bool placed = chestInventoryService.PlaceItemAtSlot(targetSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             if (!placed)
             {
                 ReturnSplitCarryToSource();
@@ -572,7 +572,7 @@ public class ChestPresenter
         if (splitCarryItem != null)
         {
             // Place split item into player slot
-            bool placed = playerInventoryService.PlaceItemAtSlot(targetSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            bool placed = playerInventoryService.PlaceItemAtSlot(targetSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             if (!placed)
             {
                 ReturnSplitCarryToSource();
@@ -615,14 +615,14 @@ public class ChestPresenter
         if (splitCarryItem == null) return;
         if (splitFromChest)
         {
-            chestInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            chestInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             isApplyingLocalSync = true;
             SyncChestSlot(splitSourceSlot);
             isApplyingLocalSync = false;
         }
         else
         {
-            playerInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            playerInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
         }
     }
 

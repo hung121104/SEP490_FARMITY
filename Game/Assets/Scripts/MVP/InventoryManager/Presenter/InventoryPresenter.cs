@@ -270,7 +270,7 @@ public class InventoryPresenter
         if (splitCarryItem != null)
         {
             // Cancel split: return items to source
-            service.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            service.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             splitCarryItem = null;
             splitSourceSlot = -1;
         }
@@ -294,11 +294,11 @@ public class InventoryPresenter
         if (splitCarryItem != null)
         {
             // Place split item at target slot
-            bool placed = service.PlaceItemAtSlot(targetSlotIndex, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            bool placed = service.PlaceItemAtSlot(targetSlotIndex, splitCarryItem.ItemData, splitCarryItem.Quantity);
             if (!placed)
             {
                 // Can't place — return to source
-                service.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+                service.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             }
             splitCarryItem = null;
             splitSourceSlot = -1;
