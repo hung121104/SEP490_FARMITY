@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class InventoryPresenter
 {
-    private readonly InventoryModel model;
     private readonly IInventoryService service;
     private IInventoryView view;
 
@@ -30,9 +29,8 @@ public class InventoryPresenter
 
     #region Initialization
 
-    public InventoryPresenter(InventoryModel inventoryModel, IInventoryService inventoryService)
+    public InventoryPresenter(IInventoryService inventoryService)
     {
-        model = inventoryModel;
         service = inventoryService;
         // Subtract cooldown so IsReadyToSync() returns true immediately at startup.
         // (setting to Time.time would mean 0 seconds have elapsed — not ready yet.)
@@ -586,7 +584,7 @@ public class InventoryPresenter
     {
         if (view == null && secondaryViews.Count == 0) return;
 
-        for (int i = 0; i < model.maxSlots; i++)
+        for (int i = 0; i < service.MaxSlots; i++)
         {
             var item = service.GetItemAtSlot(i);
             view?.UpdateSlot(i, item);

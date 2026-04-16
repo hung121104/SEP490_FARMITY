@@ -5,6 +5,9 @@ using UnityEngine;
 
 public interface IInventoryService
 {
+    // Properties
+    int MaxSlots { get; }
+
     // Events
     event Action<ItemModel, int> OnItemAdded;
     event Action<ItemModel, int> OnItemRemoved;

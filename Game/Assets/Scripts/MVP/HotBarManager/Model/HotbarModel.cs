@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class HotbarModel
 {
-    private readonly InventoryModel inventoryModel;
+    private readonly IInventoryService inventoryService;
     private readonly int hotbarStartIndex;
     private readonly int hotbarSize;
 
@@ -13,9 +13,9 @@ public class HotbarModel
     public event Action<int> OnSlotIndexChanged;
     public event Action OnHotbarRefreshed;
 
-    public HotbarModel(InventoryModel inventory, int startIndex = 27, int size = 9)
+    public HotbarModel(IInventoryService service, int startIndex = 27, int size = 9)
     {
-        inventoryModel = inventory;
+        inventoryService = service;
         hotbarStartIndex = startIndex;
         hotbarSize = size;
         CurrentSlotIndex = 0;
@@ -53,7 +53,7 @@ public class HotbarModel
             return null;
 
         int inventoryIndex = hotbarStartIndex + localIndex;
-        return inventoryModel.GetItemAtSlot(inventoryIndex);
+        return inventoryService.GetItemAtSlot(inventoryIndex);
     }
 
     public ItemModel GetCurrentItem()
