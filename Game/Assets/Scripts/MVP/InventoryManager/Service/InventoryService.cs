@@ -25,6 +25,12 @@ public class InventoryService : IInventoryService
     public InventoryService(InventoryModel inventoryModel)
     {
         model = inventoryModel;
+        ItemCatalogService.OnItemUpdated += RefreshSlotsForItem;
+    }
+
+    public void Cleanup()
+    {
+        ItemCatalogService.OnItemUpdated -= RefreshSlotsForItem;
     }
 
     // ── Network sync helper ──────────────────────────────────────────────
