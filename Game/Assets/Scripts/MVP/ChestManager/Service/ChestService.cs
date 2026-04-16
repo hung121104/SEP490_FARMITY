@@ -18,7 +18,7 @@ public class ChestService : IChestService
         if (chestItem == null)
         {
             // Simple move: player → empty chest slot
-            chestService.PlaceItemAtSlot(chestSlot, playerItem.ItemData, playerItem.Quality, playerItem.Quantity);
+            chestService.PlaceItemAtSlot(chestSlot, playerItem.ItemData, playerItem.Quantity);
             playerService.RemoveItemFromSlot(playerSlot, playerItem.Quantity);
         }
         else if (chestItem.ItemId == playerItem.ItemId &&
@@ -27,27 +27,25 @@ public class ChestService : IChestService
         {
             // Merge stacks
             int space = chestItem.MaxStack - chestItem.Quantity;
-            int move  = Mathf.Min(space, playerItem.Quantity);
+            int move = Mathf.Min(space, playerItem.Quantity);
             if (move <= 0) return false;
 
             // PlaceItemAtSlot handles merge for same item
-            chestService.PlaceItemAtSlot(chestSlot, playerItem.ItemData, playerItem.Quality, move);
+            chestService.PlaceItemAtSlot(chestSlot, playerItem.ItemData, move);
             playerService.RemoveItemFromSlot(playerSlot, move);
         }
         else
         {
             // Swap: save data, clear both, place swapped
             var pData = playerItem.ItemData;
-            var pQty  = playerItem.Quantity;
-            var pQual = playerItem.Quality;
+            var pQty = playerItem.Quantity;
             var cData = chestItem.ItemData;
-            var cQty  = chestItem.Quantity;
-            var cQual = chestItem.Quality;
+            var cQty = chestItem.Quantity;
 
             playerService.RemoveItemFromSlot(playerSlot, pQty);
             chestService.RemoveItemFromSlot(chestSlot, cQty);
-            chestService.PlaceItemAtSlot(chestSlot, pData, pQual, pQty);
-            playerService.PlaceItemAtSlot(playerSlot, cData, cQual, cQty);
+            chestService.PlaceItemAtSlot(chestSlot, pData, pQty);
+            playerService.PlaceItemAtSlot(playerSlot, cData, cQty);
         }
 
         return true;
@@ -64,7 +62,7 @@ public class ChestService : IChestService
         if (playerItem == null)
         {
             // Simple move: chest → empty player slot
-            playerService.PlaceItemAtSlot(playerSlot, chestItem.ItemData, chestItem.Quality, chestItem.Quantity);
+            playerService.PlaceItemAtSlot(playerSlot, chestItem.ItemData, chestItem.Quantity);
             chestService.RemoveItemFromSlot(chestSlot, chestItem.Quantity);
         }
         else if (playerItem.ItemId == chestItem.ItemId &&
@@ -73,26 +71,25 @@ public class ChestService : IChestService
         {
             // Merge stacks
             int space = playerItem.MaxStack - playerItem.Quantity;
-            int move  = Mathf.Min(space, chestItem.Quantity);
+            int move = Mathf.Min(space, chestItem.Quantity);
             if (move <= 0) return false;
 
-            playerService.PlaceItemAtSlot(playerSlot, chestItem.ItemData, chestItem.Quality, move);
+            playerService.PlaceItemAtSlot(playerSlot, chestItem.ItemData, move);
             chestService.RemoveItemFromSlot(chestSlot, move);
         }
         else
         {
             // Swap: save data, clear both, place swapped
             var pData = playerItem.ItemData;
-            var pQty  = playerItem.Quantity;
-            var pQual = playerItem.Quality;
+            var pQty = playerItem.Quantity;
             var cData = chestItem.ItemData;
-            var cQty  = chestItem.Quantity;
-            var cQual = chestItem.Quality;
+            var cQty = chestItem.Quantity;
+
 
             chestService.RemoveItemFromSlot(chestSlot, cQty);
             playerService.RemoveItemFromSlot(playerSlot, pQty);
-            playerService.PlaceItemAtSlot(playerSlot, cData, cQual, cQty);
-            chestService.PlaceItemAtSlot(chestSlot, pData, pQual, pQty);
+            playerService.PlaceItemAtSlot(playerSlot, cData, cQty);
+            chestService.PlaceItemAtSlot(chestSlot, pData, pQty);
         }
 
         return true;
