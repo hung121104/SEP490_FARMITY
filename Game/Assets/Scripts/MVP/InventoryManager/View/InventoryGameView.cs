@@ -37,13 +37,11 @@ public class InventoryGameView : MonoBehaviour
     private void OnEnable()
     {
         InventorySyncManager.OnInventoryChanged += HandleRemoteInventoryChanged;
-        ItemCatalogService.OnItemUpdated += HandleItemDataUpdated;
     }
 
     private void OnDisable()
     {
         InventorySyncManager.OnInventoryChanged -= HandleRemoteInventoryChanged;
-        ItemCatalogService.OnItemUpdated -= HandleItemDataUpdated;
     }
 
     private void OnDestroy()
@@ -63,7 +61,7 @@ public class InventoryGameView : MonoBehaviour
         service = inventoryService;
 
         // Create Presenter
-        presenter = new InventoryPresenter(model, service);
+        presenter = new InventoryPresenter(service);
 
         // Initialize View
         if (inventoryView != null)
@@ -120,17 +118,6 @@ public class InventoryGameView : MonoBehaviour
         if (showDebugLogs) Debug.Log("[InventoryGameView] Network inventory sync enabled.");
     }
     #endregion
-
-    /// <summary>
-    /// Called when admin updates an item in the catalog via SSE.
-    /// Re-binds the stale ItemData reference on affected inventory slots and refreshes
-    /// only those slots in the UI — avoids a full-inventory redraw.
-    /// </summary>
-    private void HandleItemDataUpdated(string itemId)
-    {
-        if (service is InventoryService concreteService)
-            concreteService.RefreshSlotsForItem(itemId);
-    }
 
     /// <summary>
     /// Called when InventorySyncManager receives a remote slot change.
@@ -293,8 +280,6 @@ public class InventoryGameView : MonoBehaviour
     }
 
     public IInventoryService GetInventoryService() => service;
-    public InventoryModel GetInventoryModel() => model;
-    public int GetInventorySlotCount() => model.maxSlots;
     public IInventoryView GetInventoryView() => inventoryView;
 
     /// <summary>
@@ -342,8 +327,14 @@ public class InventoryGameView : MonoBehaviour
 
     private void Cleanup()
     {
-        if (service != null && DroppedItemManagerView.Instance != null)
-            DroppedItemManagerView.Instance.UnsubscribeDropEvents(service);
+        if (service != null)
+        {
+            if (DroppedItemManagerView.Instance != null)
+                DroppedItemManagerView.Instance.UnsubscribeDropEvents(service);
+
+            if (service is InventoryService concreteService)
+                concreteService.Cleanup();
+        }
 
         if (presenter != null)
         {

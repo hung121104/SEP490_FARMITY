@@ -10,8 +10,6 @@ using UnityEngine;
 public class ChestPresenter
 {
     private readonly ChestData chestData;
-    private readonly InventoryModel chestModel;
-    private readonly InventoryModel inventoryModel;
     private readonly IChestService transferService;
     private readonly IInventoryService chestInventoryService;
     private readonly IInventoryService playerInventoryService;
@@ -51,16 +49,12 @@ public class ChestPresenter
     public event Action OnChestClosed;
 
     public ChestPresenter(ChestData chestData,
-                          InventoryModel chestModel,
                           IInventoryService chestInventoryService,
-                          InventoryModel inventoryModel,
                           IInventoryService playerInventoryService,
                           IChestService transferService)
     {
         this.chestData = chestData;
-        this.chestModel = chestModel;
         this.chestInventoryService = chestInventoryService;
-        this.inventoryModel = inventoryModel;
         this.playerInventoryService = playerInventoryService;
         this.transferService = transferService;
 
@@ -368,7 +362,7 @@ public class ChestPresenter
         RefreshChestView();
         isApplyingLocalSync = true;
         // Sync all chest slots that may have changed
-        for (int i = 0; i < chestModel.maxSlots; i++)
+        for (int i = 0; i < chestInventoryService.MaxSlots; i++)
             SyncChestSlot(i);
         chestInventoryService.NotifyInventoryChangedExternal();
         playerInventoryService.NotifyInventoryChangedExternal();
@@ -414,14 +408,14 @@ public class ChestPresenter
             // Cancel split: return items to source
             if (splitFromChest)
             {
-                chestInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+                chestInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
                 isApplyingLocalSync = true;
                 SyncChestSlot(splitSourceSlot);
                 isApplyingLocalSync = false;
             }
             else
             {
-                playerInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+                playerInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             }
             splitCarryItem = null;
             splitSourceSlot = -1;
@@ -507,7 +501,7 @@ public class ChestPresenter
         if (splitCarryItem != null)
         {
             // Place split item into chest slot
-            bool placed = chestInventoryService.PlaceItemAtSlot(targetSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            bool placed = chestInventoryService.PlaceItemAtSlot(targetSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             if (!placed)
             {
                 ReturnSplitCarryToSource();
@@ -528,7 +522,7 @@ public class ChestPresenter
             // Within chest: move/swap
             if (draggedSlot != targetSlot)
             {
-                transferService.MoveWithinChest(chestModel, draggedSlot, targetSlot);
+                transferService.MoveWithinChest(chestInventoryService, draggedSlot, targetSlot);
                 RefreshChestSlot(draggedSlot);
                 RefreshChestSlot(targetSlot);
                 isApplyingLocalSync = true;
@@ -543,7 +537,7 @@ public class ChestPresenter
             // Player → Chest: lock target slot during transfer to prevent race
             sync?.NotifySlotDragStart(chestData.ChestId, (byte)targetSlot);
 
-            transferService.TransferToChest(inventoryModel, draggedSlot, chestModel, targetSlot);
+            transferService.TransferToChest(playerInventoryService, draggedSlot, chestInventoryService, targetSlot);
             RefreshPlayerSlot(draggedSlot);
             RefreshChestSlot(targetSlot);
             isApplyingLocalSync = true;
@@ -578,7 +572,7 @@ public class ChestPresenter
         if (splitCarryItem != null)
         {
             // Place split item into player slot
-            bool placed = playerInventoryService.PlaceItemAtSlot(targetSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            bool placed = playerInventoryService.PlaceItemAtSlot(targetSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             if (!placed)
             {
                 ReturnSplitCarryToSource();
@@ -595,7 +589,7 @@ public class ChestPresenter
         else
         {
             // Chest → Player: transfer with swap support
-            transferService.TransferToPlayer(chestModel, draggedSlot, inventoryModel, targetSlot);
+            transferService.TransferToPlayer(chestInventoryService, draggedSlot, playerInventoryService, targetSlot);
             RefreshChestSlot(draggedSlot);
             RefreshPlayerSlot(targetSlot);
             isApplyingLocalSync = true;
@@ -621,14 +615,14 @@ public class ChestPresenter
         if (splitCarryItem == null) return;
         if (splitFromChest)
         {
-            chestInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            chestInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             isApplyingLocalSync = true;
             SyncChestSlot(splitSourceSlot);
             isApplyingLocalSync = false;
         }
         else
         {
-            playerInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            playerInventoryService.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
         }
     }
 
@@ -712,7 +706,7 @@ public class ChestPresenter
             return;
         }
 
-        var item = chestModel.GetItemAtSlot(slotIndex);
+        var item = chestInventoryService.GetItemAtSlot(slotIndex);
         if (item == null || item.Quantity <= 0)
             ChestSyncManager.Instance.RequestClearSlot(chestData.ChestId, (byte)slotIndex);
         else
@@ -725,7 +719,7 @@ public class ChestPresenter
     {
         if (InventorySyncManager.Instance == null) return;
 
-        var item = inventoryModel.GetItemAtSlot(slotIndex);
+        var item = playerInventoryService.GetItemAtSlot(slotIndex);
         if (item == null || item.Quantity <= 0)
             InventorySyncManager.Instance.RequestClearSlot((byte)slotIndex);
         else
@@ -741,12 +735,12 @@ public class ChestPresenter
     private void RefreshChestView()
     {
         if (chestView == null) return;
-        for (int i = 0; i < chestModel.maxSlots; i++)
+        for (int i = 0; i < chestInventoryService.MaxSlots; i++)
         {
             // Skip the slot the local player is currently carrying from the chest
             if (dragFromChest && draggedSlot == i) continue;
 
-            var item = chestModel.GetItemAtSlot(i);
+            var item = chestInventoryService.GetItemAtSlot(i);
             if (item != null)
                 chestView.UpdateSlot(i, item);
             else
@@ -757,9 +751,9 @@ public class ChestPresenter
     private void RefreshPlayerView()
     {
         if (playerView == null) return;
-        for (int i = 0; i < inventoryModel.maxSlots; i++)
+        for (int i = 0; i < playerInventoryService.MaxSlots; i++)
         {
-            var item = inventoryModel.GetItemAtSlot(i);
+            var item = playerInventoryService.GetItemAtSlot(i);
             if (item != null)
                 playerView.UpdateSlot(i, item);
             else
@@ -770,7 +764,7 @@ public class ChestPresenter
     private void RefreshChestSlot(int slotIndex)
     {
         if (chestView == null) return;
-        var item = chestModel.GetItemAtSlot(slotIndex);
+        var item = chestInventoryService.GetItemAtSlot(slotIndex);
         if (item != null)
             chestView.UpdateSlot(slotIndex, item);
         else
@@ -780,7 +774,7 @@ public class ChestPresenter
     private void RefreshPlayerSlot(int slotIndex)
     {
         if (playerView == null) return;
-        var item = inventoryModel.GetItemAtSlot(slotIndex);
+        var item = playerInventoryService.GetItemAtSlot(slotIndex);
         if (item != null)
             playerView.UpdateSlot(slotIndex, item);
         else
