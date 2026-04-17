@@ -371,11 +371,17 @@ public class StaminaView : MonoBehaviourPun
     {
         if (!photonView.IsMine || PhotonNetwork.IsMasterClient) return;
 
+        var appearance = GetComponent<PlayerAppearanceSync>();
+        var (hair, outfit, hat, tool) = appearance != null
+            ? appearance.GetCurrentAppearance()
+            : (string.Empty, string.Empty, string.Empty, string.Empty);
+
         photonView.RPC(nameof(RPC_FinalPlayerState), RpcTarget.MasterClient,
             transform.position.x, transform.position.y,
             model.currentStamina, model.viableStamina,
             model.regenBoostMultiplier, model.regenBoostRemaining,
-            model.toolEfficiencyReduction, model.toolEfficiencyRemaining);
+            model.toolEfficiencyReduction, model.toolEfficiencyRemaining,
+            hair, outfit, hat, tool);
     }
 
     [PunRPC]
@@ -384,6 +390,7 @@ public class StaminaView : MonoBehaviourPun
         float current, float viable,
         float regenMult, float regenRem,
         float effRed, float effRem,
+        string hair, string outfit, string hat, string tool,
         PhotonMessageInfo info)
     {
         if (!PhotonNetwork.IsMasterClient) return;
@@ -408,10 +415,15 @@ public class StaminaView : MonoBehaviourPun
         pd.regenBoostRemaining    = regenRem;
         pd.toolEfficiencyReduction = effRed;
         pd.toolEfficiencyRemaining = effRem;
+        pd.hairConfigId            = hair   ?? string.Empty;
+        pd.outfitConfigId          = outfit ?? string.Empty;
+        pd.hatConfigId             = hat    ?? string.Empty;
+        pd.toolConfigId            = tool   ?? string.Empty;
         list[idx] = pd;
 
         Debug.Log($"[StaminaView] FinalState cached for '{accountId}': " +
-                  $"pos=({posX:F1},{posY:F1}) stamina={current:F1}/{viable:F1}");
+                  $"pos=({posX:F1},{posY:F1}) stamina={current:F1}/{viable:F1} " +
+                  $"appearance=hair:{hair} outfit:{outfit} hat:{hat} tool:{tool}");
     }
 
     public static StaminaView FindLocal()

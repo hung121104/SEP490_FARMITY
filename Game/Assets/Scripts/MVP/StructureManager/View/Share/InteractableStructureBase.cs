@@ -377,6 +377,8 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         if (InputManager.Instance != null)
             InputManager.Instance.DisablePlayerActions();
 
+        UILayerManager.Instance?.NotifyPanelOpened();
+
         // Subscribe close triggers: OpenInventory and ESC
         SubscribeCloseInput();
     }
@@ -395,6 +397,8 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
         // Re-enable all player input
         if (InputManager.Instance != null)
             InputManager.Instance.EnablePlayerActions();
+
+        UILayerManager.Instance?.NotifyPanelClosed();
     }
 
     /// <summary>
