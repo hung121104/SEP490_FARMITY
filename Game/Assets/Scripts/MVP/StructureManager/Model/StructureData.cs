@@ -27,7 +27,7 @@ public class StructureData
 
     // ── Storage-specific (only populated if InteractionType == Storage) ───
     public int StorageSlots { get; set; } = 0;
-    public int StructureLevel { get; set; } = 0;
+    public int StructureLevel { get; set; } = 1;
 
     // ── Slot count mapping (single source of truth) ──────────────────────
     /// <summary>

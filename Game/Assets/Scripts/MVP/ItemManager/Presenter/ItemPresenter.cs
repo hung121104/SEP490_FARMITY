@@ -73,7 +73,7 @@ public class ItemPresenter
         {
             Icon = model.Icon,
             Name = model.ItemName,
-            NameColor = service.GetQualityColor(),
+            NameColor = Color.black,
             Description = service.GetFormattedDescription(),
             Stats = service.GetFormattedStats()
         });
