@@ -33,6 +33,7 @@ public class NPCInteractorView : MonoBehaviour, INPCInteractorView
     // ─── Private state ───
     private NPCInteractionPresenter presenter;
     private PlayerMovement playerMovement;
+    private bool _hudHiddenForNPC;
 
     // ─────────────────────────────────────────────────────────────────
     // Unity lifecycle
@@ -86,6 +87,17 @@ public class NPCInteractorView : MonoBehaviour, INPCInteractorView
     public void EnableHotbar(bool enable)
     {
         if (hotbarScript != null) hotbarScript.enabled = enable;
+
+        if (!enable && !_hudHiddenForNPC)
+        {
+            _hudHiddenForNPC = true;
+            UILayerManager.Instance?.NotifyPanelOpened();
+        }
+        else if (enable && _hudHiddenForNPC)
+        {
+            _hudHiddenForNPC = false;
+            UILayerManager.Instance?.NotifyPanelClosed();
+        }
     }
 
     public void SetInventoryMenuRoot(bool active)

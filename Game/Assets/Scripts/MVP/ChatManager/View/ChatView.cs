@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using TMPro;
 
 public class ChatView : MonoBehaviour
@@ -8,6 +9,7 @@ public class ChatView : MonoBehaviour
     [SerializeField] private TMP_InputField inputField;
     [SerializeField] private Transform messageContainer;
     [SerializeField] private ChatMessageItemView messagePrefab;
+    [SerializeField] private ScrollRect scrollRect;
 
     private ChatPresenter presenter;
     private bool isChatOpen = false;
@@ -18,6 +20,21 @@ public class ChatView : MonoBehaviour
     {
         this.presenter = presenter;
         CloseChat();
+    }
+
+    private void Start()
+    {
+        // Anchor content to bottom so messages stack upward
+        if (messageContainer is RectTransform rt)
+        {
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot     = new Vector2(0.5f, 0f);
+        }
+
+        var vlg = messageContainer.GetComponent<VerticalLayoutGroup>();
+        if (vlg != null)
+            vlg.childAlignment = TextAnchor.LowerLeft;
     }
 
     private void Awake()
@@ -109,5 +126,15 @@ public class ChatView : MonoBehaviour
     {
         var item = Instantiate(messagePrefab, messageContainer);
         item.Setup(message);
+        StartCoroutine(ScrollToBottomNextFrame());
+    }
+
+    private System.Collections.IEnumerator ScrollToBottomNextFrame()
+    {
+        yield return new WaitForEndOfFrame();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(messageContainer as RectTransform);
+        yield return new WaitForEndOfFrame();
+        if (scrollRect != null)
+            scrollRect.verticalNormalizedPosition = 0f;
     }
 }

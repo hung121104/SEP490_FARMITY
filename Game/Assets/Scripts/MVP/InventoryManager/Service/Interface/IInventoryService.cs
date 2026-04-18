@@ -5,6 +5,9 @@ using UnityEngine;
 
 public interface IInventoryService
 {
+    // Properties
+    int MaxSlots { get; }
+
     // Events
     event Action<ItemModel, int> OnItemAdded;
     event Action<ItemModel, int> OnItemRemoved;
@@ -19,7 +22,7 @@ public interface IInventoryService
     bool RemoveItemFromSlot(int slotIndex, int quantity);
     bool MoveItem(int fromSlot, int toSlot);
     bool SwapItems(int slotA, int slotB);
-    bool PlaceItemAtSlot(int slotIndex, ItemData itemData, Quality quality, int quantity);
+    bool PlaceItemAtSlot(int slotIndex, ItemData itemData, int quantity, Quality quality = Quality.Normal);
     bool DropItemFromSlot(int slotIndex);
 
     // Query Operations
@@ -39,4 +42,13 @@ public interface IInventoryService
     // Remote Sync
     void ApplyRemoteInventoryState(CharacterInventory remoteInventory, int maxSlots);
     void NotifyInventoryChangedExternal();
+
+    // Action cooldown — tells Service the user just performed an action that
+    // mutated (or is about to mutate) local state, so remote sync should defer.
+    void NotifyLocalAction();
+    bool IsReadyToSync();
+
+    // Lifecycle for network sync
+    void StartRemoteSync(int maxSlots);
+    void StopRemoteSync();
 }

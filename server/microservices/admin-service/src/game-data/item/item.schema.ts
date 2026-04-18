@@ -218,7 +218,7 @@ export class Item {
   @Prop({ default: 0 })
   structureInteractionType?: number;
 
-  @Prop({ default: 0 })
+  @Prop({ default: 1 })
   structureLevel?: number;
 
   /** Sprite URL/path used when interacting with this structure (e.g. chest open sprite) */

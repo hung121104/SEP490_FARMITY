@@ -16,6 +16,11 @@ public class NPCInteractionPresenter
     private PlayerMovement playerMovement;
     private string lastCompletedQuestId = "";
 
+    // ─── Inventory-change delegate refs (for proper unsubscription) ───
+    private IInventoryService _trackedInventory;
+    private System.Action<ItemModel, int> _onItemAdded;
+    private System.Action<ItemModel, int> _onItemRemoved;
+
     // ─── View interface (callbacks to MonoBehaviour) ───
     private readonly INPCInteractorView view;
 
@@ -64,6 +69,8 @@ public class NPCInteractionPresenter
         this.giftDatabase = giftDatabase;
         this.inventoryGameView = inventoryGameView;
         this.hotbarScript = hotbarScript;
+
+        CreateInteractionNode();
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -75,9 +82,25 @@ public class NPCInteractionPresenter
         var inventoryService = view.GetInventoryService();
 
         if (inventoryService != null)
+        {
+            _trackedInventory = inventoryService;
+            // OnInventoryChanged covers remote-sync / sort / clear events.
+            // OnItemAdded + OnItemRemoved cover every local AddItem / RemoveItem call
+            // (AddItem only fires OnItemAdded, NOT OnInventoryChanged).
+            _onItemAdded   = (_, _2) => UpdateQuestObjectives();
+            _onItemRemoved = (_, _2) => UpdateQuestObjectives();
             inventoryService.OnInventoryChanged += UpdateQuestObjectives;
+            inventoryService.OnItemAdded        += _onItemAdded;
+            inventoryService.OnItemRemoved      += _onItemRemoved;
+        }
         else
             Debug.LogError($"[NPCInteractionPresenter] InventoryService on {dialogueModel.npcName} is null!");
+
+        if (QuestManager.Instance == null)
+        {
+            Debug.LogError("[NPCInteractionPresenter] QuestManager.Instance is null — quest features disabled.");
+            return;
+        }
 
         questService = QuestManager.Instance.QuestService;
 
@@ -107,8 +130,6 @@ public class NPCInteractionPresenter
 
         INPCDialogueService dialogueService = new NPCDialogueService(dialogueModel);
         dialoguePresenter = new NPCDialoguePresenter(dialogueService, dialogueView, questView);
-
-        CreateInteractionNode();
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -130,11 +151,19 @@ public class NPCInteractionPresenter
         currentState = NPCInteractionState.Idle;
     }
 
-    /// <summary>Unsubscribe from TimeManagerView to prevent memory leaks when the NPC is destroyed.</summary>
+    /// <summary>Unsubscribe from TimeManagerView and InventoryService to prevent memory leaks when the NPC is destroyed.</summary>
     public void Dispose()
     {
         if (timeManagerView != null)
             timeManagerView.OnDayChanged -= questPresenter.ClearDailyOffer;
+
+        if (_trackedInventory != null)
+        {
+            _trackedInventory.OnInventoryChanged -= UpdateQuestObjectives;
+            _trackedInventory.OnItemAdded        -= _onItemAdded;
+            _trackedInventory.OnItemRemoved      -= _onItemRemoved;
+            _trackedInventory = null;
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -239,6 +268,8 @@ public class NPCInteractionPresenter
 
     private void HandleInteractionMenuInput()
     {
+        if (interactionNode == null) return;
+
         for (int i = 0; i < interactionNode.options.Count; i++)
         {
             var slotAction = InputManager.Instance.GetHotbarSlotAction(i);

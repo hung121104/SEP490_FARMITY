@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class InventoryPresenter
 {
-    private readonly InventoryModel model;
     private readonly IInventoryService service;
     private IInventoryView view;
 
@@ -21,23 +20,14 @@ public class InventoryPresenter
     // Track cursor position from View events (avoids Input.mousePosition dependency)
     private Vector2 lastKnownCursorPosition;
 
-    // Action cooldown for network sync
-    private float lastActionTime = 0f;
-    private float actionCooldownDuration = 1.0f; // Đợi 1 giây sau action cuối cùng trước khi cho phép sync
-
     // Events for GameView or other systems
     public event Action<ItemModel> OnItemUsed;
 
     #region Initialization
 
-    public InventoryPresenter(InventoryModel inventoryModel, IInventoryService inventoryService)
+    public InventoryPresenter(IInventoryService inventoryService)
     {
-        model = inventoryModel;
         service = inventoryService;
-        // Subtract cooldown so IsReadyToSync() returns true immediately at startup.
-        // (setting to Time.time would mean 0 seconds have elapsed — not ready yet.)
-        lastActionTime = Time.time - actionCooldownDuration;
-
         SubscribeToServiceEvents();
     }
 
@@ -58,30 +48,11 @@ public class InventoryPresenter
     }
 
     /// <summary>
-    /// Reset action cooldown timer. Called whenever user performs an action.
-    /// After this is called, sync is blocked for actionCooldownDuration seconds.
+    /// Forward local-action notification to Service (Service owns sync cooldown).
     /// </summary>
     private void ResetActionTimer()
     {
-        lastActionTime = Time.time;
-    }
-
-    /// <summary>
-    /// Called by external systems to notify that the user is performing
-    /// an action on a secondary view. Resets the cooldown so
-    /// HandleRemoteInventoryChanged defers the echo.
-    /// </summary>
-    public void NotifyExternalAction()
-    {
-        lastActionTime = Time.time;
-    }
-
-    /// <summary>
-    /// Check if enough time has passed since last user action to allow network sync.
-    /// </summary>
-    public bool IsReadyToSync()
-    {
-        return (Time.time - lastActionTime) >= actionCooldownDuration;
+        service?.NotifyLocalAction();
     }
 
     public void RemoveView()
@@ -272,7 +243,7 @@ public class InventoryPresenter
         if (splitCarryItem != null)
         {
             // Cancel split: return items to source
-            service.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            service.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             splitCarryItem = null;
             splitSourceSlot = -1;
         }
@@ -296,11 +267,11 @@ public class InventoryPresenter
         if (splitCarryItem != null)
         {
             // Place split item at target slot
-            bool placed = service.PlaceItemAtSlot(targetSlotIndex, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+            bool placed = service.PlaceItemAtSlot(targetSlotIndex, splitCarryItem.ItemData, splitCarryItem.Quantity);
             if (!placed)
             {
                 // Can't place — return to source
-                service.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quality, splitCarryItem.Quantity);
+                service.PlaceItemAtSlot(splitSourceSlot, splitCarryItem.ItemData, splitCarryItem.Quantity);
             }
             splitCarryItem = null;
             splitSourceSlot = -1;
@@ -586,7 +557,7 @@ public class InventoryPresenter
     {
         if (view == null && secondaryViews.Count == 0) return;
 
-        for (int i = 0; i < model.maxSlots; i++)
+        for (int i = 0; i < service.MaxSlots; i++)
         {
             var item = service.GetItemAtSlot(i);
             view?.UpdateSlot(i, item);

@@ -88,10 +88,12 @@ public class MenuController : MonoBehaviour
         if (menuCanvas.activeSelf == false)
         {
             inventoryGameView.CloseInventory();
+            UILayerManager.Instance?.NotifyPanelClosed();
         }
         else
         {
             inventoryGameView.OpenInventory();
+            UILayerManager.Instance?.NotifyPanelOpened();
         }
     }
 
@@ -105,6 +107,7 @@ public class MenuController : MonoBehaviour
         hotbarPanel.SetActive(true);
         menuCanvas.SetActive(false);
         inventoryGameView.CloseInventory();
+        UILayerManager.Instance?.NotifyPanelClosed();
         LastEscCloseFrame = Time.frameCount;
     }
 }

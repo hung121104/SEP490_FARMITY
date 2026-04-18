@@ -23,12 +23,6 @@ public class ItemService : IItemService
     {
         StringBuilder desc = new StringBuilder();
 
-        // Add quality prefix for non-normal quality
-        if (model.Quality != Quality.Normal)
-        {
-            desc.Append($"<color={GetQualityColorHex()}>[{model.Quality}]</color> ");
-        }
-
         desc.Append(model.Description);
 
         // Add special tags
@@ -56,9 +50,6 @@ public class ItemService : IItemService
         {
             stats.AppendLine($"<b>Stack:</b> {model.Quantity}/{model.MaxStack}");
         }
-
-        // Quality
-        stats.AppendLine($"<b>Quality:</b> <color={GetQualityColorHex()}>{model.Quality}</color>");
 
         // Economic info
         if (model.CanBeSold)

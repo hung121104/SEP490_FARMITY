@@ -24,7 +24,6 @@ public class HotbarView : MonoBehaviour
     [SerializeField] private InventoryGameView inventoryGameView;
 
     private HotbarSlotUI[] slotUIs;
-    private HotbarModel model;
     private HotbarPresenter presenter;
     private bool isInitialized = false;
 
@@ -70,17 +69,15 @@ public class HotbarView : MonoBehaviour
         }
 
         var inventoryService = inventoryGameView.GetInventoryService();
-        var inventoryModel = inventoryGameView.GetInventoryModel();
 
-        if (inventoryService == null || inventoryModel == null)
+        if (inventoryService == null)
         {
             Debug.LogWarning("HotbarView: Inventory not ready, retrying...");
             Invoke(nameof(InitializeHotbarSystem), 0.1f);
             return;
         }
 
-        model = new HotbarModel(inventoryModel, inventoryHotbarStartIndex, hotbarSize);
-        presenter = new HotbarPresenter(model, this, inventoryService);
+        presenter = new HotbarPresenter(this, inventoryService, inventoryHotbarStartIndex, hotbarSize);
         presenter.Initialize();
 
         isInitialized = true;

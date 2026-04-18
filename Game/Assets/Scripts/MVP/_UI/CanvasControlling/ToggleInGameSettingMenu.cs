@@ -116,7 +116,9 @@ public class ToggleInGameSettingMenu : MonoBehaviour
     {
         inGameSettingMenuCanvasGroup.Hide();
         _UICanvasGroup.Show();
-        _HUDCanvasGroup.Show();
+        // Only show HUD if no UI panel is currently open
+        if (UILayerManager.Instance == null || !UILayerManager.Instance.IsAnyPanelOpen)
+            _HUDCanvasGroup.Show();
         UnblockPlayerInput();
     }
 

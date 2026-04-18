@@ -48,8 +48,10 @@ public class QuestPresenter
         QuestCatalogData selected;
 
         // ── Use cached offer if still valid for today ───────────────────────
+        // Only invalidate if the offer was already turned in.
+        // (LoadAndDisplay is only reached when there is no active quest from this NPC,
+        //  so the IsQuestActive guard is redundant and can wrongly clear the cache.)
         if (_cachedOffer != null
-            && !service.IsQuestActive(_cachedOffer.questId)
             && !service.IsQuestTurnedIn(_cachedOffer.questId))
         {
             selected = _cachedOffer;
@@ -66,6 +68,18 @@ public class QuestPresenter
                          && !service.IsQuestTurnedIn(q.questId)
                          && q.questId != lastQuestId)
                 .ToList();
+
+            // ── All unique quests are exhausted — recycle turned-in quests ──────
+            // Exclude the last completed quest to avoid immediate repeat.
+            if (available.Count == 0)
+            {
+                available = QuestCatalogService.Instance.GetAllQuests()
+                    .Where(q => q.NPCName == npcName
+                             && !service.IsQuestActive(q.questId)
+                             && q.questId != lastQuestId)
+                    .ToList();
+                Debug.Log($"[QuestPresenter] All quests exhausted for '{npcName}' — recycling pool.");
+            }
 
             if (available.Count == 0) return false;
 

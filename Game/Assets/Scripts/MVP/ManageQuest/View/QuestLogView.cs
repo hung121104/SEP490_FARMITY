@@ -30,7 +30,13 @@ public class QuestLogView : MonoBehaviour
 
     public void TogglePanel()
     {
-        panelRoot.SetActive(!panelRoot.activeSelf);
+        bool opening = !panelRoot.activeSelf;
+        panelRoot.SetActive(opening);
+
+        if (opening)
+            UILayerManager.Instance?.NotifyPanelOpened();
+        else
+            UILayerManager.Instance?.NotifyPanelClosed();
     }
 
     /// <summary>Called by QuestLogController when Presenter fires OnPinnedQuestChanged.</summary>

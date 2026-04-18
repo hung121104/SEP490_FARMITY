@@ -101,7 +101,7 @@ public class RegisterPresenter
     private async Task AutoLogin()
     {
         view.SetInteractable(false);
-        view.ShowError("Verified! Logging you in...");
+        view.ShowError("Verified! Signing you in...");
 
         var loginRequest = new LoginRequest
         {

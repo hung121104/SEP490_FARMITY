@@ -88,6 +88,7 @@ public class CalendarView : MonoBehaviour
     public void ShowCalendar()
     {
         calendarPanel.SetActive(true);
+        UILayerManager.Instance?.NotifyPanelOpened();
 
         Canvas.ForceUpdateCanvases();
         UpdateGrid();
@@ -99,6 +100,7 @@ public class CalendarView : MonoBehaviour
     public void HideCalendar()
     {
         calendarPanel.SetActive(false);
+        UILayerManager.Instance?.NotifyPanelClosed();
     }
 
     void OnTimeChanged()

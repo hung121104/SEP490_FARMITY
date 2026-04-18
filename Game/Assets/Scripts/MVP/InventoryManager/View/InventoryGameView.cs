@@ -34,18 +34,6 @@ public class InventoryGameView : MonoBehaviour
         StartCoroutine(RegisterWithNetworkWhenReady());
     }
 
-    private void OnEnable()
-    {
-        InventorySyncManager.OnInventoryChanged += HandleRemoteInventoryChanged;
-        ItemCatalogService.OnItemUpdated += HandleItemDataUpdated;
-    }
-
-    private void OnDisable()
-    {
-        InventorySyncManager.OnInventoryChanged -= HandleRemoteInventoryChanged;
-        ItemCatalogService.OnItemUpdated -= HandleItemDataUpdated;
-    }
-
     private void OnDestroy()
     {
         Cleanup();
@@ -63,7 +51,7 @@ public class InventoryGameView : MonoBehaviour
         service = inventoryService;
 
         // Create Presenter
-        presenter = new InventoryPresenter(model, service);
+        presenter = new InventoryPresenter(service);
 
         // Initialize View
         if (inventoryView != null)
@@ -111,70 +99,16 @@ public class InventoryGameView : MonoBehaviour
         // Register character on Master
         InventorySyncManager.Instance.RegisterLocalPlayerInventory((byte)inventorySlots);
 
-        // Enable auto-sync in the service layer
+        // Enable auto-sync + remote subscription in the service layer
         if (service is InventoryService concreteService)
         {
             concreteService.NetworkSyncEnabled = true;
         }
+        service.StartRemoteSync(inventorySlots);
 
         if (showDebugLogs) Debug.Log("[InventoryGameView] Network inventory sync enabled.");
     }
     #endregion
-
-    /// <summary>
-    /// Called when admin updates an item in the catalog via SSE.
-    /// Re-binds the stale ItemData reference on affected inventory slots and refreshes
-    /// only those slots in the UI — avoids a full-inventory redraw.
-    /// </summary>
-    private void HandleItemDataUpdated(string itemId)
-    {
-        if (service is InventoryService concreteService)
-            concreteService.RefreshSlotsForItem(itemId);
-    }
-
-    /// <summary>
-    /// Called when InventorySyncManager receives a remote slot change.
-    /// Reads the authoritative data from InventoryDataModule and refreshes local InventoryModel.
-    /// </summary>
-    private void HandleRemoteInventoryChanged()
-    {
-        if (InventorySyncManager.Instance == null) return;
-        string charId = InventorySyncManager.Instance.LocalCharacterId;
-        if (string.IsNullOrEmpty(charId)) return;
-
-        var module = WorldDataManager.Instance?.InventoryData;
-        if (module == null) return;
-
-        var inv = module.GetInventory(charId);
-        if (inv == null) return;
-
-        // ═══ ACTION COOLDOWN CHECK ═══
-        // Skip sync if user is currently performing actions (drag, drop, sort)
-        // This prevents race conditions where remote changes conflict with local UI updates
-        if (presenter != null && !presenter.IsReadyToSync())
-        {
-            if (showDebugLogs) Debug.Log("[InventoryGameView] User performing action, deferring remote sync...");
-            // Schedule a retry so the initial load is not permanently lost.
-            StartCoroutine(RetryRemoteInventorySync());
-            return;
-        }
-
-        // Delegate all Model mutations to Service — GameView never touches Model directly
-        if (service is InventoryService concreteService)
-        {
-            concreteService.ApplyRemoteInventoryState(inv, inventorySlots);
-        }
-    }
-
-    /// <summary>
-    /// Waits until the action cooldown expires, then retries the remote sync.
-    /// Triggered when HandleRemoteInventoryChanged is called during a UI action.
-    /// </summary>
-    private System.Collections.IEnumerator RetryRemoteInventorySync()
-    {
-        yield return new WaitUntil(() => presenter == null || presenter.IsReadyToSync());
-        HandleRemoteInventoryChanged();
-    }
 
     public bool IsInventoryInUseByOtherUI()
     {
@@ -293,8 +227,6 @@ public class InventoryGameView : MonoBehaviour
     }
 
     public IInventoryService GetInventoryService() => service;
-    public InventoryModel GetInventoryModel() => model;
-    public int GetInventorySlotCount() => model.maxSlots;
     public IInventoryView GetInventoryView() => inventoryView;
 
     /// <summary>
@@ -312,7 +244,7 @@ public class InventoryGameView : MonoBehaviour
     /// </summary>
     public void NotifyExternalAction()
     {
-        presenter?.NotifyExternalAction();
+        service?.NotifyLocalAction();
     }
     #endregion
     
@@ -342,8 +274,14 @@ public class InventoryGameView : MonoBehaviour
 
     private void Cleanup()
     {
-        if (service != null && DroppedItemManagerView.Instance != null)
-            DroppedItemManagerView.Instance.UnsubscribeDropEvents(service);
+        if (service != null)
+        {
+            if (DroppedItemManagerView.Instance != null)
+                DroppedItemManagerView.Instance.UnsubscribeDropEvents(service);
+
+            if (service is InventoryService concreteService)
+                concreteService.Cleanup();
+        }
 
         if (presenter != null)
         {
