@@ -209,6 +209,7 @@ MonoBehaviour:
   sellSlotPrefab: {fileID: 6837371754805303140, guid: eb84d1eb420d5024da1640bd23982180, type: 3}
   totalSellPriceText: {fileID: 2110787364}
   confirmSellButton: {fileID: 896837737}
+  shopSafeZone: {fileID: 697773807}
   closeButton: {fileID: 1661300024}
 --- !u!114 &18367676
 MonoBehaviour:

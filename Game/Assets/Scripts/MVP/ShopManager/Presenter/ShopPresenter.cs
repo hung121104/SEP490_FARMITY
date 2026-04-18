@@ -38,6 +38,9 @@ public class ShopPresenter
             _inventoryUI.OnSlotShiftClickRequested += HandleInventorySlotShiftClicked;
         }
 
+        // Disable carry system while shop is open
+        InventoryCarryState.CarryDisabled = true;
+
         _view.OnSellSlotClicked += HandleSellSlotClicked;
         _view.OnSellSlotShiftClicked += HandleSellSlotShiftClicked;
 
@@ -198,6 +201,9 @@ public class ShopPresenter
         _view.OnItemDroppedToSell -= HandleItemDroppedToSell;
         _view.OnSellSlotClicked -= HandleSellSlotClicked;
         _view.OnSellSlotShiftClicked -= HandleSellSlotShiftClicked;
+        // Re-enable carry system
+        InventoryCarryState.CarryDisabled = false;
+
         if (_inventoryUI != null)
         {
             _inventoryUI.OnSlotClicked -= HandleInventorySlotClicked;

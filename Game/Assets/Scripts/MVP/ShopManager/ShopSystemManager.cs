@@ -90,6 +90,11 @@ public class ShopSystemManager : MonoBehaviour
         }
 
         if (inventoryDropZone != null) inventoryDropZone.AllowDropOutside = false;
+
+        // Register shop panel as safe zone so items don't drop to world
+        if (inventoryGameView != null && shopMainView.SafeZone != null)
+            inventoryGameView.SetAdditionalSafeZone(shopMainView.SafeZone);
+
         shopMainView.ToggleHotbar(false);
     }
 
@@ -108,6 +113,11 @@ public class ShopSystemManager : MonoBehaviour
         }
 
         if (inventoryDropZone != null) inventoryDropZone.AllowDropOutside = true;
+
+        // Unregister shop safe zone
+        if (inventoryGameView != null)
+            inventoryGameView.SetAdditionalSafeZone(null);
+
         shopMainView.ToggleHotbar(true);
 
         OnShopClosed?.Invoke();
