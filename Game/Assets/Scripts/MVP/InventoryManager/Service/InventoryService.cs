@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using Photon.Pun;
 
@@ -22,15 +24,110 @@ public class InventoryService : IInventoryService
     /// <summary>When true, every successful local change is also sent through InventorySyncManager.</summary>
     public bool NetworkSyncEnabled { get; set; }
 
+    // ── Remote sync state (moved from InventoryGameView) ──
+    private int syncMaxSlots;
+    private bool remoteSyncSubscribed;
+    private CancellationTokenSource retryCts;
+
+    // ── Action cooldown (moved from InventoryPresenter) ──
+    private const float ActionCooldownSeconds = 1.0f;
+    private float lastActionTime;
+
     public InventoryService(InventoryModel inventoryModel)
     {
         model = inventoryModel;
+        // Subtract cooldown so IsReadyToSync() returns true immediately at startup.
+        lastActionTime = Time.time - ActionCooldownSeconds;
         ItemCatalogService.OnItemUpdated += RefreshSlotsForItem;
     }
 
     public void Cleanup()
     {
         ItemCatalogService.OnItemUpdated -= RefreshSlotsForItem;
+        StopRemoteSync();
+    }
+
+    // ── Action cooldown API ──────────────────────────────────────────────
+
+    public void NotifyLocalAction()
+    {
+        lastActionTime = Time.time;
+    }
+
+    public bool IsReadyToSync()
+    {
+        return (Time.time - lastActionTime) >= ActionCooldownSeconds;
+    }
+
+    // ── Remote sync lifecycle ────────────────────────────────────────────
+
+    public void StartRemoteSync(int maxSlots)
+    {
+        syncMaxSlots = maxSlots;
+        if (InventorySyncManager.Instance == null) return;
+        if (remoteSyncSubscribed) return;
+
+        InventorySyncManager.OnInventoryChanged += HandleRemoteInventoryChanged;
+        remoteSyncSubscribed = true;
+    }
+
+    public void StopRemoteSync()
+    {
+        if (remoteSyncSubscribed)
+        {
+            InventorySyncManager.OnInventoryChanged -= HandleRemoteInventoryChanged;
+            remoteSyncSubscribed = false;
+        }
+
+        retryCts?.Cancel();
+        retryCts?.Dispose();
+        retryCts = null;
+    }
+
+    /// <summary>
+    /// Called when InventorySyncManager receives a remote slot change.
+    /// Reads authoritative data from InventoryDataModule and refreshes local model.
+    /// Defers apply while the user is performing an action (cooldown).
+    /// </summary>
+    private void HandleRemoteInventoryChanged()
+    {
+        if (InventorySyncManager.Instance == null) return;
+        string charId = InventorySyncManager.Instance.LocalCharacterId;
+        if (string.IsNullOrEmpty(charId)) return;
+
+        var module = WorldDataManager.Instance?.InventoryData;
+        if (module == null) return;
+
+        var inv = module.GetInventory(charId);
+        if (inv == null) return;
+
+        if (!IsReadyToSync())
+        {
+            // Schedule async retry so the change isn't permanently lost.
+            ScheduleRetry();
+            return;
+        }
+
+        ApplyRemoteInventoryState(inv, syncMaxSlots);
+    }
+
+    private async void ScheduleRetry()
+    {
+        retryCts?.Cancel();
+        retryCts?.Dispose();
+        retryCts = new CancellationTokenSource();
+        var token = retryCts.Token;
+
+        try
+        {
+            while (!IsReadyToSync())
+            {
+                await Task.Delay(100, token);
+            }
+            if (token.IsCancellationRequested) return;
+            HandleRemoteInventoryChanged();
+        }
+        catch (TaskCanceledException) { /* expected on StopRemoteSync */ }
     }
 
     // ── Network sync helper ──────────────────────────────────────────────
@@ -42,6 +139,7 @@ public class InventoryService : IInventoryService
     /// </summary>
     private void SyncSlotToNetwork(int slotIndex)
     {
+        NotifyLocalAction();
         if (!NetworkSyncEnabled) return;
         if (InventorySyncManager.Instance == null) return;
 

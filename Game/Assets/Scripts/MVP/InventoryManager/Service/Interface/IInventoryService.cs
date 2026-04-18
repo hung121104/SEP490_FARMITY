@@ -42,4 +42,13 @@ public interface IInventoryService
     // Remote Sync
     void ApplyRemoteInventoryState(CharacterInventory remoteInventory, int maxSlots);
     void NotifyInventoryChangedExternal();
+
+    // Action cooldown — tells Service the user just performed an action that
+    // mutated (or is about to mutate) local state, so remote sync should defer.
+    void NotifyLocalAction();
+    bool IsReadyToSync();
+
+    // Lifecycle for network sync
+    void StartRemoteSync(int maxSlots);
+    void StopRemoteSync();
 }

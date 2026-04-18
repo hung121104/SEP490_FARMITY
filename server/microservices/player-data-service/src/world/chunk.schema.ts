@@ -51,7 +51,7 @@ export class TileData {
   structureId: string | null;
 
   /** Structure upgrade level (1–3) */
-  @Prop({ default: 0 })
+  @Prop({ default: 1 })
   structureLevel: number;
 
   // ── Resource fields (trees, rocks, etc.) ─────────────────────────────────
