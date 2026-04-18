@@ -159,9 +159,9 @@ public class ResourceInteractionManager : MonoBehaviourPun
 
     public void DestroyResourceLocally(int chunkX, int chunkY, int tileIndex)
     {
-        if (ResourceSpawnerManager.Instance != null)
+        if (ResourceSpawnerView.Instance != null)
         {
-            ResourceSpawnerManager.Instance.RemoveResourceVisual(chunkX, chunkY, tileIndex);
+            ResourceSpawnerView.Instance.RemoveResourceVisual(chunkX, chunkY, tileIndex);
             return;
         }
 
@@ -269,8 +269,8 @@ public class ResourceInteractionManager : MonoBehaviourPun
     {
         visual = null;
 
-        if (ResourceSpawnerManager.Instance != null &&
-            ResourceSpawnerManager.Instance.TryGetResourceVisual(chunkX, chunkY, tileIndex, out visual))
+        if (ResourceSpawnerView.Instance != null &&
+            ResourceSpawnerView.Instance.TryGetResourceVisual(chunkX, chunkY, tileIndex, out visual))
             return true;
 
         Vector2Int worldTile = TileIndexToWorldTile(chunkX, chunkY, tileIndex);

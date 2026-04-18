@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
-using UnityEngine.Networking;
 using UnityEngine.Tilemaps;
 
 /// <summary>
@@ -24,8 +23,9 @@ public class ResourceTypeMapping
 }
 
 /// <summary>
-/// Host-authoritative resource spawner.
-/// Spawns resource state in RAM and broadcasts visual-only prefab instantiation via RPC.
+/// Host-authoritative resource spawner (Service layer).
+/// Spawns resource state in RAM and broadcasts events via ChunkDataSyncManager.
+/// Visual instantiation is delegated to ResourceSpawnerView.
 /// </summary>
 public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 {
@@ -42,11 +42,6 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     [Tooltip("Small spawnable patches still get at least this many total nodes if they have valid tiles.")]
     public int minResourcesPerSpawnableChunk = 1;
 
-    [Header("Harvest Settings")]
-    [Min(0.1f)]
-    [Tooltip("Max distance from local player to target tile when harvesting resources.")]
-    [SerializeField] private float interactionRange = 2f;
-
     [Header("Noise Spawn System")]
     [Tooltip("Size/Frequency of the noise map. Lower is larger clusters.")]
     public float noiseScale = 0.1f;
@@ -55,29 +50,9 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
     private float _dailyNoiseOffsetX;
     private float _dailyNoiseOffsetY;
 
-    [Header("Prefabs based on Resource Type")]
-    public GameObject treePrefab;
-    public GameObject rockPrefab;
-    public GameObject orePrefab;
-
-    private readonly Dictionary<string, GameObject> _spawnedVisuals =
-        new Dictionary<string, GameObject>();
-
-    private readonly Dictionary<string, Sprite> _spriteCache =
-        new Dictionary<string, Sprite>();
-
-    private readonly Dictionary<string, Vector3> _baseVisualScales =
-        new Dictionary<string, Vector3>();
-
-    private readonly Dictionary<string, Coroutine> _activeHitFlashCoroutines =
-        new Dictionary<string, Coroutine>();
-
     // Per-type world-wide resource counts (keyed on resourceType e.g. "tree").
     // Tracked on MasterClient only; rebuilt from world data after bootstrap completes.
     private readonly Dictionary<string, int> _worldResourceCounts = new Dictionary<string, int>();
-
-    // Maps visual key → resourceType so counts can be decremented when a resource is removed.
-    private readonly Dictionary<string, string> _visualKeyToResourceType = new Dictionary<string, string>();
 
     // Fast lookup built from resourceTypeMappings: lowercase resourceType → ResourceTypeMapping.
     private Dictionary<string, ResourceTypeMapping> _spawnMappingLookup;
@@ -101,9 +76,6 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         public int BlockedByStructure;
         public int BlockedByResource;
     }
-
-    private ResourceHarvestingService _resourceHarvestingService;
-    private ChunkLoadingManager _chunkLoadingManager;
 
     private Dictionary<string, ResourceTypeMapping> BuildMappingLookup()
     {
@@ -164,18 +136,6 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         Instance = this;
 
         _spawnMappingLookup = BuildMappingLookup();
-
-        _chunkLoadingManager = FindAnyObjectByType<ChunkLoadingManager>();
-
-        // Lazy provider: avoids Awake-time race and finds InventoryGameView even when its
-        // UI panel is initially inactive.
-        _resourceHarvestingService = new ResourceHarvestingService(
-            WorldDataManager.Instance,
-            FindAnyObjectByType<ChunkDataSyncManager>(),
-            InventoryServiceLocator.Resolve,
-            FindAnyObjectByType<ResourceInteractionManager>(),
-            interactionRange
-        );
     }
 
     private void OnDestroy()
@@ -197,10 +157,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
             _bindTimeManagerRoutine = StartCoroutine(BindTimeManagerWhenReady());
         }
 
-        ChunkDataSyncManager.OnResourceHpUpdated += HandleResourceHpUpdated;
-        ChunkDataSyncManager.OnResourceRemoved   += HandleResourceRemoved;
-        ChunkDataSyncManager.OnResourceSpawned   += HandleResourceSpawned;
-        WorldDataBootstrapper.OnWorldDataReady   += HandleWorldDataReady;
+        WorldDataBootstrapper.OnWorldDataReady += HandleWorldDataReady;
     }
 
     private void OnDisable()
@@ -215,12 +172,7 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
         UnbindTimeManager();
 
-        ChunkDataSyncManager.OnResourceHpUpdated -= HandleResourceHpUpdated;
-        ChunkDataSyncManager.OnResourceRemoved   -= HandleResourceRemoved;
-        ChunkDataSyncManager.OnResourceSpawned   -= HandleResourceSpawned;
-        WorldDataBootstrapper.OnWorldDataReady   -= HandleWorldDataReady;
-
-        StopAllHitFlashCoroutines();
+        WorldDataBootstrapper.OnWorldDataReady -= HandleWorldDataReady;
     }
 
     private void TryBindTimeManager()
@@ -558,122 +510,16 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
     public void SpawnResourceVisualLocally(int chunkX, int chunkY, int tileIndex, string resourceId)
     {
-        // Only render visuals for chunks currently loaded on this client.
-        // When the player later approaches, ChunkLoadingManager will call this method
-        // again via SpawnChunkVisualsAsync for all tiles in the chunk.
-        if (_chunkLoadingManager != null && !_chunkLoadingManager.IsChunkLoaded(new Vector2Int(chunkX, chunkY)))
-            return;
-
-        string visualKey = MakeVisualKey(chunkX, chunkY, tileIndex);
-        if (_spawnedVisuals.TryGetValue(visualKey, out GameObject existing))
-        {
-            if (existing != null) return;
-            _spawnedVisuals.Remove(visualKey);
-            ClearVisualTracking(visualKey);
-        }
-
-        ResourceConfigData configData = ResourceCatalogManager.Instance?.GetResourceConfig(resourceId);
-        if (configData == null)
-        {
-            Debug.LogWarning($"[ResourceSpawnerManager] Missing config data for resource '{resourceId}'.");
-            return;
-        }
-
-        GameObject prefabToUse = treePrefab; // Default fallback
-        if (!string.IsNullOrEmpty(configData.resourceType))
-        {
-            switch (NormalizeResourceType(configData.resourceType))
-            {
-                case "tree": prefabToUse = treePrefab; break;
-                case "rock": prefabToUse = rockPrefab; break;
-                case "ore": prefabToUse = orePrefab; break;
-                default: prefabToUse = treePrefab; break; // safe fallback
-            }
-        }
-
-        if (prefabToUse == null)
-        {
-            Debug.LogWarning($"[ResourceSpawnerManager] Prefab for resourceType '{configData.resourceType}' is not assigned.");
-            return;
-        }
-
-        Vector3 worldPos = TileIndexToWorldPosition(chunkX, chunkY, tileIndex);
-        GameObject visual = Instantiate(prefabToUse, worldPos, Quaternion.identity);
-        visual.name = $"Resource_{resourceId}_{chunkX}_{chunkY}_{tileIndex}";
-        _spawnedVisuals[visualKey] = visual;
-        _baseVisualScales[visualKey] = visual.transform.localScale;
-        _visualKeyToResourceType[visualKey] = NormalizeResourceType(configData.resourceType);
-
-        if (string.IsNullOrEmpty(configData.spriteUrl))
-        {
-            Debug.LogWarning($"[ResourceSpawnerManager] Missing spriteUrl for resource '{resourceId}'.");
-            return;
-        }
-
-        SpriteRenderer spriteRenderer = visual.GetComponentInChildren<SpriteRenderer>(true);
-        if (spriteRenderer == null)
-            spriteRenderer = visual.AddComponent<SpriteRenderer>();
-
-        if (_spriteCache.TryGetValue(configData.spriteUrl, out Sprite cachedSprite))
-        {
-            spriteRenderer.sprite = cachedSprite;
-        }
-        else
-        {
-            StartCoroutine(LoadAndApplySprite(spriteRenderer, configData.spriteUrl, resourceId));
-        }
-    }
-
-    private IEnumerator LoadAndApplySprite(SpriteRenderer spriteRenderer, string url, string resourceId)
-    {
-        if (string.IsNullOrEmpty(url)) yield break;
-
-        using var request = UnityWebRequestTexture.GetTexture(url);
-        request.timeout = 15;
-        yield return request.SendWebRequest();
-
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            Debug.LogWarning(
-                $"[ResourceSpawnerManager] Failed to download sprite for resource '{resourceId}' from '{url}': {request.error}");
-            yield break;
-        }
-
-        var tex = DownloadHandlerTexture.GetContent(request);
-        if (tex != null)
-        {
-            tex.filterMode = FilterMode.Point;
-            tex.wrapMode = TextureWrapMode.Clamp;
-
-            Sprite sprite = Sprite.Create(
-                tex,
-                new Rect(0, 0, tex.width, tex.height),
-                new Vector2(0.5f, 0.065f), // Bottom-Center pivot
-                16f,
-                0,
-                SpriteMeshType.FullRect);
-            
-            sprite.name = $"Resource_{resourceId}";
-            _spriteCache[url] = sprite;
-
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.sprite = sprite;
-            }
-        }
+        ResourceSpawnerView view = ResourceSpawnerView.Instance;
+        if (view != null)
+            view.SpawnResourceVisualLocally(chunkX, chunkY, tileIndex, resourceId);
     }
 
     public bool TryGetResourceVisual(int chunkX, int chunkY, int tileIndex, out GameObject visual)
     {
-        string key = MakeVisualKey(chunkX, chunkY, tileIndex);
-        if (_spawnedVisuals.TryGetValue(key, out visual) && visual != null)
-            return true;
-
-        if (_spawnedVisuals.ContainsKey(key))
-        {
-            _spawnedVisuals.Remove(key);
-            ClearVisualTracking(key);
-        }
+        ResourceSpawnerView view = ResourceSpawnerView.Instance;
+        if (view != null)
+            return view.TryGetResourceVisual(chunkX, chunkY, tileIndex, out visual);
 
         visual = null;
         return false;
@@ -681,23 +527,9 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
 
     public void RemoveResourceVisual(int chunkX, int chunkY, int tileIndex)
     {
-        string key = MakeVisualKey(chunkX, chunkY, tileIndex);
-
-        // Decrement world-type count — called on MasterClient only (ResourceInteractionManager).
-        if (_visualKeyToResourceType.TryGetValue(key, out string removedType))
-        {
-            if (_worldResourceCounts.TryGetValue(removedType, out int typeCount) && typeCount > 0)
-                _worldResourceCounts[removedType] = typeCount - 1;
-            _visualKeyToResourceType.Remove(key);
-        }
-
-        if (_spawnedVisuals.TryGetValue(key, out GameObject visual))
-        {
-            ClearVisualTracking(key);
-            if (visual != null)
-                Destroy(visual);
-            _spawnedVisuals.Remove(key);
-        }
+        ResourceSpawnerView view = ResourceSpawnerView.Instance;
+        if (view != null)
+            view.RemoveResourceVisual(chunkX, chunkY, tileIndex);
     }
 
     private List<int> FindValidTilesForType(
@@ -771,162 +603,11 @@ public class ResourceSpawnerManager : MonoBehaviourPun, IInRoomCallbacks
         }
     }
 
-    private static string MakeVisualKey(int chunkX, int chunkY, int tileIndex)
-    {
-        return $"{chunkX}:{chunkY}:{tileIndex}";
-    }
-
     public void OnPlayerEnteredRoom(Player newPlayer) { }
     public void OnPlayerLeftRoom(Player otherPlayer) { }
     public void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged) { }
     public void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps) { }
     public void OnMasterClientSwitched(Player newMasterClient) { }
-
-    private void HandleResourceHpUpdated(int worldX, int worldY, int newHp)
-    {
-        if (!WorldTileToVisualKey(worldX, worldY, out string key))
-            return;
-
-        if (!_spawnedVisuals.TryGetValue(key, out GameObject visual) || visual == null)
-        {
-            ClearVisualTracking(key);
-            return;
-        }
-
-        StartOrRestartHitFlash(key, visual);
-    }
-
-    private void HandleResourceRemoved(int worldX, int worldY)
-    {
-        if (WorldTileToVisualKey(worldX, worldY, out string key))
-        {
-            ClearVisualTracking(key);
-            if (_spawnedVisuals.TryGetValue(key, out GameObject visual) && visual != null)
-            {
-                Destroy(visual);
-            }
-            _spawnedVisuals.Remove(key);
-        }
-    }
-
-    private void HandleResourceSpawned(int worldX, int worldY, string resourceId)
-    {
-        WorldDataManager worldData = WorldDataManager.Instance;
-        if (worldData == null) return;
-
-        Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        Vector2Int chunkPos = worldData.WorldToChunkCoords(worldPos);
-        
-        int chunkSize = worldData.chunkSizeTiles;
-        int localX = worldX - (chunkPos.x * chunkSize);
-        int localY = worldY - (chunkPos.y * chunkSize);
-
-        int tileIndex = localY * chunkSize + localX;
-
-        SpawnResourceVisualLocally(chunkPos.x, chunkPos.y, tileIndex, resourceId);
-    }
-
-    private void StartOrRestartHitFlash(string key, GameObject visual)
-    {
-        if (visual == null)
-        {
-            ClearVisualTracking(key);
-            return;
-        }
-
-        if (!_baseVisualScales.TryGetValue(key, out Vector3 baseScale))
-        {
-            baseScale = visual.transform.localScale;
-            _baseVisualScales[key] = baseScale;
-        }
-
-        if (_activeHitFlashCoroutines.TryGetValue(key, out Coroutine running) && running != null)
-        {
-            StopCoroutine(running);
-        }
-
-        // Always reset to canonical scale before replaying hit feedback.
-        visual.transform.localScale = baseScale;
-        _activeHitFlashCoroutines[key] = StartCoroutine(HitFlashVisual(key, visual, baseScale));
-    }
-
-    private IEnumerator HitFlashVisual(string key, GameObject visual, Vector3 baseScale)
-    {
-        if (visual == null)
-        {
-            ClearVisualTracking(key);
-            yield break;
-        }
-
-        visual.transform.localScale = baseScale * 0.95f;
-        yield return new WaitForSeconds(0.1f);
-
-        if (visual != null)
-            visual.transform.localScale = baseScale;
-
-        _activeHitFlashCoroutines.Remove(key);
-    }
-
-    private void ClearVisualTracking(string key)
-    {
-        if (string.IsNullOrEmpty(key)) return;
-
-        if (_activeHitFlashCoroutines.TryGetValue(key, out Coroutine running) && running != null)
-        {
-            StopCoroutine(running);
-        }
-
-        _activeHitFlashCoroutines.Remove(key);
-        _baseVisualScales.Remove(key);
-    }
-
-    private void StopAllHitFlashCoroutines()
-    {
-        foreach (Coroutine running in _activeHitFlashCoroutines.Values)
-        {
-            if (running != null)
-                StopCoroutine(running);
-        }
-
-        _activeHitFlashCoroutines.Clear();
-
-        foreach (string key in _spawnedVisuals.Keys)
-        {
-            if (_spawnedVisuals.TryGetValue(key, out GameObject visual) && visual != null &&
-                _baseVisualScales.TryGetValue(key, out Vector3 baseScale))
-            {
-                visual.transform.localScale = baseScale;
-            }
-        }
-
-        _baseVisualScales.Clear();
-    }
-
-    private bool TryGetVisualFromWorld(int worldX, int worldY, out GameObject visual)
-    {
-        visual = null;
-        if (!WorldTileToVisualKey(worldX, worldY, out string key)) return false;
-        return _spawnedVisuals.TryGetValue(key, out visual) && visual != null;
-    }
-
-    private bool WorldTileToVisualKey(int worldX, int worldY, out string key)
-    {
-        key = null;
-        WorldDataManager worldData = WorldDataManager.Instance;
-        if (worldData == null) return false;
-
-        Vector3 worldPos = new Vector3(worldX, worldY, 0);
-        Vector2Int chunkPos = worldData.WorldToChunkCoords(worldPos);
-        
-        int chunkSize = worldData.chunkSizeTiles;
-        int localX = worldX - (chunkPos.x * chunkSize);
-        int localY = worldY - (chunkPos.y * chunkSize);
-
-        int tileIndex = localY * chunkSize + localX;
-        
-        key = MakeVisualKey(chunkPos.x, chunkPos.y, tileIndex);
-        return true;
-    }
 
     // ── Per-type spawn helpers ────────────────────────────────────────────────
 

@@ -29,8 +29,8 @@ MonoBehaviour:
     clips:
     - {fileID: 8300000, guid: 21cfdea07ba957a45a29726682531711, type: 3}
     volume: 1
-    pitchMin: 0
-    pitchMax: 0
+    pitchMin: 0.8
+    pitchMax: 0.8
   - id: 8
     clips:
     - {fileID: 8300000, guid: 34006f67b6305e84eaf766b560872a85, type: 3}
@@ -42,12 +42,23 @@ MonoBehaviour:
     - {fileID: 8300000, guid: 8f475990dd27da149bb2ac20bfe7e1c5, type: 3}
     - {fileID: 8300000, guid: 8d79740b592297146a9a3b0c34113061, type: 3}
     volume: 1
+    pitchMin: 0.8
+    pitchMax: 0.8
+  - id: 13
+    clips:
+    - {fileID: 8300000, guid: f8d5a49f9aa7b3041a40617e8c36c81f, type: 3}
+    volume: 0.2
     pitchMin: 0
     pitchMax: 0
-  - id: 12
+  - id: 10
     clips:
-    - {fileID: 8300000, guid: 8f475990dd27da149bb2ac20bfe7e1c5, type: 3}
-    - {fileID: 8300000, guid: 8d79740b592297146a9a3b0c34113061, type: 3}
+    - {fileID: 8300000, guid: 0ac95e9aa8ddcbc4283f117357f5ffd2, type: 3}
+    volume: 0.2
+    pitchMin: 0
+    pitchMax: 0
+  - id: 11
+    clips:
+    - {fileID: 8300000, guid: 7997f561f67812d478bf33f8bc24dabf, type: 3}
     volume: 1
     pitchMin: 0
     pitchMax: 0

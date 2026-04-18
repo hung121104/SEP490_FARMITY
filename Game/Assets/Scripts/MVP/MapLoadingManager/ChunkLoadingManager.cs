@@ -268,12 +268,12 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
         int resourceCount       = 0;
         int processedThisFrame  = 0;
 
-        ResourceSpawnerManager resourceSpawner = null;
+        ResourceSpawnerView resourceSpawnerView = null;
         if (visualizeResources)
         {
-            resourceSpawner = ResourceSpawnerManager.Instance ?? FindAnyObjectByType<ResourceSpawnerManager>();
-            if (resourceSpawner == null && showDebugLogs)
-                Debug.LogWarning("[ChunkLoading] ResourceSpawnerManager not found.");
+            resourceSpawnerView = ResourceSpawnerView.Instance ?? FindAnyObjectByType<ResourceSpawnerView>();
+            if (resourceSpawnerView == null && showDebugLogs)
+                Debug.LogWarning("[ChunkLoading] ResourceSpawnerView not found.");
         }
 
         Tilemap tilledTilemap  = FindTilemap(tilledTilemapName);
@@ -409,13 +409,13 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
             }
 
             // ── Resource visual ───────────────────────────────────────────────
-            if (visualizeResources && tile.HasResource && resourceSpawner != null
+            if (visualizeResources && tile.HasResource && resourceSpawnerView != null
                 && !string.IsNullOrEmpty(tile.Resource.ResourceId))
             {
                 int idx = _presenter.WorldTileToTileIndex(chunk.ChunkX, chunk.ChunkY, tile.WorldX, tile.WorldY);
                 if (idx >= 0)
                 {
-                    resourceSpawner.SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, idx, tile.Resource.ResourceId);
+                    resourceSpawnerView.SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, idx, tile.Resource.ResourceId);
                     resourceCount++;
                 }
             }
@@ -493,13 +493,13 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
         // Resources have no deactivation API — re-spawn them
         if (visualizeResources && _presenter.TryGetChunkData(chunkPos, out UnifiedChunkData chunk))
         {
-            ResourceSpawnerManager rs = ResourceSpawnerManager.Instance ?? FindAnyObjectByType<ResourceSpawnerManager>();
-            if (rs != null)
+            ResourceSpawnerView rsView = ResourceSpawnerView.Instance ?? FindAnyObjectByType<ResourceSpawnerView>();
+            if (rsView != null)
                 foreach (var tile in chunk.GetAllTiles())
                 {
                     if (!tile.HasResource || string.IsNullOrEmpty(tile.Resource.ResourceId)) continue;
                     int idx = _presenter.WorldTileToTileIndex(chunk.ChunkX, chunk.ChunkY, tile.WorldX, tile.WorldY);
-                    if (idx >= 0) rs.SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, idx, tile.Resource.ResourceId);
+                    if (idx >= 0) rsView.SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, idx, tile.Resource.ResourceId);
                 }
         }
     }
@@ -755,8 +755,8 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
     private void ReleaseChunkResources(Vector2Int chunkPos)
     {
         if (!visualizeResources) return;
-        ResourceSpawnerManager rs = ResourceSpawnerManager.Instance ?? FindAnyObjectByType<ResourceSpawnerManager>();
-        if (rs == null) return;
+        ResourceSpawnerView rsView = ResourceSpawnerView.Instance ?? FindAnyObjectByType<ResourceSpawnerView>();
+        if (rsView == null) return;
         if (!_presenter.TryGetChunkData(chunkPos, out UnifiedChunkData chunk)) return;
 
         int removed = 0;
@@ -765,7 +765,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
             if (!tile.HasResource) continue;
             int idx = _presenter.WorldTileToTileIndex(chunk.ChunkX, chunk.ChunkY, tile.WorldX, tile.WorldY);
             if (idx < 0) continue;
-            rs.RemoveResourceVisual(chunk.ChunkX, chunk.ChunkY, idx);
+            rsView.RemoveResourceVisual(chunk.ChunkX, chunk.ChunkY, idx);
             removed++;
         }
         if (showDebugLogs && removed > 0)
