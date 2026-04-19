@@ -7220,8 +7220,8 @@ MonoBehaviour:
   pages:
   - {fileID: 350406052}
   - {fileID: 1723336295}
-  craftingSystemManager: {fileID: 0}
-  inventoryGameView: {fileID: 0}
+  craftingSystemManager: {fileID: 1564692826}
+  inventoryGameView: {fileID: 1510754439}
   craftingTabIndex: 1
   inventoryTabIndex: 0
 --- !u!222 &345676523
@@ -41226,7 +41226,7 @@ MonoBehaviour:
           m_Arguments:
             m_ObjectArgument: {fileID: 0}
             m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-            m_IntArgument: 2
+            m_IntArgument: 1
             m_FloatArgument: 0
             m_StringArgument: 
             m_BoolArgument: 0
