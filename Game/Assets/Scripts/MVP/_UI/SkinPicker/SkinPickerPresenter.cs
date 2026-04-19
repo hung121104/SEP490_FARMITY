@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using Photon.Pun;
 
@@ -13,7 +12,7 @@ using Photon.Pun;
 /// How it works
 /// ------------
 ///   1. Call <see cref="Open"/> from a button, hotkey handler, or menu.
-///   2. The presenter waits for <see cref="SkinCatalogManager"/> to be ready,
+///   2. The presenter waits for the skin catalog to be ready via the service,
 ///      then finds the local player's <see cref="PlayerAppearanceSync"/>.
 ///   3. It populates the view with all outfit skins from the catalog.
 ///   4. When the player clicks a card the outfit is instantly applied via
@@ -33,6 +32,7 @@ public class SkinPickerPresenter : MonoBehaviour
 
     private PlayerAppearanceSync _appearanceSync;
     private string               _currentOutfit;
+    private ISkinPickerService   _service;
 
     // ── Unity Lifecycle ───────────────────────────────────────────────────────
 
@@ -40,6 +40,8 @@ public class SkinPickerPresenter : MonoBehaviour
     {
         if (view == null)
             view = GetComponent<SkinPickerPanelView>();
+
+        _service = new SkinPickerService();
     }
 
     private void Start()
@@ -92,12 +94,11 @@ public class SkinPickerPresenter : MonoBehaviour
 
     private IEnumerator OpenRoutine()
     {
-        // 1 — Wait for SkinCatalogManager to finish loading all sheets.
-        if (SkinCatalogManager.Instance == null || !SkinCatalogManager.Instance.IsReady)
+        // 1 — Wait for catalog to finish loading via the service.
+        if (!_service.IsCatalogReady)
         {
-            Debug.Log("[SkinPickerPresenter] Waiting for SkinCatalogManager...");
-            yield return new WaitUntil(() =>
-                SkinCatalogManager.Instance != null && SkinCatalogManager.Instance.IsReady);
+            Debug.Log("[SkinPickerPresenter] Waiting for skin catalog...");
+            yield return new WaitUntil(() => _service.IsCatalogReady);
         }
 
         // 2 — Find the local player's appearance sync with retry (accounts for late spawn).
@@ -166,14 +167,18 @@ public class SkinPickerPresenter : MonoBehaviour
 
     private void PopulateOutfits()
     {
-        var allEntries = SkinCatalogManager.Instance?.GetAllEntries();
-        if (allEntries == null || allEntries.Count == 0)
+        var outfits = _service.GetOutfitEntries();
+
+        // Build preview data for each entry so the View never touches the catalog.
+        var previews = new List<SkinPickerPanelView.CardData>(outfits.Count);
+        foreach (var entry in outfits)
         {
-            view.PopulateCards(new List<SkinCatalogManager.SkinEntry>(), string.Empty);
-            return;
+            Sprite preview = _service.GetPreviewSprite(entry.configId);
+            previews.Add(new SkinPickerPanelView.CardData(entry.configId, preview));
         }
 
-        var outfits = allEntries.Where(e => e.category == SkinCategory.Outfit).ToList();
-        view.PopulateCards(outfits, _currentOutfit ?? string.Empty);
+        Sprite bodyPreview = _service.GetBodyPreviewSprite();
+
+        view.PopulateCards(previews, bodyPreview, _currentOutfit ?? string.Empty);
     }
 }

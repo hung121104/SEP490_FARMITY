@@ -7,6 +7,8 @@ using TMPro;
 
 /// <summary>
 /// View component for the Outfit Skin Picker panel.
+/// Displays cards and fires selection events. Zero business logic —
+/// all catalog queries are handled by the Presenter via the Service.
 ///
 /// Inspector Setup
 /// ---------------
@@ -20,6 +22,19 @@ using TMPro;
 /// </summary>
 public class SkinPickerPanelView : MonoBehaviour
 {
+    // ── Data passed from Presenter ────────────────────────────────────────────
+
+    /// <summary>
+    /// Pre-built card data supplied by the Presenter so the View never
+    /// touches SkinCatalogManager directly.
+    /// </summary>
+    public readonly struct CardData
+    {
+        public readonly string configId;
+        public readonly Sprite preview;
+        public CardData(string id, Sprite sprite) { configId = id; preview = sprite; }
+    }
+
     // ── Inspector ─────────────────────────────────────────────────────────────
 
     [Header("Panel Root")]
@@ -67,12 +82,15 @@ public class SkinPickerPanelView : MonoBehaviour
     }
 
     /// <summary>
-    /// Clears existing cards and spawns new ones from <paramref name="entries"/>.
+    /// Clears existing cards and spawns new ones from pre-built card data.
+    /// The Presenter is responsible for resolving preview sprites from the service.
     /// </summary>
-    /// <param name="entries">Filtered list of entries for the current tab.</param>
+    /// <param name="cards">Pre-built card data for each outfit entry.</param>
+    /// <param name="bodyPreview">First-frame sprite for the default (no-outfit) card. May be null.</param>
     /// <param name="currentConfigId">ConfigId to mark as selected on open.</param>
     public void PopulateCards(
-        IReadOnlyList<SkinCatalogManager.SkinEntry> entries,
+        IReadOnlyList<CardData> cards,
+        Sprite bodyPreview,
         string currentConfigId)
     {
         // Destroy old cards
@@ -83,20 +101,16 @@ public class SkinPickerPanelView : MonoBehaviour
         if (cardPrefab == null || cardContainer == null) return;
 
         // ── Default card (removes the outfit / shows base body) ───────────────
-        Sprite bodyPreview = FindBodyPreview();
         SkinSlotCardView defaultCard = Instantiate(cardPrefab, cardContainer);
         defaultCard.Setup(string.Empty, bodyPreview, string.IsNullOrEmpty(currentConfigId));
         defaultCard.OnSelected += id => OnCardSelected?.Invoke(id);
         _cards.Add(defaultCard);
 
         // ── Outfit cards ─────────────────────────────────────────────────────
-        foreach (var entry in entries)
+        foreach (var data in cards)
         {
-            var sprites = SkinCatalogManager.Instance?.GetSprites(entry.configId);
-            Sprite preview = sprites != null && sprites.Length > 0 ? sprites[0] : null;
-
             SkinSlotCardView card = Instantiate(cardPrefab, cardContainer);
-            card.Setup(entry.configId, preview, entry.configId == currentConfigId);
+            card.Setup(data.configId, data.preview, data.configId == currentConfigId);
             card.OnSelected += id => OnCardSelected?.Invoke(id);
             _cards.Add(card);
         }
@@ -121,28 +135,6 @@ public class SkinPickerPanelView : MonoBehaviour
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Searches the catalog for any entry whose configId contains "body" or "base"
-    /// and returns its first frame as the Default card thumbnail.
-    /// Returns null if no matching entry is found.
-    /// </summary>
-    private static Sprite FindBodyPreview()
-    {
-        var entries = SkinCatalogManager.Instance?.GetAllEntries();
-        if (entries == null) return null;
-
-        foreach (var e in entries)
-        {
-            string lower = e.configId.ToLowerInvariant();
-            if (lower.Contains("body") || lower.Contains("base"))
-            {
-                var sprites = SkinCatalogManager.Instance.GetSprites(e.configId);
-                if (sprites != null && sprites.Length > 0) return sprites[0];
-            }
-        }
-        return null;
-    }
 
     /// <summary>"farmer_default" → "Farmer Default", null/empty → "None"</summary>
     private static string FormatLabel(string configId)
