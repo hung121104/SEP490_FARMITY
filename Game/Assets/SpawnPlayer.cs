@@ -2,7 +2,7 @@ using UnityEngine;
 using Photon.Pun;
 using ExitGames.Client.Photon;
 
-public class SpawnPlayer : MonoBehaviour
+public class SpawnPlayer : MonoBehaviourPunCallbacks
 {
     [SerializeField]
     private GameObject playerPrefab;
@@ -41,7 +41,16 @@ public class SpawnPlayer : MonoBehaviour
             return;
         }
 
-        // Broadcast this client's real accountId so the master client can look up PlayerData
+        TrySpawnLocalNetworkPlayer();
+
+        nextMessageQueueCheckTime = Time.unscaledTime + messageQueueCheckInterval;
+        nextSpawnRetryTime = Time.unscaledTime + spawnRetryInterval;
+    }
+
+    public override void OnJoinedRoom()
+    {
+        // Set accountId AFTER we are fully in the room so SetCustomProperties succeeds.
+        // Calling this in Start() fires while the client is still in Joining state and silently fails.
         if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
         {
             PhotonNetwork.LocalPlayer.SetCustomProperties(
@@ -52,11 +61,6 @@ public class SpawnPlayer : MonoBehaviour
         {
             Debug.LogWarning("[SpawnPlayer] SessionManager has no UserId — position restore may not work.");
         }
-
-        TrySpawnLocalNetworkPlayer();
-
-        nextMessageQueueCheckTime = Time.unscaledTime + messageQueueCheckInterval;
-        nextSpawnRetryTime = Time.unscaledTime + spawnRetryInterval;
     }
 
     private void Update()

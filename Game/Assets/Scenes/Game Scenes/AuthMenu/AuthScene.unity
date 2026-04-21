@@ -5588,7 +5588,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: Otp
+  m_Text: OTP
 --- !u!222 &1784428546
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -6284,7 +6284,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: regiter
+  m_text: Confirm
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: b594c8a30457e5f41ad966b03d1d26aa, type: 2}
   m_sharedMaterial: {fileID: -7953292292967863894, guid: b594c8a30457e5f41ad966b03d1d26aa, type: 2}
@@ -6431,7 +6431,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 932959019}
   planeZ: 0
-  mouseWorldPosition: {x: 7.122073, y: 8.625837}
+  mouseWorldPosition: {x: 14.897655, y: 10.881998}
 --- !u!1 &2101468138
 GameObject:
   m_ObjectHideFlags: 0

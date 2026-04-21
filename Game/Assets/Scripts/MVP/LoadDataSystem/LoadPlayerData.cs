@@ -136,8 +136,9 @@ public class LoadPlayerData : MonoBehaviourPunCallbacks
 
         if (!PhotonNetwork.IsMasterClient)
         {
-            // Non-master: self-load position directly from API — don't depend on master.
-            yield return StartCoroutine(LoadOwnPositionFromServer());
+            // Non-master: position is pushed by the master via OnPlayerEnteredRoom → WaitAndApplyPositionForPlayer.
+            // The master sends a SetLoadedPosition RPC once the joining player's accountId custom property
+            // is available and their PlayerData is found.  Nothing to do here.
             yield break;
         }
 
