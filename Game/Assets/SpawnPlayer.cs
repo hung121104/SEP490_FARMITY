@@ -41,6 +41,14 @@ public class SpawnPlayer : MonoBehaviourPunCallbacks
             return;
         }
 
+        // If the scene loads after OnJoinedRoom already fired (normal play: lobby calls
+        // PhotonNetwork.LoadLevel inside OnJoinedRoom), SpawnPlayer.OnJoinedRoom() will
+        // never be invoked again.  Set accountId here for that case.
+        // OnJoinedRoom() handles the editor/testing case where the scene loads while
+        // the client is still in the Joining state.
+        if (PhotonNetwork.InRoom)
+            SetAccountIdProperty();
+
         TrySpawnLocalNetworkPlayer();
 
         nextMessageQueueCheckTime = Time.unscaledTime + messageQueueCheckInterval;
@@ -49,8 +57,13 @@ public class SpawnPlayer : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        // Set accountId AFTER we are fully in the room so SetCustomProperties succeeds.
-        // Calling this in Start() fires while the client is still in Joining state and silently fails.
+        // Fallback: scene loaded during the join process (e.g. editor / ParrelSync).
+        // In normal play this is unreachable because Start() already set accountId above.
+        SetAccountIdProperty();
+    }
+
+    private void SetAccountIdProperty()
+    {
         if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
         {
             PhotonNetwork.LocalPlayer.SetCustomProperties(
