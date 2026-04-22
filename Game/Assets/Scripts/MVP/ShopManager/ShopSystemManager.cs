@@ -52,6 +52,20 @@ public class ShopSystemManager : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        ItemCatalogService.OnItemUpdated -= HandleItemCatalogUpdated;
+        ItemCatalogService.OnItemUpdated += HandleItemCatalogUpdated;
+    }
+
+    private void OnDisable()
+    {
+        ItemCatalogService.OnItemUpdated -= HandleItemCatalogUpdated;
+
+        if (timeManager != null)
+            timeManager.OnDayChanged -= ResetAllShopsForNewDay;
+    }
+
     private void InitializeInventoryReferences()
     {
         if (inventoryGameView == null) inventoryGameView = FindFirstObjectByType<InventoryGameView>();
@@ -132,6 +146,45 @@ public class ShopSystemManager : MonoBehaviour
             refreshedShopService.GenerateDailyItems();
             dailyShopsMemory.Add(currentShopKey, refreshedShopService);
             shopPresenter.RefreshShopData(refreshedShopService);
+        }
+    }
+
+    private void HandleItemCatalogUpdated(string itemId)
+    {
+        // Rebuild cached NPC stocks so buy lists reflect latest catalog fields
+        // (price/name/icon/buy flags/type membership) without waiting for day reset.
+        RefreshAllCachedShopsAfterItemUpdate();
+    }
+
+    private void RefreshAllCachedShopsAfterItemUpdate()
+    {
+        if (dailyShopsMemory.Count == 0) return;
+        if (ItemCatalogService.Instance == null || !ItemCatalogService.Instance.IsReady) return;
+
+        var refreshedShops = new Dictionary<string, IShopService>(dailyShopsMemory.Count);
+
+        foreach (var pair in dailyShopsMemory)
+        {
+            var cachedService = pair.Value;
+            var model = cachedService?.GetShopModel();
+            var shopTypes = model?.ShopTypes;
+            if (shopTypes == null)
+            {
+                refreshedShops[pair.Key] = cachedService;
+                continue;
+            }
+
+            var refreshedService = new ShopService(shopTypes);
+            refreshedService.GenerateDailyItems();
+            refreshedShops[pair.Key] = refreshedService;
+        }
+
+        dailyShopsMemory = refreshedShops;
+
+        if (isShopOpen && shopPresenter != null && !string.IsNullOrEmpty(currentShopKey)
+            && dailyShopsMemory.TryGetValue(currentShopKey, out var openShopService))
+        {
+            shopPresenter.RefreshShopData(openShopService);
         }
     }
 }
