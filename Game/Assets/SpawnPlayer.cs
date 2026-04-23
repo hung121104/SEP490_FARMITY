@@ -2,7 +2,7 @@ using UnityEngine;
 using Photon.Pun;
 using ExitGames.Client.Photon;
 
-public class SpawnPlayer : MonoBehaviour
+public class SpawnPlayer : MonoBehaviourPunCallbacks
 {
     [SerializeField]
     private GameObject playerPrefab;
@@ -41,7 +41,29 @@ public class SpawnPlayer : MonoBehaviour
             return;
         }
 
-        // Broadcast this client's real accountId so the master client can look up PlayerData
+        // If the scene loads after OnJoinedRoom already fired (normal play: lobby calls
+        // PhotonNetwork.LoadLevel inside OnJoinedRoom), SpawnPlayer.OnJoinedRoom() will
+        // never be invoked again.  Set accountId here for that case.
+        // OnJoinedRoom() handles the editor/testing case where the scene loads while
+        // the client is still in the Joining state.
+        if (PhotonNetwork.InRoom)
+            SetAccountIdProperty();
+
+        TrySpawnLocalNetworkPlayer();
+
+        nextMessageQueueCheckTime = Time.unscaledTime + messageQueueCheckInterval;
+        nextSpawnRetryTime = Time.unscaledTime + spawnRetryInterval;
+    }
+
+    public override void OnJoinedRoom()
+    {
+        // Fallback: scene loaded during the join process (e.g. editor / ParrelSync).
+        // In normal play this is unreachable because Start() already set accountId above.
+        SetAccountIdProperty();
+    }
+
+    private void SetAccountIdProperty()
+    {
         if (SessionManager.Instance != null && !string.IsNullOrEmpty(SessionManager.Instance.UserId))
         {
             PhotonNetwork.LocalPlayer.SetCustomProperties(
@@ -52,11 +74,6 @@ public class SpawnPlayer : MonoBehaviour
         {
             Debug.LogWarning("[SpawnPlayer] SessionManager has no UserId — position restore may not work.");
         }
-
-        TrySpawnLocalNetworkPlayer();
-
-        nextMessageQueueCheckTime = Time.unscaledTime + messageQueueCheckInterval;
-        nextSpawnRetryTime = Time.unscaledTime + spawnRetryInterval;
     }
 
     private void Update()

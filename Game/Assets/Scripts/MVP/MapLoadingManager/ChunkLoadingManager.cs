@@ -268,12 +268,12 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
         int resourceCount       = 0;
         int processedThisFrame  = 0;
 
-        ResourceSpawnerManager resourceSpawner = null;
+        ResourceSpawnerView resourceSpawnerView = null;
         if (visualizeResources)
         {
-            resourceSpawner = ResourceSpawnerManager.Instance ?? FindAnyObjectByType<ResourceSpawnerManager>();
-            if (resourceSpawner == null && showDebugLogs)
-                Debug.LogWarning("[ChunkLoading] ResourceSpawnerManager not found.");
+            resourceSpawnerView = ResourceSpawnerView.Instance ?? FindAnyObjectByType<ResourceSpawnerView>();
+            if (resourceSpawnerView == null && showDebugLogs)
+                Debug.LogWarning("[ChunkLoading] ResourceSpawnerView not found.");
         }
 
         Tilemap tilledTilemap  = FindTilemap(tilledTilemapName);
@@ -409,13 +409,13 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
             }
 
             // ── Resource visual ───────────────────────────────────────────────
-            if (visualizeResources && tile.HasResource && resourceSpawner != null
+            if (visualizeResources && tile.HasResource && resourceSpawnerView != null
                 && !string.IsNullOrEmpty(tile.Resource.ResourceId))
             {
                 int idx = _presenter.WorldTileToTileIndex(chunk.ChunkX, chunk.ChunkY, tile.WorldX, tile.WorldY);
                 if (idx >= 0)
                 {
-                    resourceSpawner.SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, idx, tile.Resource.ResourceId);
+                    resourceSpawnerView.SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, idx, tile.Resource.ResourceId);
                     resourceCount++;
                 }
             }
@@ -467,8 +467,35 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
     private void ActivateChunkVisualsInternal(Vector2Int chunkPos)
     {
         if (_model.CropVisuals.TryGetValue(chunkPos, out var crops))
+        {
+            // Fetch current tile data once so we can sync each crop sprite to the
+            // true growth stage — the crop may have grown while this chunk was inactive.
+            bool hasChunkData = _presenter.TryGetChunkData(chunkPos, out UnifiedChunkData chunk);
+
             foreach (var go in crops)
-                if (go != null) go.SetActive(true);
+            {
+                if (go == null) continue;
+                go.SetActive(true);
+
+                if (!hasChunkData) continue;
+
+                Vector3 pos = go.transform.position;
+                int worldX = Mathf.RoundToInt(pos.x);
+                int worldY = Mathf.RoundToInt(pos.y);
+                UnifiedChunkData.TileSlot? slotN = chunk.GetTile(worldX, worldY);
+                if (slotN == null || !slotN.Value.HasCrop) continue;
+
+                UnifiedChunkData.TileSlot slot = slotN.Value;
+                Sprite updated = PlantCatalogService.Instance?.GetStageSprite(slot.Crop.PlantId, slot.Crop.CropStage);
+                if (updated == null) continue;
+
+                SpriteRenderer sr = CropPool.GetSourceRenderer(go) ?? go.GetComponentInChildren<SpriteRenderer>();
+                if (sr == null) continue;
+
+                sr.sprite = updated;
+                ApplyCropSortingOrder(sr, slot.Crop.CropStage);
+            }
+        }
 
         if (_model.StructureVisuals.TryGetValue(chunkPos, out var structs))
             foreach (var (_, go) in structs)
@@ -491,15 +518,15 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
         }
 
         // Resources have no deactivation API — re-spawn them
-        if (visualizeResources && _presenter.TryGetChunkData(chunkPos, out UnifiedChunkData chunk))
+        if (visualizeResources && _presenter.TryGetChunkData(chunkPos, out UnifiedChunkData resourceChunk))
         {
-            ResourceSpawnerManager rs = ResourceSpawnerManager.Instance ?? FindAnyObjectByType<ResourceSpawnerManager>();
-            if (rs != null)
-                foreach (var tile in chunk.GetAllTiles())
+            ResourceSpawnerView rsView = ResourceSpawnerView.Instance ?? FindAnyObjectByType<ResourceSpawnerView>();
+            if (rsView != null)
+                foreach (var tile in resourceChunk.GetAllTiles())
                 {
                     if (!tile.HasResource || string.IsNullOrEmpty(tile.Resource.ResourceId)) continue;
-                    int idx = _presenter.WorldTileToTileIndex(chunk.ChunkX, chunk.ChunkY, tile.WorldX, tile.WorldY);
-                    if (idx >= 0) rs.SpawnResourceVisualLocally(chunk.ChunkX, chunk.ChunkY, idx, tile.Resource.ResourceId);
+                    int idx = _presenter.WorldTileToTileIndex(resourceChunk.ChunkX, resourceChunk.ChunkY, tile.WorldX, tile.WorldY);
+                    if (idx >= 0) rsView.SpawnResourceVisualLocally(resourceChunk.ChunkX, resourceChunk.ChunkY, idx, tile.Resource.ResourceId);
                 }
         }
     }
@@ -755,8 +782,8 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
     private void ReleaseChunkResources(Vector2Int chunkPos)
     {
         if (!visualizeResources) return;
-        ResourceSpawnerManager rs = ResourceSpawnerManager.Instance ?? FindAnyObjectByType<ResourceSpawnerManager>();
-        if (rs == null) return;
+        ResourceSpawnerView rsView = ResourceSpawnerView.Instance ?? FindAnyObjectByType<ResourceSpawnerView>();
+        if (rsView == null) return;
         if (!_presenter.TryGetChunkData(chunkPos, out UnifiedChunkData chunk)) return;
 
         int removed = 0;
@@ -765,7 +792,7 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
             if (!tile.HasResource) continue;
             int idx = _presenter.WorldTileToTileIndex(chunk.ChunkX, chunk.ChunkY, tile.WorldX, tile.WorldY);
             if (idx < 0) continue;
-            rs.RemoveResourceVisual(chunk.ChunkX, chunk.ChunkY, idx);
+            rsView.RemoveResourceVisual(chunk.ChunkX, chunk.ChunkY, idx);
             removed++;
         }
         if (showDebugLogs && removed > 0)

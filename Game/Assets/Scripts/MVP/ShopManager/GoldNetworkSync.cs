@@ -42,7 +42,19 @@ public class GoldNetworkSync : MonoBehaviourPunCallbacks
     [PunRPC]
     private void RPC_AllSyncGold(int finalGold)
     {
+        if (WorldDataManager.Instance == null)
+        {
+            StartCoroutine(ApplyGoldWhenReady(finalGold));
+            return;
+        }
         WorldDataManagerEconomyExtensions.Internal_ForceUpdateGold(finalGold);
         Debug.Log($"[Economy] Synced gold from Network: {finalGold}");
+    }
+
+    private System.Collections.IEnumerator ApplyGoldWhenReady(int finalGold)
+    {
+        yield return new WaitUntil(() => WorldDataManager.Instance != null);
+        WorldDataManagerEconomyExtensions.Internal_ForceUpdateGold(finalGold);
+        Debug.Log($"[Economy] Synced gold from Network (deferred): {finalGold}");
     }
 }

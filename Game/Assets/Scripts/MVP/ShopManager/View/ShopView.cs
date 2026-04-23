@@ -27,8 +27,14 @@ public class ShopView : MonoBehaviour, IShopView, IDropHandler
     [SerializeField] private TextMeshProUGUI totalSellPriceText;
     [SerializeField] private Button confirmSellButton;
 
+    [Header("Safe Zone")]
+    [Tooltip("UI area where dragged items won't drop to world (ShopPanel)")]
+    [SerializeField] private RectTransform shopSafeZone;
+
     [Header("General")]
     [SerializeField] private Button closeButton;
+
+    public RectTransform SafeZone => shopSafeZone;
 
     public bool IsVisible => shopPanelGameObject != null && shopPanelGameObject.activeSelf;
 

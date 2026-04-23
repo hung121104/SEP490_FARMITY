@@ -530,6 +530,9 @@ public class InventoryView : MonoBehaviour, IInventoryView
             return;
         }
 
+        // Don't start a split-carry when the carry system is disabled (e.g. shop open)
+        if (InventoryCarryState.CarryDisabled) return;
+
         // Fire split event — presenter handles model mutation
         OnSlotSplitRequested?.Invoke(slotIndex);
     }
@@ -549,6 +552,7 @@ public class InventoryView : MonoBehaviour, IInventoryView
         else
         {
             // --- PICK UP ---
+            if (InventoryCarryState.CarryDisabled) return;
             if (slotIndex < 0 || slotIndex >= slotViews.Count) return;
             var slotView = slotViews[slotIndex];
             var item = slotView.GetCurrentItem();
@@ -616,10 +620,11 @@ public class InventoryView : MonoBehaviour, IInventoryView
             }
         }
 
-        // Reset the per-frame flag (only the carrying view resets it)
+        // Reset the per-frame flags (only the carrying view resets them)
         if (isCarryingFromHere)
         {
             InventoryCarryState.SlotInteractedThisFrame = false;
+            InventoryCarryState.WasCarryEndedThisFrame = false;
         }
     }
 

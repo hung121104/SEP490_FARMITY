@@ -36,6 +36,7 @@ public static class WorldDataManagerEconomyExtensions
 
     public static void Internal_ForceUpdateGold(int newGold)
     {
+        if (WorldDataManager.Instance == null) return;
         var field = typeof(WorldDataManager).GetField("gold", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (field != null)
         {

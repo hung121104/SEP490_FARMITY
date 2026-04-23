@@ -142,7 +142,9 @@ public class InventorySlotView : MonoBehaviour,
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        OnClickedRequested?.Invoke(slotIndex);
+        if (eventData.button == PointerEventData.InputButton.Left
+            && !InventoryCarryState.WasCarryEndedThisFrame)
+            OnClickedRequested?.Invoke(slotIndex);
     }
 
     public void OnPointerDown(PointerEventData eventData)

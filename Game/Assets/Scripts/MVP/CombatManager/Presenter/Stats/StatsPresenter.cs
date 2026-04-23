@@ -226,12 +226,25 @@ namespace CombatManager.Presenter
 
         #endregion
 
+        private bool IsLocalPlayerEntity()
+        {
+            var pv = GetComponentInParent<PhotonView>();
+            return pv == null || pv.IsMine;
+        }
+
         private void RestoreProgressionFromPlayerData()
         {
+            // Only the owning client should restore its own progression.
+            // Without this guard, a remote player entity's StatsPresenter on the master
+            // would also attempt restoration, using the wrong accountId.
+            if (!IsLocalPlayerEntity())
+                return;
+
             if (!PhotonNetwork.IsMasterClient)
             {
-                // Non-master progression is restored from LoadPlayerData self-GET path.
-                Debug.Log($"{TRACE} [StatsPresenter] Skip RestoreProgressionFromPlayerData on non-master; waiting for self-GET restore.");
+                // Non-master progression is restored via RPC_CombatRestoreProgressionFromMaster
+                // sent by LoadPlayerData on the master.
+                Debug.Log($"{TRACE} [StatsPresenter] Skip RestoreProgressionFromPlayerData on non-master; waiting for master RPC restore.");
                 return;
             }
 
@@ -267,12 +280,18 @@ namespace CombatManager.Presenter
             if (!PhotonNetwork.IsMasterClient)
                 return;
 
+            if (!IsLocalPlayerEntity())
+                return;
+
             RestoreProgressionFromPlayerData();
         }
 
         private void ScheduleDeferredRestore()
         {
             if (!PhotonNetwork.IsMasterClient)
+                return;
+
+            if (!IsLocalPlayerEntity())
                 return;
 
             if (deferredRestoreCoroutine != null)
@@ -450,6 +469,12 @@ namespace CombatManager.Presenter
 
         private string GetLocalAccountId()
         {
+            // SessionManager is always the authoritative source. CustomProperties can retain
+            // stale values from a previous room/session because Photon does not reset them
+            // on room re-join, which would cause the wrong accountId to be returned here.
+            if (SessionManager.Instance != null && !string.IsNullOrWhiteSpace(SessionManager.Instance.UserId))
+                return SessionManager.Instance.UserId;
+
             if (PhotonNetwork.LocalPlayer != null &&
                 PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("accountId", out object raw) &&
                 raw is string accountId && !string.IsNullOrWhiteSpace(accountId))
@@ -457,9 +482,7 @@ namespace CombatManager.Presenter
                 return accountId;
             }
 
-            return SessionManager.Instance != null && !string.IsNullOrWhiteSpace(SessionManager.Instance.UserId)
-                ? SessionManager.Instance.UserId
-                : null;
+            return null;
         }
 
         private static bool TryGetInt(object[] payload, int index, out int value)
