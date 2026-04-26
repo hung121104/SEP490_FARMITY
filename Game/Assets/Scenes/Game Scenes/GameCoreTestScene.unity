@@ -29886,7 +29886,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1536036026}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 52a2000f3fad7dd439f568593fcf3124, type: 3}
   m_Name: 
@@ -176814,6 +176814,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: CropRelatedActionSystem
       objectReference: {fileID: 0}
+    - target: {fileID: 5663663489181102575, guid: 98efd9fe5caea054a942fdf6b9cb8dbf, type: 3}
+      propertyPath: previewSprite
+      value: 
+      objectReference: {fileID: 8361834477946000842, guid: b5c782707730edf469d1fcf1d509dad2, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

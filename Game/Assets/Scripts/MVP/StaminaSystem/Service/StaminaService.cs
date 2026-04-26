@@ -55,7 +55,8 @@ public class StaminaService : IStaminaService
     public void RestoreViableByConsumable(StaminaModel model, float amount)
     {
         if (model == null || amount <= 0f) return;
-        float targetViable = Mathf.Min(model.ConsumableSoftCap, model.viableStamina + amount);
+        // Never reduce viable below its current value — if already above the soft cap (e.g. after sleep), do nothing.
+        float targetViable = Mathf.Max(model.viableStamina, Mathf.Min(model.ConsumableSoftCap, model.viableStamina + amount));
         float gained = Mathf.Max(0f, targetViable - model.viableStamina);
         model.viableStamina = targetViable;
         model.currentStamina = Mathf.Min(model.viableStamina, model.currentStamina + gained);

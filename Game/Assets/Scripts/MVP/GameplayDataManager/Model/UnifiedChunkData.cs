@@ -206,8 +206,13 @@ public class UnifiedChunkData : BaseChunkData
         long key = GetKey(worldX, worldY);
         if (!tiles.TryGetValue(key, out TileSlot slot) || !slot.HasCrop) return false;
 
-        slot.HasCrop = false;
-        slot.Crop    = default;
+        bool  wasWatered      = slot.Crop.IsWatered;
+        float waterDecayTimer = slot.Crop.WaterDecayTimer;
+
+        slot.HasCrop              = false;
+        slot.Crop                 = default;
+        slot.Crop.IsWatered       = wasWatered;
+        slot.Crop.WaterDecayTimer = waterDecayTimer;
 
         if (!slot.IsTilled && !slot.HasStructure && !slot.HasResource)
         {
