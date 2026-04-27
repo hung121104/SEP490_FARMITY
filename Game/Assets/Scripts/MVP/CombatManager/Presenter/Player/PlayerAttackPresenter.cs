@@ -40,6 +40,7 @@ namespace CombatManager.Presenter
 
         [Header("VFX Spawn Settings")]
         [SerializeField] private float vfxSpawnOffset = 1f;
+        [SerializeField] private float staffProjectileSpawnForwardOffset = 0.9f;
 
         [Header("Dependencies")]
         [SerializeField] private StatsPresenter statsPresenter;
@@ -354,10 +355,11 @@ namespace CombatManager.Presenter
             // Future: add staffComboSteps[] for multi-projectile patterns
 
             Vector3 direction = ResolveAimDirection(localPlayerTransform).normalized;
+            Vector3 spawnPosition = CalculateStaffProjectileSpawnPosition(direction);
 
             GameObject projectileGO = Instantiate(
                 staffProjectilePrefab,
-                localPlayerTransform.position,
+                spawnPosition,
                 Quaternion.identity
             );
 
@@ -385,7 +387,7 @@ namespace CombatManager.Presenter
             }
 
             projectilePresenter.Initialize(projectileModel);
-            BroadcastStaffProjectileVfx(currentWeapon, direction);
+            BroadcastStaffProjectileVfx(currentWeapon, direction, spawnPosition);
         }
 
         #endregion
@@ -517,7 +519,7 @@ namespace CombatManager.Presenter
             return spawnPosition;
         }
 
-        private void BroadcastStaffProjectileVfx(WeaponData weapon, Vector3 direction)
+        private void BroadcastStaffProjectileVfx(WeaponData weapon, Vector3 direction, Vector3 spawnPosition)
         {
             if (!PhotonNetwork.IsConnected)
                 return;
@@ -526,7 +528,6 @@ namespace CombatManager.Presenter
             if (actorNumber <= 0)
                 return;
 
-            Vector3 spawnPosition = localPlayerTransform != null ? localPlayerTransform.position : Vector3.zero;
             object[] payload =
             {
                 ATTACK_KIND_STAFF,
@@ -543,6 +544,16 @@ namespace CombatManager.Presenter
 
             RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
             PhotonNetwork.RaiseEvent(ATTACK_VFX_EVENT, payload, options, SendOptions.SendUnreliable);
+        }
+
+        private Vector3 CalculateStaffProjectileSpawnPosition(Vector3 normalizedDirection)
+        {
+            Transform origin = service?.GetCenterPoint();
+            if (origin == null)
+                origin = localPlayerTransform != null ? localPlayerTransform : transform;
+
+            float offset = Mathf.Max(0f, staffProjectileSpawnForwardOffset);
+            return origin.position + (normalizedDirection * offset);
         }
 
         private void HandleRemoteMeleeAttack(object[] payload)

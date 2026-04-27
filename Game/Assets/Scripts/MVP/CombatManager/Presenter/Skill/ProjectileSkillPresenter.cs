@@ -24,6 +24,9 @@ namespace CombatManager.Presenter
         [Header("Runtime Prefabs")]
         [SerializeField] private GameObject baseProjectilePrefab;
 
+        [Header("Projectile Spawn")]
+        [SerializeField] private float projectileSpawnForwardOffset = 0.9f;
+
         // Current skill data being executed (set by SkillHotbarPresenter)
         private SkillData currentSkillData;
 
@@ -125,9 +128,15 @@ namespace CombatManager.Presenter
                 return;
             }
 
+            Vector3 normalizedDirection = direction.normalized;
+            if (normalizedDirection.sqrMagnitude < 0.0001f)
+                normalizedDirection = Vector3.right;
+
+            Vector3 spawnPosition = CalculateProjectileSpawnPosition(normalizedDirection);
+
             GameObject projectileGO = Instantiate(
                 baseProjectilePrefab,
-                playerTransform.position,
+                spawnPosition,
                 Quaternion.identity
             );
 
@@ -135,7 +144,7 @@ namespace CombatManager.Presenter
 
             ProjectileModel projectileModel = new ProjectileModel
             {
-                direction       = direction.normalized,
+                direction       = normalizedDirection,
                 speed           = currentSkillData.projectileSpeed,
                 maxRange        = currentSkillData.projectileRange,
                 damage          = damage,
@@ -237,10 +246,11 @@ namespace CombatManager.Presenter
             if (actorNumber <= 0)
                 return;
 
-            Vector3 spawnPos = playerTransform.position;
             Vector3 dir = direction.normalized;
             if (dir.sqrMagnitude < 0.0001f)
                 return;
+
+            Vector3 spawnPos = CalculateProjectileSpawnPosition(dir);
 
             object[] payload =
             {
@@ -299,6 +309,18 @@ namespace CombatManager.Presenter
             {
                 Debug.Log($"[ProjectileSkillPresenter] Remote projectile VFX spawned for skill '{skillId}'.");
             }
+        }
+
+        private Vector3 CalculateProjectileSpawnPosition(Vector3 normalizedDirection)
+        {
+            Transform origin = centerPoint != null ? centerPoint : playerTransform;
+            if (origin == null)
+                return Vector3.zero;
+
+            float offset = Mathf.Max(0f, projectileSpawnForwardOffset);
+            Vector3 spawnPos = origin.position + normalizedDirection * offset;
+            spawnPos.z = origin.position.z;
+            return spawnPos;
         }
 
         private static bool TryGetPayloadInt(object[] payload, int index, out int value)
