@@ -304,13 +304,7 @@ namespace CombatManager.Presenter
         {
             Transform centerPoint = service.GetCenterPoint();
             Vector3 pointerDirection = ResolveAimDirection(centerPoint);
-
-            float spawnOffset = service.GetVFXSpawnOffset();
-            Vector3 spawnPosition = centerPoint.position + pointerDirection * spawnOffset;
-
-            Vector2 positionOffset = service.GetPositionOffset(comboStep);
-            spawnPosition += (Vector3)positionOffset;
-            spawnPosition.z = centerPoint.position.z;
+            Vector3 spawnPosition = CalculateMeleeVfxSpawnPosition(centerPoint, pointerDirection, comboStep);
 
             float angle = Mathf.Atan2(pointerDirection.y, pointerDirection.x) * Mathf.Rad2Deg;
             Quaternion rotation = Quaternion.Euler(0f, 0f, angle);
@@ -455,12 +449,7 @@ namespace CombatManager.Presenter
                 return;
 
             Vector3 pointerDirection = ResolveAimDirection(centerPoint);
-            float spawnOffset = service.GetVFXSpawnOffset();
-            Vector3 spawnPosition = centerPoint.position + pointerDirection * spawnOffset;
-
-            Vector2 positionOffset = service.GetPositionOffset(comboStep);
-            spawnPosition += (Vector3)positionOffset;
-            spawnPosition.z = centerPoint.position.z;
+            Vector3 spawnPosition = CalculateMeleeVfxSpawnPosition(centerPoint, pointerDirection, comboStep);
 
             float angle = Mathf.Atan2(pointerDirection.y, pointerDirection.x) * Mathf.Rad2Deg;
             bool flipY = pointerDirection.x < 0f;
@@ -487,16 +476,20 @@ namespace CombatManager.Presenter
             if (origin == null)
                 return Vector3.right;
 
-            pointerPresenter?.UpdateDirection();
+            // Only trust pointer direction after the pointer system is fully initialized.
+            if (pointerPresenter != null && pointerPresenter.IsInitialized())
+            {
+                pointerPresenter.UpdateDirection();
 
-            Vector3 pointerDirection = pointerPresenter != null
-                ? pointerPresenter.GetPointerDirection()
-                : Vector3.zero;
-
-            if (pointerDirection.sqrMagnitude > 0.0001f)
-                return pointerDirection.normalized;
+                Vector3 pointerDirection = pointerPresenter.GetPointerDirection();
+                if (pointerDirection.sqrMagnitude > 0.0001f)
+                    return pointerDirection.normalized;
+            }
 
             Camera cam = Camera.main;
+            if (cam == null && pointerPresenter != null)
+                cam = pointerPresenter.GetService()?.GetMainCamera();
+
             if (cam != null)
             {
                 Vector3 mouseWorld = cam.ScreenToWorldPoint(Input.mousePosition);
@@ -509,6 +502,19 @@ namespace CombatManager.Presenter
             }
 
             return Vector3.right;
+        }
+
+        private Vector3 CalculateMeleeVfxSpawnPosition(Transform centerPoint, Vector3 pointerDirection, int comboStep)
+        {
+            float spawnOffset = service.GetVFXSpawnOffset();
+            Vector3 spawnPosition = centerPoint.position + pointerDirection * spawnOffset;
+
+            Vector2 positionOffset = service.GetPositionOffset(comboStep);
+            float lateralSign = pointerDirection.x >= 0f ? 1f : -1f;
+            spawnPosition += new Vector3(positionOffset.x * lateralSign, positionOffset.y, 0f);
+            spawnPosition.z = centerPoint.position.z;
+
+            return spawnPosition;
         }
 
         private void BroadcastStaffProjectileVfx(WeaponData weapon, Vector3 direction)
