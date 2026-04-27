@@ -48,6 +48,7 @@ namespace CombatManager.Presenter
         private SkillDisplayItemView currentHoverItem;
         private bool hasLoggedMissingDetailView;
         private Coroutine pendingHoverExitCoroutine;
+        private Coroutine realtimeRefreshCoroutine;
         private const float HoverExitGraceSeconds = 0.06f;
         private Canvas skillTooltipCanvas;
 
@@ -89,6 +90,8 @@ namespace CombatManager.Presenter
             SetupCloseButton();
 
             StartCoroutine(LoadCatalogSkills());
+            CombatSkillCatalogService.OnCatalogDefinitionChanged += OnCombatSkillCatalogDefinitionChanged;
+            CatalogSyncManager.OnCatalogChanged += OnCatalogChanged;
 
             CombatModePresenter.OnCombatModeChanged += OnCombatModeChanged;
             GameEventBus.OnLevelReached += OnLevelReached;
@@ -131,6 +134,8 @@ namespace CombatManager.Presenter
 
         private void OnDestroy()
         {
+            CombatSkillCatalogService.OnCatalogDefinitionChanged -= OnCombatSkillCatalogDefinitionChanged;
+            CatalogSyncManager.OnCatalogChanged -= OnCatalogChanged;
             CombatModePresenter.OnCombatModeChanged -= OnCombatModeChanged;
             GameEventBus.OnLevelReached -= OnLevelReached;
 
@@ -140,6 +145,47 @@ namespace CombatManager.Presenter
                 escapeCloseAction.Dispose();
                 escapeCloseAction = null;
             }
+        }
+
+        private void OnCombatSkillCatalogDefinitionChanged(string changeType, string skillId)
+        {
+            RequestRealtimeRefresh($"catalog:{changeType}:{skillId}");
+        }
+
+        private void OnCatalogChanged(string changeType, string entityType, string entityName, string typeName)
+        {
+            if (!string.Equals(entityType, "combat-skill", System.StringComparison.OrdinalIgnoreCase))
+                return;
+
+            RequestRealtimeRefresh($"sync:{changeType}:{entityName}");
+        }
+
+        private void RequestRealtimeRefresh(string reason)
+        {
+            if (realtimeRefreshCoroutine != null)
+                StopCoroutine(realtimeRefreshCoroutine);
+
+            realtimeRefreshCoroutine = StartCoroutine(RealtimeRefreshRoutine(reason));
+        }
+
+        private IEnumerator RealtimeRefreshRoutine(string reason)
+        {
+            yield return null;
+
+            if (CombatSkillCatalogService.Instance == null || !CombatSkillCatalogService.Instance.IsReady)
+            {
+                realtimeRefreshCoroutine = null;
+                yield break;
+            }
+
+            List<SkillData> allSkills = CombatSkillCatalogService.Instance.GetAllSkills();
+            service.Initialize(allSkills, GetCurrentPlayerLevel());
+
+            if (service.IsPanelOpen())
+                PopulateGrid();
+
+            Debug.Log($"[SkillManagementPresenter] Realtime refresh applied ({reason}). skills={allSkills.Count}");
+            realtimeRefreshCoroutine = null;
         }
 
         #endregion

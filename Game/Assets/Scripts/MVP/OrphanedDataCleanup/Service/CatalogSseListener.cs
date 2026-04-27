@@ -305,6 +305,9 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
             case "combat-catalog":
                 SkillVfxCatalogManager.Instance?.AddOrUpdateFromJson(json);
                 break;
+            case "combat-skill":
+                CombatSkillCatalogService.Instance?.AddOrUpdateFromJson(json);
+                break;
             default:
                 Log($"[CatalogSSE] Pre-room: unhandled entity type: {sseEvent.entity}");
                 break;
@@ -338,6 +341,9 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
                 break;
             case "combat-catalog":
                 SkillVfxCatalogManager.Instance?.RemoveEntry(data.Value<string>("configId"));
+                break;
+            case "combat-skill":
+                CombatSkillCatalogService.Instance?.RemoveSkill(data.Value<string>("skillId"));
                 break;
             default:
                 Log($"[CatalogSSE] Pre-room delete: unhandled entity type: {entityType}");
@@ -391,6 +397,9 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
         if (SkillVfxCatalogManager.Instance != null)
             yield return SkillVfxCatalogManager.Instance.SafeRefetch();
 
+        if (CombatSkillCatalogService.Instance != null)
+            yield return CombatSkillCatalogService.Instance.SafeRefetch();
+
         Log("[CatalogSSE] SafeRefetchAllCatalogs complete.");
     }
 
@@ -408,6 +417,7 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
             "achievement" => data.Value<string>("name") ?? data.Value<string>("achievementId") ?? "Unknown Achievement",
             "resource-config" => data.Value<string>("name") ?? data.Value<string>("resourceId") ?? "Unknown Resource",
             "combat-catalog" => data.Value<string>("displayName") ?? data.Value<string>("configId") ?? "Unknown Combat Config",
+            "combat-skill" => data.Value<string>("skillName") ?? data.Value<string>("skillId") ?? "Unknown Combat Skill",
             _ => data.Value<string>("name") ?? "Unknown"
         };
     }

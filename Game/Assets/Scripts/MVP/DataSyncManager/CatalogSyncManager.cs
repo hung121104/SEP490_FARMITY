@@ -230,6 +230,9 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             case "combat-catalog":
                 SkillVfxCatalogManager.Instance?.AddOrUpdateFromJson(json);
                 break;
+            case "combat-skill":
+                CombatSkillCatalogService.Instance?.AddOrUpdateFromJson(json);
+                break;
             default:
                 Log($"[CatalogSync] Unhandled entity type: {entityType}");
                 break;
@@ -277,6 +280,10 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
 
             case "combat-catalog":
                 SkillVfxCatalogManager.Instance?.RemoveEntry(data.Value<string>("configId"));
+                break;
+
+            case "combat-skill":
+                CombatSkillCatalogService.Instance?.RemoveSkill(data.Value<string>("skillId"));
                 break;
 
             default:

@@ -47,6 +47,7 @@ namespace CombatManager.Presenter
         private WeaponSkillSlotView weaponSkillSlotView;
         private ISkillLoadoutSyncService loadoutSyncService;
         private bool isBootstrappingLoadout;
+        private Coroutine realtimeRefreshCoroutine;
 
         // ✅ Current weapon skill data (set when weapon equipped)
         private SkillData currentWeaponSkillData;
@@ -107,6 +108,8 @@ namespace CombatManager.Presenter
             service.Initialize();
 
             StartCoroutine(InitializeSkillsFromCatalog());
+            CombatSkillCatalogService.OnCatalogDefinitionChanged += OnCombatSkillCatalogDefinitionChanged;
+            CatalogSyncManager.OnCatalogChanged += OnCatalogChanged;
 
             CombatModePresenter.OnCombatModeChanged += OnCombatModeChanged;
             SetHotbarVisible(false);
@@ -125,8 +128,91 @@ namespace CombatManager.Presenter
 
         private void OnDestroy()
         {
+            CombatSkillCatalogService.OnCatalogDefinitionChanged -= OnCombatSkillCatalogDefinitionChanged;
+            CatalogSyncManager.OnCatalogChanged -= OnCatalogChanged;
             CombatModePresenter.OnCombatModeChanged -= OnCombatModeChanged;
             UnsubscribeFromWeaponEvents();
+        }
+
+        private void OnCombatSkillCatalogDefinitionChanged(string changeType, string skillId)
+        {
+            RequestRealtimeRefresh($"catalog:{changeType}:{skillId}");
+        }
+
+        private void OnCatalogChanged(string changeType, string entityType, string entityName, string typeName)
+        {
+            if (!string.Equals(entityType, "combat-skill", System.StringComparison.OrdinalIgnoreCase))
+                return;
+
+            RequestRealtimeRefresh($"sync:{changeType}:{entityName}");
+        }
+
+        private void RequestRealtimeRefresh(string reason)
+        {
+            if (realtimeRefreshCoroutine != null)
+                StopCoroutine(realtimeRefreshCoroutine);
+
+            realtimeRefreshCoroutine = StartCoroutine(RealtimeRefreshRoutine(reason));
+        }
+
+        private IEnumerator RealtimeRefreshRoutine(string reason)
+        {
+            yield return null;
+
+            if (CombatSkillCatalogService.Instance == null || !CombatSkillCatalogService.Instance.IsReady)
+            {
+                realtimeRefreshCoroutine = null;
+                yield break;
+            }
+
+            bool loadoutInvalidated = false;
+
+            for (int i = 0; i < equippedSkillsData.Length; i++)
+            {
+                SkillData current = equippedSkillsData[i];
+                if (current == null || string.IsNullOrWhiteSpace(current.skillId))
+                    continue;
+
+                SkillData latest = CombatSkillCatalogService.Instance.GetSkillById(current.skillId);
+                if (latest == null || latest.IsWeaponSkill)
+                {
+                    equippedSkillsData[i] = null;
+                    loadoutInvalidated = true;
+                    continue;
+                }
+
+                equippedSkillsData[i] = latest;
+            }
+
+            if (currentWeaponSkillData != null && !string.IsNullOrWhiteSpace(currentWeaponSkillData.skillId))
+            {
+                SkillData latestWeapon = CombatSkillCatalogService.Instance.GetSkillById(currentWeaponSkillData.skillId);
+                if (latestWeapon == null)
+                {
+                    currentWeaponSkillData = null;
+                    if (weaponSkillSlotView != null)
+                    {
+                        weaponSkillSlotView.SetEmpty();
+                        weaponSkillSlotView.SetVisible(false);
+                    }
+                }
+                else
+                {
+                    currentWeaponSkillData = latestWeapon;
+                    if (weaponSkillSlotView != null)
+                    {
+                        weaponSkillSlotView.SetSkill(currentWeaponSkillData.skillIcon);
+                        weaponSkillSlotView.SetVisible(true);
+                    }
+                }
+            }
+
+            if (loadoutInvalidated)
+                MarkLoadoutDirty();
+
+            RefreshAllSlots();
+            Debug.Log($"[SkillHotbarPresenter] Realtime refresh applied ({reason}).");
+            realtimeRefreshCoroutine = null;
         }
 
         #endregion
