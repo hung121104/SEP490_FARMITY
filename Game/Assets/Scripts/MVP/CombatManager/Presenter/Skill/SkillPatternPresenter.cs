@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using Photon.Pun;
 using CombatManager.Model;
 using CombatManager.Service;
@@ -47,6 +48,8 @@ namespace CombatManager.Presenter
         protected IDiceRollerService diceRollerService;
         protected IDamageCalculatorService damageCalculatorService;
 
+        private readonly Dictionary<string, float> skillCooldownEndTimes = new Dictionary<string, float>();
+
         #endregion
 
         #region Runtime References (Auto-Found)
@@ -88,7 +91,6 @@ namespace CombatManager.Presenter
 
         protected virtual void Update()
         {
-            skillService?.UpdateCooldown(Time.deltaTime);
             HandleConfirmCancelInput();
             UpdateAiming();
         }
@@ -402,6 +404,7 @@ namespace CombatManager.Presenter
 
         protected abstract CombatManager.Model.SkillIndicatorData GetIndicatorData();
         protected abstract IEnumerator OnExecute(int finalDamage, Vector3 direction);
+        protected abstract SkillData GetActiveSkillData();
         protected virtual bool ShouldUseDiceRollFlow() => true;
 
         #endregion
@@ -421,14 +424,41 @@ namespace CombatManager.Presenter
         public override bool IsExecuting => model.isExecuting;
 
         public override bool IsCoolingDown()
-            => skillService?.IsCoolingDown() ?? false;
+        {
+            SkillData activeSkill = GetActiveSkillData();
+            return activeSkill != null && IsCoolingDown(activeSkill);
+        }
 
         public override float GetCooldownPercent()
-            => skillService?.GetCooldownPercent() ?? 0f;
+        {
+            SkillData activeSkill = GetActiveSkillData();
+            return activeSkill != null ? GetCooldownPercent(activeSkill) : 0f;
+        }
+
+        public bool IsCoolingDown(SkillData skillData)
+        {
+            string cooldownKey = GetCooldownKey(skillData);
+            if (string.IsNullOrEmpty(cooldownKey))
+                return false;
+
+            return GetRemainingCooldown(cooldownKey) > 0f;
+        }
+
+        public float GetCooldownPercent(SkillData skillData)
+        {
+            string cooldownKey = GetCooldownKey(skillData);
+            if (string.IsNullOrEmpty(cooldownKey))
+                return 0f;
+
+            float totalCooldown = Mathf.Max(0.0001f, skillData.cooldown);
+            float remaining = GetRemainingCooldown(cooldownKey);
+
+            return Mathf.Clamp01(1f - (remaining / totalCooldown));
+        }
 
         public override void TriggerSkill()
         {
-            if (!skillService.CanTrigger()) return;
+            if (model.isExecuting || !model.IsIdle) return;
             if (!IsCombatModeActive()) return;
             if (playerTransform == null)
             {
@@ -436,10 +466,56 @@ namespace CombatManager.Presenter
                 return;
             }
 
+            SkillData activeSkill = GetActiveSkillData();
+            string cooldownKey = GetCooldownKey(activeSkill);
+            if (string.IsNullOrEmpty(cooldownKey))
+            {
+                Debug.LogWarning($"[{GetType().Name}] No active SkillData assigned before TriggerSkill().");
+                return;
+            }
+
+            if (GetRemainingCooldown(cooldownKey) > 0f)
+                return;
+
             model.isExecuting = true;
-            skillService.StartCooldown();
+            StartCooldown(cooldownKey, activeSkill.cooldown);
             DisablePlayerSystems();
             StartCoroutine(ExecuteSkillSequence());
+        }
+
+        private string GetCooldownKey(SkillData skillData)
+        {
+            if (skillData == null)
+                return string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(skillData.skillId))
+                return skillData.skillId;
+
+            return skillData.skillName ?? string.Empty;
+        }
+
+        private float GetRemainingCooldown(string cooldownKey)
+        {
+            if (string.IsNullOrEmpty(cooldownKey))
+                return 0f;
+
+            if (!skillCooldownEndTimes.TryGetValue(cooldownKey, out float cooldownEndTime))
+                return 0f;
+
+            float remaining = cooldownEndTime - Time.time;
+            if (remaining <= 0f)
+            {
+                skillCooldownEndTimes.Remove(cooldownKey);
+                return 0f;
+            }
+
+            return remaining;
+        }
+
+        private void StartCooldown(string cooldownKey, float cooldownSeconds)
+        {
+            float duration = Mathf.Max(0f, cooldownSeconds);
+            skillCooldownEndTimes[cooldownKey] = Time.time + duration;
         }
 
         #endregion

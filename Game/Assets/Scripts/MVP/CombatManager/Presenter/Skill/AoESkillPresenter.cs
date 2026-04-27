@@ -89,6 +89,8 @@ namespace CombatManager.Presenter
                 Mathf.Max(0.1f, currentSkillData.aoeCastRange));
         }
 
+            protected override SkillData GetActiveSkillData() => currentSkillData;
+
         protected override IEnumerator OnExecute(int finalDamage, Vector3 direction)
         {
             if (currentSkillData == null)

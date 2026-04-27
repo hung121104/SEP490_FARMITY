@@ -547,11 +547,8 @@ namespace CombatManager.Presenter
                     GetPresenterByCategory(skillData.skillCategory);
                 if (presenter == null) { slots[i].UpdateCooldownFill(0f); continue; }
 
-                SkillData presenterData = GetPresenterCurrentData(presenter);
-                bool isThisSkill = presenterData == skillData;
-
-                float fill = (isThisSkill && presenter.IsCoolingDown())
-                    ? 1f - presenter.GetCooldownPercent()
+                float fill = presenter.IsCoolingDown(skillData)
+                    ? 1f - presenter.GetCooldownPercent(skillData)
                     : 0f;
 
                 slots[i].UpdateCooldownFill(fill);
@@ -681,12 +678,8 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            // ✅ Only show cooldown if THIS weapon skill is the one cooling down
-            SkillData presenterData = GetPresenterCurrentData(presenter);
-            bool isThisSkill = presenterData == currentWeaponSkillData;
-
-            float fill = (isThisSkill && presenter.IsCoolingDown())
-                ? 1f - presenter.GetCooldownPercent()
+            float fill = presenter.IsCoolingDown(currentWeaponSkillData)
+                ? 1f - presenter.GetCooldownPercent(currentWeaponSkillData)
                 : 0f;
 
             weaponSkillSlotView.UpdateCooldown(fill);

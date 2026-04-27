@@ -95,6 +95,8 @@ namespace CombatManager.Presenter
             return null;
         }
 
+        protected override SkillData GetActiveSkillData() => currentSkillData;
+
         protected override IEnumerator OnExecute(int finalDamage, Vector3 direction)
         {
             if (currentSkillData == null)

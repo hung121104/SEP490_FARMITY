@@ -96,6 +96,8 @@ namespace CombatManager.Presenter
             return SkillIndicatorData.Arrow(currentSkillData.projectileRange);
         }
 
+        protected override SkillData GetActiveSkillData() => currentSkillData;
+
         protected override IEnumerator OnExecute(int finalDamage, Vector3 direction)
         {
             if (currentSkillData == null)
