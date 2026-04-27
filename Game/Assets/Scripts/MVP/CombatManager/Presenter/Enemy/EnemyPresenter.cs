@@ -277,7 +277,7 @@ namespace CombatManager.Presenter
             remotePosition = transform.position;
             remoteVelocity = Vector2.zero;
             remoteIsWalking = false;
-            remoteFacingRight = transform.localScale.x >= 0f;
+            remoteFacingRight = model.facingDirection.x >= 0f;
             remoteAttackSequence = 0;
 
             if (attackHitbox != null)
@@ -925,7 +925,7 @@ namespace CombatManager.Presenter
                 return;
 
             bool isWalking = model.animator != null && model.animator.GetBool("isWalking");
-            bool facingRight = transform.localScale.x >= 0f;
+            bool facingRight = model.facingDirection.x >= 0f;
 
             object[] payload =
             {
@@ -1028,16 +1028,8 @@ namespace CombatManager.Presenter
 
         private void ApplyRemoteFacing(bool facingRight)
         {
-            Vector3 scale = transform.localScale;
-            float absX = Mathf.Abs(scale.x);
-            if (absX <= 0.0001f)
-                absX = 1f;
-
-            scale.x = facingRight ? absX : -absX;
-            transform.localScale = scale;
-
             if (model.spriteRenderer != null)
-                model.spriteRenderer.flipX = false;
+                model.spriteRenderer.flipX = facingRight;
         }
 
         private void UpdateAttackHitboxFacing()
@@ -1056,11 +1048,9 @@ namespace CombatManager.Presenter
                 return;
 
             // Desired world-space side comes from facingDirection.
-            // Because enemy visual facing now uses transform.localScale.x mirroring,
-            // local hitbox X must compensate for parent scale sign.
+            // Enemy facing now uses sprite flip only, so no parent-scale compensation is needed.
             float desiredWorldSign = facingX >= 0f ? 1f : -1f;
-            float parentScaleSign = transform.localScale.x >= 0f ? 1f : -1f;
-            float localDirectionSign = desiredWorldSign * parentScaleSign;
+            float localDirectionSign = desiredWorldSign;
 
             Vector3 local = attackHitbox.transform.localPosition;
             local.x = Mathf.Abs(attackHitboxBaseLocalPosition.x) * localDirectionSign;

@@ -663,18 +663,9 @@ namespace CombatManager.Service
             if (enemyTransform == null || Mathf.Abs(directionX) <= 0.0001f)
                 return;
 
-            // Enemy sprites are authored with opposite default orientation, so we invert X sign.
-            float sign = directionX > 0f ? -1f : 1f;
-            Vector3 scale = enemyTransform.localScale;
-            float absX = Mathf.Abs(scale.x);
-            if (absX <= 0.0001f)
-                absX = 1f;
-
-            scale.x = absX * sign;
-            enemyTransform.localScale = scale;
-
+            // Flip only the sprite so child UI (nameplate) keeps readable orientation.
             if (model.spriteRenderer != null)
-                model.spriteRenderer.flipX = false;
+                model.spriteRenderer.flipX = directionX > 0f;
         }
 
         #endregion
