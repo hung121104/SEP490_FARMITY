@@ -170,13 +170,22 @@ public class HotbarView : MonoBehaviour
         if (!enableLeftClick) return;   // suppressed by CropHarvestingView when targeting a crop
 
         // Left-click is also attack input. If combat mode is active with a weapon selected,
-        // let PlayerAttackPresenter consume the click and skip hotbar item-use.
+        // let PlayerAttackPresenter consume the click and skip hotbar item-use only when
+        // it is the currently equipped weapon. If selected weapon differs, pass through so
+        // the click can switch equipment.
         var currentItem = presenter?.GetCurrentItem();
         if (currentItem?.ItemData is WeaponData &&
             CombatModePresenter.Instance != null &&
             CombatModePresenter.Instance.IsCombatModeActive())
         {
-            return;
+            WeaponData selectedWeapon = currentItem.ItemData as WeaponData;
+            WeaponData equippedWeapon = WeaponEquipPresenter.Instance?.GetCurrentWeapon();
+
+            if (selectedWeapon != null && equippedWeapon != null &&
+                selectedWeapon.itemID == equippedWeapon.itemID)
+            {
+                return;
+            }
         }
 
         OnUseItemInput?.Invoke();
