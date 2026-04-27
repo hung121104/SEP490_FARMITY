@@ -19,6 +19,7 @@ namespace CombatManager.Presenter
     {
         private const byte PLAYER_HEALTH_SYNC_EVENT = 176;
         private const string TRACE = "[HPTRACE]";
+        private const string DEFEATED_FLAG_KEY = "isDefeated";
 
         [Header("Model")]
         [SerializeField] private PlayerHealthModel model = new PlayerHealthModel();
@@ -41,11 +42,15 @@ namespace CombatManager.Presenter
         private int pendingRpcRestoreHealth;
         private bool hasCompletedFirstBind;
         private bool forceFullHealthOnNextRestore;
+        private Coroutine defeatRespawnCoroutine;
 
         [Header("Health Sync")]
         [SerializeField] private float healthSyncIntervalSeconds = 0.4f;
         [SerializeField] private float deferredRestoreMaxSeconds = 8f;
         [SerializeField] private float deferredRestoreRetryIntervalSeconds = 0.25f;
+
+        [Header("Respawn")]
+        [SerializeField] private float respawnDelaySeconds = 5f;
 
         #region Unity Lifecycle
 
@@ -64,6 +69,9 @@ namespace CombatManager.Presenter
         private void OnDisable()
         {
             PushFinalStateToMaster();
+            if (service != null)
+                service.Defeated -= HandleDefeated;
+
             PhotonNetwork.RemoveCallbackTarget(this);
             PlayerRegistry.OnLocalPlayerSpawned -= HandleLocalPlayerSpawned;
             WorldDataBootstrapper.OnWorldDataReady -= HandleWorldDataReady;
@@ -72,6 +80,16 @@ namespace CombatManager.Presenter
                 StopCoroutine(deferredRestoreCoroutine);
                 deferredRestoreCoroutine = null;
             }
+
+            if (defeatRespawnCoroutine != null)
+            {
+                StopCoroutine(defeatRespawnCoroutine);
+                defeatRespawnCoroutine = null;
+            }
+
+            if (InputManager.Instance != null)
+                InputManager.Instance.EnablePlayerActions();
+
             UnregisterActorBinding();
         }
 
@@ -283,7 +301,10 @@ namespace CombatManager.Presenter
             hasAppliedInitialRestore = false;
 
             if (service == null)
+            {
                 service = new PlayerHealthService(model);
+                service.Defeated += HandleDefeated;
+            }
 
             service.Initialize(playerObj.transform, statsService);
             Debug.Log($"{TRACE} [PlayerHealthPresenter] BindToPlayer initialized runtime health={service.GetCurrentHealth()}/{service.GetMaxHealth()} accountId='{GetBoundAccountId()}'");
@@ -526,6 +547,102 @@ namespace CombatManager.Presenter
         #region Public API for Other Systems
 
         public IPlayerHealthService GetService() => service;
+
+        private void HandleDefeated()
+        {
+            if (defeatRespawnCoroutine != null)
+                return;
+
+            defeatRespawnCoroutine = StartCoroutine(HandleDefeatRespawnRoutine());
+        }
+
+        private IEnumerator HandleDefeatRespawnRoutine()
+        {
+            Transform playerEntity = service?.GetPlayerEntity();
+            if (playerEntity == null)
+            {
+                defeatRespawnCoroutine = null;
+                yield break;
+            }
+
+            PhotonView ownerView = playerEntity.GetComponent<PhotonView>()
+                ?? playerEntity.GetComponentInParent<PhotonView>();
+            bool isLocalOwner = ownerView == null || !PhotonNetwork.IsConnected || ownerView.IsMine;
+
+            service.SetInvulnerable(true);
+            if (isLocalOwner)
+            {
+                InputManager.Instance?.DisablePlayerActions();
+                SetOwnerDefeatedFlag(ownerView, true);
+            }
+
+            SetVisualDefeatedState(playerEntity, ownerView, true);
+
+            float delay = Mathf.Max(0.1f, respawnDelaySeconds);
+            yield return new WaitForSeconds(delay);
+
+            if (playerEntity == null)
+            {
+                defeatRespawnCoroutine = null;
+                yield break;
+            }
+
+            if (SpawnPlayer.TryGetRespawnPoint(out Vector3 respawnPosition))
+            {
+                if (ownerView != null)
+                    ownerView.RPC("SetLoadedPosition", RpcTarget.All, respawnPosition);
+                else
+                    playerEntity.position = respawnPosition;
+            }
+
+            int fullHealth = statsService != null
+                ? Mathf.Max(1, statsService.GetMaxHealth())
+                : Mathf.Max(1, service.GetMaxHealth());
+
+            suppressDirtySync = true;
+            service.SetMaxHealth(fullHealth);
+            service.SetCurrentHealth(fullHealth);
+            suppressDirtySync = false;
+
+            hasAppliedInitialRestore = true;
+            forceFullHealthOnNextRestore = false;
+            hasPendingRpcRestoreHealth = false;
+
+            SetVisualDefeatedState(playerEntity, ownerView, false);
+            if (isLocalOwner)
+            {
+                SetOwnerDefeatedFlag(ownerView, false);
+                InputManager.Instance?.EnablePlayerActions();
+            }
+
+            service.SetInvulnerable(false);
+            MarkHealthDirty();
+            NotifyViewUpdate();
+            defeatRespawnCoroutine = null;
+        }
+
+        private static void SetVisualDefeatedState(Transform playerEntity, PhotonView ownerView, bool defeated)
+        {
+            if (ownerView != null)
+            {
+                ownerView.RPC("RPC_SetDefeatedVisualState", RpcTarget.All, defeated);
+                return;
+            }
+
+            PlayerMovement movement = playerEntity != null ? playerEntity.GetComponent<PlayerMovement>() : null;
+            movement?.SetDefeatedVisualState(defeated);
+        }
+
+        private static void SetOwnerDefeatedFlag(PhotonView ownerView, bool defeated)
+        {
+            if (!PhotonNetwork.IsConnected || ownerView?.Owner == null)
+                return;
+
+            ownerView.Owner.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+            {
+                { DEFEATED_FLAG_KEY, defeated }
+            });
+        }
 
         public void SetHealthFromSave(int restoredHealth)
         {

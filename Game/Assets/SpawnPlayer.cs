@@ -4,6 +4,8 @@ using ExitGames.Client.Photon;
 
 public class SpawnPlayer : MonoBehaviourPunCallbacks
 {
+    private static SpawnPlayer instance;
+
     [SerializeField]
     private GameObject playerPrefab;
 
@@ -28,6 +30,8 @@ public class SpawnPlayer : MonoBehaviourPunCallbacks
 
     private void Start()
     {
+        instance = this;
+
         // Needed so this client can be disconnected by PhotonNetwork.CloseConnection when blacklisted.
         PhotonNetwork.EnableCloseConnection = true;
         PhotonNetwork.AutomaticallySyncScene = true;
@@ -48,6 +52,8 @@ public class SpawnPlayer : MonoBehaviourPunCallbacks
         // the client is still in the Joining state.
         if (PhotonNetwork.InRoom)
             SetAccountIdProperty();
+
+        SetDefeatedProperty(false);
 
         TrySpawnLocalNetworkPlayer();
 
@@ -74,6 +80,39 @@ public class SpawnPlayer : MonoBehaviourPunCallbacks
         {
             Debug.LogWarning("[SpawnPlayer] SessionManager has no UserId — position restore may not work.");
         }
+    }
+
+    private static void SetDefeatedProperty(bool defeated)
+    {
+        if (PhotonNetwork.LocalPlayer == null)
+            return;
+
+        PhotonNetwork.LocalPlayer.SetCustomProperties(
+            new Hashtable { { "isDefeated", defeated } });
+    }
+
+    public static bool TryGetRespawnPoint(out Vector3 respawnPosition)
+    {
+        respawnPosition = Vector3.zero;
+
+        if (instance == null || instance.spawnPoints == null || instance.spawnPoints.Length == 0)
+            return false;
+
+        Transform spawnPoint = instance.spawnPoints[Random.Range(0, instance.spawnPoints.Length)];
+        if (spawnPoint == null)
+            return false;
+
+        respawnPosition = spawnPoint.position;
+        return true;
+    }
+
+    private void OnDestroy()
+    {
+        if (instance == this)
+            instance = null;
+
+        // Clear the registry when the spawner is torn down (room leave / scene change)
+        PlayerRegistry.Clear();
     }
 
     private void Update()
@@ -171,9 +210,4 @@ public class SpawnPlayer : MonoBehaviourPunCallbacks
         return false;
     }
 
-    private void OnDestroy()
-    {
-        // Clear the registry when the spawner is torn down (room leave / scene change)
-        PlayerRegistry.Clear();
-    }
 }

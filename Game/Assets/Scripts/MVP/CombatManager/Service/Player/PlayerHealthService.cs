@@ -12,6 +12,8 @@ namespace CombatManager.Service
     {
         private const string TRACE = "[HPTRACE]";
 
+        public event System.Action Defeated;
+
         private PlayerHealthModel model;
         private IStatsService statsService;
 
@@ -232,20 +234,9 @@ namespace CombatManager.Service
         private void HandleDeath()
         {
             Debug.LogWarning($"{TRACE} [PlayerHealthService] Player died. current={model.currentHealth} max={model.maxHealth} isConnected={PhotonNetwork.IsConnected}");
-            
-            if (model.playerEntity != null)
-            {
-                PhotonView ownerView = model.playerEntity.GetComponent<PhotonView>()
-                    ?? model.playerEntity.GetComponentInParent<PhotonView>();
 
-                if (PhotonNetwork.IsConnected && ownerView != null && ownerView.IsMine)
-                {
-                    PhotonNetwork.Destroy(ownerView.gameObject);
-                    return;
-                }
-
-                model.playerEntity.gameObject.SetActive(false);
-            }
+            // Defeat is now handled as an in-place respawn sequence by the presenter.
+            Defeated?.Invoke();
         }
 
         #endregion

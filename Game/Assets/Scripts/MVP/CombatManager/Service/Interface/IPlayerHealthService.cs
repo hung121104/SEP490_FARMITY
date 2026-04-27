@@ -8,6 +8,8 @@ namespace CombatManager.Service
     /// </summary>
     public interface IPlayerHealthService
     {
+        event System.Action Defeated;
+
         #region Initialization
 
         void Initialize(Transform playerEntity, IStatsService statsService);

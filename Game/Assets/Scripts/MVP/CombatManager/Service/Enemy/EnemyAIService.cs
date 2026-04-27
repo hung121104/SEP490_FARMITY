@@ -1,4 +1,5 @@
 using UnityEngine;
+using Photon.Pun;
 using CombatManager.Model;
 using System.Collections.Generic;
 using CombatManager.Presenter;
@@ -332,6 +333,9 @@ namespace CombatManager.Service
                 if (candidate == null)
                     continue;
 
+                if (IsTargetDefeated(candidate))
+                    continue;
+
                 float distance = Vector2.Distance(enemyTransform.position, candidate.position);
                 if (distance > maxTargetRange)
                     continue;
@@ -514,6 +518,9 @@ namespace CombatManager.Service
             if (target == null)
                 return false;
 
+            if (IsTargetDefeated(target))
+                return false;
+
             Vector2 directionToTarget = (target.position - enemyTransform.position).normalized;
             float distanceToTarget = Vector2.Distance(enemyTransform.position, target.position);
 
@@ -534,6 +541,21 @@ namespace CombatManager.Service
         {
             float angle = Vector2.Angle(model.facingDirection, directionToPlayer);
             return angle <= model.fieldOfViewAngle / 2f;
+        }
+
+        private static bool IsTargetDefeated(Transform target)
+        {
+            if (target == null || !PhotonNetwork.IsConnected)
+                return false;
+
+            PhotonView pv = target.GetComponent<PhotonView>() ?? target.GetComponentInChildren<PhotonView>(true);
+            if (pv?.Owner == null)
+                return false;
+
+            if (!pv.Owner.CustomProperties.TryGetValue("isDefeated", out object raw))
+                return false;
+
+            return raw is bool isDefeated && isDefeated;
         }
 
         #endregion

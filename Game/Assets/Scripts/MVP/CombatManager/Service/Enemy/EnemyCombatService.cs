@@ -92,6 +92,9 @@ namespace CombatManager.Service
 
             int targetActorNumber = targetView != null ? targetView.OwnerActorNr : -1;
 
+            if (IsDefeatedTarget(targetView))
+                return;
+
             EnemyPresenter enemyPresenter = enemyTransform.GetComponent<EnemyPresenter>();
             if (enemyPresenter == null)
                 enemyPresenter = enemyTransform.GetComponentInParent<EnemyPresenter>();
@@ -220,6 +223,17 @@ namespace CombatManager.Service
 
             // Backward compatibility: if no polygon body hitbox exists, keep old collider behavior.
             return true;
+        }
+
+        private static bool IsDefeatedTarget(Photon.Pun.PhotonView targetView)
+        {
+            if (!Photon.Pun.PhotonNetwork.IsConnected || targetView?.Owner == null)
+                return false;
+
+            if (!targetView.Owner.CustomProperties.TryGetValue("isDefeated", out object raw))
+                return false;
+
+            return raw is bool isDefeated && isDefeated;
         }
 
         private PlayerHealthPresenter ResolveHealthPresenter()

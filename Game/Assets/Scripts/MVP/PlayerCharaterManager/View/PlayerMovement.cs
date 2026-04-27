@@ -21,6 +21,7 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
 
     private TimeManagerView _timeManager;
     private SpriteRenderer[] _allRenderers;
+    private Collider2D[] _allColliders;
     private bool _isSleeping;
 
     [SerializeField] private Camera playerCa;
@@ -48,6 +49,7 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
         combatRestoreBridge = GetComponent<PlayerCombatRestoreBridgeView>() ?? gameObject.AddComponent<PlayerCombatRestoreBridgeView>();
         _timeManager   = FindFirstObjectByType<TimeManagerView>();
         _allRenderers  = GetComponentsInChildren<SpriteRenderer>(true);
+        _allColliders  = GetComponentsInChildren<Collider2D>(true);
     }
 
     private void OnEnable()
@@ -91,6 +93,29 @@ public class PlayerMovement : MonoBehaviourPun, IPunObservable
             if (_allRenderers[i] != null)
                 _allRenderers[i].enabled = enabled;
         }
+    }
+
+    public void SetDefeatedVisualState(bool defeated)
+    {
+        SetRenderersEnabled(!defeated);
+
+        if (_allColliders != null)
+        {
+            for (int i = 0; i < _allColliders.Length; i++)
+            {
+                if (_allColliders[i] != null)
+                    _allColliders[i].enabled = !defeated;
+            }
+        }
+
+        if (defeated && rb != null)
+            rb.linearVelocity = Vector2.zero;
+    }
+
+    [PunRPC]
+    private void RPC_SetDefeatedVisualState(bool defeated)
+    {
+        SetDefeatedVisualState(defeated);
     }
 
     void Start()

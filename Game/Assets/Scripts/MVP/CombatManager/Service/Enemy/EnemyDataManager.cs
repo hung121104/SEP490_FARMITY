@@ -362,6 +362,12 @@ namespace CombatManager.Service
                     PhotonView pv = root.GetComponent<PhotonView>() ?? root.GetComponentInChildren<PhotonView>(true);
                     if (pv == null || pv.Owner == null)
                         continue;
+
+                    if (pv.Owner.CustomProperties.TryGetValue("isDefeated", out object rawDefeated) &&
+                        rawDefeated is bool isDefeated && isDefeated)
+                    {
+                        continue;
+                    }
                 }
 
                 if (!playerTargets.Contains(root))
