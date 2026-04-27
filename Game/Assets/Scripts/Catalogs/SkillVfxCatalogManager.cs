@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 using Newtonsoft.Json;
@@ -16,8 +18,15 @@ public class SkillVfxCatalogManager : MonoBehaviour
     private const string CatalogType = "skill_vfx";
 
     public bool IsReady { get; private set; }
+    private bool _isFetchingCatalog;
+    private string _catalogFingerprint = string.Empty;
 
     public static event System.Action OnReady;
+    public static event Action<string, string> OnCatalogDefinitionChanged;
+
+    [Header("Realtime")]
+    [SerializeField] private float refreshIntervalSeconds = 8f;
+    private Coroutine _pollRefreshCoroutine;
 
     private const int MAX_RETRIES = 3;
     private const float RETRY_DELAY = 2f;
@@ -33,6 +42,16 @@ public class SkillVfxCatalogManager : MonoBehaviour
     {
         CatalogProgressManager.NotifyStarted();
         yield return FetchCatalog();
+        _pollRefreshCoroutine = StartCoroutine(PollRefreshLoop());
+    }
+
+    private void OnDestroy()
+    {
+        if (_pollRefreshCoroutine != null)
+        {
+            StopCoroutine(_pollRefreshCoroutine);
+            _pollRefreshCoroutine = null;
+        }
     }
 
     public CombatCatalogEntry GetEntry(string configId)
@@ -55,7 +74,12 @@ public class SkillVfxCatalogManager : MonoBehaviour
         {
             var entry = JsonConvert.DeserializeObject<CombatCatalogEntry>(json);
             if (entry == null || string.IsNullOrWhiteSpace(entry.configId)) return;
-            _catalog[entry.configId.Trim().ToLowerInvariant()] = entry;
+            string key = entry.configId.Trim().ToLowerInvariant();
+            bool existed = _catalog.ContainsKey(key);
+            _catalog[key] = entry;
+            IsReady = true;
+            _catalogFingerprint = BuildCatalogFingerprint(_catalog.Values);
+            OnCatalogDefinitionChanged?.Invoke(existed ? "update" : "create", key);
         }
         catch (System.Exception ex)
         {
@@ -69,7 +93,15 @@ public class SkillVfxCatalogManager : MonoBehaviour
     public bool RemoveEntry(string configId)
     {
         if (string.IsNullOrWhiteSpace(configId)) return false;
-        return _catalog.Remove(configId.Trim().ToLowerInvariant());
+        string key = configId.Trim().ToLowerInvariant();
+        bool removed = _catalog.Remove(key);
+        if (removed)
+        {
+            _catalogFingerprint = BuildCatalogFingerprint(_catalog.Values);
+            OnCatalogDefinitionChanged?.Invoke("delete", key);
+        }
+
+        return removed;
     }
 
     public bool TryGetPrimaryTint(string configId, out Color tint)
@@ -102,39 +134,7 @@ public class SkillVfxCatalogManager : MonoBehaviour
     /// </summary>
     public IEnumerator SafeRefetch()
     {
-        string url = $"{AppConfig.ApiBaseUrl}/game-data/combat-catalogs?type={CatalogType}";
-        using var request = UnityWebRequest.Get(url);
-        request.timeout = 15;
-        yield return request.SendWebRequest();
-
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            Debug.LogWarning($"[SkillVfxCatalogManager] SafeRefetch failed: {request.error}");
-            yield break;
-        }
-
-        List<CombatCatalogEntry> entries = null;
-        try
-        {
-            entries = JsonConvert.DeserializeObject<List<CombatCatalogEntry>>(
-                request.downloadHandler.text);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogWarning($"[SkillVfxCatalogManager] SafeRefetch parse error: {ex.Message}");
-            yield break;
-        }
-
-        if (entries == null) yield break;
-
-        _catalog.Clear();
-        foreach (var entry in entries)
-        {
-            if (entry != null && !string.IsNullOrWhiteSpace(entry.configId))
-                _catalog[entry.configId.Trim().ToLowerInvariant()] = entry;
-        }
-
-        Debug.Log($"[SkillVfxCatalogManager] SafeRefetch complete — {_catalog.Count} entry(ies).");
+        yield return FetchCatalog();
     }
 
 
@@ -147,10 +147,31 @@ public class SkillVfxCatalogManager : MonoBehaviour
         yield return FetchCatalog();
     }
 
+    private IEnumerator PollRefreshLoop()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(Mathf.Max(2f, refreshIntervalSeconds));
+
+            if (!Application.isPlaying)
+                continue;
+
+            yield return SafeRefetch();
+        }
+    }
+
     private IEnumerator FetchCatalog()
     {
-        IsReady = false;
-        _catalog.Clear();
+        if (_isFetchingCatalog)
+            yield break;
+
+        _isFetchingCatalog = true;
+
+        Dictionary<string, CombatCatalogEntry> previousCatalog =
+            new Dictionary<string, CombatCatalogEntry>(_catalog);
+        bool wasReady = IsReady;
+        if (!wasReady)
+            IsReady = false;
 
         string url = $"{AppConfig.ApiBaseUrl}/game-data/combat-catalogs?type={CatalogType}";
 
@@ -187,28 +208,109 @@ public class SkillVfxCatalogManager : MonoBehaviour
         if (entries == null)
         {
             Debug.LogError($"[SkillVfxCatalogManager] All {MAX_RETRIES} attempts failed for {url}");
-            CatalogProgressManager.NotifyFailed("Combat Catalog");
+            if (!wasReady)
+                CatalogProgressManager.NotifyFailed("Combat Catalog");
+            _isFetchingCatalog = false;
             yield break;
         }
 
         if (entries.Count == 0)
         {
             Debug.LogWarning("[SkillVfxCatalogManager] Catalog returned 0 entries.");
+            _catalog.Clear();
             IsReady = true;
             OnReady?.Invoke();
-            CatalogProgressManager.NotifyCompleted();
+            _catalogFingerprint = string.Empty;
+            if (!wasReady)
+                CatalogProgressManager.NotifyCompleted();
+            _isFetchingCatalog = false;
             yield break;
         }
+
+        Dictionary<string, CombatCatalogEntry> currentCatalog = new Dictionary<string, CombatCatalogEntry>();
 
         foreach (var entry in entries)
         {
             if (entry == null || string.IsNullOrWhiteSpace(entry.configId)) continue;
-            _catalog[entry.configId.Trim().ToLowerInvariant()] = entry;
+            currentCatalog[entry.configId.Trim().ToLowerInvariant()] = entry;
         }
+
+        _catalog.Clear();
+        foreach (var pair in currentCatalog)
+            _catalog[pair.Key] = pair.Value;
+
+        string newFingerprint = BuildCatalogFingerprint(_catalog.Values);
+        bool catalogChanged = !string.Equals(_catalogFingerprint, newFingerprint, StringComparison.Ordinal);
+        _catalogFingerprint = newFingerprint;
 
         IsReady = true;
         OnReady?.Invoke();
         Debug.Log($"[SkillVfxCatalogManager] Ready with {_catalog.Count} entry(ies). type='{CatalogType}'");
-        CatalogProgressManager.NotifyCompleted();
+        if (!wasReady)
+            CatalogProgressManager.NotifyCompleted();
+        _isFetchingCatalog = false;
+
+        if (catalogChanged)
+            EmitDefinitionEventsFromDiff(previousCatalog, _catalog);
+    }
+
+    private string BuildCatalogFingerprint(IEnumerable<CombatCatalogEntry> entries)
+    {
+        if (entries == null)
+            return string.Empty;
+
+        List<CombatCatalogEntry> sorted = new List<CombatCatalogEntry>(entries.Where(e => e != null));
+        if (sorted.Count == 0)
+            return string.Empty;
+
+        sorted.Sort((a, b) => string.Compare(a.configId, b.configId, StringComparison.OrdinalIgnoreCase));
+        List<string> rows = new List<string>(sorted.Count);
+
+        foreach (CombatCatalogEntry entry in sorted)
+        {
+            rows.Add(string.Join("|", new[]
+            {
+                entry.configId ?? string.Empty,
+                entry.type ?? string.Empty,
+                entry.displayName ?? string.Empty,
+                entry.primaryColorHex ?? string.Empty,
+                entry.secondaryColorHex ?? string.Empty,
+                entry.colorIntensity.ToString("0.#####"),
+                entry.tintAlpha.ToString("0.#####")
+            }));
+        }
+
+        return string.Join("||", rows);
+    }
+
+    private void EmitDefinitionEventsFromDiff(
+        IReadOnlyDictionary<string, CombatCatalogEntry> previousCatalog,
+        IReadOnlyDictionary<string, CombatCatalogEntry> currentCatalog)
+    {
+        if (previousCatalog == null || previousCatalog.Count == 0 || currentCatalog == null)
+            return;
+
+        foreach (var pair in currentCatalog)
+        {
+            string id = pair.Key;
+            CombatCatalogEntry current = pair.Value;
+
+            if (!previousCatalog.TryGetValue(id, out CombatCatalogEntry previous))
+            {
+                OnCatalogDefinitionChanged?.Invoke("create", id);
+                continue;
+            }
+
+            string previousLine = JsonConvert.SerializeObject(previous);
+            string currentLine = JsonConvert.SerializeObject(current);
+            if (!string.Equals(previousLine, currentLine, StringComparison.Ordinal))
+                OnCatalogDefinitionChanged?.Invoke("update", id);
+        }
+
+        foreach (var pair in previousCatalog)
+        {
+            if (!currentCatalog.ContainsKey(pair.Key))
+                OnCatalogDefinitionChanged?.Invoke("delete", pair.Key);
+        }
     }
 }
