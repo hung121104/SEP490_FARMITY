@@ -88,24 +88,23 @@ namespace CombatManager.Presenter
                 return;
             }
 
-            // Unequip current weapon first if any
-            if (isWeaponEquipped && currentWeapon != null)
-            {
-                UnequipWeapon();
-            }
+            // Weapon-to-weapon swap should not toggle combat OFF then ON.
+            // We replace currentWeapon in place and fire only equip event.
+            bool isSwap = isWeaponEquipped && currentWeapon != null;
 
             currentWeapon = weaponData;
             isWeaponEquipped = true;
 
-            Debug.Log($"[WeaponEquipPresenter] Equipping: {weaponData.weaponName} ({weaponData.weaponType}) Tier {weaponData.tier}");
+            Debug.Log($"[WeaponEquipPresenter] {(isSwap ? "Swapping to" : "Equipping")}: {weaponData.weaponName} ({weaponData.weaponType}) Tier {weaponData.tier}");
 
             // Fire equip event FIRST (so listeners can prepare)
             OnWeaponEquipped?.Invoke(weaponData);
 
             PublishWeaponProperty(weaponData.itemID);
 
-            // Activate combat mode
-            CombatModePresenter.Instance?.SetCombatMode(true);
+            // Activate combat mode only when needed to avoid redundant indicator refresh.
+            if (CombatModePresenter.Instance != null && !CombatModePresenter.Instance.IsCombatModeActive())
+                CombatModePresenter.Instance.SetCombatMode(true);
 
             Debug.Log($"[WeaponEquipPresenter] '{weaponData.weaponName}' equipped! Combat mode ON");
         }
