@@ -65,6 +65,7 @@ public class CatalogSyncNotifier : MonoBehaviour
             "quest" => "Quest",
             "combat-skill" => "Combat Skill",
             "combat-catalog" => "Combat Catalog",
+            "enemy-stats" => "Enemy Stats",
             "resource-config" => "Resource",
             "skin-config" => "Skin Config",
             _ => entityType

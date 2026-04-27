@@ -163,6 +163,9 @@ public class EnemyStatsCatalogManager : MonoBehaviour
 
         _lastCatalogHash = hash;
 
+        Dictionary<string, EnemyStatsCatalogEntry> previousEntries =
+            new Dictionary<string, EnemyStatsCatalogEntry>(_entries, StringComparer.OrdinalIgnoreCase);
+
         _entries.Clear();
         for (int i = 0; i < response.enemies.Count; i++)
         {
@@ -174,6 +177,8 @@ public class EnemyStatsCatalogManager : MonoBehaviour
             entry.enemyId = normalized;
             _entries[normalized] = entry;
         }
+
+        EmitChangeNotificationsFromDiff(previousEntries, _entries);
 
         ApplyToKnownEnemyDefinitions();
         ApplyToActiveEnemies();
@@ -316,6 +321,64 @@ public class EnemyStatsCatalogManager : MonoBehaviour
             so.flashDuration = Mathf.Max(0f, entry.flashDuration);
             so.flashCount = Mathf.Max(0, entry.flashCount);
         }
+    }
+
+    private void EmitChangeNotificationsFromDiff(
+        IReadOnlyDictionary<string, EnemyStatsCatalogEntry> previousEntries,
+        IReadOnlyDictionary<string, EnemyStatsCatalogEntry> currentEntries)
+    {
+        if (previousEntries == null || previousEntries.Count == 0 || currentEntries == null)
+            return;
+
+        foreach (KeyValuePair<string, EnemyStatsCatalogEntry> pair in currentEntries)
+        {
+            string enemyId = pair.Key;
+            EnemyStatsCatalogEntry current = pair.Value;
+
+            if (!previousEntries.TryGetValue(enemyId, out EnemyStatsCatalogEntry previous))
+            {
+                CatalogSyncManager.NotifyLocalCatalogChanged(
+                    "create",
+                    "enemy-stats",
+                    GetEnemyDisplayName(current, enemyId),
+                    "enemy-stats");
+                continue;
+            }
+
+            string previousJson = JsonConvert.SerializeObject(previous);
+            string currentJson = JsonConvert.SerializeObject(current);
+            if (!string.Equals(previousJson, currentJson, StringComparison.Ordinal))
+            {
+                CatalogSyncManager.NotifyLocalCatalogChanged(
+                    "update",
+                    "enemy-stats",
+                    GetEnemyDisplayName(current, enemyId),
+                    "enemy-stats");
+            }
+        }
+
+        foreach (KeyValuePair<string, EnemyStatsCatalogEntry> pair in previousEntries)
+        {
+            if (currentEntries.ContainsKey(pair.Key))
+                continue;
+
+            CatalogSyncManager.NotifyLocalCatalogChanged(
+                "delete",
+                "enemy-stats",
+                GetEnemyDisplayName(pair.Value, pair.Key),
+                "enemy-stats");
+        }
+    }
+
+    private static string GetEnemyDisplayName(EnemyStatsCatalogEntry entry, string fallbackEnemyId)
+    {
+        if (!string.IsNullOrWhiteSpace(entry?.enemyName))
+            return entry.enemyName;
+
+        if (!string.IsNullOrWhiteSpace(entry?.enemyId))
+            return entry.enemyId;
+
+        return string.IsNullOrWhiteSpace(fallbackEnemyId) ? "Unknown Enemy" : fallbackEnemyId;
     }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
