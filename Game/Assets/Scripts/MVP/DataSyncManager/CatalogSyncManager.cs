@@ -40,6 +40,15 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
     /// <summary>Fired on every catalog change. Parameters: changeType, entityType, entityName, typeName.</summary>
     public static event Action<string, string, string, string> OnCatalogChanged;
 
+    /// <summary>
+    /// Emits a local catalog-change notification without Photon transport.
+    /// Used by fallback sync paths (e.g. polling) to reuse the same UI notifier flow as SSE.
+    /// </summary>
+    public static void NotifyLocalCatalogChanged(string changeType, string entityType, string entityName, string typeName = null)
+    {
+        OnCatalogChanged?.Invoke(changeType, entityType, entityName, typeName ?? entityType);
+    }
+
     // ── Unity Lifecycle ────────────────────────────────────────────────────
 
     private void Awake()
@@ -212,6 +221,9 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             case "quest":
                 QuestCatalogService.Instance?.AddOrUpdateFromJson(json);
                 break;
+            case "achievement":
+                AchievementCatalogService.Instance?.AddOrUpdateFromJson(json);
+                break;
             case "resource-config":
                 ResourceCatalogManager.Instance?.AddOrUpdateFromJson(json);
                 break;
@@ -251,6 +263,10 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
 
             case "quest":
                 QuestCatalogService.Instance?.RemoveQuest(data.Value<string>("questId"));
+                break;
+
+            case "achievement":
+                AchievementCatalogService.Instance?.RemoveAchievement(data.Value<string>("achievementId"));
                 break;
 
             case "resource-config":

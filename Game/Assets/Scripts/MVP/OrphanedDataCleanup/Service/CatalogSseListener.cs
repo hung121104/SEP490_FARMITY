@@ -42,7 +42,7 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
     public class SseCatalogEvent
     {
         public string type;    // "create", "update", "delete"
-        public string entity;  // "item", "plant", "recipe", "quest", "resource-config", "combat-catalog"
+        public string entity;  // "item", "plant", "recipe", "quest", "achievement", "resource-config", "combat-catalog"
         public JObject data;   // full entity document
     }
 
@@ -296,6 +296,9 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
             case "quest":
                 QuestCatalogService.Instance?.AddOrUpdateFromJson(json);
                 break;
+            case "achievement":
+                AchievementCatalogService.Instance?.AddOrUpdateFromJson(json);
+                break;
             case "resource-config":
                 ResourceCatalogManager.Instance?.AddOrUpdateFromJson(json);
                 break;
@@ -326,6 +329,9 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
                 break;
             case "quest":
                 QuestCatalogService.Instance?.RemoveQuest(data.Value<string>("questId"));
+                break;
+            case "achievement":
+                AchievementCatalogService.Instance?.RemoveAchievement(data.Value<string>("achievementId"));
                 break;
             case "resource-config":
                 ResourceCatalogManager.Instance?.RemoveResource(data.Value<string>("resourceId"));
@@ -376,6 +382,9 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
         if (QuestCatalogService.Instance != null)
             yield return QuestCatalogService.Instance.SafeRefetch();
 
+        if (AchievementCatalogService.Instance != null)
+            yield return AchievementCatalogService.Instance.SafeRefetch();
+
         if (ResourceCatalogManager.Instance != null)
             yield return ResourceCatalogManager.Instance.SafeRefetch();
 
@@ -396,6 +405,7 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
             "plant" => data.Value<string>("plantName") ?? data.Value<string>("plantId") ?? "Unknown Plant",
             "recipe" => data.Value<string>("recipeName") ?? data.Value<string>("recipeID") ?? "Unknown Recipe",
             "quest" => data.Value<string>("questName") ?? data.Value<string>("questId") ?? "Unknown Quest",
+            "achievement" => data.Value<string>("name") ?? data.Value<string>("achievementId") ?? "Unknown Achievement",
             "resource-config" => data.Value<string>("name") ?? data.Value<string>("resourceId") ?? "Unknown Resource",
             "combat-catalog" => data.Value<string>("displayName") ?? data.Value<string>("configId") ?? "Unknown Combat Config",
             _ => data.Value<string>("name") ?? "Unknown"

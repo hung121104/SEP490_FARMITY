@@ -811,8 +811,13 @@ namespace CombatManager.Presenter
                 ? Mathf.Clamp(healthService.GetCurrentHealth(), 0, oldMaxHealth)
                 : Mathf.Clamp(model.currentHealth, 0, oldMaxHealth);
 
-            model.maxHealth = Mathf.Max(1, entry.maxHealth);
-            model.damageAmount = Mathf.Max(1, entry.damageAmount);
+            int level = Mathf.Max(1, model.enemyLevel);
+            int levelDelta = Mathf.Max(0, level - 1);
+            float hpMultiplier = 1f + (levelDelta * 0.2f);
+            float damageMultiplier = 1f + (levelDelta * 0.12f);
+
+            model.maxHealth = Mathf.Max(1, Mathf.RoundToInt(Mathf.Max(1, entry.maxHealth) * hpMultiplier));
+            model.damageAmount = Mathf.Max(1, Mathf.RoundToInt(Mathf.Max(1, entry.damageAmount) * damageMultiplier));
             model.baseExp = Mathf.Max(1, entry.baseExp);
             model.knockbackForce = Mathf.Max(0f, entry.knockbackForce);
 

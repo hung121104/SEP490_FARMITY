@@ -23,6 +23,8 @@ namespace AchievementManager.Presenter
         private readonly float catalogWaitTimeout;
 
         private AchievementTrackerPresenter tracker;
+        private Coroutine realtimeRefreshCoroutine;
+        private bool pendingRealtimeRefresh;
 
         #endregion
 
@@ -61,18 +63,68 @@ namespace AchievementManager.Presenter
 
         private void SubscribeToViewEvents()
         {
-            if (panelView == null) return;
-            panelView.OnOpenRequested += OpenPanel;
-            panelView.OnCloseRequested += ClosePanel;
-            panelView.OnRefreshRequested += OpenPanel;
+            if (panelView != null)
+            {
+                panelView.OnOpenRequested += OpenPanel;
+                panelView.OnCloseRequested += ClosePanel;
+                panelView.OnRefreshRequested += OpenPanel;
+            }
+
+            AchievementCatalogService.OnCatalogDefinitionChanged += OnAchievementCatalogDefinitionChanged;
+            CatalogSyncManager.OnCatalogChanged += OnCatalogChanged;
         }
 
         private void UnsubscribeFromViewEvents()
         {
-            if (panelView == null) return;
-            panelView.OnOpenRequested -= OpenPanel;
-            panelView.OnCloseRequested -= ClosePanel;
-            panelView.OnRefreshRequested -= OpenPanel;
+            if (panelView != null)
+            {
+                panelView.OnOpenRequested -= OpenPanel;
+                panelView.OnCloseRequested -= ClosePanel;
+                panelView.OnRefreshRequested -= OpenPanel;
+            }
+
+            AchievementCatalogService.OnCatalogDefinitionChanged -= OnAchievementCatalogDefinitionChanged;
+            CatalogSyncManager.OnCatalogChanged -= OnCatalogChanged;
+        }
+
+        private void OnAchievementCatalogDefinitionChanged(string changeType, string achievementId)
+        {
+            RequestRealtimeRefresh($"catalog:{changeType}:{achievementId}");
+        }
+
+        private void OnCatalogChanged(string changeType, string entityType, string entityName, string typeName)
+        {
+            if (!string.Equals(entityType, "achievement", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            RequestRealtimeRefresh($"sync:{changeType}:{entityName}");
+        }
+
+        private void RequestRealtimeRefresh(string reason)
+        {
+            pendingRealtimeRefresh = true;
+
+            if (realtimeRefreshCoroutine == null)
+                realtimeRefreshCoroutine = coroutineHost.StartCoroutine(RealtimeRefreshRoutine(reason));
+        }
+
+        private IEnumerator RealtimeRefreshRoutine(string reason)
+        {
+            // Debounce rapid create/update/delete bursts from admin edits.
+            yield return new WaitForSeconds(0.2f);
+
+            while (pendingRealtimeRefresh)
+            {
+                pendingRealtimeRefresh = false;
+
+                while (!model.isLoaded || model.isFetching)
+                    yield return null;
+
+                Debug.Log($"[AchievementPresenter] Real-time catalog refresh triggered ({reason})");
+                yield return FetchAllAchievements();
+            }
+
+            realtimeRefreshCoroutine = null;
         }
 
         #endregion
@@ -125,6 +177,8 @@ namespace AchievementManager.Presenter
             List<AchievementData> mergedAchievements = MergeCatalogWithPlayerAchievements(playerAchievements);
             ReconcileMergedProgressWithLocalCounters(mergedAchievements);
 
+            PruneDeletedAchievementsFromModel(mergedAchievements);
+
             foreach (AchievementData data in mergedAchievements)
                 model.UpsertAchievement(data);
 
@@ -143,6 +197,34 @@ namespace AchievementManager.Presenter
 
             Debug.Log($"[AchievementPresenter] Loaded {mergedAchievements.Count} merged achievements ✅");
             Debug.Log($"[AchievementPresenter] Tracker ready: {tracker.IsInitialized} | Model loaded: {model.isLoaded}");
+        }
+
+        private void PruneDeletedAchievementsFromModel(List<AchievementData> mergedAchievements)
+        {
+            if (model == null || model.achievements == null)
+                return;
+
+            HashSet<string> activeIds = new HashSet<string>();
+            if (mergedAchievements != null)
+            {
+                foreach (AchievementData achievement in mergedAchievements)
+                {
+                    if (achievement == null || string.IsNullOrEmpty(achievement.achievementId))
+                        continue;
+
+                    activeIds.Add(achievement.achievementId);
+                }
+            }
+
+            List<string> toRemove = new List<string>();
+            foreach (KeyValuePair<string, AchievementData> pair in model.achievements)
+            {
+                if (!activeIds.Contains(pair.Key))
+                    toRemove.Add(pair.Key);
+            }
+
+            foreach (string achievementId in toRemove)
+                model.achievements.Remove(achievementId);
         }
 
         private void ReconcileMergedProgressWithLocalCounters(List<AchievementData> achievements)
