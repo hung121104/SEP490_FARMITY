@@ -70,11 +70,13 @@ namespace CombatManager.Presenter
         private float lastDamagePopupAt = -10f;
         private const float DAMAGE_POPUP_INTERVAL = 0.1f;
         private const string ATTACK_TRIGGER = "Attack";
+        private const string SOLID_COLLIDER_NAME = "EnemySolidBodyCollider_Runtime";
         private bool hasGuardAnchorOverride;
         private Vector3 guardAnchorOverride;
         private bool hasRuntimeProgressionOverride;
         private int runtimeEnemyLevel = 1;
         private int runtimeBaseExp = 10;
+        private Collider2D runtimeSolidBodyCollider;
 
         private readonly List<Collider2D> activeAttackTargets = new List<Collider2D>();
 
@@ -241,7 +243,15 @@ namespace CombatManager.Presenter
             Collider2D mainCollider = GetComponent<Collider2D>();
             if (mainCollider != null && mainCollider.isTrigger)
             {
-                Debug.LogWarning($"[EnemyPresenter] {gameObject.name} main collider is Trigger. Enemies will not physically block each other.");
+                runtimeSolidBodyCollider = EnsureRuntimeSolidBodyCollider(mainCollider);
+                if (runtimeSolidBodyCollider == null)
+                {
+                    Debug.LogWarning($"[EnemyPresenter] {gameObject.name} main collider is Trigger and no solid runtime collider could be created. Enemy may pass through map colliders.");
+                }
+                else
+                {
+                    Debug.Log($"[EnemyPresenter] {gameObject.name} created runtime solid body collider so trigger logic remains but map collision works.");
+                }
             }
 
             view = GetComponent<EnemyView>();
@@ -436,6 +446,84 @@ namespace CombatManager.Presenter
         }
 
         #endregion
+
+        private Collider2D EnsureRuntimeSolidBodyCollider(Collider2D mainCollider)
+        {
+            if (mainCollider == null || !mainCollider.isTrigger)
+                return null;
+
+            Collider2D[] colliders = GetComponents<Collider2D>();
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider2D existing = colliders[i];
+                if (existing == null || existing == mainCollider)
+                    continue;
+
+                if (!existing.isTrigger)
+                    return existing;
+            }
+
+            Collider2D solid = CreateColliderClone(mainCollider);
+            if (solid == null)
+                return null;
+
+            solid.isTrigger = false;
+            solid.sharedMaterial = mainCollider.sharedMaterial;
+            solid.enabled = mainCollider.enabled;
+            solid.name = SOLID_COLLIDER_NAME;
+            return solid;
+        }
+
+        private Collider2D CreateColliderClone(Collider2D source)
+        {
+            if (source is BoxCollider2D srcBox)
+            {
+                BoxCollider2D dst = gameObject.AddComponent<BoxCollider2D>();
+                dst.offset = srcBox.offset;
+                dst.size = srcBox.size;
+                dst.edgeRadius = srcBox.edgeRadius;
+                dst.autoTiling = srcBox.autoTiling;
+                return dst;
+            }
+
+            if (source is CircleCollider2D srcCircle)
+            {
+                CircleCollider2D dst = gameObject.AddComponent<CircleCollider2D>();
+                dst.offset = srcCircle.offset;
+                dst.radius = srcCircle.radius;
+                return dst;
+            }
+
+            if (source is CapsuleCollider2D srcCapsule)
+            {
+                CapsuleCollider2D dst = gameObject.AddComponent<CapsuleCollider2D>();
+                dst.offset = srcCapsule.offset;
+                dst.size = srcCapsule.size;
+                dst.direction = srcCapsule.direction;
+                return dst;
+            }
+
+            if (source is PolygonCollider2D srcPolygon)
+            {
+                PolygonCollider2D dst = gameObject.AddComponent<PolygonCollider2D>();
+                dst.offset = srcPolygon.offset;
+                dst.pathCount = srcPolygon.pathCount;
+                for (int i = 0; i < srcPolygon.pathCount; i++)
+                    dst.SetPath(i, srcPolygon.GetPath(i));
+                return dst;
+            }
+
+            if (source is EdgeCollider2D srcEdge)
+            {
+                EdgeCollider2D dst = gameObject.AddComponent<EdgeCollider2D>();
+                dst.offset = srcEdge.offset;
+                dst.edgeRadius = srcEdge.edgeRadius;
+                dst.points = srcEdge.points;
+                return dst;
+            }
+
+            return null;
+        }
 
         #region Public API
 
