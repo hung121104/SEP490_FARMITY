@@ -121,6 +121,8 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
             }
         }
 
+        PlantCatalogService.OnCatalogUpdated += OnPlantCatalogUpdated;
+
         StartCoroutine(FindLocalPlayer());
     }
 
@@ -129,6 +131,15 @@ public class ChunkLoadingManager : MonoBehaviourPunCallbacks, IChunkLoadingView
         if (_model?.TimeManager != null)
             _model.TimeManager.OnDayChanged -= OnDayChangedHandler;
         PlayerRegistry.OnLocalPlayerSpawned -= OnRegistryPlayerSpawned;
+        PlantCatalogService.OnCatalogUpdated -= OnPlantCatalogUpdated;
+    }
+
+    private void OnPlantCatalogUpdated()
+    {
+        if (_presenter == null) return;
+        if (showDebugLogs) Debug.Log("[ChunkLoading] PlantCatalog updated — refreshing all chunk visuals.");
+        foreach (var chunkPos in _presenter.GetLoadedChunks())
+            RefreshChunkVisuals(chunkPos);
     }
 
     private void Update()

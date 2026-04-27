@@ -28,6 +28,9 @@ public class PlantCatalogService : MonoBehaviour
     /// <summary>True once catalog JSON is fully parsed and all stage sprites downloaded.</summary>
     public bool IsReady { get; private set; }
 
+    /// <summary>Fired after <see cref="SafeRefetch"/> completes — signals that plant sprites may have changed.</summary>
+    public static event Action OnCatalogUpdated;
+
     // ── Unity Lifecycle ───────────────────────────────────────────────────────
     private void Awake()
     {
@@ -164,6 +167,7 @@ public class PlantCatalogService : MonoBehaviour
         }
 
         Debug.Log($"[PlantCatalogService] SafeRefetch complete — {_catalog.Count} plant(s).");
+        OnCatalogUpdated?.Invoke();
     }
 
     private IEnumerator FetchCatalog()
@@ -361,7 +365,10 @@ public class PlantCatalogService : MonoBehaviour
         _spriteCache.Remove($"{plantId}_hybrid_flower");
         _spriteCache.Remove($"{plantId}_hybrid_mature");
 
-        return _catalog.Remove(plantId);
+        bool removed = _catalog.Remove(plantId);
+        if (removed)
+            OnCatalogUpdated?.Invoke();
+        return removed;
     }
 
 }

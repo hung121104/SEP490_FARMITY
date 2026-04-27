@@ -44992,11 +44992,31 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 602542872385545595, guid: 9d0842614c9c6d245a2f9766e172ca32, type: 3}
+      propertyPath: resourceTypeMappings.Array.size
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 602542872385545595, guid: 9d0842614c9c6d245a2f9766e172ca32, type: 3}
+      propertyPath: resourceTypeMappings.Array.data[2].maxOnMap
+      value: 2000
+      objectReference: {fileID: 0}
+    - target: {fileID: 602542872385545595, guid: 9d0842614c9c6d245a2f9766e172ca32, type: 3}
+      propertyPath: resourceTypeMappings.Array.data[2].resourceType
+      value: ore
+      objectReference: {fileID: 0}
+    - target: {fileID: 602542872385545595, guid: 9d0842614c9c6d245a2f9766e172ca32, type: 3}
+      propertyPath: resourceTypeMappings.Array.data[2].allowedTilemaps.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 602542872385545595, guid: 9d0842614c9c6d245a2f9766e172ca32, type: 3}
       propertyPath: 'resourceTypeMappings.Array.data[0].allowedTilemaps.Array.data[0]'
       value: 
       objectReference: {fileID: 2880936643993915144}
     - target: {fileID: 602542872385545595, guid: 9d0842614c9c6d245a2f9766e172ca32, type: 3}
       propertyPath: 'resourceTypeMappings.Array.data[1].allowedTilemaps.Array.data[0]'
+      value: 
+      objectReference: {fileID: 729470957}
+    - target: {fileID: 602542872385545595, guid: 9d0842614c9c6d245a2f9766e172ca32, type: 3}
+      propertyPath: 'resourceTypeMappings.Array.data[2].allowedTilemaps.Array.data[0]'
       value: 
       objectReference: {fileID: 729470957}
     - target: {fileID: 4138450009557648820, guid: 9d0842614c9c6d245a2f9766e172ca32, type: 3}
