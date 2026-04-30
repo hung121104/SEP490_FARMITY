@@ -130,9 +130,8 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
         if (chestData == null) return;
         if (chestData.TileX != worldX || chestData.TileY != worldY) return;
 
-        // Close UI if this chest is currently open
-        if (IsUIOpen())
-            CloseUI();
+        // Close UI + restore input/active state if this chest is currently open
+        ForceCloseUIIfOpen();
 
         // Client-side: unregister chest from ChestDataModule
         // (Master already did this in StructureService)

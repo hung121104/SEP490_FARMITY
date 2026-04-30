@@ -50,18 +50,21 @@ public class CraftingTableStructure : InteractableStructureBase, IWorldStructure
     {
         ChunkDataSyncManager.OnStationOpened += HandleStationOpened;
         ChunkDataSyncManager.OnStationClosed += HandleStationClosed;
+        ChunkDataSyncManager.OnStructureRemoved += HandleStructureRemoved;
     }
 
     protected override void OnStructureDisabled()
     {
         ChunkDataSyncManager.OnStationOpened -= HandleStationOpened;
         ChunkDataSyncManager.OnStationClosed -= HandleStationClosed;
+        ChunkDataSyncManager.OnStructureRemoved -= HandleStructureRemoved;
     }
 
     protected override void OnStructureDestroyed()
     {
         ChunkDataSyncManager.OnStationOpened -= HandleStationOpened;
         ChunkDataSyncManager.OnStationClosed -= HandleStationClosed;
+        ChunkDataSyncManager.OnStructureRemoved -= HandleStructureRemoved;
     }
 
     // ── IWorldStructure ──────────────────────────────────────────────────
@@ -104,5 +107,18 @@ public class CraftingTableStructure : InteractableStructureBase, IWorldStructure
 
         if (showDebugLogs)
             Debug.Log($"[CraftingTable] Badge OFF — player #{actorNumber} closed station at ({wx},{wy})");
+    }
+
+    // ── Structure Removal ────────────────────────────────────────────────
+
+    private void HandleStructureRemoved(int wx, int wy, string lastHitPlayerId)
+    {
+        if (wx != worldX || wy != worldY) return;
+
+        // Close UI + restore input/active state if this table is currently open
+        ForceCloseUIIfOpen();
+
+        if (showDebugLogs)
+            Debug.Log($"[CraftingTable] Station at ({wx},{wy}) destroyed by player {lastHitPlayerId}");
     }
 }

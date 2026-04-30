@@ -426,6 +426,21 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     }
 
     /// <summary>
+    /// Force-close this structure's UI and run full close cleanup.
+    /// Use when the structure itself is being destroyed/removed while its UI is open.
+    /// Safe to call regardless of whether the UI is currently open.
+    /// </summary>
+    protected void ForceCloseUIIfOpen()
+    {
+        if (IsUIOpen())
+            CloseUI();
+        // Always run close cleanup if this is the active structure (covers edge case
+        // where IsUIOpen() returns false but state was left dangling).
+        if (_activeStructure == this)
+            OnStructureClosed();
+    }
+
+    /// <summary>
     /// Public method for external systems (MenuController, etc.) to close the active structure UI.
     /// </summary>
     public static void CloseActiveStructure()
