@@ -51,6 +51,10 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private GameObject _structureInteractionBadge;
     private SpriteRenderer _structureInteractionRenderer;
 
+    // ── Structure Sprite Fade (when local UI opens) ──────────────────────
+    private SpriteRenderer _structureSpriteRenderer;
+    private float _cachedStructureAlpha;
+
     // ── IInteractable Properties ────────────────────────────────────────
     public bool IsPlayerInRange => _playerInRange;
     public bool IsTargeted => _isTargeted;
@@ -341,7 +345,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
             0,
             SpriteMeshType.FullRect);
         _structureInteractionRenderer.sortingLayerName = "WalkInfront";
-        _structureInteractionRenderer.sortingOrder = 1;
+        _structureInteractionRenderer.sortingOrder = 0;
         _structureInteractionBadge.SetActive(false);
     }
 
@@ -355,6 +359,25 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     {
         if (_structureInteractionBadge != null)
             _structureInteractionBadge.SetActive(false);
+    }
+
+    // ── Structure Sprite Fade ────────────────────────────────────────────
+
+    protected void CaptureAndHideStructureSprites()
+    {
+        // Script lives on the "Trigger" child; the sprite to fade is on the root parent.
+        _structureSpriteRenderer = GetComponentInParent<SpriteRenderer>();
+        if (_structureSpriteRenderer == null) return;
+
+        _cachedStructureAlpha = _structureSpriteRenderer.color.a;
+        var c = _structureSpriteRenderer.color; c.a = 0f; _structureSpriteRenderer.color = c;
+    }
+
+    protected void RestoreStructureSpritesAlpha()
+    {
+        if (_structureSpriteRenderer == null) return;
+        var c = _structureSpriteRenderer.color; c.a = _cachedStructureAlpha; _structureSpriteRenderer.color = c;
+        _structureSpriteRenderer = null;
     }
 
     // ── IInteractable ────────────────────────────────────────────────────
@@ -372,6 +395,7 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
     private void OnStructureOpened()
     {
         _activeStructure = this;
+
 
         // Disable all player input
         if (InputManager.Instance != null)

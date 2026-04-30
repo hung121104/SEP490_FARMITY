@@ -80,7 +80,13 @@ public class CraftingTableStructure : InteractableStructureBase, IWorldStructure
     private void HandleStationOpened(int wx, int wy, int actorNumber)
     {
         if (wx != worldX || wy != worldY) return;
-        ShowStructureInteractionBadge();
+
+        // Only fade for remote openers — the local player who opened sees their own UI.
+        if (actorNumber != Photon.Pun.PhotonNetwork.LocalPlayer.ActorNumber)
+        {
+            ShowStructureInteractionBadge();
+            CaptureAndHideStructureSprites();
+        }
 
         if (showDebugLogs)
             Debug.Log($"[CraftingTable] Badge ON — player #{actorNumber} opened station at ({wx},{wy})");
@@ -89,7 +95,12 @@ public class CraftingTableStructure : InteractableStructureBase, IWorldStructure
     private void HandleStationClosed(int wx, int wy, int actorNumber)
     {
         if (wx != worldX || wy != worldY) return;
-        HideStructureInteractionBadge();
+
+        if (actorNumber != Photon.Pun.PhotonNetwork.LocalPlayer.ActorNumber)
+        {
+            HideStructureInteractionBadge();
+            RestoreStructureSpritesAlpha();
+        }
 
         if (showDebugLogs)
             Debug.Log($"[CraftingTable] Badge OFF — player #{actorNumber} closed station at ({wx},{wy})");

@@ -97,7 +97,13 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
     private void HandleChestOpened(string chestId, int actorNumber)
     {
         if (chestData == null || chestData.ChestId != chestId) return;
-        ShowStructureInteractionBadge();
+
+        // Only fade for remote openers — the local player who opened sees their own UI.
+        if (actorNumber != Photon.Pun.PhotonNetwork.LocalPlayer.ActorNumber)
+        {
+            ShowStructureInteractionBadge();
+            CaptureAndHideStructureSprites();
+        }
 
         if (showDebugLogs)
             Debug.Log($"[ChestStructure] Badge ON — player #{actorNumber} opened '{chestId}'");
@@ -106,7 +112,12 @@ public class ChestStructure : InteractableStructureBase, IWorldStructure
     private void HandleChestClosed(string chestId, int actorNumber)
     {
         if (chestData == null || chestData.ChestId != chestId) return;
-        HideStructureInteractionBadge();
+
+        if (actorNumber != Photon.Pun.PhotonNetwork.LocalPlayer.ActorNumber)
+        {
+            HideStructureInteractionBadge();
+            RestoreStructureSpritesAlpha();
+        }
 
         if (showDebugLogs)
             Debug.Log($"[ChestStructure] Badge OFF — player #{actorNumber} closed '{chestId}'");
