@@ -20,6 +20,7 @@ public class NPCInteractionPresenter
     private IInventoryService _trackedInventory;
     private System.Action<ItemModel, int> _onItemAdded;
     private System.Action<ItemModel, int> _onItemRemoved;
+    private System.Action<int> _onSlotChanged;
 
     // ─── View interface (callbacks to MonoBehaviour) ───
     private readonly INPCInteractorView view;
@@ -87,11 +88,14 @@ public class NPCInteractionPresenter
             // OnInventoryChanged covers remote-sync / sort / clear events.
             // OnItemAdded + OnItemRemoved cover every local AddItem / RemoveItem call
             // (AddItem only fires OnItemAdded, NOT OnInventoryChanged).
+            // OnSlotChanged covers stacking into existing slots (which only fires OnSlotChanged, not OnItemAdded).
             _onItemAdded   = (_, _2) => UpdateQuestObjectives();
             _onItemRemoved = (_, _2) => UpdateQuestObjectives();
+            _onSlotChanged = (_) => UpdateQuestObjectives();
             inventoryService.OnInventoryChanged += UpdateQuestObjectives;
             inventoryService.OnItemAdded        += _onItemAdded;
             inventoryService.OnItemRemoved      += _onItemRemoved;
+            inventoryService.OnSlotChanged      += _onSlotChanged;
         }
         else
             Debug.LogError($"[NPCInteractionPresenter] InventoryService on {dialogueModel.npcName} is null!");
@@ -162,6 +166,7 @@ public class NPCInteractionPresenter
             _trackedInventory.OnInventoryChanged -= UpdateQuestObjectives;
             _trackedInventory.OnItemAdded        -= _onItemAdded;
             _trackedInventory.OnItemRemoved      -= _onItemRemoved;
+            _trackedInventory.OnSlotChanged      -= _onSlotChanged;
             _trackedInventory = null;
         }
     }
