@@ -19,6 +19,14 @@ public class OrphanedDataCleanupService : MonoBehaviour, IOrphanedDataCleanupSer
         // Only run on MasterClient as WorldDataBootstrapper already restricts to master, but double check
         if (!PhotonNetwork.IsMasterClient) return;
 
+        // Guard: catalog must be ready, otherwise GetItemData returns null for everything
+        // and we'd wipe every structure on the map.
+        if (ItemCatalogService.Instance == null || !ItemCatalogService.Instance.IsReady)
+        {
+            Debug.LogWarning("[OrphanedDataCleanup] Skipped — ItemCatalogService not ready.");
+            return;
+        }
+
         RunCleanup();
     }
 
