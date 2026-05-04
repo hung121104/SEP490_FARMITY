@@ -331,7 +331,7 @@ public class CraftingPresenter
             recipes = recipes.Where(r => craftingAllowedCategories.Contains(r.Category)).ToList();
         }
 
-        return recipes;
+        return recipes.OrderBy(r => r.RecipeLevel).ToList();
     }
 
     private void ShowRecipeDetail(string recipeID)

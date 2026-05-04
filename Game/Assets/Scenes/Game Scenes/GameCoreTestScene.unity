@@ -3761,7 +3761,6 @@ GameObject:
   - component: {fileID: 191593992}
   - component: {fileID: 191593991}
   - component: {fileID: 191593990}
-  - component: {fileID: 191593989}
   m_Layer: 0
   m_Name: StructureSystem
   m_TagString: Untagged
@@ -3769,28 +3768,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &191593989
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 191593988}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8b77907bd3c014045b03368b42bac018, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  structureIds: []
-  spawnCount: 100
-  spawnCenter: {x: 0, y: 0}
-  spawnRadius: 50
-  minDistance: 2
-  useGridPattern: 1
-  gridSize: 5
-  gridSpacing: 5
-  syncToNetwork: 1
-  showDebugLogs: 0
 --- !u!114 &191593990
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3830,7 +3807,7 @@ MonoBehaviour:
   validTools: 030000000200000000000000
   regenDelaySeconds: 10
   interactionRange: 2
-  showDebugLogs: 1
+  showDebugLogs: 0
   flashColor: {r: 1, g: 0, b: 0, a: 1}
   flashDuration: 0.1
   shakeIntensity: 0.1
@@ -17652,6 +17629,7 @@ MonoBehaviour:
   horizontalPositionOffset: {x: 0.25, y: 0.25}
   verticalPositionOffset: {x: 0.25, y: -0.25}
   vfxSpawnOffset: 1
+  staffProjectileSpawnForwardOffset: 0.9
   statsPresenter: {fileID: 846866718}
   pointerPresenter: {fileID: 1536036027}
 --- !u!114 &881434539
@@ -17745,6 +17723,7 @@ MonoBehaviour:
   healthSyncIntervalSeconds: 0.4
   deferredRestoreMaxSeconds: 8
   deferredRestoreRetryIntervalSeconds: 0.25
+  respawnDelaySeconds: 5
 --- !u!1 &889713964
 GameObject:
   m_ObjectHideFlags: 0
@@ -20793,7 +20772,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 0
+  m_Transition: 2
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
@@ -25784,6 +25763,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 128
   baseProjectilePrefab: {fileID: 2996777577814843754, guid: cf409b33c4bf1674ebcb5d32c77a3243, type: 3}
+  projectileSpawnForwardOffset: 0.9
 --- !u!1 &1318936562
 GameObject:
   m_ObjectHideFlags: 0
