@@ -54,8 +54,6 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
     [SerializeField] private float batchDelay = 0.3f;
     [SerializeField] private bool showDebugLogs = true;
 
-    [SerializeField] private float slotLockTimeout = 10f;
-
     // ── State ────────────────────────────────────────────────
     private bool isSyncing = false;
     private bool hasSyncedThisSession = false;
@@ -147,9 +145,36 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
     public void NotifyChestClosed(string chestId)
     {
         if (!PhotonNetwork.IsConnected || PhotonNetwork.LocalPlayer == null) return;
+
+        ClearLocksFor(chestId, PhotonNetwork.LocalPlayer.ActorNumber);
+
         byte[] payload = EncodeNotify(chestId, PhotonNetwork.LocalPlayer.ActorNumber);
         RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
         PhotonNetwork.RaiseEvent(CHEST_CLOSE_NOTIFY, payload, opts, SendOptions.SendReliable);
+    }
+
+    // Clear all slot locks held by `actor` on `chestId` (called when that player closes the chest).
+    private void ClearLocksFor(string chestId, int actor)
+    {
+        string prefix = chestId + ":";
+        List<string> keysToRemove = null;
+        foreach (var kvp in lockedSlots)
+        {
+            if (kvp.Value.actor == actor && kvp.Key.StartsWith(prefix))
+            {
+                keysToRemove ??= new List<string>();
+                keysToRemove.Add(kvp.Key);
+            }
+        }
+        if (keysToRemove == null) return;
+
+        foreach (string key in keysToRemove)
+        {
+            lockedSlots.Remove(key);
+            int sep = key.LastIndexOf(':');
+            if (sep > 0 && byte.TryParse(key.AsSpan(sep + 1), out byte slot))
+                OnSlotLockChanged?.Invoke(chestId, slot, false);
+        }
     }
 
     /// <summary>
@@ -195,14 +220,6 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
     {
         string key = $"{chestId}:{slotIndex}";
         if (!lockedSlots.TryGetValue(key, out var info)) return false;
-
-        // Auto-unlock if timed out
-        if (Time.time - info.time > slotLockTimeout)
-        {
-            lockedSlots.Remove(key);
-            OnSlotLockChanged?.Invoke(chestId, slotIndex, false);
-            return false;
-        }
 
         // Not locked if it's our own lock
         if (PhotonNetwork.LocalPlayer != null && info.actor == PhotonNetwork.LocalPlayer.ActorNumber)
@@ -460,6 +477,9 @@ public class ChestSyncManager : MonoBehaviourPunCallbacks
     private void HandleCloseNotify(byte[] data)
     {
         if (!DecodeNotify(data, out string chestId, out int actorNumber)) return;
+
+        ClearLocksFor(chestId, actorNumber);
+
         OnChestClosed?.Invoke(chestId, actorNumber);
         if (showDebugLogs)
             Debug.Log($"[ChestSync] Actor {actorNumber} closed chest '{chestId}'");
