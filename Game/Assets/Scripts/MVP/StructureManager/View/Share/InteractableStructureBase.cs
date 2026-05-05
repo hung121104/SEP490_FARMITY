@@ -365,7 +365,10 @@ public abstract class InteractableStructureBase : MonoBehaviour, IInteractable
 
     protected void CaptureAndHideStructureSprites()
     {
-        // Script lives on the "Trigger" child; the sprite to fade is on the root parent.
+        // Only hide the structure sprite when an interaction badge exists to replace it visually.
+        if (_structureInteractionBadge == null) return;
+
+        // Script lives on the "Trigger" child;
         _structureSpriteRenderer = GetComponentInParent<SpriteRenderer>();
         if (_structureSpriteRenderer == null) return;
 
