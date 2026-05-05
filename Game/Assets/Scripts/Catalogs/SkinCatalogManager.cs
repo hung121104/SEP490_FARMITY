@@ -147,6 +147,66 @@ public class SkinCatalogManager : MonoBehaviour
             onDone);
     }
 
+    /// <summary>
+    /// Adds or updates a single skin config entry from a JSON string (SSE real-time sync).
+    /// Updates <see cref="_entries"/> synchronously and fires <see cref="OnCatalogReady"/>
+    /// immediately so the skin-picker list refreshes without waiting for the download.
+    /// Then starts a background coroutine to re-download the spritesheet into <see cref="_catalog"/>
+    /// and fires <see cref="OnCatalogReady"/> a second time once the sprite is ready.
+    /// </summary>
+    public void AddOrUpdateFromJson(string json)
+    {
+        try
+        {
+            var entry = JsonUtility.FromJson<SkinConfigEntry>(json);
+            if (entry == null || string.IsNullOrWhiteSpace(entry.configId)) return;
+
+            // ── Synchronous: update the entry list immediately ────────────────
+            string normalized = NormalizeConfigId(entry.configId);
+            int idx = _entries.FindIndex(e => NormalizeConfigId(e.configId) == normalized);
+            var newEntry = new SkinEntry(entry.configId, InferCategory(entry.configId, entry.skinCategory));
+            if (idx >= 0) _entries[idx] = newEntry;
+            else           _entries.Add(newEntry);
+
+            // Notify the skin-picker right away (sprite preview may still be old).
+            OnCatalogReady?.Invoke();
+
+            // ── Async: re-download spritesheet so _catalog gets fresh sprites ─
+            StartCoroutine(AddOrUpdateSheetCoroutine(entry));
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[SkinCatalogManager] AddOrUpdateFromJson failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Removes a skin config entry by configId (SSE real-time delete).
+    /// Fires <see cref="OnCatalogReady"/> so the skin-picker UI can refresh.
+    /// </summary>
+    public void RemoveSkin(string configId)
+    {
+        if (string.IsNullOrWhiteSpace(configId)) return;
+        string normalized = NormalizeConfigId(configId);
+        _catalog.Remove(normalized);
+        _entries.RemoveAll(e => NormalizeConfigId(e.configId) == normalized);
+        OnCatalogReady?.Invoke();
+        Debug.Log($"[SkinCatalogManager] Removed skin '{configId}'.");
+    }
+
+    /// <summary>
+    /// Re-fetches the full skin catalog from the server, replacing the in-memory state.
+    /// Returns an IEnumerator so <see cref="CatalogSseListener"/> can yield on it.
+    /// </summary>
+    public IEnumerator SafeRefetch()
+    {
+        _isReady = false;
+        _catalog.Clear();
+        _entries.Clear();
+        yield return FetchCatalog();
+        Debug.Log($"[SkinCatalogManager] SafeRefetch complete — {_catalog.Count} sheet(s).");
+    }
+
     // ── Private: Network ──────────────────────────────────────────────────────
 
     private const int MAX_RETRIES = 3;
@@ -228,6 +288,29 @@ public class SkinCatalogManager : MonoBehaviour
     }
 
     // ── Private: Sheet Loading & Disk Cache ───────────────────────────────────
+
+    private IEnumerator AddOrUpdateSheetCoroutine(SkinConfigEntry entry)
+    {
+        // Bust disk cache so the updated spritesheet is re-downloaded.
+        string safeId     = Regex.Replace(entry.configId, @"[^a-zA-Z0-9_\-]", "_");
+        string cachePath  = Path.Combine(Application.persistentDataPath, "SkinCache", $"{safeId}.png");
+        if (File.Exists(cachePath))
+        {
+            try { File.Delete(cachePath); }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SkinCatalogManager] Could not delete cache for '{entry.configId}': {ex.Message}");
+            }
+        }
+
+        yield return LoadSheet(entry, () =>
+        {
+            // _entries already updated synchronously in AddOrUpdateFromJson.
+            // Fire OnCatalogReady again so the skin-picker refreshes preview sprites.
+            OnCatalogReady?.Invoke();
+            Debug.Log($"[SkinCatalogManager] Spritesheet refreshed for '{entry.configId}'.");
+        });
+    }
 
     private IEnumerator LoadSheet(SkinConfigEntry entry, Action onDone)
     {

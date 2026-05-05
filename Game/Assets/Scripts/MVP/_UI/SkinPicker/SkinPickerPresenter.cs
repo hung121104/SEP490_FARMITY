@@ -54,6 +54,10 @@ public class SkinPickerPresenter : MonoBehaviour
 
         view.OnCardSelected += HandleCardSelected;
         view.OnClosed       += HandleClosed;
+
+        if (SkinCatalogManager.Instance != null)
+            SkinCatalogManager.Instance.OnCatalogReady += OnSkinCatalogRefreshed;
+
         Debug.Log("[SkinPickerPresenter] Subscribed to view events.");
     }
 
@@ -64,6 +68,9 @@ public class SkinPickerPresenter : MonoBehaviour
             view.OnCardSelected -= HandleCardSelected;
             view.OnClosed       -= HandleClosed;
         }
+
+        if (SkinCatalogManager.Instance != null)
+            SkinCatalogManager.Instance.OnCatalogReady -= OnSkinCatalogRefreshed;
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -162,6 +169,17 @@ public class SkinPickerPresenter : MonoBehaviour
     }
 
     private void HandleClosed() => Close();
+
+    /// <summary>
+    /// Called whenever SkinCatalogManager fires OnCatalogReady (e.g. after an SSE update).
+    /// Repopulates the picker cards if the panel is currently open.
+    /// When the panel is closed the list will be refreshed on the next Open() call via OpenRoutine.
+    /// </summary>
+    private void OnSkinCatalogRefreshed()
+    {
+        if (view != null && view.IsVisible)
+            PopulateOutfits();
+    }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

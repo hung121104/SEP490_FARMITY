@@ -65,9 +65,9 @@ export class SkinConfigController {
   async remove(
     @Payload() payload: { configId: string },
   ): Promise<CatalogChange> {
-    const data = await this.skinConfigService.remove(payload.configId);
+    await this.skinConfigService.remove(payload.configId);
     return {
-      data,
+      data: { configId: payload.configId },
       changeType: 'delete',
       entityType: 'skin-config',
     };

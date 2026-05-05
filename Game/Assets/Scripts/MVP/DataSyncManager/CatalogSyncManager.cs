@@ -198,14 +198,14 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
 
     private void ApplyCatalogChange(string changeType, string entityType, JObject data)
     {
-        if (data == null) return;
-        string json = data.ToString(Formatting.None);
-
         if (changeType == "delete")
         {
             ApplyDelete(entityType, data);
             return;
         }
+
+        if (data == null) return;
+        string json = data.ToString(Formatting.None);
 
         switch (entityType)
         {
@@ -230,6 +230,10 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
             case "combat-catalog":
                 SkillVfxCatalogManager.Instance?.AddOrUpdateFromJson(json);
                 break;
+            case "skin-config":
+                if (SkinCatalogManager.Instance != null)
+                    StartCoroutine(SkinCatalogManager.Instance.SafeRefetch());
+                break;
             case "combat-skill":
                 CombatSkillCatalogService.Instance?.AddOrUpdateFromJson(json);
                 break;
@@ -241,6 +245,20 @@ public class CatalogSyncManager : MonoBehaviourPunCallbacks
 
     private void ApplyDelete(string entityType, JObject data)
     {
+        // skin-config never needs the data payload — always refetch
+        if (entityType == "skin-config")
+        {
+            if (SkinCatalogManager.Instance != null)
+                StartCoroutine(SkinCatalogManager.Instance.SafeRefetch());
+            return;
+        }
+
+        if (data == null)
+        {
+            Debug.LogWarning($"[CatalogSync] Delete received null data for entity '{entityType}'. Skipping.");
+            return;
+        }
+
         bool isMaster = PhotonNetwork.IsMasterClient;
 
         switch (entityType)

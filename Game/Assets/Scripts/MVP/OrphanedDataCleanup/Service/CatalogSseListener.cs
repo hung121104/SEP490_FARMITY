@@ -272,14 +272,14 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
 
     private void ApplyPreRoomChange(SseCatalogEvent sseEvent)
     {
-        if (sseEvent.data == null) return;
-        string json = sseEvent.data.ToString(Formatting.None);
-
         if (sseEvent.type == "delete")
         {
             ApplyPreRoomDelete(sseEvent.entity, sseEvent.data);
             return;
         }
+
+        if (sseEvent.data == null) return;
+        string json = sseEvent.data.ToString(Formatting.None);
 
         // ADD / UPDATE — apply directly to catalog
         switch (sseEvent.entity)
@@ -305,6 +305,10 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
             case "combat-catalog":
                 SkillVfxCatalogManager.Instance?.AddOrUpdateFromJson(json);
                 break;
+            case "skin-config":
+                if (SkinCatalogManager.Instance != null)
+                    StartCoroutine(SkinCatalogManager.Instance.SafeRefetch());
+                break;
             case "combat-skill":
                 CombatSkillCatalogService.Instance?.AddOrUpdateFromJson(json);
                 break;
@@ -319,6 +323,12 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
     /// <summary>Pre-room DELETE: only remove from catalog (no world data yet, no CatalogDeleteHandler).</summary>
     private void ApplyPreRoomDelete(string entityType, JObject data)
     {
+        if (data == null)
+        {
+            Debug.LogWarning($"[CatalogSSE] Pre-room delete received null data for entity '{entityType}'. Skipping.");
+            return;
+        }
+
         switch (entityType)
         {
             case "item":
@@ -341,6 +351,10 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
                 break;
             case "combat-catalog":
                 SkillVfxCatalogManager.Instance?.RemoveEntry(data.Value<string>("configId"));
+                break;
+            case "skin-config":
+                if (SkinCatalogManager.Instance != null)
+                    StartCoroutine(SkinCatalogManager.Instance.SafeRefetch());
                 break;
             case "combat-skill":
                 CombatSkillCatalogService.Instance?.RemoveSkill(data.Value<string>("skillId"));
@@ -397,6 +411,9 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
         if (SkillVfxCatalogManager.Instance != null)
             yield return SkillVfxCatalogManager.Instance.SafeRefetch();
 
+        if (SkinCatalogManager.Instance != null)
+            yield return SkinCatalogManager.Instance.SafeRefetch();
+
         if (CombatSkillCatalogService.Instance != null)
             yield return CombatSkillCatalogService.Instance.SafeRefetch();
 
@@ -417,6 +434,7 @@ public class CatalogSseListener : MonoBehaviourPunCallbacks
             "achievement" => data.Value<string>("name") ?? data.Value<string>("achievementId") ?? "Unknown Achievement",
             "resource-config" => data.Value<string>("name") ?? data.Value<string>("resourceId") ?? "Unknown Resource",
             "combat-catalog" => data.Value<string>("displayName") ?? data.Value<string>("configId") ?? "Unknown Combat Config",
+            "skin-config" => data.Value<string>("displayName") ?? data.Value<string>("configId") ?? "Unknown Skin",
             "combat-skill" => data.Value<string>("skillName") ?? data.Value<string>("skillId") ?? "Unknown Combat Skill",
             _ => data.Value<string>("name") ?? "Unknown"
         };
